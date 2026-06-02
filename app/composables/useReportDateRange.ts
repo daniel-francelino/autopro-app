@@ -22,6 +22,7 @@ export function useReportDateRange() {
   const orderStatusFilters = useReportQueryParam('orderStatus', [] as string[])
   const paymentStatusFilters = useReportQueryParam('paymentStatus', [] as string[])
   const selectedEmployees = useReportQueryParam('employees', [] as string[])
+  const paymentMethodFilters = useReportQueryParam('paymentMethod', [] as string[])
 
-  return { dateFrom, dateTo, orderStatusFilters, paymentStatusFilters, selectedEmployees }
+  return { dateFrom, dateTo, orderStatusFilters, paymentStatusFilters, selectedEmployees, paymentMethodFilters }
 }
