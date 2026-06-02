@@ -76,6 +76,8 @@ const localCategory = computed({
             value-key="value"
             class="w-full"
             :search-input="false"
+            :clear="localType !== 'all'"
+            @clear="localType = 'all'"
           />
         </UFormField>
 
@@ -86,6 +88,8 @@ const localCategory = computed({
             value-key="value"
             class="w-full"
             :search-input="false"
+            :clear="localInventory !== 'all'"
+            @clear="localInventory = 'all'"
           />
         </UFormField>
 
@@ -96,6 +100,8 @@ const localCategory = computed({
             value-key="value"
             class="w-full"
             searchable
+            :clear="localCategory !== 'all'"
+            @clear="localCategory = 'all'"
           />
         </UFormField>
       </div>

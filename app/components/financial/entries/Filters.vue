@@ -29,12 +29,12 @@ const categoryOptions = computed(() => [
 // Bridge between string[] models and single-value USelectMenu
 const localType = computed({
   get: () => typeFilters.value[0] ?? '',
-  set: (v: string) => { typeFilters.value = v ? [v] : [] }
+  set: (v: string | null | undefined) => { typeFilters.value = v ? [v] : [] }
 })
 
 const localStatus = computed({
   get: () => statusFilters.value[0] ?? '',
-  set: (v: string) => { statusFilters.value = v ? [v] : [] }
+  set: (v: string | null | undefined) => { statusFilters.value = v ? [v] : [] }
 })
 
 const activeFiltersCount = computed(() => {
@@ -73,6 +73,8 @@ const activeFiltersCount = computed(() => {
             value-key="value"
             class="w-full"
             :search-input="false"
+            :clear="!!localType"
+            @clear="localType = ''"
           />
         </UFormField>
 
@@ -83,6 +85,8 @@ const activeFiltersCount = computed(() => {
             value-key="value"
             class="w-full"
             :search-input="false"
+            :clear="!!localStatus"
+            @clear="localStatus = ''"
           />
         </UFormField>
 
@@ -93,6 +97,8 @@ const activeFiltersCount = computed(() => {
             value-key="value"
             class="w-full"
             searchable
+            :clear="!!categoryFilter"
+            @clear="categoryFilter = ''"
           />
         </UFormField>
       </div>
