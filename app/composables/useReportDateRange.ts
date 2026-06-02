@@ -17,11 +17,13 @@ function defaultTo(): string {
 }
 
 export function useReportDateRange() {
-  const dateFrom = useReportQueryParam('from', defaultFrom(), { persist: false })
-  const dateTo = useReportQueryParam('to', defaultTo(), { persist: false })
+  const dateFrom = useReportQueryParam('from', defaultFrom())
+  const dateTo = useReportQueryParam('to', defaultTo())
   const orderStatusFilters = useReportQueryParam('orderStatus', [] as string[])
   const paymentStatusFilters = useReportQueryParam('paymentStatus', [] as string[])
   const selectedEmployees = useReportQueryParam('employees', [] as string[])
+  const paymentMethodFilters = useReportQueryParam('paymentMethod', [] as string[])
+  const clientIds = useReportQueryParam('clients', [] as string[])
 
-  return { dateFrom, dateTo, orderStatusFilters, paymentStatusFilters, selectedEmployees }
+  return { dateFrom, dateTo, orderStatusFilters, paymentStatusFilters, selectedEmployees, paymentMethodFilters, clientIds }
 }

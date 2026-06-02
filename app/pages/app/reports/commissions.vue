@@ -66,12 +66,12 @@ const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : unde
 const { can } = useWorkshopPermissions()
 const toast = useToast()
 
-const { dateFrom, dateTo, orderStatusFilters, paymentStatusFilters, selectedEmployees } = useReportDateRange()
+const { dateFrom, dateTo, orderStatusFilters, paymentStatusFilters, selectedEmployees, paymentMethodFilters } = useReportDateRange()
+const paymentMethods = paymentMethodFilters
 
 // Filter state
 const commissionStatus = useReportQueryParam('commissionStatus', [] as string[])
 const recordType = useReportQueryParam('recordType', [] as string[])
-const paymentMethods = useReportQueryParam('paymentMethods', [] as string[])
 
 // Pagination / sorting
 const pageSize = 20

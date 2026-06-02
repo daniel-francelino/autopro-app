@@ -168,6 +168,8 @@ function clearAll() {
             value-key="value"
             class="w-full"
             :search-input="false"
+            :clear="localStatus !== 'all'"
+            @clear="localStatus = 'all'"
           />
         </UFormField>
 
@@ -180,6 +182,8 @@ function clearAll() {
             class="w-full"
             :loading="isLoading"
             searchable
+            :clear="localClient !== 'all'"
+            @clear="localClient = 'all'"
           />
         </UFormField>
 
@@ -192,6 +196,8 @@ function clearAll() {
             class="w-full"
             :loading="isLoading"
             searchable
+            :clear="localVehicle !== 'all'"
+            @clear="localVehicle = 'all'"
           />
         </UFormField>
 
@@ -204,6 +210,8 @@ function clearAll() {
             class="w-full"
             :loading="isLoading"
             searchable
+            :clear="localResponsible !== 'all'"
+            @clear="localResponsible = 'all'"
           />
         </UFormField>
 
