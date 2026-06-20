@@ -92,21 +92,9 @@ const { data: files } = useLazyAsyncData('search', () => queryCollectionSearchSe
 })
 
 const links = [{
-  label: 'Documentação',
-  icon: 'i-lucide-book',
-  to: '/docs/getting-started'
-}, {
   label: 'Planos',
   icon: 'i-lucide-credit-card',
   to: '/pricing'
-}, {
-  label: 'Blog',
-  icon: 'i-lucide-pencil',
-  to: '/blog'
-}, {
-  label: 'Novidades',
-  icon: 'i-lucide-history',
-  to: '/changelog'
 }]
 
 provide('navigation', navigation)
