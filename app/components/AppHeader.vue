@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { PostHogEvent } from '~/types/analytics'
 
-const route = useRoute()
 const { capture } = usePostHog()
 
 function trackNavigation(label: string, target: string, location: 'header' | 'header-mobile') {
@@ -13,22 +12,9 @@ function trackNavigation(label: string, target: string, location: 'header' | 'he
 }
 
 const items = computed(() => [{
-  label: 'Documentação',
-  to: '/docs',
-  active: route.path.startsWith('/docs'),
-  onSelect: () => trackNavigation('Documentation', '/docs', 'header')
-}, {
   label: 'Planos',
   to: '/pricing',
   onSelect: () => trackNavigation('Pricing', '/pricing', 'header')
-}, {
-  label: 'Blog',
-  to: '/blog',
-  onSelect: () => trackNavigation('Blog', '/blog', 'header')
-}, {
-  label: 'Novidades',
-  to: '/changelog',
-  onSelect: () => trackNavigation('Changelog', '/changelog', 'header')
 }])
 </script>
 
