@@ -12,12 +12,6 @@ hero:
       trailing: true
       to: /signup
       size: xl
-    - label: Ver como funciona
-      icon: i-lucide-book-open
-      size: xl
-      color: neutral
-      variant: subtle
-      to: /docs/getting-started
 sections:
   - headline: OPERAÇÃO
     title: Do orçamento aprovado à entrega do veículo, tudo organizado
@@ -102,7 +96,4 @@ cta:
     - label: Criar conta grátis
       to: /signup
       trailingIcon: i-lucide-arrow-right
-    - label: Ver documentação
-      to: /docs/getting-started
-      variant: subtle
-      icon: i-lucide-book-open
+
