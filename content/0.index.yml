@@ -1,10 +1,11 @@
-title: Sua oficina com [controle real]{class="text-primary"}, do primeiro atendimento ao fechamento do mês
-description: Chega de OS em papel, cliente sem histórico e financeiro no escuro. AutoPro reúne atendimento, ordens de serviço, estoque, comissões e financeiro em um sistema feito para oficinas mecânicas.
+title: Sua oficina com [controle real]{class="text-primary"}, do atendimento ao fechamento do mês
+description: Chega de OS em papel, cliente sem histórico e financeiro no escuro. Atendimento, ordens de serviço, estoque, comissões e financeiro, tudo em um só sistema.
 seo:
   title: AutoPro | Gestão completa para oficinas mecânicas
   description: AutoPro é o sistema que organiza ordens de serviço, clientes, veículos, estoque, compras, financeiro e emissão de notas fiscais — tudo em um lugar só. Feito para oficinas mecânicas no Brasil.
 navigation: false
 hero:
+  headline: GESTÃO PARA OFICINAS MECÂNICAS
   links:
     - label: Começar agora
       icon: i-lucide-arrow-right
@@ -18,94 +19,85 @@ hero:
       variant: subtle
       to: /docs/getting-started
 sections:
-  - title: Do orçamento aprovado à entrega do veículo, tudo organizado e rastreável
-    description: Nada mais se perde entre anotações, mensagens e planilhas. Cada OS registra o que foi feito, quanto foi cobrado, quais peças foram usadas e quem executou o serviço.
+  - headline: OPERAÇÃO
+    title: Do orçamento aprovado à entrega do veículo, tudo organizado
+    description: Cada OS registra o que foi feito, quanto foi cobrado, quais peças foram usadas e quem executou o serviço.
     id: features
     orientation: horizontal
     features:
       - name: Ordens de serviço do início ao fim
-        description: Abra, acompanhe, feche e receba. Com histórico completo de serviços, peças, impostos, pagamentos e comissões por funcionário.
+        description: Abra, acompanhe, feche e receba. Histórico completo de serviços, peças, impostos, pagamentos e comissões por funcionário.
         icon: i-lucide-clipboard-list
       - name: Histórico completo de clientes e veículos
-        description: Na próxima visita, você já sabe o que foi feito, o que foi trocado e quando. Sem perguntar de novo, sem procurar em outro lugar.
+        description: Na próxima visita, você já sabe o que foi feito e o que foi trocado. Sem perguntar de novo, sem procurar em outro lugar.
         icon: i-lucide-car-front
       - name: Agenda integrada ao atendimento
-        description: Organize a entrada de veículos e converta agendamentos em OS com um clique. Sem planilha externa, sem informação duplicada.
+        description: Organize a entrada de veículos e converta agendamentos em OS com um clique. Sem planilha externa.
         icon: i-lucide-calendar-days
-  - title: Saiba exatamente quanto a oficina fatura, gasta e lucra a cada mês
-    description: Com compras, contas e lançamentos integrados à operação, você tem uma visão financeira real — não uma estimativa no final do mês.
+  - headline: FINANCEIRO
+    title: Saiba quanto a oficina fatura, gasta e lucra a cada mês
+    description: Compras, contas e lançamentos integrados à operação dão uma visão financeira real — não uma estimativa no fim do mês.
     orientation: horizontal
     reverse: true
     features:
       - name: Compras e fornecedores sob controle
-        description: Registre pedidos, entradas e devoluções de peças. O estoque atualiza automaticamente e o financeiro acompanha cada movimentação.
+        description: Registre pedidos, entradas e devoluções de peças, com estoque e financeiro atualizados automaticamente.
         icon: i-lucide-shopping-cart
       - name: Financeiro integrado à operação
-        description: Contas a pagar e receber, extratos por conta bancária, parcelamentos e comissões — tudo visível, sem precisar sair do sistema.
+        description: Contas a pagar e receber, extratos bancários, parcelamentos e comissões, tudo visível em um só lugar.
         icon: i-lucide-wallet
       - name: Relatórios para decidir com dados
-        description: Veja faturamento, lucro, custos, clientes inadimplentes e desempenho por período. Sem exportar nada, sem montar planilha manual.
+        description: Faturamento, lucro, custos, inadimplência e desempenho por período, sem exportar nada e sem planilha manual.
         icon: i-lucide-bar-chart-3
 features:
+  headline: RECURSOS
   title: Tudo que a oficina precisa para parar de improvisar
-  description: AutoPro conecta operação, financeiro e gestão administrativa em uma plataforma construída para o dia a dia de quem trabalha com veículos.
+  description: Operação, financeiro e gestão administrativa conectados em uma plataforma para o dia a dia de quem trabalha com veículos.
   items:
     - title: Tudo sobre o cliente na mesma tela
-      description: Cliente, veículo e histórico de OS aparecem juntos. Nada de procurar em três lugares diferentes para responder uma pergunta simples.
+      description: Cliente, veículo e histórico de OS juntos, na mesma tela — sem procurar em três lugares diferentes.
       icon: i-lucide-users
     - title: OS que concentra a operação inteira
-      description: Cada ordem registra serviços, peças, impostos, pagamentos e comissões. Uma tela, tudo visível — para o mecânico e para o gestor.
+      description: Cada ordem registra serviços, peças, impostos, pagamentos e comissões — tudo visível para o mecânico e para o gestor.
       icon: i-lucide-wrench
     - title: Financeiro que faz sentido
-      description: Compras, pagamentos, contas bancárias e parcelamentos conectados à operação real — não a uma planilha paralela que ninguém atualiza.
+      description: Compras, pagamentos, contas bancárias e parcelamentos conectados à operação real, sem planilha paralela.
       icon: i-lucide-banknote
     - title: Acesso certo para cada função
-      description: Mecânico vê o que precisa para trabalhar. Gestor enxerga tudo. Sem dado exposto para quem não precisa e sem confusão de permissão.
+      description: Mecânico vê o que precisa para trabalhar, gestor enxerga tudo — sem dado exposto para quem não precisa.
       icon: i-lucide-shield-check
     - title: Operação e administração separadas
-      description: O time da oficina opera em um contexto, o administrativo em outro. Cada um com o que precisa, sem informação misturada.
+      description: O time da oficina opera em um contexto, o administrativo em outro — cada um vê só o que precisa.
       icon: i-lucide-split-square-vertical
     - title: Emissão de nota fiscal integrada
-      description: NFS-e emitidas diretamente pelo sistema, com cancelamento, carta de correção e download de PDF — sem sair da plataforma.
+      description: NFS-e emitidas direto pelo sistema, com cancelamento, carta de correção e download de PDF.
       icon: i-lucide-file-stack
     - title: Controle de estoque com alertas
-      description: Quantidade mínima configurável por peça, vinculada ao fornecedor. Você sabe antes de acabar, não depois de deixar o cliente esperando.
+      description: Quantidade mínima configurável por peça, vinculada ao fornecedor — você sabe antes de faltar.
       icon: i-lucide-package-search
     - title: Comissões calculadas automaticamente
-      description: Regras flexíveis por funcionário — percentual sobre faturamento ou lucro, por categoria de serviço. Sem calcular na mão, sem divergência.
+      description: Regras flexíveis por funcionário — percentual sobre faturamento ou lucro, por categoria de serviço, sem calcular na mão.
       icon: i-lucide-percent
-testimonials:
-  headline: Feito para oficinas que cansaram de improvisar
-  title: O time para de adivinhar. O dono para de apagar incêndio.
-  description: Quando operação, financeiro e histórico estão no mesmo lugar, a oficina funciona melhor — com menos esforço de todo mundo.
+howItWorks:
+  headline: COMO FUNCIONA
+  title: Comece a operar no mesmo dia
+  description: Sem implantação longa e sem treinamento complicado — a oficina sai do papel e das planilhas em poucos passos.
   items:
-    - quote: Antes eu perdia peça, perdia cobrança e perdia tempo procurando informação. Agora abro a OS e está tudo lá.
-      user:
-        name: Rafael Souza
-        description: Proprietário de oficina, São Paulo
-        avatar:
-          src: https://i.pravatar.cc/120?img=15
-    - quote: O cliente chegou de novo e a gente já sabia o que tinha sido feito no carro. Isso muda completamente a percepção de profissionalismo.
-      user:
-        name: Camila Nogueira
-        description: Gestora de atendimento
-        avatar:
-          src: https://i.pravatar.cc/120?img=20
-    - quote: Fechei o mês pela primeira vez sabendo exatamente quanto entrou, quanto saí e qual foi o lucro real. Não uma estimativa.
-      user:
-        name: Marcelo Lima
-        description: Proprietário de oficina, Minas Gerais
-        avatar:
-          src: https://i.pravatar.cc/120?img=24
-    - quote: Com as comissões calculadas pelo sistema, acabou a discussão no final do mês. O número está lá, todo mundo vê como chegou.
-      user:
-        name: Aline Costa
-        description: Administração e RH de oficina
-        avatar:
-          src: https://i.pravatar.cc/120?img=32
+    - title: Cadastre sua oficina
+      description: Dados da empresa, número inicial de OS, conta bancária e regras de comissão, configurados em poucos minutos.
+      icon: i-lucide-building-2
+    - title: Adicione clientes e veículos
+      description: Importe sua base ou cadastre conforme os atendimentos chegam. O histórico se constrói a partir da primeira OS.
+      icon: i-lucide-users
+    - title: Abra e acompanhe ordens de serviço
+      description: Registre serviços, peças, impostos e pagamentos, com comissão por funcionário calculada automaticamente.
+      icon: i-lucide-clipboard-list
+    - title: Veja o financeiro em tempo real
+      description: Faturamento, lucro e contas a pagar e receber sempre atualizados, sem montar planilha no fim do mês.
+      icon: i-lucide-bar-chart-3
 cta:
   title: Comece a organizar sua oficina hoje
-  description: Teste o AutoPro e veja o que muda quando operação, financeiro e atendimento funcionam juntos — em vez de espalhados em três lugares.
+  description: Veja o que muda quando operação, financeiro e atendimento funcionam juntos, em vez de espalhados em três lugares.
   links:
     - label: Criar conta grátis
       to: /signup
