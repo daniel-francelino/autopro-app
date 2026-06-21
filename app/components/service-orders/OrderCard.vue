@@ -22,6 +22,7 @@ const emit = defineEmits<{
   'quote': [order: ServiceOrder]
   'duplicate': [order: ServiceOrder]
   'pay': [order: ServiceOrder]
+  'down-payment': [order: ServiceOrder]
   'pdf': [order: ServiceOrder]
   'issue-nfse': [order: ServiceOrder]
 }>()
@@ -101,6 +102,11 @@ const canPay = computed(() =>
   && props.order.payment_status === 'pending'
   && props.order.status === 'completed'
   && !props.order.installments_progress
+)
+
+const canReceiveDownPayment = computed(() =>
+  props.canUpdate
+  && ['open', 'in_progress', 'waiting_for_part'].includes(props.order.status)
 )
 
 const canIssueNfse = computed(() =>
@@ -198,6 +204,17 @@ function initials(value: string | null | undefined) {
                 variant="ghost"
                 size="sm"
                 @click="emit('pay', order)"
+              />
+            </UTooltip>
+
+            <!-- Receber sinal -->
+            <UTooltip v-if="canReceiveDownPayment" text="Receber sinal">
+              <UButton
+                icon="i-lucide-hand-coins"
+                color="info"
+                variant="ghost"
+                size="sm"
+                @click="emit('down-payment', order)"
               />
             </UTooltip>
 

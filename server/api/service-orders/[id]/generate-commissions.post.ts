@@ -2,11 +2,12 @@ import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../../utils/supabase'
 import { requireAuthUser } from '../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../utils/organization'
-import { generateServiceOrderCommissions } from '../../../utils/service-order-commissions'
+import { releaseServiceOrderCommissions } from '../../../utils/service-order-commissions'
 
 /**
  * POST /api/service-orders/:id/generate-commissions
- * Generates/updates commission records from service order items.
+ * Recomputes commission entitlement and release for a service order from
+ * its current items, responsibles and amount already received.
  */
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
@@ -19,7 +20,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'orderId is required' })
   }
 
-  const result = await generateServiceOrderCommissions({
+  const result = await releaseServiceOrderCommissions({
     supabase,
     organizationId,
     orderId,

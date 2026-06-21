@@ -284,6 +284,22 @@ function onPaymentDone() {
   forceReload()
 }
 
+// ─── Down payment (sinal) ───────────────────────────────────────────────────────
+
+const showDownPaymentModal = ref(false)
+const downPaymentOrder = ref<ServiceOrder | null>(null)
+
+function requestDownPayment(order: ServiceOrder) {
+  downPaymentOrder.value = order
+  showDownPaymentModal.value = true
+}
+
+function onDownPaymentReceived() {
+  showDownPaymentModal.value = false
+  downPaymentOrder.value = null
+  forceReload()
+}
+
 // ─── Cancel ────────────────────────────────────────────────────────────────────
 
 const isCancelling = ref(false)
@@ -540,6 +556,7 @@ function onNfseIssued() {
                 @pdf="openPdfFromList"
                 @duplicate="duplicate"
                 @pay="requestPay"
+                @down-payment="requestDownPayment"
                 @cancel="requestCancel"
                 @delete="requestDelete"
                 @issue-nfse="requestIssueNfse"
@@ -644,6 +661,13 @@ function onNfseIssued() {
     v-model:open="showPaymentModal"
     :order="paymentOrder"
     @paid="onPaymentDone"
+  />
+
+  <!-- ── Down Payment (sinal) Modal ───────────────────────────────────────────── -->
+  <ServiceOrdersDownPaymentModal
+    v-model:open="showDownPaymentModal"
+    :order="downPaymentOrder"
+    @received="onDownPaymentReceived"
   />
 
   <!-- ── NFS-e Issue Modal ──────────────────────────────────────────────────── -->

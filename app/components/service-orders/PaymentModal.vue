@@ -15,11 +15,16 @@ type PaymentTerminalItem = {
   provider_company: string | null
 }
 type InstallmentStatus = 'paid' | 'pending'
-type InstallmentRow = {
+type PlanRowKind = 'down_payment' | 'installment'
+type PlanRow = {
+  kind: PlanRowKind
   number: number
   amount: number
   due_date: string
   status: InstallmentStatus
+  paymentMethod: PaymentMethod
+  bankAccountId: string
+  paymentTerminalId: string
 }
 
 const props = defineProps<{
@@ -32,11 +37,14 @@ const emit = defineEmits<{
   'paid': []
 }>()
 
+type DetailInstallment = { kind: string, amount: number | string | null }
+
 const toast = useToast()
 const isSaving = ref(false)
 const isLoadingOptions = ref(false)
 const bankAccounts = ref<BankAccountItem[]>([])
 const paymentTerminals = ref<PaymentTerminalItem[]>([])
+const priorDownPaymentsTotal = ref(0)
 
 const PAYMENT_METHOD_OPTIONS: PaymentMethodOption[] = [
   { label: 'Pix', value: 'pix', icon: 'i-lucide-qr-code' },
@@ -51,37 +59,48 @@ const INSTALLMENT_STATUS_OPTIONS = [
   { label: 'Pago', value: 'paid' },
   { label: 'Pendente', value: 'pending' }
 ] as const
-const INSTALLMENT_COUNT_OPTIONS = Array.from({ length: 11 }, (_, index) => {
-  const value = index + 2
-  return { label: `${value} parcelas`, value }
+const INSTALLMENT_COUNT_OPTIONS = Array.from({ length: 12 }, (_, index) => {
+  const value = index + 1
+  return { label: value === 1 ? '1 parcela' : `${value} parcelas`, value }
 })
 
 const today = () => new Date().toISOString().split('T')[0]
 
 const form = reactive({
-  paymentMethod: 'pix' as PaymentMethod,
   paymentDate: today(),
-  isInstallment: false,
-  installmentCount: 2,
+  hasDownPayment: false,
+  downPaymentAmount: 0,
+  installmentCount: 1,
+  // Defaults applied when rows are (re)generated — each row can still be
+  // overridden individually afterwards.
+  paymentMethod: 'pix' as PaymentMethod,
   bankAccountId: '',
   paymentTerminalId: ''
 })
 
-const installments = ref<InstallmentRow[]>([])
+const rows = ref<PlanRow[]>([])
 
 const orderTotalAmount = computed(() => Number(props.order?.total_amount || 0))
-const selectedPaymentMethod = computed(() =>
-  PAYMENT_METHOD_OPTIONS.find(option => option.value === form.paymentMethod) ?? PAYMENT_METHOD_OPTIONS[0]
+// Down payments (sinal) received before the order was completed are netted
+// out here. The total can still have changed since then, so this can be
+// zero (sinal already covers everything) or even negative (scope shrank —
+// handled as its own blocking state, see balanceDueIsNegative).
+const balanceDue = computed(() => Number((orderTotalAmount.value - priorDownPaymentsTotal.value).toFixed(2)))
+const balanceDueIsNegative = computed(() => balanceDue.value < -0.01)
+const balanceDueIsSettled = computed(() => !balanceDueIsNegative.value && balanceDue.value <= 0.01)
+const downPaymentAmountEffective = computed(() =>
+  form.hasDownPayment ? Math.max(0, Number(form.downPaymentAmount || 0)) : 0
+)
+const remainingAmount = computed(() =>
+  Math.max(0, Number((balanceDue.value - downPaymentAmountEffective.value).toFixed(2)))
 )
 const selectedBankAccount = computed(() =>
   bankAccounts.value.find(account => account.id === form.bankAccountId) ?? null
 )
 const showTerminalField = computed(() => ['credit_card', 'debit_card'].includes(form.paymentMethod))
-const installmentTotal = computed(() =>
-  installments.value.reduce((total, installment) => total + Number(installment.amount || 0), 0)
-)
-const installmentsMatch = computed(() => Math.abs(installmentTotal.value - orderTotalAmount.value) < 0.01)
-const paidInstallmentCount = computed(() => installments.value.filter(installment => installment.status === 'paid').length)
+const rowsTotal = computed(() => rows.value.reduce((total, row) => total + Number(row.amount || 0), 0))
+const rowsMatch = computed(() => Math.abs(rowsTotal.value - balanceDue.value) < 0.01)
+const paidRowsCount = computed(() => rows.value.filter(row => row.status === 'paid').length)
 const bankAccountOptions = computed(() =>
   bankAccounts.value.map(account => ({
     label: `${account.account_name}${account.bank_name ? ` — ${account.bank_name}` : ''}`,
@@ -94,6 +113,18 @@ const paymentTerminalOptions = computed(() =>
     value: terminal.id
   }))
 )
+const conditionLabel = computed(() => {
+  const parts: string[] = []
+  if (downPaymentAmountEffective.value > 0) parts.push(`Entrada de ${formatCurrency(downPaymentAmountEffective.value)}`)
+  if (remainingAmount.value > 0) {
+    parts.push(form.installmentCount > 1 ? `${form.installmentCount}x o restante` : 'restante à vista')
+  }
+  return parts.length > 0 ? parts.join(' + ') : '—'
+})
+
+function rowShowsTerminal(row: PlanRow) {
+  return ['credit_card', 'debit_card'].includes(row.paymentMethod)
+}
 
 function addMonthsToDate(value: string, months: number) {
   const baseDate = new Date(`${value}T00:00:00`)
@@ -101,15 +132,15 @@ function addMonthsToDate(value: string, months: number) {
   return baseDate.toISOString().split('T')[0]
 }
 
-function distributeInstallments(count: number, totalAmount: number, paymentDate: string) {
-  if (!count || count < 1) return []
+function distributeInstallments(count: number, totalAmount: number, paymentDate: string, firstPaid: boolean) {
+  if (!count || count < 1 || totalAmount <= 0) return []
 
   const baseAmount = Math.floor((totalAmount / count) * 100) / 100
   const generated = Array.from({ length: count }, (_, index) => ({
     number: index + 1,
     amount: baseAmount,
     due_date: addMonthsToDate(paymentDate, index),
-    status: (index === 0 ? 'paid' : 'pending') as InstallmentStatus
+    status: (firstPaid && index === 0 ? 'paid' : 'pending') as InstallmentStatus
   }))
   const difference = Number((totalAmount - (baseAmount * count)).toFixed(2))
 
@@ -120,17 +151,41 @@ function distributeInstallments(count: number, totalAmount: number, paymentDate:
   return generated
 }
 
-function resetInstallments() {
-  installments.value = form.isInstallment
-    ? distributeInstallments(form.installmentCount, orderTotalAmount.value, form.paymentDate)
-    : [
-        {
-          number: 1,
-          amount: orderTotalAmount.value,
-          due_date: form.paymentDate,
-          status: 'paid'
-        }
-      ]
+function rebuildRows() {
+  const defaults = {
+    paymentMethod: form.paymentMethod,
+    bankAccountId: form.bankAccountId,
+    paymentTerminalId: form.paymentTerminalId
+  }
+
+  const next: PlanRow[] = []
+
+  if (form.hasDownPayment && downPaymentAmountEffective.value > 0) {
+    next.push({
+      kind: 'down_payment',
+      number: 1,
+      amount: downPaymentAmountEffective.value,
+      due_date: form.paymentDate,
+      status: 'paid',
+      ...defaults
+    })
+  }
+
+  const remainder = remainingAmount.value
+  if (remainder > 0) {
+    const count = Math.max(1, form.installmentCount)
+    // If there's already a down payment received today, the remainder is
+    // entirely future installments — none of them are paid yet. Without a
+    // down payment, the first one is paid now (mirrors registering a
+    // same-day cash/à-vista payment).
+    const firstPaid = downPaymentAmountEffective.value === 0
+    const generated = distributeInstallments(count, remainder, form.paymentDate, firstPaid)
+    generated.forEach((installment) => {
+      next.push({ kind: 'installment', ...installment, ...defaults })
+    })
+  }
+
+  rows.value = next
 }
 
 function normalizePaymentMethod(value: string | null | undefined): PaymentMethod | null {
@@ -140,7 +195,7 @@ function normalizePaymentMethod(value: string | null | undefined): PaymentMethod
     .trim()
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z]/g, '_')
     .replace(/_+/g, '_')
     .replace(/^_|_$/g, '')
@@ -165,13 +220,27 @@ function normalizePaymentMethod(value: string | null | undefined): PaymentMethod
 }
 
 function resetForm() {
-  form.paymentMethod = 'pix'
   form.paymentDate = today()
-  form.isInstallment = false
-  form.installmentCount = 2
+  form.hasDownPayment = false
+  form.downPaymentAmount = 0
+  form.installmentCount = 1
+  form.paymentMethod = 'pix'
   form.bankAccountId = ''
   form.paymentTerminalId = ''
-  resetInstallments()
+  rebuildRows()
+}
+
+async function loadPriorDownPayments() {
+  if (!props.order) return
+
+  try {
+    const res = await $fetch<{ data: { installments: DetailInstallment[] } }>(`/api/service-orders/${props.order.id}`)
+    priorDownPaymentsTotal.value = (res.data.installments || [])
+      .filter(installment => installment.kind === 'down_payment')
+      .reduce((sum, installment) => sum + Number(installment.amount || 0), 0)
+  } catch {
+    priorDownPaymentsTotal.value = 0
+  }
 }
 
 async function loadReferenceData() {
@@ -211,36 +280,19 @@ watch(() => props.open, async (open) => {
   if (!open) return
 
   resetForm()
-  await loadReferenceData()
-  resetInstallments()
+  priorDownPaymentsTotal.value = 0
+  await Promise.all([loadReferenceData(), loadPriorDownPayments()])
+  rebuildRows()
 })
 
-watch(() => form.paymentDate, () => {
-  resetInstallments()
-})
-
-watch(() => form.isInstallment, (isInstallment) => {
-  if (!isInstallment)
-    form.installmentCount = 2
-
-  resetInstallments()
-})
-
-watch(() => form.installmentCount, () => {
-  if (!form.isInstallment) return
-  resetInstallments()
-})
+watch(() => form.paymentDate, rebuildRows)
+watch(() => form.hasDownPayment, rebuildRows)
+watch(() => form.downPaymentAmount, rebuildRows)
+watch(() => form.installmentCount, rebuildRows)
 
 watch(() => form.paymentMethod, () => {
   if (!showTerminalField.value)
     form.paymentTerminalId = ''
-
-  installments.value = installments.value.map((installment, index) => ({
-    ...installment,
-    status: form.isInstallment ? installment.status : 'paid',
-    due_date: form.isInstallment ? installment.due_date : form.paymentDate,
-    number: index + 1
-  }))
 })
 
 watch(() => form.bankAccountId, (bankAccountId, previousId) => {
@@ -258,39 +310,48 @@ function formatCurrency(value: number | string | null | undefined) {
   })
 }
 
-function formatInstallmentLabel(count: number) {
-  return count === 1 ? 'À vista' : `${count} parcelas`
-}
-
 async function save() {
   if (!props.order || isSaving.value) return
-  if (!form.bankAccountId) {
-    toast.add({ title: 'Selecione a conta bancária', color: 'warning' })
+
+  if (balanceDueIsNegative.value) {
+    toast.add({ title: 'O adiantamento recebido é maior que o valor final da OS', description: 'Cancele o pagamento registrado e devolva a diferença ao cliente antes de continuar.', color: 'error' })
     return
   }
-  if (form.isInstallment && !installmentsMatch.value) {
-    toast.add({ title: 'O total das parcelas precisa bater com o valor da OS', color: 'warning' })
-    return
+
+  if (!balanceDueIsSettled.value) {
+    if (rows.value.length === 0) {
+      toast.add({ title: 'Defina ao menos uma forma de receber o pagamento', color: 'warning' })
+      return
+    }
+    if (rows.value.some(row => !row.bankAccountId)) {
+      toast.add({ title: 'Selecione a conta bancária em todas as linhas', color: 'warning' })
+      return
+    }
+    if (!rowsMatch.value) {
+      toast.add({ title: 'O total das linhas precisa bater com o saldo restante da OS', color: 'warning' })
+      return
+    }
   }
 
   isSaving.value = true
   try {
-    const body = {
-      paymentMethod: form.paymentMethod,
-      paymentDate: form.paymentDate,
-      bankAccountId: form.bankAccountId,
-      paymentTerminalId: form.paymentTerminalId || null,
-      installments: form.isInstallment
-        ? installments.value.map(installment => ({
-            amount: Number(installment.amount || 0),
-            due_date: installment.due_date,
-            status: installment.status,
-            payment_method: form.paymentMethod,
-            bank_account_id: form.bankAccountId,
-            payment_terminal_id: form.paymentTerminalId || null
+    const body = balanceDueIsSettled.value
+      ? {}
+      : {
+          paymentMethod: form.paymentMethod,
+          paymentDate: form.paymentDate,
+          bankAccountId: form.bankAccountId,
+          paymentTerminalId: form.paymentTerminalId || null,
+          installments: rows.value.map(row => ({
+            kind: row.kind,
+            amount: Number(row.amount || 0),
+            due_date: row.due_date,
+            status: row.status,
+            payment_method: row.paymentMethod,
+            bank_account_id: row.bankAccountId,
+            payment_terminal_id: row.paymentTerminalId || null
           }))
-        : undefined
-    }
+        }
 
     await $fetch(`/api/service-orders/${props.order.id}/process-payment`, {
       method: 'POST',
@@ -337,176 +398,209 @@ async function save() {
               </p>
             </div>
 
-            <div class="grid grid-cols-2 gap-2 text-xs sm:min-w-[220px]">
-              <div class="rounded-xl border border-default bg-default px-3 py-2">
+            <div class="grid grid-cols-1 gap-2 text-xs sm:min-w-[220px]">
+              <div v-if="priorDownPaymentsTotal > 0" class="rounded-xl border border-default bg-default px-3 py-2">
                 <p class="text-[11px] uppercase tracking-wide text-muted">
-                  Método
+                  Adiantamento já recebido
                 </p>
                 <p class="mt-1 font-medium text-highlighted">
-                  {{ selectedPaymentMethod.label }}
+                  {{ formatCurrency(priorDownPaymentsTotal) }}
                 </p>
               </div>
               <div class="rounded-xl border border-default bg-default px-3 py-2">
                 <p class="text-[11px] uppercase tracking-wide text-muted">
-                  Condição
+                  {{ priorDownPaymentsTotal > 0 ? 'Saldo a receber' : 'Condição' }}
                 </p>
                 <p class="mt-1 font-medium text-highlighted">
-                  {{ formatInstallmentLabel(form.isInstallment ? form.installmentCount : 1) }}
+                  {{ priorDownPaymentsTotal > 0 ? formatCurrency(balanceDue) : conditionLabel }}
                 </p>
               </div>
             </div>
           </div>
         </div>
 
-        <div v-if="isLoadingOptions" class="flex items-center gap-2 rounded-xl border border-default px-4 py-3 text-sm text-muted">
-          <UIcon name="i-lucide-loader-circle" class="size-4 animate-spin" />
-          Carregando contas e maquininhas...
+        <div v-if="balanceDueIsNegative" class="rounded-xl border border-error/30 bg-error/5 p-4 text-sm text-error">
+          <p class="font-medium">
+            O adiantamento recebido ({{ formatCurrency(priorDownPaymentsTotal) }}) é maior que o valor final da OS ({{ formatCurrency(orderTotalAmount) }}).
+          </p>
+          <p class="mt-1">
+            Cancele o pagamento registrado nesta OS e devolva a diferença ao cliente antes de continuar.
+          </p>
         </div>
 
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <UFormField label="Conta bancária" required>
-            <USelectMenu
-              v-model="form.bankAccountId"
-              :items="bankAccountOptions"
-              value-key="value"
-              placeholder="Selecione a conta bancária"
-              class="w-full"
-            />
-          </UFormField>
-
-          <UFormField :label="form.isInstallment ? '1º vencimento' : 'Data do pagamento'" required>
-            <UiDatePicker v-model="form.paymentDate" class="w-full" />
-          </UFormField>
+        <div v-else-if="balanceDueIsSettled" class="rounded-xl border border-success/30 bg-success/5 p-4 text-sm text-success">
+          O adiantamento já recebido cobre o valor total da OS. Confirme para concluir o pagamento — nenhum valor adicional será cobrado.
         </div>
 
-        <UFormField label="Forma de pagamento" required>
-          <USelectMenu
-            v-model="form.paymentMethod"
-            :items="PAYMENT_METHOD_OPTIONS"
-            value-key="value"
-            label-key="label"
-            class="w-full"
-            :ui="{ base: 'min-h-14 rounded-xl ps-14' }"
-          >
-            <template #leading>
-              <div class="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <UIcon :name="selectedPaymentMethod.icon" class="size-4" />
+        <template v-else>
+          <div v-if="isLoadingOptions" class="flex items-center gap-2 rounded-xl border border-default px-4 py-3 text-sm text-muted">
+            <UIcon name="i-lucide-loader-circle" class="size-4 animate-spin" />
+            Carregando contas e maquininhas...
+          </div>
+
+          <div class="rounded-xl border border-default p-4 space-y-4">
+            <p class="text-sm font-medium text-highlighted">
+              Valores padrão das linhas
+            </p>
+            <p class="text-xs text-muted">
+              Usados ao gerar a entrada e as parcelas — cada linha pode ser ajustada individualmente depois.
+            </p>
+
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <UFormField label="Conta bancária" required>
+                <USelectMenu
+                  v-model="form.bankAccountId"
+                  :items="bankAccountOptions"
+                  value-key="value"
+                  placeholder="Selecione a conta bancária"
+                  class="w-full"
+                />
+              </UFormField>
+
+              <UFormField label="Data do pagamento" required>
+                <UiDatePicker v-model="form.paymentDate" class="w-full" />
+              </UFormField>
+            </div>
+
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <UFormField label="Forma de pagamento" required>
+                <USelectMenu
+                  v-model="form.paymentMethod"
+                  :items="PAYMENT_METHOD_OPTIONS"
+                  value-key="value"
+                  label-key="label"
+                  class="w-full"
+                />
+              </UFormField>
+
+              <UFormField v-if="showTerminalField" label="Maquininha">
+                <USelectMenu
+                  v-model="form.paymentTerminalId"
+                  :items="paymentTerminalOptions"
+                  value-key="value"
+                  placeholder="Selecionar maquininha"
+                  class="w-full"
+                />
+              </UFormField>
+            </div>
+          </div>
+
+          <div class="rounded-xl border border-default p-4 space-y-4">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p class="text-sm font-medium text-highlighted">
+                  Entrada
+                </p>
+                <p class="text-xs text-muted">
+                  Valor recebido agora, antes de parcelar o restante.
+                </p>
               </div>
-            </template>
-          </USelectMenu>
-        </UFormField>
+              <USwitch v-model="form.hasDownPayment" label="Receber entrada" />
+            </div>
 
-        <div class="rounded-xl border border-default p-4 space-y-4">
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <UFormField v-if="form.hasDownPayment" label="Valor da entrada" required>
+              <UiCurrencyInput v-model="form.downPaymentAmount" class="w-full" />
+            </UFormField>
+          </div>
+
+          <div v-if="remainingAmount > 0" class="rounded-xl border border-default p-4 space-y-4">
             <div>
               <p class="text-sm font-medium text-highlighted">
-                Condição de pagamento
+                Parcelamento do restante
               </p>
               <p class="text-xs text-muted">
-                À vista ou parcelado com parcelas editáveis.
+                {{ formatCurrency(remainingAmount) }} a dividir.
               </p>
             </div>
 
-            <div class="flex w-full overflow-hidden rounded-lg border border-default sm:w-auto">
-              <button
-                type="button"
-                class="flex flex-1 items-center justify-center gap-2 px-4 py-2 text-sm font-medium transition-colors"
-                :class="!form.isInstallment ? 'bg-success/10 text-success' : 'text-muted hover:bg-elevated'"
-                @click="form.isInstallment = false"
-              >
-                <UIcon name="i-lucide-badge-check" class="size-4" />
-                À vista
-              </button>
-              <div class="w-px bg-border" />
-              <button
-                type="button"
-                class="flex flex-1 items-center justify-center gap-2 px-4 py-2 text-sm font-medium transition-colors"
-                :class="form.isInstallment ? 'bg-warning/10 text-warning' : 'text-muted hover:bg-elevated'"
-                @click="form.isInstallment = true"
-              >
-                <UIcon name="i-lucide-split" class="size-4" />
-                Parcelado
-              </button>
-            </div>
-          </div>
-
-          <div v-if="form.isInstallment" class="grid grid-cols-1 gap-4 md:grid-cols-2">
             <UFormField label="Número de parcelas" required>
               <USelectMenu
                 v-model="form.installmentCount"
                 :items="INSTALLMENT_COUNT_OPTIONS"
                 value-key="value"
-                class="w-full"
-              />
-            </UFormField>
-
-            <UFormField v-if="showTerminalField" label="Maquininha">
-              <USelectMenu
-                v-model="form.paymentTerminalId"
-                :items="paymentTerminalOptions"
-                value-key="value"
-                placeholder="Selecionar maquininha"
-                class="w-full"
+                class="w-full max-w-xs"
               />
             </UFormField>
           </div>
 
-          <UFormField v-else-if="showTerminalField" label="Maquininha">
-            <USelectMenu
-              v-model="form.paymentTerminalId"
-              :items="paymentTerminalOptions"
-              value-key="value"
-              placeholder="Selecionar maquininha"
-              class="w-full"
-            />
-          </UFormField>
-
-          <div
-            v-if="form.isInstallment"
-            class="flex flex-wrap items-center justify-between gap-3 rounded-xl border px-3 py-2 text-sm"
-            :class="installmentsMatch ? 'border-success/30 bg-success/5' : 'border-error/30 bg-error/5'"
-          >
-            <div class="flex flex-wrap items-center gap-4">
-              <span class="text-muted">Valor da OS: <strong class="text-highlighted">{{ formatCurrency(orderTotalAmount) }}</strong></span>
-              <span class="text-muted">Total das parcelas: <strong :class="installmentsMatch ? 'text-success' : 'text-error'">{{ formatCurrency(installmentTotal) }}</strong></span>
-              <span class="text-muted">Parcelas pagas agora: <strong class="text-highlighted">{{ paidInstallmentCount }}</strong></span>
+          <div class="rounded-xl border border-default p-4 space-y-4">
+            <div
+              class="flex flex-wrap items-center justify-between gap-3 rounded-xl border px-3 py-2 text-sm"
+              :class="rowsMatch ? 'border-success/30 bg-success/5' : 'border-error/30 bg-error/5'"
+            >
+              <div class="flex flex-wrap items-center gap-4">
+                <span class="text-muted">Saldo a receber: <strong class="text-highlighted">{{ formatCurrency(balanceDue) }}</strong></span>
+                <span class="text-muted">Total das linhas: <strong :class="rowsMatch ? 'text-success' : 'text-error'">{{ formatCurrency(rowsTotal) }}</strong></span>
+                <span class="text-muted">Pago agora: <strong class="text-highlighted">{{ paidRowsCount }}</strong></span>
+              </div>
+              <UIcon
+                :name="rowsMatch ? 'i-lucide-circle-check-big' : 'i-lucide-circle-alert'"
+                class="size-4 shrink-0"
+                :class="rowsMatch ? 'text-success' : 'text-error'"
+              />
             </div>
-            <UIcon
-              :name="installmentsMatch ? 'i-lucide-circle-check-big' : 'i-lucide-circle-alert'"
-              class="size-4 shrink-0"
-              :class="installmentsMatch ? 'text-success' : 'text-error'"
-            />
-          </div>
 
-          <div v-if="form.isInstallment" class="space-y-2">
-            <p class="text-xs font-medium uppercase tracking-wide text-muted">
-              Parcelas do cliente
-            </p>
-            <div class="overflow-hidden rounded-xl border border-default">
-              <div
-                v-for="installment in installments"
-                :key="installment.number"
-                class="grid grid-cols-1 gap-2 border-b border-default px-3 py-3 last:border-b-0 md:grid-cols-[72px_minmax(0,1fr)_minmax(0,1fr)_160px]"
-              >
-                <div class="flex items-center gap-2 text-sm font-medium text-highlighted">
-                  <UIcon name="i-lucide-hash" class="size-4 text-primary" />
-                  {{ installment.number }}ª
+            <div class="space-y-2">
+              <p class="text-xs font-medium uppercase tracking-wide text-muted">
+                Linhas do plano de pagamento
+              </p>
+              <div class="overflow-hidden rounded-xl border border-default">
+                <div
+                  v-for="row in rows"
+                  :key="`${row.kind}-${row.number}`"
+                  class="space-y-2 border-b border-default p-3 last:border-b-0"
+                >
+                  <div class="grid grid-cols-1 gap-2 md:grid-cols-[110px_minmax(0,1fr)_minmax(0,1fr)_140px]">
+                    <div class="flex items-center gap-2 text-sm font-medium text-highlighted">
+                      <UIcon :name="row.kind === 'down_payment' ? 'i-lucide-hand-coins' : 'i-lucide-hash'" class="size-4 text-primary" />
+                      {{ row.kind === 'down_payment' ? 'Entrada' : `${row.number}ª parcela` }}
+                    </div>
+
+                    <UiCurrencyInput v-model="row.amount" class="w-full" />
+
+                    <UiDatePicker v-model="row.due_date" class="w-full" />
+
+                    <USelectMenu
+                      v-if="row.kind === 'installment'"
+                      v-model="row.status"
+                      :items="INSTALLMENT_STATUS_OPTIONS"
+                      value-key="value"
+                      class="w-full"
+                    />
+                  </div>
+
+                  <div class="grid grid-cols-1 gap-2 md:grid-cols-3">
+                    <USelectMenu
+                      v-model="row.paymentMethod"
+                      :items="PAYMENT_METHOD_OPTIONS"
+                      value-key="value"
+                      label-key="label"
+                      class="w-full"
+                    />
+                    <USelectMenu
+                      v-model="row.bankAccountId"
+                      :items="bankAccountOptions"
+                      value-key="value"
+                      placeholder="Conta bancária"
+                      class="w-full"
+                    />
+                    <USelectMenu
+                      v-if="rowShowsTerminal(row)"
+                      v-model="row.paymentTerminalId"
+                      :items="paymentTerminalOptions"
+                      value-key="value"
+                      placeholder="Maquininha"
+                      class="w-full"
+                    />
+                  </div>
                 </div>
-
-                <UiCurrencyInput v-model="installment.amount" class="w-full" />
-
-                <UiDatePicker v-model="installment.due_date" class="w-full" />
-
-                <USelectMenu
-                  v-model="installment.status"
-                  :items="INSTALLMENT_STATUS_OPTIONS"
-                  value-key="value"
-                  class="w-full"
-                />
+                <p v-if="rows.length === 0" class="p-4 text-sm text-muted">
+                  Defina uma entrada ou um número de parcelas para montar o plano de pagamento.
+                </p>
               </div>
             </div>
           </div>
-        </div>
+        </template>
       </div>
     </template>
 
@@ -520,10 +614,10 @@ async function save() {
           @click="emit('update:open', false)"
         />
         <UButton
-          label="Registrar pagamento"
+          :label="balanceDueIsSettled ? 'Confirmar' : 'Registrar pagamento'"
           color="success"
           :loading="isSaving"
-          :disabled="isSaving || isLoadingOptions"
+          :disabled="isSaving || isLoadingOptions || balanceDueIsNegative"
           @click="save"
         />
       </div>

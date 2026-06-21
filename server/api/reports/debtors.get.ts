@@ -27,6 +27,12 @@ interface InstallmentRecord {
   due_date?: string | null
   payment_method?: string | null
   installment_number?: number | null
+  kind?: string | null
+}
+
+interface ReceivedTransactionRecord {
+  service_order_installment_id?: string | null
+  amount?: number | string | null
 }
 
 interface ClientRecord {
@@ -40,6 +46,7 @@ interface PendingItem {
   type: 'order' | 'installment'
   id: string | null | undefined
   orderId: string | null | undefined
+  orderNumber: string
   number: string
   amount: number
   dueDate: string | null
@@ -101,7 +108,7 @@ export default defineEventHandler(async (event) => {
   const allowedOrderStatuses = orderStatusFilters.length > 0 ? orderStatusFilters : null
   const { dateFrom, dateTo } = parseDateRange(query.dateFrom as string, query.dateTo as string)
 
-  const [orders, installments, clients] = await Promise.all([
+  const [orders, installments, clients, receivedTransactions] = await Promise.all([
     fetchAllOrganizationRows<ServiceOrderRecord>(supabase, {
       table: 'service_orders',
       organizationId,
@@ -116,10 +123,31 @@ export default defineEventHandler(async (event) => {
       table: 'clients',
       organizationId,
       nullColumns: ['deleted_at']
+    }),
+    fetchAllOrganizationRows<ReceivedTransactionRecord>(supabase, {
+      table: 'financial_transactions',
+      organizationId,
+      eq: { type: 'income', status: 'paid' }
     })
   ])
   const clientsMap = new Map<string, ClientRecord>(clients.map(c => [String(c.id), c]))
   const ordersMap = new Map<string, ServiceOrderRecord>(orders.map(order => [String(order.id || ''), order]))
+
+  // An installment can now be settled across more than one receipt
+  // (partial payments) — what's still owed on it is its expected amount
+  // minus everything already received against it, not the full amount.
+  const receivedByInstallmentId = new Map<string, number>()
+  for (const tx of receivedTransactions) {
+    const installmentId = tx.service_order_installment_id ? String(tx.service_order_installment_id) : null
+    if (!installmentId) continue
+    receivedByInstallmentId.set(installmentId, (receivedByInstallmentId.get(installmentId) || 0) + toNumber(tx.amount, 0))
+  }
+
+  function installmentLabel(installment: InstallmentRecord) {
+    if (installment.kind === 'down_payment') return 'Entrada'
+    if (installment.kind === 'extra') return 'Avulso'
+    return `P${installment.installment_number || '?'}`
+  }
 
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -165,16 +193,17 @@ export default defineEventHandler(async (event) => {
 
     const amount = toNumber(order?.total_amount, 0)
     addPendingItem(clientId, {
-      type: 'order', id: order.id, orderId: order.id, number: String(order?.number || '-'), amount,
+      type: 'order', id: order.id, orderId: order.id, orderNumber: String(order?.number || '-'), number: String(order?.number || '-'), amount,
       dueDate, paymentMethod: order?.payment_method || null,
       orderStatus: order?.status || null, daysOverdue: dueInfo.daysOverdue,
       status: dueInfo.status
     })
   }
 
-  // From installments
+  // From installments — 'partial' is included now: an installment settled
+  // across more than one receipt still owes the remainder.
   for (const installment of installments) {
-    if (!['pending', 'overdue'].includes(String(installment?.status || '').toLowerCase())) continue
+    if (!['pending', 'overdue', 'partial'].includes(String(installment?.status || '').toLowerCase())) continue
 
     const order = ordersMap.get(String(installment?.service_order_id || ''))
     if (!order) continue
@@ -187,9 +216,12 @@ export default defineEventHandler(async (event) => {
     const dueInfo = getEligibleDueInfo(dueDate)
     if (!dueInfo) continue
 
-    const amount = toNumber(installment?.amount, 0)
+    const received = installment.id ? (receivedByInstallmentId.get(String(installment.id)) || 0) : 0
+    const amount = toNumber(installment?.amount, 0) - received
+    if (amount <= 0.01) continue
+
     addPendingItem(clientId, {
-      type: 'installment', id: installment.id, orderId: order.id, number: `${order?.number || '-'} P${installment?.installment_number || '?'}`,
+      type: 'installment', id: installment.id, orderId: order.id, orderNumber: String(order?.number || '-'), number: `${order?.number || '-'} ${installmentLabel(installment)}`,
       amount, dueDate, paymentMethod: installment?.payment_method || null,
       orderStatus: order?.status || null, daysOverdue: dueInfo.daysOverdue,
       status: dueInfo.status
@@ -235,7 +267,7 @@ export default defineEventHandler(async (event) => {
   for (const debtor of debtors) {
     for (const item of debtor.pendingItems) {
       const baseOrderId = item.orderId ? String(item.orderId) : `${debtor.clientId}-${item.number}`
-      const orderNumber = String(item.number || '').split(' P')[0] || null
+      const orderNumber = item.orderNumber || null
       const existing = orderRowsMap.get(baseOrderId)
 
       if (!existing) {

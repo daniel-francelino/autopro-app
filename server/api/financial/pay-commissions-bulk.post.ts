@@ -160,12 +160,15 @@ export default defineEventHandler(async (event) => {
 
       extrato = extratoCreated
 
-      await supabase.from('employee_financial_records').update({
-        status: 'pago',
+      // Status must be 'paid' (DB check constraint only allows 'paid'/'pending')
+      const { error: registroError } = await supabase.from('employee_financial_records').update({
+        status: 'paid',
         payment_date: dataPagamento,
         financial_transaction_id: String(lancamento?.id || ''),
         updated_by: authUser.email
       }).eq('id', registroId)
+
+      if (registroError) throw new Error(registroError.message)
 
       paidCount += 1
       results.push({ ...resultBase, status: 'paid', lancamentoId: lancamento?.id })
