@@ -3,9 +3,9 @@ import { requireAuthUser } from '../../../utils/require-auth'
 import {
   getFocusNfeApiBaseUrl,
   getFocusNfeBasicAuthHeader,
-  monitoredFocusNfeFetch,
-  sanitizeCpfCnpj
+  monitoredFocusNfeFetch
 } from '../../../utils/focus-nfe'
+import { sanitizeCpfCnpj } from '../../../utils/nuvem-fiscal'
 import { mapCompanyInput, mapCompanyResult, mapFiscalErrorDetails } from '../../../utils/fiscal-mappers'
 import { getSupabaseAdminClient } from '../../../utils/supabase'
 import type { FocusNfeEmpresaResponse } from '../../../types/focus-nfe'

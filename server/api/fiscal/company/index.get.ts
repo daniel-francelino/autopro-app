@@ -2,9 +2,9 @@ import { defineEventHandler, getQuery, createError } from 'h3'
 import {
   getFocusNfeApiBaseUrl,
   getFocusNfeBasicAuthHeader,
-  monitoredFocusNfeFetch,
-  sanitizeCpfCnpj
+  monitoredFocusNfeFetch
 } from '../../../utils/focus-nfe'
+import { sanitizeCpfCnpj } from '../../../utils/nuvem-fiscal'
 import { mapCompanyResult, mapFiscalErrorDetails } from '../../../utils/fiscal-mappers'
 import type { FocusNfeEmpresaResponse } from '../../../types/focus-nfe'
 import type { CompanyResult } from '../../../types/fiscal'
