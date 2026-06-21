@@ -1,9 +1,9 @@
 import { defineEventHandler, getRouterParam, createError } from 'h3'
-import { getSupabaseAdminClient } from '../../../utils/supabase'
-import { requireAuthUser } from '../../../utils/require-auth'
-import { resolveOrganizationId } from '../../../utils/organization'
-import { recalculateServiceOrderPaymentStatus } from '../../../utils/service-order-payment-status'
-import { releaseServiceOrderCommissions } from '../../../utils/service-order-commissions'
+import { getSupabaseAdminClient } from '../../../../utils/supabase'
+import { requireAuthUser } from '../../../../utils/require-auth'
+import { resolveOrganizationId } from '../../../../utils/organization'
+import { recalculateServiceOrderPaymentStatus } from '../../../../utils/service-order-payment-status'
+import { releaseServiceOrderCommissions } from '../../../../utils/service-order-commissions'
 
 function roundMoney(value: number) {
   return Number(value.toFixed(2))

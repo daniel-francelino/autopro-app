@@ -1,8 +1,8 @@
 import { defineEventHandler, getRouterParam, createError } from 'h3'
-import { getSupabaseAdminClient } from '../../../utils/supabase'
-import { requireAuthUser } from '../../../utils/require-auth'
-import { resolveOrganizationId } from '../../../utils/organization'
-import { recalculateServiceOrderPaymentStatus } from '../../../utils/service-order-payment-status'
+import { getSupabaseAdminClient } from '../../../../utils/supabase'
+import { requireAuthUser } from '../../../../utils/require-auth'
+import { resolveOrganizationId } from '../../../../utils/organization'
+import { recalculateServiceOrderPaymentStatus } from '../../../../utils/service-order-payment-status'
 
 /**
  * DELETE /api/service-orders/:id/installments/:installmentId

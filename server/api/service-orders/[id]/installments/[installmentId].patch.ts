@@ -1,7 +1,7 @@
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
-import { getSupabaseAdminClient } from '../../../utils/supabase'
-import { requireAuthUser } from '../../../utils/require-auth'
-import { resolveOrganizationId } from '../../../utils/organization'
+import { getSupabaseAdminClient } from '../../../../utils/supabase'
+import { requireAuthUser } from '../../../../utils/require-auth'
+import { resolveOrganizationId } from '../../../../utils/organization'
 
 /**
  * PATCH /api/service-orders/:id/installments/:installmentId
