@@ -18,6 +18,7 @@ const emit = defineEmits<{
   'quote': [orderId: string]
   'edit': [order: ServiceOrderRaw]
   'issue-nfse': [orderId: string]
+  'completed': [orderId: string]
 }>()
 
 // ─── Data ──────────────────────────────────────────────────────────────────────
@@ -80,12 +81,17 @@ async function advanceStatus() {
   if (!nextStatus) return
 
   isAdvancing.value = true
+  const orderId = detail.value.order.id
   try {
     await $fetch('/api/service-orders', {
       method: 'POST',
-      body: { orderId: detail.value.order.id, orderData: { status: nextStatus } }
+      body: { orderId, orderData: { status: nextStatus } }
     })
     toast.add({ title: 'Status atualizado', color: 'success' })
+    if (nextStatus === 'completed') {
+      emit('completed', orderId)
+      return
+    }
     await loadDetail()
     emit('updated')
   } catch (error: unknown) {

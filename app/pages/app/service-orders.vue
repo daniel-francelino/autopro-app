@@ -206,6 +206,7 @@ async function advanceStatus(order: ServiceOrder) {
     })
     toast.add({ title: 'Status atualizado', color: 'success' })
     forceReload()
+    if (nextStatus === 'completed') openPdf(order.id)
   } catch (error: unknown) {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({
@@ -423,9 +424,18 @@ function openQuoteFromDetail(orderId: string) {
   openQuote(orderId)
 }
 
-function openPdfFromList(order: ServiceOrder) {
-  pdfOrderId.value = order.id
+function openPdf(orderId: string) {
+  pdfOrderId.value = orderId
   showPdfModal.value = true
+}
+
+function openPdfFromList(order: ServiceOrder) {
+  openPdf(order.id)
+}
+
+function openPdfFromDetail(orderId: string) {
+  closeDetail()
+  openPdf(orderId)
 }
 
 // ─── NFS-e Emission ────────────────────────────────────────────────────────────
@@ -615,6 +625,7 @@ function onNfseIssued() {
     @updated="forceReload"
     @deleted="() => { closeDetail(); forceReload() }"
     @issue-nfse="requestIssueNfseFromDetail"
+    @completed="openPdfFromDetail"
   />
 
   <ServiceOrdersQuoteModal
