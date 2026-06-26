@@ -16,14 +16,21 @@ export default defineEventHandler(async (event) => {
 
   const name = String(body?.name || '').trim()
   const type = String(body?.type || '').trim()
+  const icon = String(body?.icon || 'i-lucide-folder-open').trim()
+  const color = String(body?.color || 'neutral').trim()
 
   if (!name) throw createError({ statusCode: 400, statusMessage: 'O campo "name" é obrigatório' })
   if (!['income', 'expense'].includes(type)) throw createError({ statusCode: 400, statusMessage: 'O campo "type" deve ser "income" ou "expense"' })
 
+  // Matches against is_default rows too — a custom category can't shadow a
+  // default one of the same name+type (docs/financial-categories-crud.md,
+  // section 4.1). Scoped by type because 'Outros' legitimately exists once
+  // per type (financial_categories_org_name_type_uq).
   const { data: existing } = await supabase
     .from('financial_categories')
     .select('id')
     .eq('organization_id', organizationId)
+    .eq('type', type)
     .ilike('name', name)
     .is('deleted_at', null)
     .maybeSingle()
@@ -36,6 +43,8 @@ export default defineEventHandler(async (event) => {
       organization_id: organizationId,
       name,
       type,
+      icon,
+      color,
       created_by: authUser.email
     })
     .select()

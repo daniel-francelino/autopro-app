@@ -1,5 +1,6 @@
 import { createError } from 'h3'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { resolveDefaultCategoryId } from './financial-category-defaults'
 
 type CreateIncomeTransactionParams = {
   supabase: SupabaseClient
@@ -53,6 +54,8 @@ export async function createIncomeTransaction({
   notes = null,
   userEmail
 }: CreateIncomeTransactionParams) {
+  const servicesCategory = await resolveDefaultCategoryId(supabase, organizationId, 'Serviços', 'income')
+
   const { data: transaction, error: transactionError } = await supabase
     .from('financial_transactions')
     .insert({
@@ -62,7 +65,8 @@ export async function createIncomeTransaction({
       due_date: dueDate,
       type: 'income',
       status,
-      category: 'services',
+      category: servicesCategory.name,
+      category_id: servicesCategory.id,
       recurrence: null,
       is_installment: isInstallment,
       installment_count: installmentCount,

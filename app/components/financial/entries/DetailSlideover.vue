@@ -136,36 +136,17 @@ const recurrenceLabelMap: Record<string, string> = {
 
 // ── Computed helpers ──────────────────────────────────────────────────────────
 
-const CATEGORY_LABEL_MAP: Record<string, string> = {
-  sales: 'Vendas',
-  services: 'Serviços',
-  rent: 'Aluguel',
-  salaries: 'Salários',
-  suppliers: 'Fornecedores',
-  taxes: 'Impostos',
-  marketing: 'Marketing',
-  other: 'Outros',
-  vendas: 'Vendas',
-  servicos: 'Serviços',
-  aluguel: 'Aluguel',
-  salarios: 'Salários',
-  fornecedores: 'Fornecedores',
-  impostos: 'Impostos',
-  outros: 'Outros'
-}
-
-function formatCategory(value: string | null | undefined): string {
-  if (!value) return '—'
-  const rawValue = String(value).trim()
-  const normalized = rawValue
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-  if (CATEGORY_LABEL_MAP[normalized]) return CATEGORY_LABEL_MAP[normalized]
-  return rawValue.replace(/\S+/g, word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-}
+type CategoryRef = { id: string, name: string, icon: string, color: string } | null
 
 const entry = computed(() => detail.value?.entry ?? null)
+
+// category_ref comes from the financial_categories join (server/api/financial/[id].get.ts).
+// Falls back to the legacy free-text category for any transaction that
+// somehow still lacks a category_id -- see docs/financial-categories-crud.md.
+const categoryRef = computed(() => (entry.value?.category_ref as CategoryRef) ?? null)
+const categoryLabel = computed(() => categoryRef.value?.name || String(entry.value?.category ?? '') || '—')
+const categoryIcon = computed(() => categoryRef.value?.icon || 'i-lucide-tag')
+const categoryColorClass = computed(() => categoryRef.value?.color ? `text-${categoryRef.value.color}` : 'text-muted')
 const installmentSiblings = computed(() => detail.value?.installmentSiblings ?? [])
 const recurringSiblings = computed(() => detail.value?.recurringSiblings ?? [])
 
@@ -295,8 +276,8 @@ function linkedEntryStatus(status: string) {
                 Categoria
               </dt>
               <dd class="mt-0.5 flex items-center gap-1.5 text-sm text-highlighted">
-                <UIcon name="i-lucide-tag" class="size-3.5 text-muted" />
-                {{ formatCategory(entry.category) }}
+                <UIcon :name="categoryIcon" class="size-3.5" :class="categoryColorClass" />
+                {{ categoryLabel }}
               </dd>
             </div>
             <div v-if="bankAccountLabel" class="col-span-2">

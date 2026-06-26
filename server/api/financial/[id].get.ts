@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
   // Fetch the target entry
   const { data: entry, error: entryError } = await supabase
     .from('financial_transactions')
-    .select('*')
+    .select('*, category_ref:financial_categories(id, name, icon, color)')
     .eq('id', id)
     .eq('organization_id', organizationId)
     .is('deleted_at', null)

@@ -2,6 +2,7 @@ import { defineEventHandler, readBody, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
+import { resolveDefaultCategoryId } from '../../utils/financial-category-defaults'
 
 /**
  * POST /api/financial/pay-commissions-bulk
@@ -77,6 +78,8 @@ export default defineEventHandler(async (event) => {
     contaBancaria = contasAtivas[0]
   }
 
+  const salariesCategory = await resolveDefaultCategoryId(supabase, organizationId, 'Salários', 'expense')
+
   const results: any[] = []
   let paidCount = 0, skippedCount = 0, failedCount = 0
 
@@ -130,7 +133,8 @@ export default defineEventHandler(async (event) => {
         due_date: dataPagamento,
         type: 'expense',
         status: 'pago',
-        category: 'salarios',
+        category: salariesCategory.name,
+        category_id: salariesCategory.id,
         recurrence: 'nao_recorrente',
         bank_account_id: contaId,
         employee_financial_record_id: registroId,

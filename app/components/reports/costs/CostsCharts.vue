@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { formatCostCategoryLabel, getCostCategoryVisual } from '~/utils/report-costs'
-
 interface CategoryRow {
   categoryKey: string
   category: string
+  icon: string
+  color: string
   amount: number
   percentage: number
 }
@@ -30,9 +30,9 @@ function formatDay(value: string) {
   return `${day}/${month}`
 }
 
-const donutLabels = computed(() => props.categories.map(category => formatCostCategoryLabel(category.categoryKey)))
+const donutLabels = computed(() => props.categories.map(category => category.category))
 const donutSeries = computed(() => props.categories.map(category => Number(category.amount ?? 0)))
-const donutColors = computed(() => props.categories.map((category, index) => getCostCategoryVisual(category.categoryKey, index).chartColor))
+const donutColors = computed(() => props.categories.map(category => resolveUiColor(category.color)))
 
 const evolutionCategories = computed(() => props.evolution.map(point => formatDay(point.name)))
 const evolutionSeries = computed(() => [

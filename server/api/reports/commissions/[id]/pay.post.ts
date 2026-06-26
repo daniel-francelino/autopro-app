@@ -2,6 +2,7 @@ import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../../../utils/supabase'
 import { requireAuthUser } from '../../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../../utils/organization'
+import { resolveDefaultCategoryId } from '../../../../utils/financial-category-defaults'
 
 function normalizeNumber(value: unknown) {
   const parsed = Number(value)
@@ -71,6 +72,8 @@ export default defineEventHandler(async (event) => {
   let balanceUpdated = false
 
   try {
+    const salariesCategory = await resolveDefaultCategoryId(supabase, organizationId, 'Salários', 'expense')
+
     const { data: transaction, error: transactionError } = await supabase
       .from('financial_transactions')
       .insert({
@@ -79,7 +82,8 @@ export default defineEventHandler(async (event) => {
         due_date: today,
         type: 'expense',
         status: 'paid',
-        category: 'salarios',
+        category: salariesCategory.name,
+        category_id: salariesCategory.id,
         recurrence: 'nao_recorrente',
         bank_account_id: bankAccount.id,
         employee_financial_record_id: id,

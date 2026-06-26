@@ -8,9 +8,8 @@ import { enforceReportAccess } from '../../utils/license'
 
 type ReportRow = SupabaseReportRow
 
-function normalizeCategoryName(category: string) {
-  return String(category || 'other').replace(/_/g, ' ').toUpperCase()
-}
+const UNCATEGORIZED_KEY = 'uncategorized'
+const UNCATEGORIZED_META = { name: 'Sem categoria', icon: 'i-lucide-circle-help', color: 'neutral' }
 
 function calculatePeriodData(orders: ReportRow[], transactions: ReportRow[], start: Date, end: Date, statusFilters: string[]) {
   const periodOrders = orders.filter((o: ReportRow) => {
@@ -76,7 +75,7 @@ export default defineEventHandler(async (event) => {
   const compareMode = ['same_period_last_year', 'previous_month', 'previous_quarter'].includes(query.compareMode as string) ? String(query.compareMode) : 'previous_period'
   const selectedCategory = String(query.selectedCategory || '').trim()
 
-  const [transactions, orders] = await Promise.all([
+  const [transactions, orders, categories] = await Promise.all([
     fetchAllOrganizationRows(supabase, {
       table: 'financial_transactions',
       organizationId,
@@ -88,8 +87,23 @@ export default defineEventHandler(async (event) => {
       organizationId,
       nullColumns: ['deleted_at'],
       order: { column: 'created_at' }
+    }),
+    fetchAllOrganizationRows(supabase, {
+      table: 'financial_categories',
+      organizationId,
+      columns: 'id, name, icon, color',
+      nullColumns: ['deleted_at']
     })
   ])
+
+  const categoriesById = new Map<string, { name: string, icon: string, color: string }>(
+    (categories as Array<{ id: string, name: string, icon: string, color: string }>).map(c => [c.id, { name: c.name, icon: c.icon, color: c.color }])
+  )
+
+  function categoryMeta(categoryId: string) {
+    if (categoryId === UNCATEGORIZED_KEY) return UNCATEGORIZED_META
+    return categoriesById.get(categoryId) ?? UNCATEGORIZED_META
+  }
 
   const expenseList = transactions.filter((t: ReportRow) => {
     if (t?.type !== 'expense') return false
@@ -99,19 +113,21 @@ export default defineEventHandler(async (event) => {
     return true
   })
 
-  const availableCategories = (Array.from(new Set(expenseList.map((t: ReportRow) => String(t?.category || 'other')))) as string[]).sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }))
+  const availableCategories = (Array.from(new Set(expenseList.map((t: ReportRow) => String(t?.category_id || UNCATEGORIZED_KEY)))) as string[])
+    .map(categoryId => ({ id: categoryId, ...categoryMeta(categoryId) }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }))
 
   const filteredExpenses = expenseList.filter((t: ReportRow) => {
     const dueDate = t?.due_date ? new Date(`${t.due_date}T00:00:00`) : null
     if (!dueDate || Number.isNaN(dueDate.getTime())) return false
     if (dateFrom && dueDate < dateFrom) return false
     if (dateTo && dueDate > dateTo) return false
-    const cat = String(t?.category || 'other')
+    const cat = String(t?.category_id || UNCATEGORIZED_KEY)
     if (combinedCategoryIds.length > 0 && !combinedCategoryIds.includes(cat)) return false
     if (categoryFilter && cat !== categoryFilter) return false
     if (searchTerm) {
       const description = String(t?.description || '').toLowerCase()
-      const categoryLabel = normalizeCategoryName(cat).toLowerCase()
+      const categoryLabel = categoryMeta(cat).name.toLowerCase()
       if (!description.includes(searchTerm) && !categoryLabel.includes(searchTerm)) return false
     }
     return true
@@ -133,16 +149,21 @@ export default defineEventHandler(async (event) => {
 
   const categoryAmounts: Record<string, number> = {}
   for (const t of filteredExpenses) {
-    const cat = String(t?.category || 'other')
+    const cat = String(t?.category_id || UNCATEGORIZED_KEY)
     categoryAmounts[cat] = (categoryAmounts[cat] || 0) + toNumber(t?.amount, 0)
   }
 
-  const categoryRows = Object.entries(categoryAmounts).map(([categoryKey, amount]) => ({
-    categoryKey,
-    category: normalizeCategoryName(categoryKey),
-    amount,
-    percentage: totalCosts > 0 ? (amount / totalCosts) * 100 : 0
-  }))
+  const categoryRows = Object.entries(categoryAmounts).map(([categoryKey, amount]) => {
+    const meta = categoryMeta(categoryKey)
+    return {
+      categoryKey,
+      category: meta.name,
+      icon: meta.icon,
+      color: meta.color,
+      amount,
+      percentage: totalCosts > 0 ? (amount / totalCosts) * 100 : 0
+    }
+  })
 
   const factor = sortFactor(sortOrder)
   categoryRows.sort((a, b) => {
@@ -177,16 +198,19 @@ export default defineEventHandler(async (event) => {
 
   if (includeCategoryDetails && selectedCategory) {
     const categoryEntries = filteredExpenses
-      .filter((t: ReportRow) => String(t?.category || 'other') === selectedCategory)
+      .filter((t: ReportRow) => String(t?.category_id || UNCATEGORIZED_KEY) === selectedCategory)
       .sort((a: ReportRow, b: ReportRow) => String(b?.due_date || '').localeCompare(String(a?.due_date || '')))
     const totalCategoryValue = categoryEntries.reduce((s: number, t: ReportRow) => s + toNumber(t?.amount, 0), 0)
+    const selectedMeta = categoryMeta(selectedCategory)
     responseData.costsCategoryDetails = {
       categoryKey: selectedCategory,
-      category: normalizeCategoryName(selectedCategory),
+      category: selectedMeta.name,
+      icon: selectedMeta.icon,
+      color: selectedMeta.color,
       totalItems: categoryEntries.length,
       totalValue: totalCategoryValue,
       items: categoryEntries.map((t: ReportRow) => ({
-        id: t?.id, description: t?.description || 'No description', category: String(t?.category || 'other'),
+        id: t?.id, description: t?.description || 'No description', category: selectedMeta.name,
         amount: toNumber(t?.amount, 0), status: normalizeReportStatus(t?.status),
         type: String(t?.type || 'expense').toLowerCase(), due_date: t?.due_date || null,
         recurrence: t?.recurrence || null, is_installment: Boolean(t?.is_installment),
