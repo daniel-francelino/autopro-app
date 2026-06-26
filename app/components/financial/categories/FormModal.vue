@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CATEGORY_COLOR_OPTIONS, CATEGORY_ICON_OPTIONS } from '~/utils/financial-category-options'
+import { DEFAULT_CATEGORY_COLOR, DEFAULT_CATEGORY_ICON } from '~/utils/financial-category-options'
 
 type Category = { id: string, name: string, type: 'income' | 'expense', icon: string, color: string, is_default: boolean }
 
@@ -22,8 +22,8 @@ const isEditing = computed(() => Boolean(props.category?.id))
 const form = reactive({
   name: '',
   type: 'expense' as 'income' | 'expense',
-  icon: CATEGORY_ICON_OPTIONS[CATEGORY_ICON_OPTIONS.length - 1]!.value as string,
-  color: CATEGORY_COLOR_OPTIONS[0]!.value as string
+  icon: DEFAULT_CATEGORY_ICON as string,
+  color: DEFAULT_CATEGORY_COLOR as string
 })
 
 watch(
@@ -38,8 +38,8 @@ watch(
     } else {
       form.name = ''
       form.type = props.activeType
-      form.icon = CATEGORY_ICON_OPTIONS[CATEGORY_ICON_OPTIONS.length - 1]!.value
-      form.color = CATEGORY_COLOR_OPTIONS[0]!.value
+      form.icon = DEFAULT_CATEGORY_ICON
+      form.color = DEFAULT_CATEGORY_COLOR
     }
   },
   { immediate: true }
@@ -119,35 +119,10 @@ async function save() {
           </div>
         </UFormField>
 
-        <div class="grid grid-cols-2 gap-4">
-          <UFormField label="Ícone">
-            <USelectMenu
-              v-model="form.icon"
-              :items="CATEGORY_ICON_OPTIONS"
-              value-key="value"
-              class="w-full"
-            >
-              <template #leading>
-                <UIcon :name="form.icon" class="size-4" />
-              </template>
-            </USelectMenu>
-          </UFormField>
-
-          <UFormField label="Cor">
-            <USelectMenu
-              v-model="form.color"
-              :items="CATEGORY_COLOR_OPTIONS"
-              value-key="value"
-              class="w-full"
-            />
-          </UFormField>
-        </div>
-
         <div class="flex items-center gap-3 rounded-lg border border-default p-3">
-          <div class="flex size-9 shrink-0 items-center justify-center rounded-full" :class="`bg-${form.color}/10`">
-            <UIcon :name="form.icon" class="size-4" :class="`text-${form.color}`" />
-          </div>
-          <div class="min-w-0">
+          <FinancialCategoryIconPicker v-model="form.icon" :color="form.color" />
+          <FinancialCategoryColorPicker v-model="form.color" />
+          <div class="min-w-0 flex-1">
             <p class="text-xs text-muted">
               Pré-visualização
             </p>

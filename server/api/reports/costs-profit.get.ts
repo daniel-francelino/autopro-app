@@ -9,7 +9,7 @@ import { enforceReportAccess } from '../../utils/license'
 type ReportRow = SupabaseReportRow
 
 const UNCATEGORIZED_KEY = 'uncategorized'
-const UNCATEGORIZED_META = { name: 'Sem categoria', icon: 'i-lucide-circle-help', color: 'neutral' }
+const UNCATEGORIZED_META = { name: 'Sem categoria', icon: 'i-lucide-circle-help', color: '#64748b' }
 
 function calculatePeriodData(orders: ReportRow[], transactions: ReportRow[], start: Date, end: Date, statusFilters: string[]) {
   const periodOrders = orders.filter((o: ReportRow) => {

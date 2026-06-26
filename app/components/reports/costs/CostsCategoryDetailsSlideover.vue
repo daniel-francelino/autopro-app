@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { DEFAULT_CATEGORY_COLOR } from '~/utils/financial-category-options'
+
 export interface CostCategoryDetailItem {
   id: string
   description: string
@@ -78,7 +80,7 @@ function formatRecurrence(value: string | null) {
   return normalizedValue.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase())
 }
 
-const headerColor = computed(() => resolveUiColor(props.data?.color ?? 'neutral'))
+const headerColor = computed(() => props.data?.color ?? DEFAULT_CATEGORY_COLOR)
 </script>
 
 <template>

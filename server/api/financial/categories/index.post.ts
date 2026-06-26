@@ -17,7 +17,8 @@ export default defineEventHandler(async (event) => {
   const name = String(body?.name || '').trim()
   const type = String(body?.type || '').trim()
   const icon = String(body?.icon || 'i-lucide-folder-open').trim()
-  const color = String(body?.color || 'neutral').trim()
+  const colorInput = String(body?.color || '#64748b').trim()
+  const color = /^#[0-9a-fA-F]{6}$/.test(colorInput) ? colorInput : '#64748b'
 
   if (!name) throw createError({ statusCode: 400, statusMessage: 'O campo "name" é obrigatório' })
   if (!['income', 'expense'].includes(type)) throw createError({ statusCode: 400, statusMessage: 'O campo "type" deve ser "income" ou "expense"' })

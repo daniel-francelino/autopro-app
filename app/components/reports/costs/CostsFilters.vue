@@ -47,7 +47,7 @@ const categoryOptions = computed<TagFilterOption[]>(() =>
     .map(category => ({
       value: category.id,
       label: category.name,
-      color: category.color,
+      color: category.color as TagFilterOption['color'],
       icon: category.icon
     }))
 )

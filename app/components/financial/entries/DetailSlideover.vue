@@ -146,7 +146,7 @@ const entry = computed(() => detail.value?.entry ?? null)
 const categoryRef = computed(() => (entry.value?.category_ref as CategoryRef) ?? null)
 const categoryLabel = computed(() => categoryRef.value?.name || String(entry.value?.category ?? '') || '—')
 const categoryIcon = computed(() => categoryRef.value?.icon || 'i-lucide-tag')
-const categoryColorClass = computed(() => categoryRef.value?.color ? `text-${categoryRef.value.color}` : 'text-muted')
+const categoryIconStyle = computed(() => categoryRef.value?.color ? { color: categoryRef.value.color } : undefined)
 const installmentSiblings = computed(() => detail.value?.installmentSiblings ?? [])
 const recurringSiblings = computed(() => detail.value?.recurringSiblings ?? [])
 
@@ -276,7 +276,7 @@ function linkedEntryStatus(status: string) {
                 Categoria
               </dt>
               <dd class="mt-0.5 flex items-center gap-1.5 text-sm text-highlighted">
-                <UIcon :name="categoryIcon" class="size-3.5" :class="categoryColorClass" />
+                <UIcon :name="categoryIcon" class="size-3.5" :class="!categoryIconStyle && 'text-muted'" :style="categoryIconStyle" />
                 {{ categoryLabel }}
               </dd>
             </div>

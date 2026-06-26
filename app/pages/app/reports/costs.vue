@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { SortingState } from '@tanstack/vue-table'
 import type { CostCategoryDetailData } from '~/components/reports/costs/CostsCategoryDetailsSlideover.vue'
+import { DEFAULT_CATEGORY_COLOR, DEFAULT_CATEGORY_ICON } from '~/utils/financial-category-options'
 
 interface CategoryRow {
   categoryKey: string
@@ -242,9 +243,9 @@ watch([dateFrom, dateTo, search, selectedCategories, statusFilters], async () =>
             >
               <div
                 class="flex size-8 shrink-0 items-center justify-center rounded-xl text-white shadow-sm"
-                :style="{ backgroundColor: resolveUiColor(String(row.original.color ?? 'neutral')) }"
+                :style="{ backgroundColor: String(row.original.color || DEFAULT_CATEGORY_COLOR) }"
               >
-                <UIcon :name="String(row.original.icon ?? 'i-lucide-folder-open')" class="size-4" />
+                <UIcon :name="String(row.original.icon || DEFAULT_CATEGORY_ICON)" class="size-4" />
               </div>
               <div>
                 <p class="font-medium text-highlighted">

@@ -44,20 +44,20 @@ function guessExpenseCategoryVisual(categoryText: string): ExpenseVisual {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
 
-  if (/(tax|impost|fiscal)/.test(key)) return { icon: 'i-lucide-landmark', color: 'error' }
-  if (/(salari|folha|employee|funcion|prolabore|pessoal)/.test(key)) return { icon: 'i-lucide-users', color: 'warning' }
-  if (/(financi|emprest|parcelamento)/.test(key)) return { icon: 'i-lucide-banknote-arrow-down', color: 'info' }
-  if (/(cartao|credito)/.test(key)) return { icon: 'i-lucide-credit-card', color: 'warning' }
-  if (/(fuel|combust|transport|frete|logistic)/.test(key)) return { icon: 'i-lucide-truck', color: 'info' }
-  if (/(rent|alug|building|estrutura|custo fixo)/.test(key)) return { icon: 'i-lucide-building-2', color: 'primary' }
-  if (/(market|ads|public|meta|trafeg)/.test(key)) return { icon: 'i-lucide-megaphone', color: 'secondary' }
-  if (/(energy|water|internet|telefon|utility|luz)/.test(key)) return { icon: 'i-lucide-zap', color: 'warning' }
-  if (/(software|system|saas|license|licen)/.test(key)) return { icon: 'i-lucide-monitor-cog', color: 'primary' }
-  if (/(part|piece|peca|stock|inventory|suprimento|material|fornecedor|terceirizado)/.test(key)) return { icon: 'i-lucide-package', color: 'success' }
-  if (/(maint|manuten|repair|service|custo variavel)/.test(key)) return { icon: 'i-lucide-wrench', color: 'info' }
-  if (/(fee|tarifa|charge|bank|finance)/.test(key)) return { icon: 'i-lucide-receipt', color: 'neutral' }
+  if (/(tax|impost|fiscal)/.test(key)) return { icon: 'i-lucide-landmark', color: '#ef4444' }
+  if (/(salari|folha|employee|funcion|prolabore|pessoal)/.test(key)) return { icon: 'i-lucide-users', color: '#f97316' }
+  if (/(financi|emprest|parcelamento)/.test(key)) return { icon: 'i-lucide-banknote-arrow-down', color: '#3b82f6' }
+  if (/(cartao|credito)/.test(key)) return { icon: 'i-lucide-credit-card', color: '#f59e0b' }
+  if (/(fuel|combust|transport|frete|logistic)/.test(key)) return { icon: 'i-lucide-truck', color: '#06b6d4' }
+  if (/(rent|alug|building|estrutura|custo fixo)/.test(key)) return { icon: 'i-lucide-building-2', color: '#8b5cf6' }
+  if (/(market|ads|public|meta|trafeg)/.test(key)) return { icon: 'i-lucide-megaphone', color: '#ec4899' }
+  if (/(energy|water|internet|telefon|utility|luz)/.test(key)) return { icon: 'i-lucide-zap', color: '#f59e0b' }
+  if (/(software|system|saas|license|licen)/.test(key)) return { icon: 'i-lucide-monitor-cog', color: '#6366f1' }
+  if (/(part|piece|peca|stock|inventory|suprimento|material|fornecedor|terceirizado)/.test(key)) return { icon: 'i-lucide-package', color: '#22c55e' }
+  if (/(maint|manuten|repair|service|custo variavel)/.test(key)) return { icon: 'i-lucide-wrench', color: '#06b6d4' }
+  if (/(fee|tarifa|charge|bank|finance)/.test(key)) return { icon: 'i-lucide-receipt', color: '#64748b' }
 
-  return { icon: 'i-lucide-folder-open', color: 'neutral' }
+  return { icon: 'i-lucide-folder-open', color: '#64748b' }
 }
 
 function chunk<T>(items: T[], size: number): T[][] {
@@ -122,7 +122,7 @@ async function backfillOrganization(supabase: SupabaseAdminClient, organizationI
     let categoryId = categoryIdByKey.get(key)
 
     if (!categoryId) {
-      const visual = pair.type === 'expense' ? guessExpenseCategoryVisual(pair.text) : { icon: 'i-lucide-circle-dollar-sign', color: 'neutral' }
+      const visual = pair.type === 'expense' ? guessExpenseCategoryVisual(pair.text) : { icon: 'i-lucide-circle-dollar-sign', color: '#64748b' }
 
       const { data: created, error: insertError } = await supabase
         .from('financial_categories')

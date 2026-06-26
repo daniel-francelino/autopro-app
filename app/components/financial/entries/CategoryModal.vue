@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CATEGORY_COLOR_OPTIONS, CATEGORY_ICON_OPTIONS } from '~/utils/financial-category-options'
+import { DEFAULT_CATEGORY_COLOR, DEFAULT_CATEGORY_ICON } from '~/utils/financial-category-options'
 
 type CategoryItem = { id: string, name: string, type: 'income' | 'expense', icon: string, color: string, is_default: boolean }
 
@@ -19,15 +19,15 @@ const toast = useToast()
 
 const activeType = ref<'income' | 'expense'>(props.currentType)
 const newCategoryName = ref('')
-const newCategoryIcon = ref(CATEGORY_ICON_OPTIONS[CATEGORY_ICON_OPTIONS.length - 1]!.value)
-const newCategoryColor = ref(CATEGORY_COLOR_OPTIONS[0]!.value)
+const newCategoryIcon = ref(DEFAULT_CATEGORY_ICON)
+const newCategoryColor = ref(DEFAULT_CATEGORY_COLOR)
 const isCreating = ref(false)
 const deletingId = ref<string | null>(null)
 const confirmDeleteId = ref<string | null>(null)
 const editingId = ref<string | null>(null)
 const editName = ref('')
-const editIcon = ref<string>(CATEGORY_ICON_OPTIONS[0]!.value)
-const editColor = ref<string>(CATEGORY_COLOR_OPTIONS[0]!.value)
+const editIcon = ref<string>(DEFAULT_CATEGORY_ICON)
+const editColor = ref<string>(DEFAULT_CATEGORY_COLOR)
 const isSavingEdit = ref(false)
 
 watch(
@@ -207,22 +207,8 @@ async function deleteCategory(id: string) {
               placeholder="Digite o nome da nova categoria"
               @keydown.enter.prevent="createCategory"
             />
-            <USelectMenu
-              v-model="newCategoryIcon"
-              :items="CATEGORY_ICON_OPTIONS"
-              value-key="value"
-              class="w-36"
-            >
-              <template #leading>
-                <UIcon :name="newCategoryIcon" class="size-4" />
-              </template>
-            </USelectMenu>
-            <USelectMenu
-              v-model="newCategoryColor"
-              :items="CATEGORY_COLOR_OPTIONS"
-              value-key="value"
-              class="w-32"
-            />
+            <FinancialCategoryIconPicker v-model="newCategoryIcon" :color="newCategoryColor" size="sm" />
+            <FinancialCategoryColorPicker v-model="newCategoryColor" size="sm" />
             <UButton
               icon="i-lucide-plus"
               color="neutral"
@@ -248,14 +234,15 @@ async function deleteCategory(id: string) {
                 Padrão
               </p>
               <div class="flex flex-wrap gap-2">
-                <UBadge
+                <span
                   v-for="cat in defaultsForType"
                   :key="cat.id"
-                  :color="cat.color"
-                  variant="subtle"
-                  :icon="cat.icon"
-                  :label="cat.name"
-                />
+                  class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
+                  :style="{ backgroundColor: `${cat.color}1A`, color: cat.color }"
+                >
+                  <UIcon :name="cat.icon" class="size-3.5" />
+                  {{ cat.name }}
+                </span>
               </div>
             </div>
 
@@ -283,24 +270,8 @@ async function deleteCategory(id: string) {
                 >
                   <div v-if="editingId === cat.id" class="flex items-center gap-2">
                     <UInput v-model="editName" size="sm" class="flex-1" />
-                    <USelectMenu
-                      v-model="editIcon"
-                      :items="CATEGORY_ICON_OPTIONS"
-                      value-key="value"
-                      size="sm"
-                      class="w-32"
-                    >
-                      <template #leading>
-                        <UIcon :name="editIcon" class="size-4" />
-                      </template>
-                    </USelectMenu>
-                    <USelectMenu
-                      v-model="editColor"
-                      :items="CATEGORY_COLOR_OPTIONS"
-                      value-key="value"
-                      size="sm"
-                      class="w-28"
-                    />
+                    <FinancialCategoryIconPicker v-model="editIcon" :color="editColor" size="sm" />
+                    <FinancialCategoryColorPicker v-model="editColor" size="sm" />
                     <UButton
                       size="xs"
                       color="success"
@@ -320,7 +291,7 @@ async function deleteCategory(id: string) {
 
                   <div v-else class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
-                      <UIcon :name="cat.icon" :class="`size-4 text-${cat.color}`" />
+                      <UIcon :name="cat.icon" class="size-4" :style="{ color: cat.color }" />
                       <span class="text-sm">{{ cat.name }}</span>
                     </div>
 

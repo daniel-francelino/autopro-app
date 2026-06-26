@@ -54,7 +54,10 @@ export default defineEventHandler(async (event) => {
   }
 
   if ('icon' in body) updates.icon = String(body.icon || '').trim() || 'i-lucide-folder-open'
-  if ('color' in body) updates.color = String(body.color || '').trim() || 'neutral'
+  if ('color' in body) {
+    const colorInput = String(body.color || '').trim()
+    updates.color = /^#[0-9a-fA-F]{6}$/.test(colorInput) ? colorInput : '#64748b'
+  }
 
   const { data: category, error } = await supabase
     .from('financial_categories')

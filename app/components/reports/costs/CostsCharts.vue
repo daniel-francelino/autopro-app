@@ -32,7 +32,7 @@ function formatDay(value: string) {
 
 const donutLabels = computed(() => props.categories.map(category => category.category))
 const donutSeries = computed(() => props.categories.map(category => Number(category.amount ?? 0)))
-const donutColors = computed(() => props.categories.map(category => resolveUiColor(category.color)))
+const donutColors = computed(() => props.categories.map(category => category.color))
 
 const evolutionCategories = computed(() => props.evolution.map(point => formatDay(point.name)))
 const evolutionSeries = computed(() => [

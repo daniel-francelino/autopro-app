@@ -172,9 +172,9 @@ async function confirmRemove() {
             <div class="flex items-center gap-3">
               <div
                 class="flex size-8 shrink-0 items-center justify-center rounded-full"
-                :class="`bg-${(row.original as Category).color}/10`"
+                :style="{ backgroundColor: `${(row.original as Category).color}1A` }"
               >
-                <UIcon :name="(row.original as Category).icon" class="size-4" :class="`text-${(row.original as Category).color}`" />
+                <UIcon :name="(row.original as Category).icon" class="size-4" :style="{ color: (row.original as Category).color }" />
               </div>
               <p class="font-medium text-highlighted">
                 {{ (row.original as Category).name }}
