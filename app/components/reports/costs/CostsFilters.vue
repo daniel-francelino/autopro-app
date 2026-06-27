@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TagFilterOption } from '~/components/ui/TagFilter.vue'
+import { formatCategoryName } from '~/utils/financial-category-options'
 
 type CategoryOption = { id: string, name: string, icon: string, color: string }
 
@@ -46,7 +47,7 @@ const categoryOptions = computed<TagFilterOption[]>(() =>
     .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }))
     .map(category => ({
       value: category.id,
-      label: category.name,
+      label: formatCategoryName(category.name),
       color: category.color as TagFilterOption['color'],
       icon: category.icon
     }))
