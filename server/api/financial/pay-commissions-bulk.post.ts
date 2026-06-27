@@ -94,7 +94,7 @@ export default defineEventHandler(async (event) => {
       continue
     }
 
-    if (String(registro?.status || '') === 'pago') {
+    if (String(registro?.status || '') === 'paid') {
       skippedCount += 1
       results.push({ ...resultBase, status: 'skipped', message: 'Já estava pago' })
       continue
@@ -132,7 +132,7 @@ export default defineEventHandler(async (event) => {
         amount: valor,
         due_date: dataPagamento,
         type: 'expense',
-        status: 'pago',
+        status: 'paid',
         category: salariesCategory.name,
         category_id: salariesCategory.id,
         recurrence: 'nao_recorrente',

@@ -70,7 +70,7 @@ export default defineEventHandler(async (event) => {
       continue
     }
 
-    if (String(lancamento?.status || '') === 'pago') {
+    if (String(lancamento?.status || '') === 'paid') {
       skippedCount += 1
       results.push({ ...baseResult, status: 'skipped', message: 'Já estava pago' })
       continue
@@ -123,12 +123,12 @@ export default defineEventHandler(async (event) => {
         }
       }
 
-      await supabase.from('financial_transactions').update({ status: 'pago', updated_by: authUser.email }).eq('id', entryId)
+      await supabase.from('financial_transactions').update({ status: 'paid', updated_by: authUser.email }).eq('id', entryId)
 
       if (lancamento?.employee_financial_record_id) {
         try {
           await supabase.from('employee_financial_records').update({
-            status: 'pago',
+            status: 'paid',
             payment_date: today,
             updated_by: authUser.email
           }).eq('id', String(lancamento.employee_financial_record_id))

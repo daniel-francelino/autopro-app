@@ -64,7 +64,7 @@ function resolveUpdatedDueDate(originalEntry: Record<string, any>, currentEntry:
 }
 
 async function registrarExtratoContaBancaria(supabase: any, organizationId: string, email: string, lancamento: any) {
-  if (!lancamento?.bank_account_id || lancamento?.status !== 'pago') return
+  if (!lancamento?.bank_account_id || lancamento?.status !== 'paid') return
 
   const { data: conta } = await supabase.from('bank_accounts').select('*').eq('id', lancamento.bank_account_id).eq('organization_id', organizationId).single()
   if (!conta) return
@@ -91,7 +91,7 @@ async function registrarExtratoContaBancaria(supabase: any, organizationId: stri
 }
 
 async function reverterExtrato(supabase: any, organizationId: string, lancamento: any) {
-  if (!lancamento?.bank_account_id || lancamento?.status !== 'pago') return
+  if (!lancamento?.bank_account_id || lancamento?.status !== 'paid') return
 
   const { data: extratoEntries } = await supabase.from('bank_account_statements').select('*').eq('bank_account_id', lancamento.bank_account_id).eq('financial_transaction_id', lancamento.id).eq('organization_id', organizationId)
   if (!extratoEntries || extratoEntries.length === 0) return
