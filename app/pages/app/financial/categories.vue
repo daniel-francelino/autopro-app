@@ -28,7 +28,6 @@ const canRead = computed(() => workshop.can(ActionCode.FINANCIAL_READ))
 const canUpdate = computed(() => workshop.can(ActionCode.FINANCIAL_UPDATE))
 const canDelete = computed(() => workshop.can(ActionCode.FINANCIAL_DELETE))
 
-const activeType = ref<'income' | 'expense'>('expense')
 const search = ref('')
 
 const { data, status, refresh } = await useAsyncData(
@@ -48,16 +47,17 @@ const allCategories = computed<Category[]>(() => [...(data.value?.defaults ?? []
 const filteredCategories = computed(() => {
   const term = search.value.trim().toLowerCase()
   return allCategories.value
-    .filter(c => c.type === activeType.value)
     .filter(c => !term || c.name.toLowerCase().includes(term))
-    .sort((a, b) => {
-      if (a.is_default !== b.is_default) return a.is_default ? -1 : 1
-      return a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })
-    })
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }))
 })
+
+const typeLabel: Record<Category['type'], string> = { income: 'Entrada', expense: 'Saída' }
+const typeIcon: Record<Category['type'], string> = { income: 'i-lucide-trending-up', expense: 'i-lucide-trending-down' }
+const typeColor: Record<Category['type'], 'success' | 'error'> = { income: 'success', expense: 'error' }
 
 const columns = [
   { accessorKey: 'name', header: 'Nome', enableSorting: false },
+  { id: 'type', header: 'Tipo', enableSorting: false },
   { id: 'origin', header: 'Origem', enableSorting: false },
   { id: 'usage', header: 'Em uso', enableSorting: false },
   { id: 'actions', header: '', enableSorting: false }
@@ -124,29 +124,6 @@ async function confirmRemove() {
       </div>
 
       <div v-else class="space-y-4 p-4">
-        <!-- Tipo toggle -->
-        <div class="flex w-full max-w-xs overflow-hidden rounded-lg border border-default">
-          <button
-            type="button"
-            class="flex flex-1 items-center justify-center gap-2 py-2 text-sm font-medium transition-colors focus:outline-none"
-            :class="activeType === 'income' ? 'bg-success/10 text-success' : 'text-muted hover:bg-elevated'"
-            @click="activeType = 'income'"
-          >
-            <UIcon name="i-lucide-trending-up" class="size-4" />
-            Entrada
-          </button>
-          <div class="w-px bg-border" />
-          <button
-            type="button"
-            class="flex flex-1 items-center justify-center gap-2 py-2 text-sm font-medium transition-colors focus:outline-none"
-            :class="activeType === 'expense' ? 'bg-error/10 text-error' : 'text-muted hover:bg-elevated'"
-            @click="activeType = 'expense'"
-          >
-            <UIcon name="i-lucide-trending-down" class="size-4" />
-            Saída
-          </button>
-        </div>
-
         <AppDataTable
           v-model:search-term="search"
           :columns="columns"
@@ -182,6 +159,16 @@ async function confirmRemove() {
             </div>
           </template>
 
+          <template #type-cell="{ row }">
+            <UBadge
+              :label="typeLabel[(row.original as Category).type]"
+              :icon="typeIcon[(row.original as Category).type]"
+              :color="typeColor[(row.original as Category).type]"
+              variant="subtle"
+              size="sm"
+            />
+          </template>
+
           <template #origin-cell="{ row }">
             <UBadge
               :label="(row.original as Category).is_default ? 'Padrão' : 'Personalizada'"
@@ -192,9 +179,14 @@ async function confirmRemove() {
           </template>
 
           <template #usage-cell="{ row }">
-            <span class="text-sm text-muted">
-              {{ (row.original as Category).usage_count }} lançamento{{ (row.original as Category).usage_count !== 1 ? 's' : '' }}
-            </span>
+            <UTooltip
+              :text="`${(row.original as Category).usage_count} lançamento${(row.original as Category).usage_count !== 1 ? 's' : ''}`"
+            >
+              <span
+                class="inline-block size-2.5 rounded-full"
+                :class="(row.original as Category).usage_count > 0 ? 'bg-success' : 'bg-error'"
+              />
+            </UTooltip>
           </template>
 
           <template #actions-cell="{ row }">
@@ -210,23 +202,14 @@ async function confirmRemove() {
                   @click="openEdit(row.original as Category)"
                 />
               </UTooltip>
-              <UTooltip
-                :text="(row.original as Category).is_default
-                  ? 'Categorias padrão não podem ser removidas'
-                  : (row.original as Category).usage_count > 0
-                    ? 'Categoria em uso não pode ser removida'
-                    : 'Remover categoria'"
-              >
-                <UButton
-                  v-if="canDelete"
-                  icon="i-lucide-trash-2"
-                  color="error"
-                  variant="ghost"
-                  size="xs"
-                  :disabled="(row.original as Category).is_default || (row.original as Category).usage_count > 0"
-                  @click="requestRemove(row.original as Category)"
-                />
-              </UTooltip>
+              <UButton
+                v-if="canDelete && !(row.original as Category).is_default && (row.original as Category).usage_count === 0"
+                icon="i-lucide-trash-2"
+                color="error"
+                variant="ghost"
+                size="xs"
+                @click="requestRemove(row.original as Category)"
+              />
             </div>
           </template>
         </AppDataTable>
@@ -237,7 +220,6 @@ async function confirmRemove() {
   <FinancialCategoriesFormModal
     v-model:open="showFormModal"
     :category="selectedCategory"
-    :active-type="activeType"
     @saved="onSaved"
   />
 

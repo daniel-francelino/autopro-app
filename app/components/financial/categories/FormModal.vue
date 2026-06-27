@@ -3,11 +3,13 @@ import { DEFAULT_CATEGORY_COLOR, DEFAULT_CATEGORY_ICON } from '~/utils/financial
 
 type Category = { id: string, name: string, type: 'income' | 'expense', icon: string, color: string, is_default: boolean }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   open: boolean
   category: Category | null
-  activeType: 'income' | 'expense'
-}>()
+  activeType?: 'income' | 'expense'
+}>(), {
+  activeType: 'expense'
+})
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
