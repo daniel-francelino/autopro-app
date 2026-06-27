@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { DEFAULT_CATEGORY_COLOR, DEFAULT_CATEGORY_ICON } from '~/utils/financial-category-options'
+import { DEFAULT_CATEGORY_COLOR, DEFAULT_CATEGORY_ICON, formatCategoryName } from '~/utils/financial-category-options'
 
 type Category = { id: string, name: string, type: 'income' | 'expense', icon: string, color: string, is_default: boolean }
 
@@ -129,7 +129,7 @@ async function save() {
               Pré-visualização
             </p>
             <p class="truncate text-sm font-medium text-highlighted">
-              {{ form.name || 'Nome da categoria' }}
+              {{ form.name ? formatCategoryName(form.name) : 'Nome da categoria' }}
             </p>
           </div>
         </div>

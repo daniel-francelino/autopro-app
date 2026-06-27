@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ActionCode } from '~/constants/action-codes'
+import { formatCategoryName } from '~/utils/financial-category-options'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Categorias Financeiras' })
@@ -154,7 +155,7 @@ async function confirmRemove() {
                 <UIcon :name="(row.original as Category).icon" class="size-4" :style="{ color: (row.original as Category).color }" />
               </div>
               <p class="font-medium text-highlighted">
-                {{ (row.original as Category).name }}
+                {{ formatCategoryName((row.original as Category).name) }}
               </p>
             </div>
           </template>
@@ -203,7 +204,7 @@ async function confirmRemove() {
                 />
               </UTooltip>
               <UButton
-                v-if="canDelete && !(row.original as Category).is_default && (row.original as Category).usage_count === 0"
+                v-if="canDelete && (row.original as Category).usage_count === 0"
                 icon="i-lucide-trash-2"
                 color="error"
                 variant="ghost"
@@ -235,7 +236,7 @@ async function confirmRemove() {
     <template #description>
       <p class="text-sm text-muted">
         Tem certeza que deseja excluir a categoria
-        <strong class="text-highlighted">{{ categoryPendingDeletion?.name || 'esta categoria' }}</strong>?
+        <strong class="text-highlighted">{{ categoryPendingDeletion ? formatCategoryName(categoryPendingDeletion.name) : 'esta categoria' }}</strong>?
         Esta ação não pode ser desfeita.
       </p>
     </template>

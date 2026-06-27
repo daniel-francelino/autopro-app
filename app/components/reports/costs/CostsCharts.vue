@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { formatCategoryName } from '~/utils/financial-category-options'
+
 interface CategoryRow {
   categoryKey: string
   category: string
@@ -30,7 +32,7 @@ function formatDay(value: string) {
   return `${day}/${month}`
 }
 
-const donutLabels = computed(() => props.categories.map(category => category.category))
+const donutLabels = computed(() => props.categories.map(category => formatCategoryName(category.category)))
 const donutSeries = computed(() => props.categories.map(category => Number(category.amount ?? 0)))
 const donutColors = computed(() => props.categories.map(category => category.color))
 

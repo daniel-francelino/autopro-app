@@ -49,3 +49,14 @@ export type CategoryIconValue = typeof CATEGORY_ICON_OPTIONS[number]['value']
 export function isValidHexColor(value: string): boolean {
   return /^#[0-9a-fA-F]{6}$/.test(value)
 }
+
+/**
+ * Display-only sentence case ("CUSTO FIXO" -> "Custo fixo"). Never write the
+ * result back — categories created before this UI existed (or via the SQL
+ * backfill) keep whatever casing they were stored with; this only normalizes
+ * how the name is *shown*.
+ */
+export function formatCategoryName(name: string): string {
+  const lower = name.toLocaleLowerCase('pt-BR')
+  return lower.charAt(0).toLocaleUpperCase('pt-BR') + lower.slice(1)
+}

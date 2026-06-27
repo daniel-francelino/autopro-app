@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { SortingState } from '@tanstack/vue-table'
 import type { CostCategoryDetailData } from '~/components/reports/costs/CostsCategoryDetailsSlideover.vue'
-import { DEFAULT_CATEGORY_COLOR, DEFAULT_CATEGORY_ICON } from '~/utils/financial-category-options'
+import { DEFAULT_CATEGORY_COLOR, DEFAULT_CATEGORY_ICON, formatCategoryName } from '~/utils/financial-category-options'
 
 interface CategoryRow {
   categoryKey: string
@@ -249,7 +249,7 @@ watch([dateFrom, dateTo, search, selectedCategories, statusFilters], async () =>
               </div>
               <div>
                 <p class="font-medium text-highlighted">
-                  {{ row.original.category }}
+                  {{ formatCategoryName(String(row.original.category ?? '')) }}
                 </p>
                 <p class="text-xs text-muted">
                   {{ formatPercent(Number(row.original.percentage ?? 0)) }} do total

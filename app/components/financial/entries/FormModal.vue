@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { addMonths, format, parseISO } from 'date-fns'
+import { formatCategoryName } from '~/utils/financial-category-options'
 
 type Entry = Record<string, unknown>
 type BankAccountItem = {
@@ -86,10 +87,10 @@ const categoryOptions = computed(() => {
   const currentType = form.type
   const fromDefaults = defaultCategories.value
     .filter(d => d.type === currentType)
-    .map(d => ({ label: d.name, value: d.id, icon: d.icon }))
+    .map(d => ({ label: formatCategoryName(d.name), value: d.id, icon: d.icon }))
   const fromCustom = customCategories.value
     .filter(c => c.type === currentType)
-    .map(c => ({ label: c.name, value: c.id, icon: c.icon }))
+    .map(c => ({ label: formatCategoryName(c.name), value: c.id, icon: c.icon }))
   return [...fromDefaults, ...fromCustom]
 })
 

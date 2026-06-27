@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { DEFAULT_CATEGORY_COLOR } from '~/utils/financial-category-options'
+import { DEFAULT_CATEGORY_COLOR, formatCategoryName } from '~/utils/financial-category-options'
 
 export interface CostCategoryDetailItem {
   id: string
@@ -108,7 +108,7 @@ const headerColor = computed(() => props.data?.color ?? DEFAULT_CATEGORY_COLOR)
           </div>
           <div>
             <h2 class="text-base font-bold leading-tight text-highlighted">
-              {{ props.data.category }}
+              {{ formatCategoryName(props.data.category) }}
             </h2>
             <p class="mt-0.5 text-xs text-muted">
               {{ props.data.totalItems }} lançamento{{ props.data.totalItems !== 1 ? 's' : '' }} nos filtros atuais
@@ -210,7 +210,7 @@ const headerColor = computed(() => props.data?.color ?? DEFAULT_CATEGORY_COLOR)
                     </span>
                     <span class="inline-flex items-center gap-1.5">
                       <UIcon :name="props.data?.icon ?? 'i-lucide-tag'" class="size-4" />
-                      {{ item.category }}
+                      {{ formatCategoryName(item.category) }}
                     </span>
                   </div>
                 </div>

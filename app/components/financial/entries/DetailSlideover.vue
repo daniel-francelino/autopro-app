@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { formatCategoryName } from '~/utils/financial-category-options'
+
 type Entry = Record<string, unknown>
 
 type LinkedEntry = {
@@ -144,7 +146,10 @@ const entry = computed(() => detail.value?.entry ?? null)
 // Falls back to the legacy free-text category for any transaction that
 // somehow still lacks a category_id -- see docs/financial-categories-crud.md.
 const categoryRef = computed(() => (entry.value?.category_ref as CategoryRef) ?? null)
-const categoryLabel = computed(() => categoryRef.value?.name || String(entry.value?.category ?? '') || '—')
+const categoryLabel = computed(() => {
+  const raw = categoryRef.value?.name || String(entry.value?.category ?? '')
+  return raw ? formatCategoryName(raw) : '—'
+})
 const categoryIcon = computed(() => categoryRef.value?.icon || 'i-lucide-tag')
 const categoryIconStyle = computed(() => categoryRef.value?.color ? { color: categoryRef.value.color } : undefined)
 const installmentSiblings = computed(() => detail.value?.installmentSiblings ?? [])

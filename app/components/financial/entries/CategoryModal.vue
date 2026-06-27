@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { DEFAULT_CATEGORY_COLOR, DEFAULT_CATEGORY_ICON } from '~/utils/financial-category-options'
+import { DEFAULT_CATEGORY_COLOR, DEFAULT_CATEGORY_ICON, formatCategoryName } from '~/utils/financial-category-options'
 
 type CategoryItem = { id: string, name: string, type: 'income' | 'expense', icon: string, color: string, is_default: boolean }
 
@@ -241,7 +241,7 @@ async function deleteCategory(id: string) {
                   :style="{ backgroundColor: `${cat.color}1A`, color: cat.color }"
                 >
                   <UIcon :name="cat.icon" class="size-3.5" />
-                  {{ cat.name }}
+                  {{ formatCategoryName(cat.name) }}
                 </span>
               </div>
             </div>
@@ -292,7 +292,7 @@ async function deleteCategory(id: string) {
                   <div v-else class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
                       <UIcon :name="cat.icon" class="size-4" :style="{ color: cat.color }" />
-                      <span class="text-sm">{{ cat.name }}</span>
+                      <span class="text-sm">{{ formatCategoryName(cat.name) }}</span>
                     </div>
 
                     <template v-if="confirmDeleteId === cat.id">
