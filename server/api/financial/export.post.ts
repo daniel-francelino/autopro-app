@@ -28,6 +28,14 @@ function normalizeStatus(value: unknown) {
   return s
 }
 
+// Display-only sentence case, same rule as app/utils/financial-category-options.ts
+// formatCategoryName — duplicated here because this runs server-side, where the
+// export file is generated. Never written back to the category itself.
+function formatCategoryName(name: string) {
+  const lower = name.toLocaleLowerCase('pt-BR')
+  return lower.charAt(0).toLocaleUpperCase('pt-BR') + lower.slice(1)
+}
+
 function normalizeType(value: unknown) {
   const s = String(value || '').trim().toLowerCase()
   if (s === 'income') return 'Receita'
@@ -106,7 +114,7 @@ export default defineEventHandler(async (event) => {
 
   const rows = items.map(item => [
     String(item.description || ''),
-    String(item.category_ref?.name || '—'),
+    item.category_ref?.name ? formatCategoryName(String(item.category_ref.name)) : '—',
     normalizeType(item.type),
     normalizeStatus(item.status),
     formatCurrency(item.amount),
