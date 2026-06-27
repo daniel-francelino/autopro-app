@@ -1,13 +1,22 @@
 <script setup lang="ts">
 import type { SortingState } from '@tanstack/vue-table'
 import type { CostCategoryDetailData } from '~/components/reports/costs/CostsCategoryDetailsSlideover.vue'
-import { formatCostCategoryLabel, getCostCategoryVisual } from '~/utils/report-costs'
+import { DEFAULT_CATEGORY_COLOR, DEFAULT_CATEGORY_ICON, formatCategoryName } from '~/utils/financial-category-options'
 
 interface CategoryRow {
   categoryKey: string
   category: string
+  icon: string
+  color: string
   amount: number
   percentage: number
+}
+
+interface CategoryOption {
+  id: string
+  name: string
+  icon: string
+  color: string
 }
 
 interface EvolutionPoint {
@@ -29,7 +38,7 @@ interface CostsPagination {
 interface CostsReportResponse {
   data?: {
     costsReport?: {
-      availableCategories?: string[]
+      availableCategories?: CategoryOption[]
       summary?: CostsSummary
       charts?: {
         categories?: CategoryRow[]
@@ -115,7 +124,7 @@ const chartCategories = computed<CategoryRow[]>(() => costsReport.value?.charts?
 const evolution = computed<EvolutionPoint[]>(() => costsReport.value?.charts?.evolution ?? [])
 const items = computed<CategoryRow[]>(() => costsReport.value?.table?.items ?? [])
 const pagination = computed<CostsPagination | null>(() => costsReport.value?.table?.pagination ?? null)
-const availableCategories = computed<string[]>(() => costsReport.value?.availableCategories ?? [])
+const availableCategories = computed<CategoryOption[]>(() => costsReport.value?.availableCategories ?? [])
 
 const columns = [
   { id: 'category', header: 'Categoria', enableSorting: true },
@@ -234,13 +243,13 @@ watch([dateFrom, dateTo, search, selectedCategories, statusFilters], async () =>
             >
               <div
                 class="flex size-8 shrink-0 items-center justify-center rounded-xl text-white shadow-sm"
-                :style="{ backgroundColor: getCostCategoryVisual(String(row.original.categoryKey ?? '')).chartColor }"
+                :style="{ backgroundColor: String(row.original.color || DEFAULT_CATEGORY_COLOR) }"
               >
-                <UIcon :name="getCostCategoryVisual(String(row.original.categoryKey ?? '')).icon" class="size-4" />
+                <UIcon :name="String(row.original.icon || DEFAULT_CATEGORY_ICON)" class="size-4" />
               </div>
               <div>
                 <p class="font-medium text-highlighted">
-                  {{ formatCostCategoryLabel(String(row.original.categoryKey ?? '')) }}
+                  {{ formatCategoryName(String(row.original.category ?? '')) }}
                 </p>
                 <p class="text-xs text-muted">
                   {{ formatPercent(Number(row.original.percentage ?? 0)) }} do total

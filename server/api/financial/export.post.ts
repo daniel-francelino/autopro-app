@@ -71,7 +71,7 @@ export default defineEventHandler(async (event) => {
     (() => {
       let q = supabase
         .from('financial_transactions')
-        .select('*')
+        .select('*, category_ref:financial_categories(id, name, icon, color)')
         .eq('organization_id', organizationId)
         .is('deleted_at', null)
         .order('due_date', { ascending: false })
@@ -106,7 +106,7 @@ export default defineEventHandler(async (event) => {
 
   const rows = items.map(item => [
     String(item.description || ''),
-    String(item.category || '—'),
+    String(item.category_ref?.name || '—'),
     normalizeType(item.type),
     normalizeStatus(item.status),
     formatCurrency(item.amount),

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { formatCostCategoryLabel, getCostCategoryVisual } from '~/utils/report-costs'
+import { DEFAULT_CATEGORY_COLOR, formatCategoryName } from '~/utils/financial-category-options'
 
 export interface CostCategoryDetailItem {
   id: string
@@ -19,6 +19,8 @@ export interface CostCategoryDetailItem {
 export interface CostCategoryDetailData {
   categoryKey: string
   category: string
+  icon: string
+  color: string
   totalItems: number
   totalValue: number
   items: CostCategoryDetailItem[]
@@ -78,7 +80,7 @@ function formatRecurrence(value: string | null) {
   return normalizedValue.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase())
 }
 
-const headerVisual = computed(() => getCostCategoryVisual(props.data?.categoryKey ?? 'other'))
+const headerColor = computed(() => props.data?.color ?? DEFAULT_CATEGORY_COLOR)
 </script>
 
 <template>
@@ -100,13 +102,13 @@ const headerVisual = computed(() => getCostCategoryVisual(props.data?.categoryKe
         <div v-else-if="props.data" class="flex items-center gap-3">
           <div
             class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-sm"
-            :style="{ backgroundColor: headerVisual.chartColor }"
+            :style="{ backgroundColor: headerColor }"
           >
-            <UIcon :name="headerVisual.icon" class="size-4" />
+            <UIcon :name="props.data.icon" class="size-4" />
           </div>
           <div>
             <h2 class="text-base font-bold leading-tight text-highlighted">
-              {{ formatCostCategoryLabel(props.data.categoryKey) }}
+              {{ formatCategoryName(props.data.category) }}
             </h2>
             <p class="mt-0.5 text-xs text-muted">
               {{ props.data.totalItems }} lançamento{{ props.data.totalItems !== 1 ? 's' : '' }} nos filtros atuais
@@ -207,8 +209,8 @@ const headerVisual = computed(() => getCostCategoryVisual(props.data?.categoryKe
                       {{ formatDate(item.due_date) }}
                     </span>
                     <span class="inline-flex items-center gap-1.5">
-                      <UIcon :name="getCostCategoryVisual(item.category).icon" class="size-4" />
-                      {{ formatCostCategoryLabel(item.category) }}
+                      <UIcon :name="props.data?.icon ?? 'i-lucide-tag'" class="size-4" />
+                      {{ formatCategoryName(item.category) }}
                     </span>
                   </div>
                 </div>

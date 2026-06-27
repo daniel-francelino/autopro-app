@@ -1,4 +1,4 @@
-import { monitoredNuvemFiscalFetch, sanitizeCpfCnpj, normalizeText } from './nuvem-fiscal'
+import { monitoredNuvemFiscalFetch } from './nuvem-fiscal'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -56,7 +56,7 @@ export function createServerCache<T>(ttlMs: number) {
 
 // ─── Re-exports ───────────────────────────────────────────────────────────────
 
-export { monitoredNuvemFiscalFetch as monitoredFocusNfeFetch, sanitizeCpfCnpj, normalizeText }
+export { monitoredNuvemFiscalFetch as monitoredFocusNfeFetch }
 
 // ─── Subscription cancellation cleanup ───────────────────────────────────────
 

@@ -17,7 +17,9 @@ const detail = ref<ServiceOrderDetailFull | null>(null)
 const organization = ref<OrganizationData | null>(null)
 const isLoading = ref(false)
 const isDownloading = ref(false)
+const isPrinting = ref(false)
 const captureDocRef = ref<{ el: HTMLElement | null } | null>(null)
+const printCleanupTargets: { iframe: HTMLIFrameElement, url: string }[] = []
 
 watch(
   () => props.open,
@@ -26,6 +28,7 @@ watch(
     else {
       detail.value = null
       organization.value = null
+      cleanupPrintTargets()
     }
   }
 )
@@ -75,6 +78,70 @@ function sanitizeFileNamePart(value: string | null | undefined) {
     .replace(/^_+|_+$/g, '')
 }
 
+async function buildPdfBlob(el: HTMLElement): Promise<Blob> {
+  const [{ toPng }, { PDFDocument }] = await Promise.all([
+    import('html-to-image'),
+    import('pdf-lib')
+  ])
+
+  const PIXEL_RATIO = 2
+  // Must match PAGE_H constant in DocumentPrint.vue
+  const PAGE_PX_H = 1123
+
+  const dataUrl = await toPng(el, {
+    pixelRatio: PIXEL_RATIO,
+    cacheBust: true,
+    backgroundColor: '#ffffff'
+  })
+
+  const fullImg = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve(img)
+    img.onerror = reject
+    img.src = dataUrl
+  })
+
+  // Each page in DocumentPrint is exactly PAGE_PX_H px tall;
+  // at PIXEL_RATIO=2 each page stripe in the PNG is PAGE_PX_H*2 px tall.
+  const stripeH = PAGE_PX_H * PIXEL_RATIO
+  const stripeW = fullImg.naturalWidth
+  const numPages = Math.max(1, Math.round(fullImg.naturalHeight / stripeH))
+
+  const PDF_W = 595.28
+  const PDF_H = 841.89
+
+  const pdf = await PDFDocument.create()
+
+  for (let i = 0; i < numPages; i++) {
+    // Slice exactly one page-stripe from the full image
+    const canvas = document.createElement('canvas')
+    canvas.width = stripeW
+    canvas.height = stripeH
+    const ctx = canvas.getContext('2d')!
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, stripeW, stripeH)
+    ctx.drawImage(fullImg, 0, i * stripeH, stripeW, stripeH, 0, 0, stripeW, stripeH)
+
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        b => (b ? resolve(b) : reject(new Error('canvas.toBlob failed'))),
+        'image/png'
+      )
+    })
+    const bytes = new Uint8Array(await blob.arrayBuffer())
+    const pdfImg = await pdf.embedPng(bytes)
+    const page = pdf.addPage([PDF_W, PDF_H])
+    // Full-bleed: the document already has its own internal padding
+    page.drawImage(pdfImg, { x: 0, y: 0, width: PDF_W, height: PDF_H })
+  }
+
+  const pdfBytes = await pdf.save()
+  return new Blob(
+    [pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength) as ArrayBuffer],
+    { type: 'application/pdf' }
+  )
+}
+
 async function downloadPdf() {
   const el = captureDocRef.value?.el
   if (!el || !detail.value || isDownloading.value) return
@@ -82,67 +149,7 @@ async function downloadPdf() {
   isDownloading.value = true
 
   try {
-    const [{ toPng }, { PDFDocument }] = await Promise.all([
-      import('html-to-image'),
-      import('pdf-lib')
-    ])
-
-    const PIXEL_RATIO = 2
-    // Must match PAGE_H constant in DocumentPrint.vue
-    const PAGE_PX_H = 1123
-
-    const dataUrl = await toPng(el, {
-      pixelRatio: PIXEL_RATIO,
-      cacheBust: true,
-      backgroundColor: '#ffffff'
-    })
-
-    const fullImg = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const img = new Image()
-      img.onload = () => resolve(img)
-      img.onerror = reject
-      img.src = dataUrl
-    })
-
-    // Each page in DocumentPrint is exactly PAGE_PX_H px tall;
-    // at PIXEL_RATIO=2 each page stripe in the PNG is PAGE_PX_H*2 px tall.
-    const stripeH = PAGE_PX_H * PIXEL_RATIO
-    const stripeW = fullImg.naturalWidth
-    const numPages = Math.max(1, Math.round(fullImg.naturalHeight / stripeH))
-
-    const PDF_W = 595.28
-    const PDF_H = 841.89
-
-    const pdf = await PDFDocument.create()
-
-    for (let i = 0; i < numPages; i++) {
-      // Slice exactly one page-stripe from the full image
-      const canvas = document.createElement('canvas')
-      canvas.width = stripeW
-      canvas.height = stripeH
-      const ctx = canvas.getContext('2d')!
-      ctx.fillStyle = '#ffffff'
-      ctx.fillRect(0, 0, stripeW, stripeH)
-      ctx.drawImage(fullImg, 0, i * stripeH, stripeW, stripeH, 0, 0, stripeW, stripeH)
-
-      const blob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob(
-          b => (b ? resolve(b) : reject(new Error('canvas.toBlob failed'))),
-          'image/png'
-        )
-      })
-      const bytes = new Uint8Array(await blob.arrayBuffer())
-      const pdfImg = await pdf.embedPng(bytes)
-      const page = pdf.addPage([PDF_W, PDF_H])
-      // Full-bleed: the document already has its own internal padding
-      page.drawImage(pdfImg, { x: 0, y: 0, width: PDF_W, height: PDF_H })
-    }
-
-    const pdfBytes = await pdf.save()
-    const blob = new Blob(
-      [pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength) as ArrayBuffer],
-      { type: 'application/pdf' }
-    )
+    const blob = await buildPdfBlob(el)
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     const clientPart = sanitizeFileNamePart(detail.value.client?.name) || 'Cliente'
@@ -165,6 +172,52 @@ async function downloadPdf() {
     isDownloading.value = false
   }
 }
+
+async function printPdf() {
+  const el = captureDocRef.value?.el
+  if (!el || !detail.value || isPrinting.value) return
+
+  isPrinting.value = true
+
+  try {
+    const blob = await buildPdfBlob(el)
+    const url = URL.createObjectURL(blob)
+
+    const iframe = document.createElement('iframe')
+    iframe.style.position = 'fixed'
+    iframe.style.inset = '0'
+    iframe.style.width = '0'
+    iframe.style.height = '0'
+    iframe.style.border = '0'
+    iframe.src = url
+
+    iframe.addEventListener('load', () => {
+      iframe.contentWindow?.focus()
+      iframe.contentWindow?.print()
+    })
+
+    document.body.appendChild(iframe)
+    printCleanupTargets.push({ iframe, url })
+  } catch {
+    toast.add({
+      title: 'Erro ao preparar impressão',
+      description: 'Não foi possível preparar o documento para impressão.',
+      color: 'error'
+    })
+  } finally {
+    isPrinting.value = false
+  }
+}
+
+function cleanupPrintTargets() {
+  for (const { iframe, url } of printCleanupTargets) {
+    iframe.remove()
+    URL.revokeObjectURL(url)
+  }
+  printCleanupTargets.length = 0
+}
+
+onUnmounted(cleanupPrintTargets)
 </script>
 
 <template>
@@ -208,8 +261,19 @@ async function downloadPdf() {
 
         <div class="flex items-start justify-end">
           <div
-            class="flex w-full max-w-[280px] items-center justify-end gap-2 rounded-2xl p-2 lg:w-auto"
+            class="flex w-full max-w-[360px] items-center justify-end gap-2 rounded-2xl p-2 lg:w-auto"
           >
+            <UButton
+              label="Imprimir"
+              icon="i-lucide-printer"
+              color="primary"
+              variant="outline"
+              size="sm"
+              class="flex-1 lg:flex-none"
+              :loading="isPrinting"
+              :disabled="isLoading || !detail"
+              @click="printPdf"
+            />
             <UButton
               label="Baixar PDF"
               icon="i-lucide-download"

@@ -28,6 +28,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   'close': []
   'pay': []
+  'down-payment': []
+  'extra-payment': []
   'cancel-payment': []
   'advance-status': []
   'cancel': []
@@ -54,6 +56,15 @@ const canCancelPayment = computed(() =>
   props.canUpdate
   && (props.order.payment_status === 'paid' || props.order.payment_status === 'partial')
   && !isCancelled.value
+)
+
+const canReceiveDownPayment = computed(() =>
+  props.canUpdate
+  && ['open', 'in_progress', 'waiting_for_part'].includes(props.order.status)
+)
+
+const canReceiveExtraPayment = computed(() =>
+  props.canUpdate && props.order.status === 'completed'
 )
 
 const canAdvance = computed(() =>
@@ -117,6 +128,28 @@ const canEdit = computed(() =>
             color="success"
             size="sm"
             @click="emit('pay')"
+          />
+
+          <!-- Receber sinal -->
+          <UButton
+            v-if="canReceiveDownPayment"
+            label="Receber sinal"
+            icon="i-lucide-hand-coins"
+            color="info"
+            variant="outline"
+            size="sm"
+            @click="emit('down-payment')"
+          />
+
+          <!-- Receber avulso -->
+          <UButton
+            v-if="canReceiveExtraPayment"
+            label="Receber avulso"
+            icon="i-lucide-banknote"
+            color="info"
+            variant="outline"
+            size="sm"
+            @click="emit('extra-payment')"
           />
 
           <!-- Cancelar pagamento -->

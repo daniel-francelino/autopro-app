@@ -325,6 +325,52 @@ async function setOrganizationStateFromInvoice(
   }
 }
 
+// The 9 default category rows seeded per organization (8 names — 'Outros'
+// exists once per type). Kept in sync by hand with
+// server/utils/financial-category-defaults.ts (the Nuxt route's copy) since
+// this Deno function can't import a Node module — see
+// docs/financial-categories-crud.md, sections 2.7/3.5/3.6.
+const DEFAULT_FINANCIAL_CATEGORIES = [
+  { name: 'Vendas', type: 'income', icon: 'i-lucide-shopping-cart', color: '#22c55e' },
+  { name: 'Serviços', type: 'income', icon: 'i-lucide-wrench', color: '#3b82f6' },
+  { name: 'Outros', type: 'income', icon: 'i-lucide-circle-dollar-sign', color: '#64748b' },
+  { name: 'Aluguel', type: 'expense', icon: 'i-lucide-building-2', color: '#8b5cf6' },
+  { name: 'Salários', type: 'expense', icon: 'i-lucide-users', color: '#f97316' },
+  { name: 'Fornecedores', type: 'expense', icon: 'i-lucide-package', color: '#22c55e' },
+  { name: 'Impostos', type: 'expense', icon: 'i-lucide-landmark', color: '#ef4444' },
+  { name: 'Marketing', type: 'expense', icon: 'i-lucide-megaphone', color: '#ec4899' },
+  { name: 'Outros', type: 'expense', icon: 'i-lucide-folder-open', color: '#64748b' }
+]
+
+async function ensureDefaultFinancialCategories(
+  supabase: ReturnType<typeof createClient>,
+  organizationId: string,
+  createdBy: string
+) {
+  const { count } = await supabase
+    .from('financial_categories')
+    .select('id', { count: 'exact', head: true })
+    .eq('organization_id', organizationId)
+    .eq('is_default', true)
+
+  if (count) return
+
+  const { error } = await supabase.from('financial_categories').insert(
+    DEFAULT_FINANCIAL_CATEGORIES.map(category => ({
+      organization_id: organizationId,
+      name: category.name,
+      type: category.type,
+      icon: category.icon,
+      color: category.color,
+      is_default: true,
+      created_by: createdBy
+    }))
+  )
+
+  if (error)
+    console.error('[stripe-webhook] Failed to create default financial categories:', error.message)
+}
+
 async function ensureOrganization(
   supabase: ReturnType<typeof createClient>,
   userId: string,
@@ -368,6 +414,8 @@ async function ensureOrganization(
     console.error('[stripe-webhook] Failed to create organization:', orgErr?.message)
     return null
   }
+
+  await ensureDefaultFinancialCategories(supabase, org.id, 'stripe-webhook')
 
   let roleId = profile.role_id
 

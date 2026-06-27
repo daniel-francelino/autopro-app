@@ -2,6 +2,7 @@ import { defineEventHandler, readBody, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
+import { resolveFinancialCategory } from '../../utils/resolve-financial-category'
 
 /**
  * POST /api/financial
@@ -20,7 +21,12 @@ export default defineEventHandler(async (event) => {
   if (body.amount == null) throw createError({ statusCode: 400, statusMessage: 'O campo "amount" é obrigatório' })
   if (!body.due_date) throw createError({ statusCode: 400, statusMessage: 'O campo "due_date" é obrigatório' })
   if (!body.type) throw createError({ statusCode: 400, statusMessage: 'O campo "type" é obrigatório' })
-  if (!body.category) throw createError({ statusCode: 400, statusMessage: 'O campo "category" é obrigatório' })
+  if (!body.category_id && !body.category) throw createError({ statusCode: 400, statusMessage: 'O campo "category_id" é obrigatório' })
+
+  const resolvedCategory = await resolveFinancialCategory(supabase, organizationId, body.type, {
+    category_id: body.category_id,
+    category: body.category
+  })
 
   const installmentList: Array<{ number: number, amount: number, due_date: string, status: string }>
     = Array.isArray(body.installments) ? body.installments : []
@@ -40,7 +46,8 @@ export default defineEventHandler(async (event) => {
         due_date: firstInst.due_date,
         type: body.type,
         status: firstInst.status ?? body.status ?? 'pending',
-        category: body.category,
+        category: resolvedCategory.name,
+        category_id: resolvedCategory.id,
         recurrence: null,
         is_installment: true,
         installment_count: total,
@@ -63,7 +70,8 @@ export default defineEventHandler(async (event) => {
       due_date: inst.due_date,
       type: body.type,
       status: inst.status ?? 'pending',
-      category: body.category,
+      category: resolvedCategory.name,
+      category_id: resolvedCategory.id,
       recurrence: null,
       is_installment: true,
       installment_count: total,
@@ -91,7 +99,8 @@ export default defineEventHandler(async (event) => {
       due_date: body.due_date,
       type: body.type,
       status: body.status ?? 'pending',
-      category: body.category,
+      category: resolvedCategory.name,
+      category_id: resolvedCategory.id,
       recurrence: body.recurrence ?? null,
       recurrence_end_date: body.recurrence_end_date ?? null,
       is_installment: body.is_installment ?? false,
@@ -102,7 +111,7 @@ export default defineEventHandler(async (event) => {
       created_by: authUser.email,
       updated_by: authUser.email
     })
-    .select()
+    .select('*, category_ref:financial_categories(id, name, icon, color)')
     .single()
 
   if (error) throw createError({ statusCode: 500, statusMessage: error.message })

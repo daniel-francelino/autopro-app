@@ -2,9 +2,13 @@
 export interface TagFilterOption {
   value: string
   label: string
-  color: 'neutral' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error'
+  color: 'neutral' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error' | `#${string}`
   icon?: string
   initials?: string
+}
+
+function isHexColor(color: string) {
+  return color.startsWith('#')
 }
 
 const props = withDefaults(defineProps<{
@@ -76,12 +80,12 @@ const unresolvedSelectionCount = computed(() => props.modelValue.length - select
           </span>
           <UBadge
             v-else
-            :color="opt.color"
+            :color="isHexColor(opt.color) ? 'neutral' : opt.color"
             variant="subtle"
             size="xs"
             class="gap-1"
           >
-            <UIcon v-if="opt.icon" :name="opt.icon" class="size-3" />
+            <UIcon v-if="opt.icon" :name="opt.icon" class="size-3" :style="isHexColor(opt.color) ? { color: opt.color } : undefined" />
             {{ opt.label }}
           </UBadge>
         </template>
@@ -132,12 +136,12 @@ const unresolvedSelectionCount = computed(() => props.modelValue.length - select
           </template>
           <UBadge
             v-else
-            :color="opt.color"
+            :color="isHexColor(opt.color) ? 'neutral' : opt.color"
             variant="subtle"
             size="sm"
             class="gap-1 shrink-0"
           >
-            <UIcon v-if="opt.icon" :name="opt.icon" class="size-3" />
+            <UIcon v-if="opt.icon" :name="opt.icon" class="size-3" :style="isHexColor(opt.color) ? { color: opt.color } : undefined" />
             {{ opt.label }}
           </UBadge>
           <UIcon

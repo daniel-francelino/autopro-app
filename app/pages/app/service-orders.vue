@@ -206,6 +206,7 @@ async function advanceStatus(order: ServiceOrder) {
     })
     toast.add({ title: 'Status atualizado', color: 'success' })
     forceReload()
+    if (nextStatus === 'completed') openPdf(order.id)
   } catch (error: unknown) {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({
@@ -280,6 +281,22 @@ function requestPay(order: ServiceOrder) {
 function onPaymentDone() {
   showPaymentModal.value = false
   paymentOrder.value = null
+  forceReload()
+}
+
+// ─── Down payment (sinal) ───────────────────────────────────────────────────────
+
+const showDownPaymentModal = ref(false)
+const downPaymentOrder = ref<ServiceOrder | null>(null)
+
+function requestDownPayment(order: ServiceOrder) {
+  downPaymentOrder.value = order
+  showDownPaymentModal.value = true
+}
+
+function onDownPaymentReceived() {
+  showDownPaymentModal.value = false
+  downPaymentOrder.value = null
   forceReload()
 }
 
@@ -423,9 +440,18 @@ function openQuoteFromDetail(orderId: string) {
   openQuote(orderId)
 }
 
-function openPdfFromList(order: ServiceOrder) {
-  pdfOrderId.value = order.id
+function openPdf(orderId: string) {
+  pdfOrderId.value = orderId
   showPdfModal.value = true
+}
+
+function openPdfFromList(order: ServiceOrder) {
+  openPdf(order.id)
+}
+
+function openPdfFromDetail(orderId: string) {
+  closeDetail()
+  openPdf(orderId)
 }
 
 // ─── NFS-e Emission ────────────────────────────────────────────────────────────
@@ -530,6 +556,7 @@ function onNfseIssued() {
                 @pdf="openPdfFromList"
                 @duplicate="duplicate"
                 @pay="requestPay"
+                @down-payment="requestDownPayment"
                 @cancel="requestCancel"
                 @delete="requestDelete"
                 @issue-nfse="requestIssueNfse"
@@ -615,6 +642,7 @@ function onNfseIssued() {
     @updated="forceReload"
     @deleted="() => { closeDetail(); forceReload() }"
     @issue-nfse="requestIssueNfseFromDetail"
+    @completed="openPdfFromDetail"
   />
 
   <ServiceOrdersQuoteModal
@@ -633,6 +661,13 @@ function onNfseIssued() {
     v-model:open="showPaymentModal"
     :order="paymentOrder"
     @paid="onPaymentDone"
+  />
+
+  <!-- ── Down Payment (sinal) Modal ───────────────────────────────────────────── -->
+  <ServiceOrdersDownPaymentModal
+    v-model:open="showDownPaymentModal"
+    :order="downPaymentOrder"
+    @received="onDownPaymentReceived"
   />
 
   <!-- ── NFS-e Issue Modal ──────────────────────────────────────────────────── -->

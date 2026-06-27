@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import type { TagFilterOption } from '~/components/ui/TagFilter.vue'
-import {
-  formatCostCategoryLabel,
-  getCostCategoryVisual
-} from '~/utils/report-costs'
+import { formatCategoryName } from '~/utils/financial-category-options'
+
+type CategoryOption = { id: string, name: string, icon: string, color: string }
 
 const props = withDefaults(
   defineProps<{
-    categories: string[]
+    categories: CategoryOption[]
     dateLabel?: string
     categoriesLabel?: string
     statusLabel?: string
@@ -45,22 +44,13 @@ const statusOptions: TagFilterOption[] = [
 
 const categoryOptions = computed<TagFilterOption[]>(() =>
   [...props.categories]
-    .sort((a, b) =>
-      formatCostCategoryLabel(a).localeCompare(
-        formatCostCategoryLabel(b),
-        'pt-BR',
-        { sensitivity: 'base' }
-      )
-    )
-    .map((categoryKey, index) => {
-      const visual = getCostCategoryVisual(categoryKey, index)
-      return {
-        value: categoryKey,
-        label: formatCostCategoryLabel(categoryKey),
-        color: visual.tagColor,
-        icon: visual.icon
-      }
-    })
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }))
+    .map(category => ({
+      value: category.id,
+      label: formatCategoryName(category.name),
+      color: category.color as TagFilterOption['color'],
+      icon: category.icon
+    }))
 )
 </script>
 

@@ -111,6 +111,9 @@ const links = computed<NavigationMenuItem[][]>(() => {
   if (workshop.can(ActionCode.FINANCIAL_READ))
     financeChildren.push(item('Visão geral', 'i-lucide-dollar-sign', '/app/financial'))
 
+  if (workshop.can(ActionCode.FINANCIAL_READ))
+    financeChildren.push(item('Categorias', 'i-lucide-tag', '/app/financial/categories'))
+
   if (workshop.can(ActionCode.BANK_ACCOUNTS_READ))
     financeChildren.push(item('Contas bancárias', 'i-lucide-landmark', '/app/financial/accounts'))
 

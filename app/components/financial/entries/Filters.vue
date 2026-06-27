@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { formatCategoryName } from '~/utils/financial-category-options'
+
 const dateFrom = defineModel<string>('dateFrom')
 const dateTo = defineModel<string>('dateTo')
 const typeFilters = defineModel<string[]>('typeFilters', { default: () => [] })
@@ -6,7 +8,7 @@ const statusFilters = defineModel<string[]>('statusFilters', { default: () => []
 const categoryFilter = defineModel<string>('categoryFilter', { default: '' })
 
 const props = defineProps<{
-  categories?: string[]
+  categories?: Array<{ id: string, name: string }>
 }>()
 
 const typeOptions = [
@@ -23,7 +25,7 @@ const statusOptions = [
 
 const categoryOptions = computed(() => [
   { label: 'Todas as categorias', value: '' },
-  ...(props.categories ?? []).map(c => ({ label: c, value: c }))
+  ...(props.categories ?? []).map(c => ({ label: formatCategoryName(c.name), value: c.id }))
 ])
 
 // Bridge between string[] models and single-value USelectMenu

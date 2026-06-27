@@ -1,10 +1,13 @@
 <script setup lang="ts">
-type CategoryCustom = { id: string, name: string, type: 'income' | 'expense' }
+import { DEFAULT_CATEGORY_COLOR, DEFAULT_CATEGORY_ICON, formatCategoryName } from '~/utils/financial-category-options'
+
+type CategoryItem = { id: string, name: string, type: 'income' | 'expense', icon: string, color: string, is_default: boolean }
 
 const props = defineProps<{
   open: boolean
   currentType: 'income' | 'expense'
-  customCategories: CategoryCustom[]
+  defaultCategories: CategoryItem[]
+  customCategories: CategoryItem[]
 }>()
 
 const emit = defineEmits<{
@@ -14,23 +17,18 @@ const emit = defineEmits<{
 
 const toast = useToast()
 
-const DEFAULT_CATEGORIES = [
-  { name: 'Vendas', type: 'income' as const },
-  { name: 'Serviços', type: 'income' as const },
-  { name: 'Outros', type: 'income' as const },
-  { name: 'Aluguel', type: 'expense' as const },
-  { name: 'Salários', type: 'expense' as const },
-  { name: 'Fornecedores', type: 'expense' as const },
-  { name: 'Impostos', type: 'expense' as const },
-  { name: 'Marketing', type: 'expense' as const },
-  { name: 'Outros', type: 'expense' as const }
-]
-
 const activeType = ref<'income' | 'expense'>(props.currentType)
 const newCategoryName = ref('')
+const newCategoryIcon = ref(DEFAULT_CATEGORY_ICON)
+const newCategoryColor = ref(DEFAULT_CATEGORY_COLOR)
 const isCreating = ref(false)
 const deletingId = ref<string | null>(null)
 const confirmDeleteId = ref<string | null>(null)
+const editingId = ref<string | null>(null)
+const editName = ref('')
+const editIcon = ref<string>(DEFAULT_CATEGORY_ICON)
+const editColor = ref<string>(DEFAULT_CATEGORY_COLOR)
+const isSavingEdit = ref(false)
 
 watch(
   () => props.open,
@@ -39,12 +37,13 @@ watch(
       activeType.value = props.currentType
       newCategoryName.value = ''
       confirmDeleteId.value = null
+      editingId.value = null
     }
   }
 )
 
 const defaultsForType = computed(() =>
-  DEFAULT_CATEGORIES.filter(c => c.type === activeType.value)
+  props.defaultCategories.filter(c => c.type === activeType.value)
 )
 
 const customForType = computed(() =>
@@ -55,10 +54,8 @@ async function createCategory() {
   const name = newCategoryName.value.trim()
   if (!name) return
 
-  const alreadyExists = [
-    ...DEFAULT_CATEGORIES.filter(c => c.type === activeType.value),
-    ...customForType.value
-  ].some(c => c.name.toLowerCase() === name.toLowerCase())
+  const alreadyExists = [...defaultsForType.value, ...customForType.value]
+    .some(c => c.name.toLowerCase() === name.toLowerCase())
 
   if (alreadyExists) {
     toast.add({ title: 'Categoria já existe', color: 'warning' })
@@ -69,7 +66,7 @@ async function createCategory() {
   try {
     await $fetch('/api/financial/categories', {
       method: 'POST',
-      body: { name, type: activeType.value }
+      body: { name, type: activeType.value, icon: newCategoryIcon.value, color: newCategoryColor.value }
     })
     newCategoryName.value = ''
     toast.add({ title: 'Categoria criada', color: 'success' })
@@ -89,6 +86,45 @@ async function createCategory() {
     })
   } finally {
     isCreating.value = false
+  }
+}
+
+function startEdit(cat: CategoryItem) {
+  editingId.value = cat.id
+  editName.value = cat.name
+  editIcon.value = cat.icon
+  editColor.value = cat.color
+}
+
+async function saveEdit() {
+  if (!editingId.value) return
+  const name = editName.value.trim()
+  if (!name) return
+
+  isSavingEdit.value = true
+  try {
+    await $fetch(`/api/financial/categories/${editingId.value}`, {
+      method: 'PUT',
+      body: { name, icon: editIcon.value, color: editColor.value }
+    })
+    editingId.value = null
+    toast.add({ title: 'Categoria atualizada', color: 'success' })
+    emit('updated')
+  } catch (error: unknown) {
+    const err = error as {
+      data?: { statusMessage?: string }
+      statusMessage?: string
+    }
+    toast.add({
+      title: 'Erro',
+      description:
+        err?.data?.statusMessage
+        || err?.statusMessage
+        || 'Não foi possível salvar',
+      color: 'error'
+    })
+  } finally {
+    isSavingEdit.value = false
   }
 }
 
@@ -171,6 +207,8 @@ async function deleteCategory(id: string) {
               placeholder="Digite o nome da nova categoria"
               @keydown.enter.prevent="createCategory"
             />
+            <FinancialCategoryIconPicker v-model="newCategoryIcon" :color="newCategoryColor" size="sm" />
+            <FinancialCategoryColorPicker v-model="newCategoryColor" size="sm" />
             <UButton
               icon="i-lucide-plus"
               color="neutral"
@@ -196,13 +234,15 @@ async function deleteCategory(id: string) {
                 Padrão
               </p>
               <div class="flex flex-wrap gap-2">
-                <UBadge
+                <span
                   v-for="cat in defaultsForType"
-                  :key="cat.name"
-                  color="neutral"
-                  variant="outline"
-                  :label="cat.name"
-                />
+                  :key="cat.id"
+                  class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
+                  :style="{ backgroundColor: `${cat.color}1A`, color: cat.color }"
+                >
+                  <UIcon :name="cat.icon" class="size-3.5" />
+                  {{ formatCategoryName(cat.name) }}
+                </span>
               </div>
             </div>
 
@@ -226,40 +266,74 @@ async function deleteCategory(id: string) {
                 <div
                   v-for="cat in customForType"
                   :key="cat.id"
-                  class="flex items-center justify-between rounded-md px-2 py-1.5 hover:bg-elevated group"
+                  class="rounded-md px-2 py-1.5 hover:bg-elevated group"
                 >
-                  <span class="text-sm">{{ cat.name }}</span>
-
-                  <template v-if="confirmDeleteId === cat.id">
-                    <div class="flex items-center gap-1">
-                      <span class="text-xs text-muted">Confirmar?</span>
-                      <UButton
-                        size="xs"
-                        color="error"
-                        variant="ghost"
-                        icon="i-lucide-check"
-                        :loading="deletingId === cat.id"
-                        @click="deleteCategory(cat.id)"
-                      />
-                      <UButton
-                        size="xs"
-                        color="neutral"
-                        variant="ghost"
-                        icon="i-lucide-x"
-                        @click="confirmDeleteId = null"
-                      />
-                    </div>
-                  </template>
-                  <template v-else>
+                  <div v-if="editingId === cat.id" class="flex items-center gap-2">
+                    <UInput v-model="editName" size="sm" class="flex-1" />
+                    <FinancialCategoryIconPicker v-model="editIcon" :color="editColor" size="sm" />
+                    <FinancialCategoryColorPicker v-model="editColor" size="sm" />
+                    <UButton
+                      size="xs"
+                      color="success"
+                      variant="ghost"
+                      icon="i-lucide-check"
+                      :loading="isSavingEdit"
+                      @click="saveEdit"
+                    />
                     <UButton
                       size="xs"
                       color="neutral"
                       variant="ghost"
-                      icon="i-lucide-trash-2"
-                      class="opacity-0 group-hover:opacity-100 transition-opacity"
-                      @click="confirmDeleteId = cat.id"
+                      icon="i-lucide-x"
+                      @click="editingId = null"
                     />
-                  </template>
+                  </div>
+
+                  <div v-else class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <UIcon :name="cat.icon" class="size-4" :style="{ color: cat.color }" />
+                      <span class="text-sm">{{ formatCategoryName(cat.name) }}</span>
+                    </div>
+
+                    <template v-if="confirmDeleteId === cat.id">
+                      <div class="flex items-center gap-1">
+                        <span class="text-xs text-muted">Confirmar?</span>
+                        <UButton
+                          size="xs"
+                          color="error"
+                          variant="ghost"
+                          icon="i-lucide-check"
+                          :loading="deletingId === cat.id"
+                          @click="deleteCategory(cat.id)"
+                        />
+                        <UButton
+                          size="xs"
+                          color="neutral"
+                          variant="ghost"
+                          icon="i-lucide-x"
+                          @click="confirmDeleteId = null"
+                        />
+                      </div>
+                    </template>
+                    <template v-else>
+                      <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <UButton
+                          size="xs"
+                          color="neutral"
+                          variant="ghost"
+                          icon="i-lucide-pencil"
+                          @click="startEdit(cat)"
+                        />
+                        <UButton
+                          size="xs"
+                          color="neutral"
+                          variant="ghost"
+                          icon="i-lucide-trash-2"
+                          @click="confirmDeleteId = cat.id"
+                        />
+                      </div>
+                    </template>
+                  </div>
                 </div>
               </div>
             </div>

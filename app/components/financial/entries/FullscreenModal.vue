@@ -10,7 +10,8 @@ interface Entry {
   due_date: string
   type: string
   status: string
-  category: string
+  category_id?: string | null
+  category_ref?: { id: string, name: string, icon: string, color: string } | null
   bank_account_id?: string | null
   notes?: string | null
   recurrence?: string | null
@@ -40,7 +41,7 @@ const props = defineProps<{
   typeFilters: string[]
   statusFilters: string[]
   categoryFilter: string
-  uniqueCategories: string[]
+  uniqueCategories: Array<{ id: string, name: string }>
   exportItems: object[][]
   exporting: string | null
   canCreate: boolean

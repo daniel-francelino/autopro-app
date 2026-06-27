@@ -101,6 +101,7 @@ const ctaProps = computed(() => {
 <template>
   <div v-if="page">
     <UPageHero
+      :headline="page.hero?.headline"
       :title="page.title"
       :description="page.description"
       :links="heroLinks"
@@ -115,13 +116,12 @@ const ctaProps = computed(() => {
           unwrap="p"
         />
       </template>
-
-      <PromotionalVideo />
     </UPageHero>
 
     <UPageSection
       v-for="(section, index) in page.sections"
       :key="index"
+      :headline="section.headline"
       :title="section.title"
       :description="section.description"
       :orientation="section.orientation"
@@ -139,6 +139,7 @@ const ctaProps = computed(() => {
     </UPageSection>
 
     <UPageSection
+      :headline="page.features.headline"
       :title="page.features.title"
       :description="page.features.description"
     >
@@ -153,27 +154,30 @@ const ctaProps = computed(() => {
     </UPageSection>
 
     <UPageSection
-      id="testimonials"
-      :headline="page.testimonials.headline"
-      :title="page.testimonials.title"
-      :description="page.testimonials.description"
+      id="how-it-works"
+      :headline="page.howItWorks.headline"
+      :title="page.howItWorks.title"
+      :description="page.howItWorks.description"
     >
-      <UPageColumns class="xl:columns-4">
+      <UPageGrid>
         <UPageCard
-          v-for="(testimonial, index) in page.testimonials.items"
+          v-for="(step, index) in page.howItWorks.items"
           :key="index"
-          variant="subtle"
-          :description="testimonial.quote"
-          :ui="{ description: 'before:content-[open-quote] after:content-[close-quote]' }"
+          :title="step.title"
+          :description="step.description"
+          spotlight
         >
-          <template #footer>
-            <UUser
-              v-bind="testimonial.user"
-              size="lg"
-            />
+          <template #leading>
+            <div class="flex items-center gap-3">
+              <UIcon
+                :name="step.icon"
+                class="size-6 text-primary"
+              />
+              <span class="text-2xl font-bold text-dimmed">{{ String(index + 1).padStart(2, '0') }}</span>
+            </div>
           </template>
         </UPageCard>
-      </UPageColumns>
+      </UPageGrid>
     </UPageSection>
 
     <USeparator />

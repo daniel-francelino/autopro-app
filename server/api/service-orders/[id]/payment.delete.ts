@@ -2,6 +2,7 @@ import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../../utils/supabase'
 import { requireAuthUser } from '../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../utils/organization'
+import { recalculateServiceOrderPaymentStatus } from '../../../utils/service-order-payment-status'
 
 /**
  * DELETE /api/service-orders/:id/payment
@@ -31,6 +32,26 @@ export default defineEventHandler(async (event) => {
 
   if (!order) {
     throw createError({ statusCode: 404, statusMessage: 'Service order not found' })
+  }
+
+  // Guard: never silently revert money that already left the bank account
+  // to pay an employee's commission — that cash didn't come back just
+  // because the order's payment is being undone. Block until a human
+  // decides what to do with it (e.g. reverse the commission manually first).
+  const { data: paidCommissions } = await supabase
+    .from('employee_financial_records')
+    .select('id, amount')
+    .eq('service_order_id', orderId)
+    .eq('record_type', 'commission')
+    .eq('organization_id', organizationId)
+    .eq('status', 'paid')
+
+  if (paidCommissions && paidCommissions.length > 0) {
+    const totalPaid = paidCommissions.reduce((sum, row) => sum + Number(row.amount || 0), 0)
+    throw createError({
+      statusCode: 409,
+      statusMessage: `Não é possível cancelar o pagamento: existe(m) ${paidCommissions.length} comissão(ões) já paga(s) a funcionário(s) nesta OS, totalizando ${totalPaid.toFixed(2)}. Resolva isso manualmente (ex.: estornar a comissão) antes de cancelar o pagamento.`
+    })
   }
 
   let deletedStatements = 0
@@ -111,11 +132,12 @@ export default defineEventHandler(async (event) => {
     deletedTransactions++
   }
 
-  // 4. Reset order payment status
+  // 4. Reset order payment fields. payment_status itself is recalculated
+  // below, from the installments that remain (none, after the deletions
+  // above), instead of being hardcoded here.
   await supabase
     .from('service_orders')
     .update({
-      payment_status: 'pending',
       payment_method: null,
       is_installment: false,
       installment_count: 0,
@@ -124,6 +146,13 @@ export default defineEventHandler(async (event) => {
       updated_by: authUser.email
     })
     .eq('id', orderId)
+
+  await recalculateServiceOrderPaymentStatus({
+    supabase,
+    organizationId,
+    orderId,
+    userEmail: authUser.email
+  })
 
   const { data: updatedOrder } = await supabase
     .from('service_orders')

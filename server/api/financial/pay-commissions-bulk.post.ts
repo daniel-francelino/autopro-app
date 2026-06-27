@@ -2,6 +2,7 @@ import { defineEventHandler, readBody, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
+import { resolveDefaultCategoryId } from '../../utils/financial-category-defaults'
 
 /**
  * POST /api/financial/pay-commissions-bulk
@@ -77,6 +78,8 @@ export default defineEventHandler(async (event) => {
     contaBancaria = contasAtivas[0]
   }
 
+  const salariesCategory = await resolveDefaultCategoryId(supabase, organizationId, 'Salários', 'expense')
+
   const results: any[] = []
   let paidCount = 0, skippedCount = 0, failedCount = 0
 
@@ -130,7 +133,8 @@ export default defineEventHandler(async (event) => {
         due_date: dataPagamento,
         type: 'expense',
         status: 'pago',
-        category: 'salarios',
+        category: salariesCategory.name,
+        category_id: salariesCategory.id,
         recurrence: 'nao_recorrente',
         bank_account_id: contaId,
         employee_financial_record_id: registroId,
@@ -160,12 +164,15 @@ export default defineEventHandler(async (event) => {
 
       extrato = extratoCreated
 
-      await supabase.from('employee_financial_records').update({
-        status: 'pago',
+      // Status must be 'paid' (DB check constraint only allows 'paid'/'pending')
+      const { error: registroError } = await supabase.from('employee_financial_records').update({
+        status: 'paid',
         payment_date: dataPagamento,
         financial_transaction_id: String(lancamento?.id || ''),
         updated_by: authUser.email
       }).eq('id', registroId)
+
+      if (registroError) throw new Error(registroError.message)
 
       paidCount += 1
       results.push({ ...resultBase, status: 'paid', lancamentoId: lancamento?.id })

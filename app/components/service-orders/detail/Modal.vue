@@ -18,6 +18,7 @@ const emit = defineEmits<{
   'quote': [orderId: string]
   'edit': [order: ServiceOrderRaw]
   'issue-nfse': [orderId: string]
+  'completed': [orderId: string]
 }>()
 
 // ─── Data ──────────────────────────────────────────────────────────────────────
@@ -80,12 +81,17 @@ async function advanceStatus() {
   if (!nextStatus) return
 
   isAdvancing.value = true
+  const orderId = detail.value.order.id
   try {
     await $fetch('/api/service-orders', {
       method: 'POST',
-      body: { orderId: detail.value.order.id, orderData: { status: nextStatus } }
+      body: { orderId, orderData: { status: nextStatus } }
     })
     toast.add({ title: 'Status atualizado', color: 'success' })
+    if (nextStatus === 'completed') {
+      emit('completed', orderId)
+      return
+    }
     await loadDetail()
     emit('updated')
   } catch (error: unknown) {
@@ -110,6 +116,34 @@ function openPaymentModal() {
 
 function onPaymentDone() {
   showPaymentModal.value = false
+  loadDetail()
+  emit('updated')
+}
+
+// ─── Down payment (sinal) ───────────────────────────────────────────────────────
+
+const showDownPaymentModal = ref(false)
+
+function openDownPaymentModal() {
+  showDownPaymentModal.value = true
+}
+
+function onDownPaymentReceived() {
+  showDownPaymentModal.value = false
+  loadDetail()
+  emit('updated')
+}
+
+// ─── Extra payment (avulso) ─────────────────────────────────────────────────────
+
+const showExtraPaymentModal = ref(false)
+
+function openExtraPaymentModal() {
+  showExtraPaymentModal.value = true
+}
+
+function onExtraPaymentReceived() {
+  showExtraPaymentModal.value = false
   loadDetail()
   emit('updated')
 }
@@ -321,6 +355,8 @@ defineExpose({ refreshNfseCard })
         :is-cancelling-payment="isCancellingPayment"
         @close="close"
         @pay="openPaymentModal"
+        @down-payment="openDownPaymentModal"
+        @extra-payment="openExtraPaymentModal"
         @cancel-payment="showCancelPaymentModal = true"
         @advance-status="advanceStatus"
         @cancel="showCancelModal = true"
@@ -376,7 +412,7 @@ defineExpose({ refreshNfseCard })
           :installments="detail.installments"
           :order-id="detail.order.id"
           :can-update="canUpdate"
-          @paid="loadDetail"
+          @changed="() => { loadDetail(); emit('updated') }"
         />
 
         <!-- Commissions -->
@@ -412,6 +448,20 @@ defineExpose({ refreshNfseCard })
     v-model:open="showPaymentModal"
     :order="orderProxy"
     @paid="onPaymentDone"
+  />
+
+  <!-- Down Payment (sinal) Modal -->
+  <ServiceOrdersDownPaymentModal
+    v-model:open="showDownPaymentModal"
+    :order="orderProxy"
+    @received="onDownPaymentReceived"
+  />
+
+  <!-- Extra Payment (avulso) Modal -->
+  <ServiceOrdersExtraPaymentModal
+    v-model:open="showExtraPaymentModal"
+    :order="orderProxy"
+    @received="onExtraPaymentReceived"
   />
 
   <!-- Cancel Payment Confirm -->

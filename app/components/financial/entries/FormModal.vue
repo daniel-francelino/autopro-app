@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { addMonths, format, parseISO } from 'date-fns'
+import { formatCategoryName } from '~/utils/financial-category-options'
 
 type Entry = Record<string, unknown>
 type BankAccountItem = {
@@ -7,11 +8,10 @@ type BankAccountItem = {
   account_name: string
   bank_name?: string | null
 }
-type CategoryDefault = { name: string, type: 'income' | 'expense' }
-type CategoryCustom = { id: string, name: string, type: 'income' | 'expense' }
+type CategoryItem = { id: string, name: string, type: 'income' | 'expense', icon: string, color: string, is_default: boolean }
 type CategoryResponse = {
-  defaults: CategoryDefault[]
-  custom: CategoryCustom[]
+  defaults: CategoryItem[]
+  custom: CategoryItem[]
 }
 
 const props = defineProps<{
@@ -67,8 +67,8 @@ function recurrenceForApi(value: string) {
 // ── Categories ─────────────────────────────────────────────────────────────────
 
 const categoriesLoading = ref(false)
-const defaultCategories = ref<CategoryDefault[]>([])
-const customCategories = ref<CategoryCustom[]>([])
+const defaultCategories = ref<CategoryItem[]>([])
+const customCategories = ref<CategoryItem[]>([])
 
 async function fetchCategories() {
   categoriesLoading.value = true
@@ -87,10 +87,10 @@ const categoryOptions = computed(() => {
   const currentType = form.type
   const fromDefaults = defaultCategories.value
     .filter(d => d.type === currentType)
-    .map(d => ({ label: d.name, value: d.name.toLowerCase() }))
+    .map(d => ({ label: formatCategoryName(d.name), value: d.id, icon: d.icon }))
   const fromCustom = customCategories.value
     .filter(c => c.type === currentType)
-    .map(c => ({ label: c.name, value: c.name.toLowerCase() }))
+    .map(c => ({ label: formatCategoryName(c.name), value: c.id, icon: c.icon }))
   return [...fromDefaults, ...fromCustom]
 })
 
@@ -156,7 +156,7 @@ const form = reactive({
   due_date: '',
   type: 'expense' as 'income' | 'expense',
   status: 'pending',
-  category: '',
+  category_id: '',
   bank_account_id: NO_BANK_ACCOUNT,
   notes: '',
   recurrence: NO_RECURRENCE,
@@ -251,7 +251,7 @@ watch(
         due_date: String(e.due_date ?? ''),
         type: String(e.type ?? 'expense') as 'income' | 'expense',
         status: normalizeStatus(e.status),
-        category: String(e.category ?? '').toLowerCase(),
+        category_id: e.category_id ? String(e.category_id) : '',
         bank_account_id: e.bank_account_id
           ? String(e.bank_account_id)
           : NO_BANK_ACCOUNT,
@@ -273,7 +273,7 @@ watch(
       due_date: '',
       type: 'expense',
       status: 'pending',
-      category: '',
+      category_id: '',
       bank_account_id: NO_BANK_ACCOUNT,
       notes: '',
       recurrence: NO_RECURRENCE,
@@ -290,7 +290,7 @@ watch(
 watch(
   () => form.type,
   () => {
-    form.category = ''
+    form.category_id = ''
   }
 )
 
@@ -326,7 +326,7 @@ function buildBody() {
     due_date: form.due_date,
     type: form.type,
     status: form.status,
-    category: form.category.trim(),
+    category_id: form.category_id,
     bank_account_id:
       form.bank_account_id === NO_BANK_ACCOUNT ? null : form.bank_account_id,
     notes: form.notes.trim() || null,
@@ -352,7 +352,7 @@ async function save() {
     toast.add({ title: 'Data de vencimento obrigatória', color: 'warning' })
     return
   }
-  if (!form.category.trim()) {
+  if (!form.category_id) {
     toast.add({ title: 'Categoria obrigatória', color: 'warning' })
     return
   }
@@ -551,7 +551,7 @@ function formatCurrency(value: number) {
           <UFormField label="Categoria" required class="sm:col-span-2">
             <div class="flex gap-2">
               <USelectMenu
-                v-model="form.category"
+                v-model="form.category_id"
                 :items="categoryOptions"
                 value-key="value"
                 placeholder="Selecionar categoria..."
@@ -775,6 +775,7 @@ function formatCurrency(value: number) {
   <FinancialEntriesCategoryModal
     v-model:open="showCategoryModal"
     :current-type="form.type"
+    :default-categories="defaultCategories"
     :custom-categories="customCategories"
     @updated="fetchCategories"
   />

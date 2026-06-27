@@ -15,7 +15,8 @@ interface Entry {
   due_date: string
   type: string
   status: string
-  category: string
+  category_id?: string | null
+  category_ref?: { id: string, name: string, icon: string, color: string } | null
   bank_account_id?: string | null
   notes?: string | null
   recurrence?: string | null
@@ -53,7 +54,7 @@ type SummaryResponse = {
 }
 
 const PAGE_SIZE = 20
-const MANAGED_QUERY_KEYS = ['search', 'status', 'type', 'category', 'dateFrom', 'dateTo', 'page'] as const
+const MANAGED_QUERY_KEYS = ['search', 'status', 'type', 'category_id', 'dateFrom', 'dateTo', 'page'] as const
 
 const defaultSummary: SummaryResponse = {
   total: { income: 0, expense: 0, balance: 0 },
@@ -127,14 +128,14 @@ const statusFilters = ref<string[]>(parseArrayQuery(route.query.status))
 const typeFilters = ref<string[]>(parseArrayQuery(route.query.type))
 const dateFrom = ref(typeof route.query.dateFrom === 'string' ? route.query.dateFrom : defaultDateRange.from)
 const dateTo = ref(typeof route.query.dateTo === 'string' ? route.query.dateTo : defaultDateRange.to)
-const categoryFilter = ref(typeof route.query.category === 'string' ? route.query.category : '')
+const categoryFilter = ref(typeof route.query.category_id === 'string' ? route.query.category_id : '')
 const page = ref(parsePage(route.query.page))
 
 const requestQuery = computed(() => ({
   search: debouncedSearch.value || undefined,
   status: statusFilters.value.length === 1 ? normalizeStatusForApi(statusFilters.value[0]!) : undefined,
   type: typeFilters.value.length === 1 ? typeFilters.value[0] : undefined,
-  category: categoryFilter.value || undefined,
+  category_id: categoryFilter.value || undefined,
   date_from: dateFrom.value || undefined,
   date_to: dateTo.value || undefined,
   page: page.value,
@@ -145,7 +146,7 @@ const requestQuery = computed(() => ({
 const summaryQuery = computed(() => ({
   search: debouncedSearch.value || undefined,
   type: typeFilters.value.length === 1 ? typeFilters.value[0] : undefined,
-  category: categoryFilter.value || undefined,
+  category_id: categoryFilter.value || undefined,
   date_from: dateFrom.value || undefined,
   date_to: dateTo.value || undefined
 }))
@@ -235,7 +236,7 @@ onMounted(async () => {
       search: debouncedSearch.value || undefined,
       status: statusFilters.value.length === 1 ? normalizeStatusForApi(statusFilters.value[0]!) : undefined,
       type: typeFilters.value.length === 1 ? typeFilters.value[0] : undefined,
-      category: categoryFilter.value || undefined,
+      category_id: categoryFilter.value || undefined,
       date_from: dateFrom.value || undefined,
       date_to: dateTo.value || undefined,
       page_size: PAGE_SIZE
@@ -268,12 +269,22 @@ const _hasActiveFilters = computed(() =>
   )
 )
 
+// Fetched once from the org's full category list (not just the loaded page)
+// so the filter always shows every category ever used — fixes the bug where
+// this used to be derived from accumulatedItems (only the rows already
+// paginated into the browser). See docs/financial-categories-crud.md.
+type CategoryListItem = { id: string, name: string, type: 'income' | 'expense', icon: string, color: string, is_default: boolean }
+const { data: categoriesData } = await useAsyncData(
+  'financial-categories-filter-options',
+  () => requestFetch<{ defaults: CategoryListItem[], custom: CategoryListItem[] }>('/api/financial/categories', { headers: requestHeaders }),
+  { default: () => ({ defaults: [], custom: [] }) }
+)
+
 const uniqueCategories = computed(() => {
-  const cats = new Set<string>()
-  for (const item of accumulatedItems.value) {
-    if (item.category) cats.add(String(item.category))
-  }
-  return [...cats].sort()
+  const all = [...(categoriesData.value?.defaults ?? []), ...(categoriesData.value?.custom ?? [])]
+  return all
+    .map(c => ({ id: c.id, name: c.name }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }))
 })
 
 // ── Summary cards ─────────────────────────────────────────────────────────────
@@ -321,7 +332,7 @@ function buildManagedQuery() {
     search: search.value || undefined,
     status: statusFilters.value.length ? statusFilters.value.join(',') : undefined,
     type: typeFilters.value.length ? typeFilters.value.join(',') : undefined,
-    category: categoryFilter.value || undefined,
+    category_id: categoryFilter.value || undefined,
     dateFrom: dateFrom.value !== defaultDateRange.from ? dateFrom.value : undefined,
     dateTo: dateTo.value !== defaultDateRange.to ? dateTo.value : undefined,
     page: page.value > 1 ? String(page.value) : undefined
@@ -355,7 +366,7 @@ watch(
     const nextType = parseArrayQuery(query.type)
     const nextDateFrom = typeof query.dateFrom === 'string' ? query.dateFrom : defaultDateRange.from
     const nextDateTo = typeof query.dateTo === 'string' ? query.dateTo : defaultDateRange.to
-    const nextCategory = typeof query.category === 'string' ? query.category : ''
+    const nextCategory = typeof query.category_id === 'string' ? query.category_id : ''
     const nextPage = parsePage(query.page)
 
     if (search.value !== nextSearch) {
@@ -601,7 +612,7 @@ async function duplicate(entry: Entry) {
         due_date: newDueDate,
         type: entry.type,
         status: 'pending',
-        category: entry.category,
+        category_id: entry.category_id,
         bank_account_id: entry.bank_account_id ?? null,
         notes: entry.notes ?? null,
         recurrence: entry.recurrence ?? null
@@ -723,35 +734,6 @@ function getBankAccountLabel(entry: Entry) {
 const typeBadgeLabel: Record<string, string> = { income: 'Receita', expense: 'Despesa' }
 const statusBadgeColor: Record<string, BadgeColor> = { paid: 'success', pending: 'warning' }
 const statusBadgeIcon: Record<string, string> = { paid: 'i-lucide-circle-check', pending: 'i-lucide-clock' }
-
-const categoryLabelMap: Record<string, string> = {
-  sales: 'Vendas',
-  services: 'Serviços',
-  rent: 'Aluguel',
-  salaries: 'Salários',
-  suppliers: 'Fornecedores',
-  taxes: 'Impostos',
-  marketing: 'Marketing',
-  other: 'Outros',
-  vendas: 'Vendas',
-  servicos: 'Serviços',
-  aluguel: 'Aluguel',
-  salarios: 'Salários',
-  fornecedores: 'Fornecedores',
-  impostos: 'Impostos',
-  outros: 'Outros'
-}
-
-function formatCategory(value: string | null | undefined): string {
-  if (!value) return 'Sem categoria'
-  const rawValue = String(value).trim()
-  const normalized = rawValue
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-  if (categoryLabelMap[normalized]) return categoryLabelMap[normalized]
-  return rawValue.replace(/\S+/g, word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-}
 
 const columns = [
   { accessorKey: 'description', header: 'Lançamento', enableSorting: false, meta: { class: { th: 'w-[56%]', td: 'w-[56%]' } } },

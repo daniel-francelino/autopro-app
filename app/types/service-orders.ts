@@ -85,14 +85,29 @@ export type ServiceOrderSelectedTax = {
   calculated_amount?: number | null
 }
 
+export type ServiceOrderInstallmentReceipt = {
+  id: string
+  amount: number
+  due_date: string | null
+  payment_method: string | null
+  bank_account_id: string | null
+}
+
 export type ServiceOrderInstallment = {
   id: string
   service_order_id: string
-  number?: number | null
+  installment_number?: number | null
+  kind: 'down_payment' | 'installment' | 'extra' | string
   amount: number
+  received_amount?: number
+  remaining_amount?: number
+  receipts?: ServiceOrderInstallmentReceipt[]
   due_date: string | null
   payment_date: string | null
   status: string
+  bank_account_id?: string | null
+  payment_method?: string | null
+  payment_terminal_id?: string | null
 }
 
 export type ServiceOrderCommission = {

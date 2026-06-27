@@ -1,11 +1,18 @@
 import { createError } from 'h3'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-type GenerateServiceOrderCommissionsParams = {
+type ReleaseServiceOrderCommissionsParams = {
   supabase: SupabaseClient
   organizationId: string
   orderId: string
   userEmail?: string | null
+  // The specific installment/receipt that triggered this call, when known
+  // (e.g. paying one installment). Recorded on any commission row created
+  // by this call so it's traceable which receipt justified it. Left out
+  // when a single call could release commission off more than one receipt
+  // at once (e.g. creating a plan with several lines already paid) — there
+  // isn't one right answer to link to in that case.
+  triggeringInstallmentId?: string | null
 }
 
 type EmployeeWithCommission = {
@@ -15,6 +22,16 @@ type EmployeeWithCommission = {
   commission_amount?: number | string | null
   commission_base?: string | null
   commission_categories?: string[] | null
+}
+
+type EmployeeEntitlement = {
+  employeeId: string
+  totalAmount: number
+  commissionType: string | null
+  commissionPercentage: number | null
+  commissionBase: string | null
+  itemAmount: number
+  itemCost: number
 }
 
 function asNumber(value: unknown) {
@@ -56,95 +73,30 @@ function isMissingCommissionSnapshotColumn(error: { message?: string } | null | 
   ].some(column => message.includes(`'${column}'`) || message.includes(`"${column}"`))
 }
 
-export async function generateServiceOrderCommissions({
-  supabase,
-  organizationId,
-  orderId,
-  userEmail
-}: GenerateServiceOrderCommissionsParams) {
-  const warnings: string[] = []
+/**
+ * Computes, per responsible employee, the *total* commission they're
+ * entitled to for this order — independent of how much of the order has
+ * actually been paid. Pure calculation, no DB writes.
+ */
+function computeEmployeeEntitlements({
+  order,
+  employeeMap
+}: {
+  order: Record<string, unknown>
+  employeeMap: Map<string, EmployeeWithCommission>
+}): EmployeeEntitlement[] {
+  const items = Array.isArray(order.items) ? order.items as Record<string, unknown>[] : []
+  const responsibleEmployees = Array.isArray(order.responsible_employees)
+    ? order.responsible_employees as { employee_id: string }[]
+    : []
 
-  const { data: order } = await supabase
-    .from('service_orders')
-    .select('*')
-    .eq('id', orderId)
-    .eq('organization_id', organizationId)
-    .is('deleted_at', null)
-    .maybeSingle()
-
-  if (!order) {
-    throw createError({ statusCode: 404, statusMessage: 'Service order not found' })
-  }
-
-  const { data: employees } = await supabase
-    .from('employees')
-    .select('*')
-    .eq('organization_id', organizationId)
-    .is('deleted_at', null)
-
-  const employeeMap = new Map(
-    ((employees || []) as EmployeeWithCommission[]).map(employee => [employee.id, employee])
-  )
-
-  const { data: existingCommissions } = await supabase
-    .from('employee_financial_records')
-    .select('id, financial_transaction_id')
-    .eq('service_order_id', orderId)
-    .eq('record_type', 'commission')
-    .eq('organization_id', organizationId)
-
-  for (const commission of existingCommissions || []) {
-    if (commission.financial_transaction_id) {
-      const { data: statements } = await supabase
-        .from('bank_account_statements')
-        .select('id')
-        .eq('financial_transaction_id', commission.financial_transaction_id)
-
-      for (const statement of statements || []) {
-        await supabase.from('bank_account_statements').delete().eq('id', statement.id)
-      }
-
-      await supabase.from('financial_transactions').delete().eq('id', commission.financial_transaction_id)
-    }
-
-    await supabase.from('employee_financial_records').delete().eq('id', commission.id)
-  }
-
-  const responsibleEmployees = Array.isArray(order.responsible_employees) ? order.responsible_employees : []
-  if (responsibleEmployees.length === 0) {
-    await supabase
-      .from('service_orders')
-      .update({ commission_amount: 0, updated_by: userEmail || null })
-      .eq('id', orderId)
-
-    return {
-      orderId,
-      commissions: [],
-      totalCommission: 0,
-      warnings: ['No responsible employees on this service order']
-    }
-  }
-
-  const items = Array.isArray(order.items) ? order.items : []
-  if (items.length === 0) {
-    await supabase
-      .from('service_orders')
-      .update({ commission_amount: 0, updated_by: userEmail || null })
-      .eq('id', orderId)
-
-    return {
-      orderId,
-      commissions: [],
-      totalCommission: 0,
-      warnings: ['Service order has no items to calculate commission']
-    }
-  }
+  if (responsibleEmployees.length === 0 || items.length === 0) return []
 
   const subtotal = items.reduce((sum, item) => sum + getItemTotal(item), 0)
   const discountAmount = asNumber(order.discount)
   const taxesAmount = asNumber(order.total_taxes_amount)
-  const createdCommissions: unknown[] = []
-  let totalCommission = 0
+
+  const entitlements: EmployeeEntitlement[] = []
 
   for (const responsible of responsibleEmployees) {
     const employeeId = responsible.employee_id
@@ -163,7 +115,7 @@ export async function generateServiceOrderCommissions({
       if (commissionCategories.length === 0) return true
 
       const itemCategoryId = item.category_id
-      return !itemCategoryId || commissionCategories.includes(itemCategoryId)
+      return !itemCategoryId || commissionCategories.includes(itemCategoryId as string)
     })
 
     if (eligibleItems.length === 0) continue
@@ -196,72 +148,192 @@ export async function generateServiceOrderCommissions({
 
     if (employeeCommissionAmount <= 0) continue
 
-    const roundedAmount = roundCurrency(employeeCommissionAmount)
-    const roundedEligibleItemAmount = roundCurrency(eligibleItemAmount)
-    const roundedEligibleItemCost = roundCurrency(eligibleItemCost)
-    const basePayload = {
-      organization_id: organizationId,
-      employee_id: employeeId,
-      service_order_id: orderId,
-      record_type: 'commission',
-      amount: roundedAmount,
-      status: 'pending',
-      description: `Comissão - #${order.number}`,
-      reference_date: order.entry_date || new Date().toISOString().split('T')[0],
-      created_by: userEmail || null,
-      updated_by: userEmail || null
-    }
-
-    const snapshotPayload = {
-      commission_type: commissionType,
-      commission_percentage: commissionType === 'percentage' ? commissionValue : null,
-      commission_base: commissionBase,
-      item_name: `#${order.number}`,
-      item_amount: roundedEligibleItemAmount,
-      item_cost: roundedEligibleItemCost
-    }
-
-    let { data: commissionRecord, error: commissionError } = await supabase
-      .from('employee_financial_records')
-      .insert({
-        ...basePayload,
-        ...snapshotPayload
-      })
-      .select()
-      .single()
-
-    if (commissionError && isMissingCommissionSnapshotColumn(commissionError)) {
-      ({ data: commissionRecord, error: commissionError } = await supabase
-        .from('employee_financial_records')
-        .insert(basePayload)
-        .select()
-        .single())
-    }
-
-    if (commissionError) {
-      throw createError({ statusCode: 500, statusMessage: commissionError.message })
-    }
-
-    if (commissionRecord) {
-      createdCommissions.push(commissionRecord)
-      totalCommission += roundedAmount
-    }
+    entitlements.push({
+      employeeId,
+      totalAmount: roundCurrency(employeeCommissionAmount),
+      commissionType,
+      commissionPercentage: commissionType === 'percentage' ? commissionValue : null,
+      commissionBase,
+      itemAmount: roundCurrency(eligibleItemAmount),
+      itemCost: roundCurrency(eligibleItemCost)
+    })
   }
 
-  const roundedTotalCommission = roundCurrency(totalCommission)
+  return entitlements
+}
+
+/**
+ * Releases commission proportionally to how much of the order has actually
+ * been received so far — never the calculated total upfront. Every call
+ * (triggered whenever a receipt against the order is confirmed) recomputes
+ * each employee's entitlement and how much of it is now justified, and tops
+ * up with a brand new `pending` record for the difference. Existing records
+ * — pending or already paid — are never edited or deleted, so a commission
+ * that's already been paid out can't be silently erased or reduced; if a
+ * later recalculation would imply paying back something already paid, that
+ * is surfaced as a warning for manual reconciliation instead.
+ */
+export async function releaseServiceOrderCommissions({
+  supabase,
+  organizationId,
+  orderId,
+  userEmail,
+  triggeringInstallmentId
+}: ReleaseServiceOrderCommissionsParams) {
+  const warnings: string[] = []
+
+  const { data: order } = await supabase
+    .from('service_orders')
+    .select('*')
+    .eq('id', orderId)
+    .eq('organization_id', organizationId)
+    .is('deleted_at', null)
+    .maybeSingle()
+
+  if (!order) {
+    throw createError({ statusCode: 404, statusMessage: 'Service order not found' })
+  }
+
+  const { data: employees } = await supabase
+    .from('employees')
+    .select('*')
+    .eq('organization_id', organizationId)
+    .is('deleted_at', null)
+
+  const employeeMap = new Map(
+    ((employees || []) as EmployeeWithCommission[]).map(employee => [employee.id, employee])
+  )
+
+  const entitlements = computeEmployeeEntitlements({ order, employeeMap })
+  const totalCommission = roundCurrency(entitlements.reduce((sum, entitlement) => sum + entitlement.totalAmount, 0))
 
   await supabase
     .from('service_orders')
-    .update({
-      commission_amount: roundedTotalCommission,
-      updated_by: userEmail || null
-    })
+    .update({ commission_amount: totalCommission, updated_by: userEmail || null })
     .eq('id', orderId)
+
+  if (entitlements.length === 0) {
+    return {
+      orderId,
+      commissions: [],
+      totalCommission: 0,
+      warnings: ['No responsible employees with commission, or no items, on this service order']
+    }
+  }
+
+  const { data: paidInstallments } = await supabase
+    .from('service_order_installments')
+    .select('amount')
+    .eq('service_order_id', orderId)
+    .eq('organization_id', organizationId)
+    .eq('status', 'paid')
+
+  const receivedTotal = (paidInstallments || []).reduce((sum, row) => sum + asNumber(row.amount), 0)
+  const totalAmount = asNumber(order.total_amount)
+  const receivedRatio = totalAmount > 0 ? Math.min(1, Math.max(0, receivedTotal / totalAmount)) : 0
+
+  const { data: existingRecords } = await supabase
+    .from('employee_financial_records')
+    .select('id, employee_id, amount, status, created_at')
+    .eq('service_order_id', orderId)
+    .eq('record_type', 'commission')
+    .eq('organization_id', organizationId)
+
+  const recordsByEmployee = new Map<string, { id: string, amount: number, status: string, created_at: string }[]>()
+  for (const record of existingRecords || []) {
+    const key = String(record.employee_id)
+    const list = recordsByEmployee.get(key) || []
+    list.push({ id: record.id, amount: asNumber(record.amount), status: record.status, created_at: record.created_at })
+    recordsByEmployee.set(key, list)
+  }
+
+  const createdCommissions: unknown[] = []
+
+  for (const entitlement of entitlements) {
+    const released = roundCurrency(Math.min(entitlement.totalAmount, entitlement.totalAmount * receivedRatio))
+    const existingForEmployee = recordsByEmployee.get(entitlement.employeeId) || []
+    const existingSum = roundCurrency(existingForEmployee.reduce((sum, record) => sum + record.amount, 0))
+    const delta = roundCurrency(released - existingSum)
+
+    if (delta > 0.01) {
+      const basePayload = {
+        organization_id: organizationId,
+        employee_id: entitlement.employeeId,
+        service_order_id: orderId,
+        service_order_installment_id: triggeringInstallmentId || null,
+        record_type: 'commission',
+        amount: delta,
+        status: 'pending',
+        description: `Comissão - #${order.number}`,
+        reference_date: order.entry_date || new Date().toISOString().split('T')[0],
+        created_by: userEmail || null,
+        updated_by: userEmail || null
+      }
+
+      const snapshotPayload = {
+        commission_type: entitlement.commissionType,
+        commission_percentage: entitlement.commissionPercentage,
+        commission_base: entitlement.commissionBase,
+        item_name: `#${order.number}`,
+        item_amount: entitlement.itemAmount,
+        item_cost: entitlement.itemCost
+      }
+
+      let { data: commissionRecord, error: commissionError } = await supabase
+        .from('employee_financial_records')
+        .insert({ ...basePayload, ...snapshotPayload })
+        .select()
+        .single()
+
+      if (commissionError && isMissingCommissionSnapshotColumn(commissionError)) {
+        ({ data: commissionRecord, error: commissionError } = await supabase
+          .from('employee_financial_records')
+          .insert(basePayload)
+          .select()
+          .single())
+      }
+
+      if (commissionError) {
+        throw createError({ statusCode: 500, statusMessage: commissionError.message })
+      }
+
+      if (commissionRecord) createdCommissions.push(commissionRecord)
+    } else if (delta < -0.01) {
+      // Receipts were reversed since the last release — claw back from
+      // pending records first (most recent first), never from ones already
+      // paid out.
+      let remainingToRemove = Math.abs(delta)
+      const pendingRecords = existingForEmployee
+        .filter(record => record.status === 'pending')
+        .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
+
+      for (const record of pendingRecords) {
+        if (remainingToRemove <= 0.01) break
+
+        if (record.amount <= remainingToRemove + 0.01) {
+          await supabase.from('employee_financial_records').delete().eq('id', record.id)
+          remainingToRemove = roundCurrency(remainingToRemove - record.amount)
+        } else {
+          await supabase
+            .from('employee_financial_records')
+            .update({ amount: roundCurrency(record.amount - remainingToRemove), updated_by: userEmail || null })
+            .eq('id', record.id)
+          remainingToRemove = 0
+        }
+      }
+
+      if (remainingToRemove > 0.01) {
+        warnings.push(
+          `Funcionário ${entitlement.employeeId}: comissão já paga (${remainingToRemove.toFixed(2)}) excede o valor agora liberado. Requer reconciliação manual.`
+        )
+      }
+    }
+  }
 
   return {
     orderId,
     commissions: createdCommissions,
-    totalCommission: roundedTotalCommission,
+    totalCommission,
     warnings
   }
 }
