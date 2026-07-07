@@ -9,6 +9,7 @@ const props = defineProps<{
   commissions: ServiceOrderCommission[]
   employees: ServiceOrderEmployee[]
   canUpdate?: boolean
+  releaseMode?: string | null
 }>()
 
 const emit = defineEmits<{ paid: [] }>()
@@ -76,6 +77,13 @@ async function confirmPaySingle() {
             Comissões ({{ commissions.length }})
           </h3>
         </div>
+        <UBadge
+          v-if="releaseMode === 'full'"
+          color="primary"
+          variant="soft"
+          size="xs"
+          label="Liberada integralmente"
+        />
       </div>
     </template>
 

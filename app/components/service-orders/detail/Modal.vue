@@ -293,7 +293,8 @@ const orderProxy = computed<ServiceOrder | null>(() => {
     responsible_name: null,
     responsible_names: detail.value.responsibleNames.map(r => r.name).filter((n): n is string => n !== null),
     has_commissions: detail.value.commissions.length > 0,
-    installments_progress: null
+    installments_progress: null,
+    commission_release_mode: o.commission_release_mode ?? 'proportional'
   }
 })
 
@@ -420,6 +421,7 @@ defineExpose({ refreshNfseCard })
           :commissions="detail.commissions"
           :employees="detail.employees"
           :can-update="canUpdate"
+          :release-mode="detail.order.commission_release_mode"
           @paid="loadDetail"
         />
 

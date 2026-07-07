@@ -30,7 +30,8 @@ export default defineEventHandler(async (event) => {
     bankAccountId,
     paymentTerminalId,
     installments: installmentsData,
-    paymentDate
+    paymentDate,
+    releaseCommissionsInFull
   } = body || {}
 
   const warnings: string[] = []
@@ -64,6 +65,22 @@ export default defineEventHandler(async (event) => {
 
   if (order.status !== 'completed') {
     throw createError({ statusCode: 409, statusMessage: 'Only completed service orders can receive payment' })
+  }
+
+  // One-way switch: once set, this order releases 100% of employee
+  // commission on every future call instead of proportionally to what's
+  // been received (see server/utils/service-order-commissions.ts). Only
+  // offered here, at plan-generation time, since this is the point where
+  // the order's total is already locked (status === 'completed').
+  if (releaseCommissionsInFull && order.commission_release_mode !== 'full') {
+    const { error: releaseModeError } = await supabase
+      .from('service_orders')
+      .update({ commission_release_mode: 'full', updated_by: authUser.email })
+      .eq('id', orderId)
+
+    if (releaseModeError) {
+      throw createError({ statusCode: 500, statusMessage: releaseModeError.message })
+    }
   }
 
   // Existing plan rows for this order. A down payment (sinal) may already
