@@ -262,7 +262,7 @@ export async function releaseServiceOrderCommissions({
     const existingSum = roundCurrency(existingForEmployee.reduce((sum, record) => sum + record.amount, 0))
     const delta = roundCurrency(released - existingSum)
 
-    if (delta > 0.01) {
+    if (delta >= 0.01) {
       const basePayload = {
         organization_id: organizationId,
         employee_id: entitlement.employeeId,
@@ -305,7 +305,7 @@ export async function releaseServiceOrderCommissions({
       }
 
       if (commissionRecord) createdCommissions.push(commissionRecord)
-    } else if (delta < -0.01) {
+    } else if (delta <= -0.01) {
       // Receipts were reversed since the last release — claw back from
       // pending records first (most recent first), never from ones already
       // paid out.
