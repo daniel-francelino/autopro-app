@@ -280,6 +280,7 @@ export default defineEventHandler(async (event) => {
           vehicleLabel: getVehicleLabel(vehicleResult.data),
           reportedDefect: order?.reported_defect || null,
           diagnosis: order?.diagnosis || null,
+          commissionReleaseMode: order?.commission_release_mode || 'proportional',
           responsibleNames
         },
         calculation: {

@@ -51,6 +51,7 @@ export interface CommissionDetailData {
     vehicleLabel: string | null
     reportedDefect: string | null
     diagnosis: string | null
+    commissionReleaseMode: string | null
     responsibleNames: string[]
   }
   calculation: {
@@ -255,6 +256,14 @@ const currentBreakdown = computed(() =>
             <p class="mt-0.5 text-xs text-muted">
               Comissão total da OS
             </p>
+            <UBadge
+              v-if="props.data.order.commissionReleaseMode === 'full'"
+              color="primary"
+              variant="soft"
+              size="xs"
+              label="Liberada integralmente"
+              class="mt-1"
+            />
           </div>
         </div>
 

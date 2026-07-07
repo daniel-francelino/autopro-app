@@ -172,6 +172,11 @@ function computeEmployeeEntitlements({
  * that's already been paid out can't be silently erased or reduced; if a
  * later recalculation would imply paying back something already paid, that
  * is surfaced as a warning for manual reconciliation instead.
+ *
+ * When `order.commission_release_mode === 'full'` (set once, on the order,
+ * when the payment plan is generated — see process-payment.post.ts), the
+ * received ratio is pinned at 1 regardless of what's actually been paid, so
+ * the whole entitlement is released immediately instead of proportionally.
  */
 export async function releaseServiceOrderCommissions({
   supabase,
@@ -230,7 +235,9 @@ export async function releaseServiceOrderCommissions({
 
   const receivedTotal = (paidInstallments || []).reduce((sum, row) => sum + asNumber(row.amount), 0)
   const totalAmount = asNumber(order.total_amount)
-  const receivedRatio = totalAmount > 0 ? Math.min(1, Math.max(0, receivedTotal / totalAmount)) : 0
+  const receivedRatio = order.commission_release_mode === 'full'
+    ? 1
+    : totalAmount > 0 ? Math.min(1, Math.max(0, receivedTotal / totalAmount)) : 0
 
   const { data: existingRecords } = await supabase
     .from('employee_financial_records')

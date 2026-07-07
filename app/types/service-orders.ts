@@ -16,6 +16,7 @@ export type ServiceOrder = {
   responsible_names: string[]
   has_commissions: boolean
   installments_progress: { paid: number, total: number } | null
+  commission_release_mode?: string | null
 }
 
 export type ServiceOrderDetail = {
@@ -145,6 +146,7 @@ export type ServiceOrderRaw = {
   total_amount: number | null
   discount: number | null
   commission_amount: number | null
+  commission_release_mode?: string | null
   total_taxes_amount?: number | null
   total_cost_amount?: number | null
   payment_method: string | null
