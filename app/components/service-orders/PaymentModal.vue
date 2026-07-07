@@ -435,36 +435,37 @@ async function save() {
           </p>
         </div>
 
-        <div v-else-if="commissionReleaseModeAlreadyFull" class="rounded-xl border border-default bg-default p-4 text-sm text-muted">
-          <div class="flex items-center gap-2">
-            <UIcon name="i-lucide-badge-percent" class="size-4 text-primary" />
-            A comissão desta OS já foi liberada integralmente — nenhuma pergunta adicional é necessária.
-          </div>
-        </div>
-
-        <div v-else class="rounded-xl border border-default p-4">
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p class="text-sm font-medium text-highlighted">
-                Liberar 100% da comissão agora
-              </p>
-              <p class="text-xs text-muted">
-                Em vez de liberar a comissão proporcionalmente conforme o cliente paga, libera o valor total já ao confirmar este plano de pagamento. Essa escolha vale para esta OS e não pode ser desfeita pela tela.
-              </p>
-            </div>
-            <USwitch v-model="form.releaseCommissionsInFull" label="Liberar 100% da comissão" />
-          </div>
-        </div>
-
-        <div v-else-if="balanceDueIsSettled" class="rounded-xl border border-success/30 bg-success/5 p-4 text-sm text-success">
-          O adiantamento já recebido cobre o valor total da OS. Confirme para concluir o pagamento — nenhum valor adicional será cobrado.
-        </div>
-
         <template v-else>
-          <div v-if="isLoadingOptions" class="flex items-center gap-2 rounded-xl border border-default px-4 py-3 text-sm text-muted">
-            <UIcon name="i-lucide-loader-circle" class="size-4 animate-spin" />
-            Carregando contas e maquininhas...
+          <div v-if="commissionReleaseModeAlreadyFull" class="rounded-xl border border-default bg-default p-4 text-sm text-muted">
+            <div class="flex items-center gap-2">
+              <UIcon name="i-lucide-badge-percent" class="size-4 text-primary" />
+              A comissão desta OS já foi liberada integralmente — nenhuma pergunta adicional é necessária.
+            </div>
           </div>
+
+          <div v-else class="rounded-xl border border-default p-4">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p class="text-sm font-medium text-highlighted">
+                  Liberar 100% da comissão agora
+                </p>
+                <p class="text-xs text-muted">
+                  Em vez de liberar a comissão proporcionalmente conforme o cliente paga, libera o valor total já ao confirmar este plano de pagamento. Essa escolha vale para esta OS e não pode ser desfeita pela tela.
+                </p>
+              </div>
+              <USwitch v-model="form.releaseCommissionsInFull" label="Liberar 100% da comissão" />
+            </div>
+          </div>
+
+          <div v-if="balanceDueIsSettled" class="rounded-xl border border-success/30 bg-success/5 p-4 text-sm text-success">
+            O adiantamento já recebido cobre o valor total da OS. Confirme para concluir o pagamento — nenhum valor adicional será cobrado.
+          </div>
+
+          <template v-else>
+            <div v-if="isLoadingOptions" class="flex items-center gap-2 rounded-xl border border-default px-4 py-3 text-sm text-muted">
+              <UIcon name="i-lucide-loader-circle" class="size-4 animate-spin" />
+              Carregando contas e maquininhas...
+            </div>
 
           <div class="rounded-xl border border-default p-4 space-y-4">
             <p class="text-sm font-medium text-highlighted">
@@ -628,6 +629,7 @@ async function save() {
               </div>
             </div>
           </div>
+          </template>
         </template>
       </div>
     </template>
