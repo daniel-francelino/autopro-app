@@ -109,6 +109,66 @@ async function confirmRemove() {
     isDeleting.value = false
   }
 }
+
+// Migration
+const isMigrating = ref(false)
+const showMigrationModal = ref(false)
+const categoryPendingMigration = ref<Category | null>(null)
+const migrationTargetId = ref('')
+
+const migrationTargetOptions = computed(() => {
+  if (!categoryPendingMigration.value) return []
+  return allCategories.value
+    .filter(category =>
+      category.id !== categoryPendingMigration.value?.id
+      && category.type === categoryPendingMigration.value?.type
+    )
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }))
+    .map(category => ({
+      label: `${formatCategoryName(category.name)} (${category.is_default ? 'Padrao' : 'Personalizada'})`,
+      value: category.id
+    }))
+})
+
+function requestMigration(category: Category) {
+  if (isMigrating.value || category.usage_count === 0) return
+  categoryPendingMigration.value = category
+  migrationTargetId.value = ''
+  showMigrationModal.value = true
+}
+
+async function confirmMigration() {
+  if (!categoryPendingMigration.value || isMigrating.value) return
+  if (!migrationTargetId.value) {
+    toast.add({ title: 'Selecione a categoria de destino', color: 'warning' })
+    return
+  }
+
+  isMigrating.value = true
+  try {
+    const result = await $fetch<{ migrated: number }>(
+      `/api/financial/categories/${categoryPendingMigration.value.id}/migrate`,
+      {
+        method: 'POST',
+        body: { target_category_id: migrationTargetId.value }
+      }
+    )
+    toast.add({
+      title: 'Itens migrados',
+      description: `${result.migrated} lancamento${result.migrated !== 1 ? 's' : ''} movido${result.migrated !== 1 ? 's' : ''}.`,
+      color: 'success'
+    })
+    showMigrationModal.value = false
+    categoryPendingMigration.value = null
+    migrationTargetId.value = ''
+    await refresh()
+  } catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
+    toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Nao foi possivel migrar os itens', color: 'error' })
+  } finally {
+    isMigrating.value = false
+  }
+}
 </script>
 
 <template>
@@ -192,6 +252,17 @@ async function confirmRemove() {
 
           <template #actions-cell="{ row }">
             <div class="flex items-center justify-end gap-2">
+              <UTooltip :text="(row.original as Category).usage_count > 0 ? 'Migrar itens para outra categoria' : 'Categoria sem itens para migrar'">
+                <UButton
+                  v-if="canUpdate"
+                  icon="i-lucide-arrow-right-left"
+                  color="neutral"
+                  variant="ghost"
+                  size="xs"
+                  :disabled="(row.original as Category).usage_count === 0"
+                  @click="requestMigration(row.original as Category)"
+                />
+              </UTooltip>
               <UTooltip :text="(row.original as Category).is_default ? 'Categorias padrão não podem ser editadas' : 'Editar categoria'">
                 <UButton
                   v-if="canUpdate"
@@ -241,4 +312,77 @@ async function confirmRemove() {
       </p>
     </template>
   </AppConfirmModal>
+
+  <UModal
+    :open="showMigrationModal"
+    title="Migrar itens"
+    description="Mova todos os lancamentos desta categoria para outra categoria do mesmo tipo."
+    :ui="{ overlay: 'z-30', content: 'z-40' }"
+    @update:open="(value: boolean) => { showMigrationModal = value; if (!value && !isMigrating) { categoryPendingMigration = null; migrationTargetId = '' } }"
+  >
+    <template #body>
+      <div class="space-y-4">
+        <div class="rounded-lg border border-default p-3">
+          <p class="text-xs text-muted">
+            Categoria de origem
+          </p>
+          <div class="mt-2 flex items-center justify-between gap-3">
+            <div class="flex min-w-0 items-center gap-3">
+              <div
+                v-if="categoryPendingMigration"
+                class="flex size-8 shrink-0 items-center justify-center rounded-full"
+                :style="{ backgroundColor: `${categoryPendingMigration.color}1A` }"
+              >
+                <UIcon :name="categoryPendingMigration.icon" class="size-4" :style="{ color: categoryPendingMigration.color }" />
+              </div>
+              <p class="truncate text-sm font-medium text-highlighted">
+                {{ categoryPendingMigration ? formatCategoryName(categoryPendingMigration.name) : 'Categoria' }}
+              </p>
+            </div>
+            <UBadge
+              :label="`${categoryPendingMigration?.usage_count ?? 0} item${(categoryPendingMigration?.usage_count ?? 0) !== 1 ? 's' : ''}`"
+              color="neutral"
+              variant="subtle"
+              size="sm"
+            />
+          </div>
+        </div>
+
+        <UFormField label="Categoria de destino" required>
+          <USelectMenu
+            v-model="migrationTargetId"
+            :items="migrationTargetOptions"
+            value-key="value"
+            searchable
+            placeholder="Selecione a categoria"
+            class="w-full"
+            :disabled="isMigrating || migrationTargetOptions.length === 0"
+          />
+        </UFormField>
+
+        <p class="text-sm text-muted">
+          Apenas a quantidade de itens e mostrada aqui. A migracao roda em lotes no servidor para evitar falhas em categorias com muitos lancamentos.
+        </p>
+      </div>
+    </template>
+
+    <template #footer>
+      <div class="flex justify-end gap-2">
+        <UButton
+          label="Cancelar"
+          color="neutral"
+          variant="ghost"
+          :disabled="isMigrating"
+          @click="showMigrationModal = false"
+        />
+        <UButton
+          label="Migrar itens"
+          color="neutral"
+          :loading="isMigrating"
+          :disabled="isMigrating || !migrationTargetId"
+          @click="confirmMigration"
+        />
+      </div>
+    </template>
+  </UModal>
 </template>
