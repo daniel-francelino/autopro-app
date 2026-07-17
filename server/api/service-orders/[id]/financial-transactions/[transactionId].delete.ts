@@ -4,6 +4,7 @@ import { requireAuthUser } from '../../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../../utils/organization'
 import { recalculateServiceOrderPaymentStatus } from '../../../../utils/service-order-payment-status'
 import { releaseServiceOrderCommissions } from '../../../../utils/service-order-commissions'
+import { softDeleteFinancialTransaction, FINANCIAL_TRANSACTION_DELETION_SOURCES } from '../../../../utils/financial-transaction-deletion'
 
 function roundMoney(value: number) {
   return Number(value.toFixed(2))
@@ -35,6 +36,7 @@ export default defineEventHandler(async (event) => {
     .eq('id', transactionId)
     .eq('service_order_id', orderId)
     .eq('organization_id', organizationId)
+    .is('deleted_at', null)
     .maybeSingle()
 
   if (transactionError || !transaction) {
@@ -85,7 +87,14 @@ export default defineEventHandler(async (event) => {
     await supabase.from('bank_account_statements').delete().eq('id', statement.id)
   }
 
-  await supabase.from('financial_transactions').delete().eq('id', transactionId)
+  await softDeleteFinancialTransaction({
+    supabase,
+    id: transactionId,
+    organizationId,
+    reason: 'Estorno automático: recebimento revertido pelo usuário',
+    source: FINANCIAL_TRANSACTION_DELETION_SOURCES.SERVICE_ORDER_RECEIPT_REVERSAL,
+    userEmail: authUser.email
+  })
 
   // Re-derive the installment this receipt was settling, if any.
   const installmentId = transaction.service_order_installment_id
@@ -104,6 +113,7 @@ export default defineEventHandler(async (event) => {
         .eq('service_order_installment_id', installmentId)
         .eq('organization_id', organizationId)
         .eq('status', 'paid')
+        .is('deleted_at', null)
 
       const stillReceived = roundMoney((remainingTransactions || []).reduce((sum, row) => sum + Number(row.amount || 0), 0))
       const installmentAmount = roundMoney(Number(installment.amount || 0))

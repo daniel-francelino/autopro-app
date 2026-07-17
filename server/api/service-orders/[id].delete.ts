@@ -2,6 +2,7 @@ import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
+import { softDeleteFinancialTransaction, FINANCIAL_TRANSACTION_DELETION_SOURCES } from '../../utils/financial-transaction-deletion'
 
 /**
  * DELETE /api/service-orders/:id
@@ -74,10 +75,14 @@ export default defineEventHandler(async (event) => {
   for (const commission of commissions || []) {
     if (commission.financial_transaction_id) {
       await deleteStatementsAndRevert(commission.financial_transaction_id)
-      const { error } = await supabase
-        .from('financial_transactions')
-        .delete()
-        .eq('id', commission.financial_transaction_id)
+      const { error } = await softDeleteFinancialTransaction({
+        supabase,
+        id: commission.financial_transaction_id,
+        organizationId,
+        reason: `Estorno automático: OS #${order.number} excluída (comissão revertida)`,
+        source: FINANCIAL_TRANSACTION_DELETION_SOURCES.SERVICE_ORDER_DELETE,
+        userEmail: authUser.email
+      })
       if (!error) deletedTransactions++
     }
     await supabase.from('employee_financial_records').delete().eq('id', commission.id)
@@ -94,10 +99,14 @@ export default defineEventHandler(async (event) => {
   for (const installment of installments || []) {
     if (installment.financial_transaction_id) {
       await deleteStatementsAndRevert(installment.financial_transaction_id)
-      const { error } = await supabase
-        .from('financial_transactions')
-        .delete()
-        .eq('id', installment.financial_transaction_id)
+      const { error } = await softDeleteFinancialTransaction({
+        supabase,
+        id: installment.financial_transaction_id,
+        organizationId,
+        reason: `Estorno automático: OS #${order.number} excluída (parcela revertida)`,
+        source: FINANCIAL_TRANSACTION_DELETION_SOURCES.SERVICE_ORDER_DELETE,
+        userEmail: authUser.email
+      })
       if (!error) deletedTransactions++
     }
     await supabase.from('service_order_installments').delete().eq('id', installment.id)
@@ -110,13 +119,18 @@ export default defineEventHandler(async (event) => {
     .select('id')
     .eq('service_order_id', orderId)
     .eq('organization_id', organizationId)
+    .is('deleted_at', null)
 
   for (const tx of directTransactions || []) {
     await deleteStatementsAndRevert(tx.id)
-    const { error } = await supabase
-      .from('financial_transactions')
-      .delete()
-      .eq('id', tx.id)
+    const { error } = await softDeleteFinancialTransaction({
+      supabase,
+      id: tx.id,
+      organizationId,
+      reason: `Estorno automático: OS #${order.number} excluída`,
+      source: FINANCIAL_TRANSACTION_DELETION_SOURCES.SERVICE_ORDER_DELETE,
+      userEmail: authUser.email
+    })
     if (!error) deletedTransactions++
   }
 

@@ -44,7 +44,7 @@ export default defineEventHandler(async (event) => {
       : Promise.resolve({ data: null, error: null }),
     supabase.from('employees').select('*').eq('organization_id', organizationId).is('deleted_at', null),
     supabase.from('service_order_installments').select('*').eq('service_order_id', orderId).eq('organization_id', organizationId),
-    supabase.from('financial_transactions').select('id, service_order_installment_id, amount, due_date, payment_method, bank_account_id').eq('service_order_id', orderId).eq('organization_id', organizationId).eq('type', 'income').eq('status', 'paid'),
+    supabase.from('financial_transactions').select('id, service_order_installment_id, amount, due_date, payment_method, bank_account_id').eq('service_order_id', orderId).eq('organization_id', organizationId).eq('type', 'income').eq('status', 'paid').is('deleted_at', null),
     supabase.from('employee_financial_records').select('*').eq('service_order_id', orderId).eq('organization_id', organizationId).eq('record_type', 'commission'),
     supabase.from('service_order_edit_logs').select('*').eq('service_order_id', orderId).order('created_at', { ascending: false })
   ])

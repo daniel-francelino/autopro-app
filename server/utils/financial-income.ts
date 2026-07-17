@@ -1,6 +1,7 @@
 import { createError } from 'h3'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveDefaultCategoryId } from './financial-category-defaults'
+import { softDeleteFinancialTransaction, FINANCIAL_TRANSACTION_DELETION_SOURCES } from './financial-transaction-deletion'
 
 type CreateIncomeTransactionParams = {
   supabase: SupabaseClient
@@ -97,7 +98,14 @@ export async function createIncomeTransaction({
       .maybeSingle()
 
     if (accountError || !account) {
-      await supabase.from('financial_transactions').delete().eq('id', transaction.id)
+      await softDeleteFinancialTransaction({
+        supabase,
+        id: transaction.id,
+        organizationId,
+        reason: `Rollback automático: conta bancária não encontrada ao registrar recebimento (${accountError?.message || 'conta inexistente'})`,
+        source: FINANCIAL_TRANSACTION_DELETION_SOURCES.INCOME_TRANSACTION_ROLLBACK,
+        userEmail
+      })
       throw createError({ statusCode: 500, statusMessage: accountError?.message || 'Failed to load bank account' })
     }
 
@@ -111,7 +119,14 @@ export async function createIncomeTransaction({
       .eq('organization_id', organizationId)
 
     if (accountUpdateError) {
-      await supabase.from('financial_transactions').delete().eq('id', transaction.id)
+      await softDeleteFinancialTransaction({
+        supabase,
+        id: transaction.id,
+        organizationId,
+        reason: `Rollback automático: falha ao atualizar saldo da conta bancária (${accountUpdateError.message})`,
+        source: FINANCIAL_TRANSACTION_DELETION_SOURCES.INCOME_TRANSACTION_ROLLBACK,
+        userEmail
+      })
       throw createError({ statusCode: 500, statusMessage: accountUpdateError.message })
     }
 
@@ -137,7 +152,14 @@ export async function createIncomeTransaction({
         .update({ current_balance: previousBalance, updated_by: userEmail || null })
         .eq('id', bankAccountId)
         .eq('organization_id', organizationId)
-      await supabase.from('financial_transactions').delete().eq('id', transaction.id)
+      await softDeleteFinancialTransaction({
+        supabase,
+        id: transaction.id,
+        organizationId,
+        reason: `Rollback automático: falha ao registrar extrato bancário (${statementError.message})`,
+        source: FINANCIAL_TRANSACTION_DELETION_SOURCES.INCOME_TRANSACTION_ROLLBACK,
+        userEmail
+      })
       throw createError({ statusCode: 500, statusMessage: statementError.message })
     }
   }
