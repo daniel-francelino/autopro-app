@@ -16,6 +16,7 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const search = String(query.search || '').trim().toLowerCase()
   const typeFilter = String(query.type || 'all')
+  const categoryId = query.category_id ? String(query.category_id) : null
   const dateFrom = query.date_from ? String(query.date_from) : null
   const dateTo = query.date_to ? String(query.date_to) : (dateFrom ?? null)
 
@@ -26,6 +27,7 @@ export default defineEventHandler(async (event) => {
     .is('deleted_at', null)
 
   if (typeFilter !== 'all') q = q.eq('type', typeFilter)
+  if (categoryId) q = q.eq('category_id', categoryId)
   if (dateFrom) q = q.gte('due_date', dateFrom)
   if (dateTo) q = q.lte('due_date', dateTo)
   if (search) q = q.ilike('description', `%${search}%`)
