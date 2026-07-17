@@ -117,6 +117,13 @@ const rangePresets = [
       const end = today(tz)
       return { start: end.subtract({ months: 3 }), end }
     }
+  },
+  {
+    label: 'Este ano',
+    getRange: () => {
+      const t = today(tz)
+      return { start: t.set({ month: 1, day: 1 }), end: t.set({ month: 12, day: 31 }) }
+    }
   }
 ]
 
@@ -216,7 +223,6 @@ function clear() {
             v-model="calendarValue"
             range
             :number-of-months="1"
-            :maximum-days="92"
             color="primary"
           />
 
