@@ -153,6 +153,7 @@ export default defineEventHandler(async (event) => {
       .eq('service_order_installment_id', installmentId)
       .eq('organization_id', organizationId)
       .eq('status', 'paid')
+      .is('deleted_at', null)
 
     const alreadyReceived = roundMoney((priorTransactions || []).reduce((sum, row) => sum + Number(row.amount || 0), 0))
     const remainingBalance = roundMoney(installmentAmount - alreadyReceived)

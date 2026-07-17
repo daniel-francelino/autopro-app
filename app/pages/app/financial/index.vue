@@ -543,21 +543,28 @@ async function onEntrySaved() {
 const isDeleting = ref(false)
 const showDeleteModal = ref(false)
 const entryPendingDeletion = ref<Entry | null>(null)
+const deletionReason = ref('')
+const deletionReasonValid = computed(() => deletionReason.value.trim().length > 0)
 
 function requestRemove(entry: Entry) {
   if (isDeleting.value) return
   entryPendingDeletion.value = entry
+  deletionReason.value = ''
   showDeleteModal.value = true
 }
 
 async function confirmRemove() {
-  if (!entryPendingDeletion.value || isDeleting.value) return
+  if (!entryPendingDeletion.value || isDeleting.value || !deletionReasonValid.value) return
   isDeleting.value = true
   try {
-    await $fetch(`/api/financial/${String(entryPendingDeletion.value.id)}`, { method: 'DELETE' })
+    await $fetch(`/api/financial/${String(entryPendingDeletion.value.id)}`, {
+      method: 'DELETE',
+      body: { reason: deletionReason.value.trim() }
+    })
     toast.add({ title: 'Lançamento removido', color: 'success' })
     showDeleteModal.value = false
     entryPendingDeletion.value = null
+    deletionReason.value = ''
     await resetAndRefresh()
   } catch (error: unknown) {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
@@ -571,15 +578,24 @@ async function confirmRemove() {
 
 const showBulkDeleteModal = ref(false)
 const isBulkDeleting = ref(false)
+const bulkDeletionReason = ref('')
+const bulkDeletionReasonValid = computed(() => bulkDeletionReason.value.trim().length > 0)
+
+function requestBulkRemove() {
+  bulkDeletionReason.value = ''
+  showBulkDeleteModal.value = true
+}
 
 async function confirmBulkDelete() {
-  if (!selectedIds.value.length || isBulkDeleting.value) return
+  if (!selectedIds.value.length || isBulkDeleting.value || !bulkDeletionReasonValid.value) return
   isBulkDeleting.value = true
   try {
-    await Promise.all(selectedIds.value.map(id => $fetch(`/api/financial/${id}`, { method: 'DELETE' })))
+    const reason = bulkDeletionReason.value.trim()
+    await Promise.all(selectedIds.value.map(id => $fetch(`/api/financial/${id}`, { method: 'DELETE', body: { reason } })))
     toast.add({ title: `${selectedIds.value.length} lançamento(s) removido(s)`, color: 'success' })
     rowSelection.value = {}
     showBulkDeleteModal.value = false
+    bulkDeletionReason.value = ''
     await resetAndRefresh()
   } catch {
     toast.add({ title: 'Erro ao excluir lançamentos', color: 'error' })
@@ -855,7 +871,7 @@ const columns = [
                 variant="outline"
                 size="sm"
                 :disabled="selectedCount === 0"
-                @click="showBulkDeleteModal = true"
+                @click="requestBulkRemove"
               />
             </UTooltip>
 
@@ -1075,7 +1091,7 @@ const columns = [
     @search-submit="submitSearch"
     @load-more="loadMore"
     @bulk-pay="showBulkPayModal = true"
-    @bulk-delete="showBulkDeleteModal = true"
+    @bulk-delete="requestBulkRemove"
     @open-create="openCreate"
     @open-detail="openDetail"
     @pay="pay"
@@ -1097,20 +1113,33 @@ const columns = [
     confirm-label="Excluir lançamento"
     confirm-color="error"
     :loading="isDeleting"
+    :confirm-disabled="!deletionReasonValid"
     @confirm="confirmRemove"
     @update:open="
       (value: boolean) => {
         showDeleteModal = value
-        if (!value && !isDeleting) entryPendingDeletion = null
+        if (!value && !isDeleting) {
+          entryPendingDeletion = null
+          deletionReason = ''
+        }
       }
     "
   >
     <template #description>
-      <p class="text-sm text-muted">
-        Tem certeza que deseja excluir
-        <strong class="text-highlighted">{{ entryPendingDeletion?.description || 'este lançamento' }}</strong>?
-        Esta ação não pode ser desfeita.
-      </p>
+      <div class="space-y-3">
+        <p class="text-sm text-muted">
+          Tem certeza que deseja excluir
+          <strong class="text-highlighted">{{ entryPendingDeletion?.description || 'este lançamento' }}</strong>?
+          Esta ação não pode ser desfeita.
+        </p>
+        <UFormField label="Motivo da exclusão" required>
+          <UTextarea
+            v-model="deletionReason"
+            class="w-full"
+            :rows="2"
+          />
+        </UFormField>
+      </div>
     </template>
   </AppConfirmModal>
 
@@ -1120,14 +1149,31 @@ const columns = [
     confirm-label="Excluir todos"
     confirm-color="error"
     :loading="isBulkDeleting"
+    :confirm-disabled="!bulkDeletionReasonValid"
     @confirm="confirmBulkDelete"
+    @update:open="
+      (value: boolean) => {
+        showBulkDeleteModal = value
+        if (!value && !isBulkDeleting) bulkDeletionReason = ''
+      }
+    "
   >
     <template #description>
-      <p class="text-sm text-muted">
-        Tem certeza que deseja excluir
-        <strong class="text-highlighted">{{ selectedCount }} lançamento(s)</strong>?
-        Esta ação não pode ser desfeita.
-      </p>
+      <div class="space-y-3">
+        <p class="text-sm text-muted">
+          Tem certeza que deseja excluir
+          <strong class="text-highlighted">{{ selectedCount }} lançamento(s)</strong>?
+          Esta ação não pode ser desfeita.
+        </p>
+        <UFormField label="Motivo da exclusão" required>
+          <UTextarea
+            v-model="bulkDeletionReason"
+            class="w-full"
+            :rows="2"
+            placeholder="Explique por que estes lançamentos estão sendo excluídos"
+          />
+        </UFormField>
+      </div>
     </template>
   </AppConfirmModal>
 

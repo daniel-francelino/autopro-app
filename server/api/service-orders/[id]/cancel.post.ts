@@ -2,6 +2,7 @@ import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../../utils/supabase'
 import { requireAuthUser } from '../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../utils/organization'
+import { softDeleteFinancialTransaction, FINANCIAL_TRANSACTION_DELETION_SOURCES } from '../../../utils/financial-transaction-deletion'
 
 /**
  * POST /api/service-orders/:id/cancel
@@ -77,6 +78,7 @@ export default defineEventHandler(async (event) => {
       .eq('organization_id', organizationId)
       .eq('type', 'income')
       .ilike('description', `%OS #${order.number}%`)
+      .is('deleted_at', null)
       .limit(1)
 
     if (cashEntries && cashEntries.length > 0) {
@@ -127,10 +129,14 @@ export default defineEventHandler(async (event) => {
   for (const commission of commissions || []) {
     if (commission.financial_transaction_id) {
       await deleteStatementsAndRevert(commission.financial_transaction_id)
-      const { error } = await supabase
-        .from('financial_transactions')
-        .delete()
-        .eq('id', commission.financial_transaction_id)
+      const { error } = await softDeleteFinancialTransaction({
+        supabase,
+        id: commission.financial_transaction_id,
+        organizationId,
+        reason: `Estorno automático: OS #${order.number} cancelada (comissão revertida)`,
+        source: FINANCIAL_TRANSACTION_DELETION_SOURCES.SERVICE_ORDER_CANCEL,
+        userEmail: authUser.email
+      })
       if (!error) deletedTransactions++
     }
     await supabase.from('employee_financial_records').delete().eq('id', commission.id)

@@ -127,7 +127,8 @@ export default defineEventHandler(async (event) => {
     fetchAllOrganizationRows<ReceivedTransactionRecord>(supabase, {
       table: 'financial_transactions',
       organizationId,
-      eq: { type: 'income', status: 'paid' }
+      eq: { type: 'income', status: 'paid' },
+      nullColumns: ['deleted_at']
     })
   ])
   const clientsMap = new Map<string, ClientRecord>(clients.map(c => [String(c.id), c]))

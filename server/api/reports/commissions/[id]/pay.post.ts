@@ -3,6 +3,7 @@ import { getSupabaseAdminClient } from '../../../../utils/supabase'
 import { requireAuthUser } from '../../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../../utils/organization'
 import { resolveDefaultCategoryId } from '../../../../utils/financial-category-defaults'
+import { softDeleteFinancialTransaction, FINANCIAL_TRANSACTION_DELETION_SOURCES } from '../../../../utils/financial-transaction-deletion'
 
 function normalizeNumber(value: unknown) {
   const parsed = Number(value)
@@ -153,7 +154,17 @@ export default defineEventHandler(async (event) => {
       }
     } catch { /* best-effort rollback */ }
     try {
-      if (transactionId) await supabase.from('financial_transactions').delete().eq('id', transactionId)
+      if (transactionId) {
+        const message = error instanceof Error ? error.message : String(error)
+        await softDeleteFinancialTransaction({
+          supabase,
+          id: transactionId,
+          organizationId,
+          reason: `Rollback automático: falha ao pagar comissão (${message})`,
+          source: FINANCIAL_TRANSACTION_DELETION_SOURCES.COMMISSION_PAY_ROLLBACK,
+          userEmail: authUser.email
+        })
+      }
     } catch { /* best-effort rollback */ }
 
     const message = error instanceof Error ? error.message : String(error)

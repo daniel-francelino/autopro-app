@@ -62,7 +62,7 @@ export default defineEventHandler(async (event) => {
   for (const entryId of entryIds) {
     const baseResult: any = { entryId }
 
-    const { data: lancamento } = await supabase.from('financial_transactions').select('*').eq('id', entryId).eq('organization_id', organizationId).single()
+    const { data: lancamento } = await supabase.from('financial_transactions').select('*').eq('id', entryId).eq('organization_id', organizationId).is('deleted_at', null).single()
 
     if (!lancamento) {
       failedCount += 1

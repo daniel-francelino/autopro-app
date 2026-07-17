@@ -7,6 +7,7 @@ const props = withDefaults(
     confirmLabel?: string
     confirmColor?: string
     loading?: boolean
+    confirmDisabled?: boolean
   }>(),
   {
     title: 'Confirmar exclusão',
@@ -14,7 +15,8 @@ const props = withDefaults(
       'Tem certeza que deseja realizar esta ação? Ela não pode ser desfeita.',
     confirmLabel: 'Confirmar',
     confirmColor: 'error',
-    loading: false
+    loading: false,
+    confirmDisabled: false
   }
 )
 
@@ -56,6 +58,7 @@ function close() {
             :label="confirmLabel"
             :color="confirmColor"
             :loading="loading"
+            :disabled="confirmDisabled"
             @click="emit('confirm')"
           />
         </div>

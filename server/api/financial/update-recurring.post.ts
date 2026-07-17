@@ -124,7 +124,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'originalEntryId é obrigatório' })
   }
 
-  const { data: originalEntryList } = await supabase.from('financial_transactions').select('*').eq('id', originalEntryId).eq('organization_id', organizationId)
+  const { data: originalEntryList } = await supabase.from('financial_transactions').select('*').eq('id', originalEntryId).eq('organization_id', organizationId).is('deleted_at', null)
 
   const originalEntry = originalEntryList?.[0]
   if (!originalEntry) {
@@ -135,8 +135,8 @@ export default defineEventHandler(async (event) => {
   const baseDate = String(originalEntry.due_date || '')
 
   const [rootResult, childResult] = await Promise.all([
-    supabase.from('financial_transactions').select('*').eq('id', rootRecurringId).eq('organization_id', organizationId),
-    supabase.from('financial_transactions').select('*').eq('parent_recurrence_id', rootRecurringId).eq('organization_id', organizationId)
+    supabase.from('financial_transactions').select('*').eq('id', rootRecurringId).eq('organization_id', organizationId).is('deleted_at', null),
+    supabase.from('financial_transactions').select('*').eq('parent_recurrence_id', rootRecurringId).eq('organization_id', organizationId).is('deleted_at', null)
   ])
 
   const allSeriesEntries = [...(rootResult.data || []), ...(childResult.data || [])]

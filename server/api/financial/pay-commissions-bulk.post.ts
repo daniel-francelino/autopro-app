@@ -3,6 +3,7 @@ import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 import { resolveDefaultCategoryId } from '../../utils/financial-category-defaults'
+import { softDeleteFinancialTransaction, FINANCIAL_TRANSACTION_DELETION_SOURCES } from '../../utils/financial-transaction-deletion'
 
 /**
  * POST /api/financial/pay-commissions-bulk
@@ -182,7 +183,18 @@ export default defineEventHandler(async (event) => {
       // Best-effort rollback
       try { if (extrato?.id) await supabase.from('bank_account_statements').delete().eq('id', extrato.id) } catch {}
       try { if (updatedConta && saldoAnterior !== null) await supabase.from('bank_accounts').update({ current_balance: saldoAnterior, updated_by: authUser.email }).eq('id', contaId) } catch {}
-      try { if (lancamento?.id) await supabase.from('financial_transactions').delete().eq('id', lancamento.id) } catch {}
+      try {
+        if (lancamento?.id) {
+          await softDeleteFinancialTransaction({
+            supabase,
+            id: lancamento.id,
+            organizationId,
+            reason: `Rollback automático: falha ao pagar comissão em lote (${error?.message || String(error)})`,
+            source: FINANCIAL_TRANSACTION_DELETION_SOURCES.PAY_COMMISSIONS_BULK_ROLLBACK,
+            userEmail: authUser.email
+          })
+        }
+      } catch {}
 
       results.push({ ...resultBase, status: 'failed', message: error?.message || String(error) })
     }
