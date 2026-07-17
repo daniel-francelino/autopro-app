@@ -36,6 +36,7 @@ export default defineEventHandler(async (event) => {
     .eq('id', transactionId)
     .eq('service_order_id', orderId)
     .eq('organization_id', organizationId)
+    .is('deleted_at', null)
     .maybeSingle()
 
   if (transactionError || !transaction) {
