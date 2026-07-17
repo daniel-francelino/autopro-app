@@ -131,12 +131,12 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Lançamento original não encontrado' })
   }
 
-  const rootRecurringId = originalEntry.recurring_parent_id || originalEntry.id
+  const rootRecurringId = originalEntry.parent_recurrence_id || originalEntry.id
   const baseDate = String(originalEntry.due_date || '')
 
   const [rootResult, childResult] = await Promise.all([
     supabase.from('financial_transactions').select('*').eq('id', rootRecurringId).eq('organization_id', organizationId),
-    supabase.from('financial_transactions').select('*').eq('recurring_parent_id', rootRecurringId).eq('organization_id', organizationId)
+    supabase.from('financial_transactions').select('*').eq('parent_recurrence_id', rootRecurringId).eq('organization_id', organizationId)
   ])
 
   const allSeriesEntries = [...(rootResult.data || []), ...(childResult.data || [])]
@@ -174,8 +174,8 @@ export default defineEventHandler(async (event) => {
       is_installment: entry.is_installment,
       installment_count: entry.installment_count,
       current_installment: entry.current_installment,
-      parent_id: entry.parent_id,
-      recurring_parent_id: entry.recurring_parent_id
+      parent_transaction_id: entry.parent_transaction_id,
+      parent_recurrence_id: entry.parent_recurrence_id
     }
 
     if (!hasEntryChanges(entry, updateData)) continue
