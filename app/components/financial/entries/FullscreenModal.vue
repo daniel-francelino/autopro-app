@@ -49,6 +49,9 @@ const props = defineProps<{
   canDelete: boolean
   pendingSelectedCount: number
   selectedCount: number
+  selectionIncome: number
+  selectionExpense: number
+  selectionBalance: number
   bankAccountOptions: BankAccountItem[]
   isPaying: boolean
   payingEntryId: string | null
@@ -189,6 +192,14 @@ const columns = [
         @load-more="emit('load-more')"
       >
         <template #toolbar-right>
+          <FinancialEntriesSelectionSummaryPopover
+            v-if="selectedCount > 0"
+            :count="selectedCount"
+            :income="selectionIncome"
+            :expense="selectionExpense"
+            :balance="selectionBalance"
+          />
+
           <UTooltip
             v-if="canUpdate"
             :text="pendingSelectedCount > 0 ? `Pagar ${pendingSelectedCount} selecionado(s)` : 'Selecione lançamentos pendentes'"

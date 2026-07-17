@@ -447,6 +447,16 @@ const selectedEntries = computed(() =>
 const pendingSelectedCount = computed(() =>
   selectedEntries.value.filter(e => !isPaidStatus(e.status)).length
 )
+const selectionSummary = computed(() => {
+  let income = 0
+  let expense = 0
+  for (const entry of selectedEntries.value) {
+    const amount = Number.parseFloat(String(entry.amount || 0)) || 0
+    if (entry.type === 'income') income += amount
+    else if (entry.type === 'expense') expense += amount
+  }
+  return { income, expense, balance: income - expense }
+})
 
 // ── Pay single ────────────────────────────────────────────────────────────────
 
@@ -813,6 +823,14 @@ const columns = [
           @load-more="loadMore"
         >
           <template #toolbar-right>
+            <FinancialEntriesSelectionSummaryPopover
+              v-if="selectedCount > 0"
+              :count="selectedCount"
+              :income="selectionSummary.income"
+              :expense="selectionSummary.expense"
+              :balance="selectionSummary.balance"
+            />
+
             <UTooltip
               v-if="canUpdate"
               :text="pendingSelectedCount > 0 ? `Pagar ${pendingSelectedCount} selecionado(s)` : 'Selecione lançamentos pendentes'"
@@ -1044,6 +1062,9 @@ const columns = [
     :can-delete="canDelete"
     :pending-selected-count="pendingSelectedCount"
     :selected-count="selectedCount"
+    :selection-income="selectionSummary.income"
+    :selection-expense="selectionSummary.expense"
+    :selection-balance="selectionSummary.balance"
     :bank-account-options="bankAccountOptions"
     :is-paying="isPaying"
     :paying-entry-id="payingEntryId"
