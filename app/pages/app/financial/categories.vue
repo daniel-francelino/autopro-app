@@ -30,6 +30,8 @@ const canUpdate = computed(() => workshop.can(ActionCode.FINANCIAL_UPDATE))
 const canDelete = computed(() => workshop.can(ActionCode.FINANCIAL_DELETE))
 
 const search = ref('')
+const page = ref(1)
+const pageSize = ref(20)
 
 const { data, status, refresh } = await useAsyncData(
   'financial-categories-crud',
@@ -51,6 +53,13 @@ const filteredCategories = computed(() => {
     .filter(c => !term || c.name.toLowerCase().includes(term))
     .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }))
 })
+
+const paginatedCategories = computed(() => {
+  const start = (page.value - 1) * pageSize.value
+  return filteredCategories.value.slice(start, start + pageSize.value)
+})
+
+watch(search, () => { page.value = 1 })
 
 const typeLabel: Record<Category['type'], string> = { income: 'Entrada', expense: 'Saída' }
 const typeIcon: Record<Category['type'], string> = { income: 'i-lucide-trending-up', expense: 'i-lucide-trending-down' }
@@ -187,8 +196,11 @@ async function confirmMigration() {
       <div v-else class="space-y-4 p-4">
         <AppDataTable
           v-model:search-term="search"
+          v-model:page="page"
+          v-model:page-size="pageSize"
           :columns="columns"
-          :data="filteredCategories as Record<string, unknown>[]"
+          :data="paginatedCategories as Record<string, unknown>[]"
+          :total="filteredCategories.length"
           :loading="status === 'pending'"
           :show-search="true"
           search-placeholder="Buscar categoria..."

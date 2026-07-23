@@ -5,7 +5,7 @@ import { resolveOrganizationId } from '../../../utils/organization'
 
 /**
  * DELETE /api/financial/categories/:id
- * Soft-delete a custom financial category.
+ * Soft-delete a financial category (default or custom) with no linked transactions.
  */
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
@@ -17,14 +17,13 @@ export default defineEventHandler(async (event) => {
 
   const { data: existing } = await supabase
     .from('financial_categories')
-    .select('id, is_default')
+    .select('id')
     .eq('id', id)
     .eq('organization_id', organizationId)
     .is('deleted_at', null)
     .maybeSingle()
 
   if (!existing) throw createError({ statusCode: 404, statusMessage: 'Categoria não encontrada' })
-  if (existing.is_default) throw createError({ statusCode: 409, statusMessage: 'Categoria padrão não pode ser removida' })
 
   const { count } = await supabase
     .from('financial_transactions')
