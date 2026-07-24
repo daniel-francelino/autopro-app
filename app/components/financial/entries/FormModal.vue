@@ -175,7 +175,6 @@ function addInstallment() {
     due_date: nextDate,
     status: 'pending'
   })
-  form.installment_count = editableInstallments.value.length
 }
 
 function removeInstallment(index: number) {
@@ -184,7 +183,6 @@ function removeInstallment(index: number) {
   editableInstallments.value.forEach((inst, i) => {
     inst.number = i + 1
   })
-  form.installment_count = editableInstallments.value.length
 }
 
 const installmentTotal = computed(() =>
@@ -220,7 +218,7 @@ function generateOccurrences(
   firstStatus: string,
   recurrenceType: string
 ): Occurrence[] {
-  if (!baseAmount || !count || !firstDate) return []
+  if (!count || !firstDate) return []
   const advance = recurrenceType === 'yearly' ? addYears : addMonths
   return Array.from({ length: count }, (_, i) => ({
     number: i + 1,
@@ -230,17 +228,22 @@ function generateOccurrences(
   }))
 }
 
+// Amount/due_date aren't required here (unlike installments) — the whole
+// point of the editable list is letting the user fill those in per row, so
+// the list must appear as soon as a recurrence type + count are chosen, even
+// before "Valor"/"1º Vencimento" (Geral tab) have anything in them.
 function regenerateOccurrences() {
-  const amount = Number(form.amount) || 0
-  const count = form.recurrence_count || 2
-  if (!amount || !form.due_date || form.recurrence === NO_RECURRENCE) {
+  if (form.recurrence === NO_RECURRENCE) {
     editableOccurrences.value = []
     return
   }
+  const amount = Number(form.amount) || 0
+  const count = form.recurrence_count || 2
+  const firstDate = form.due_date || format(new Date(), 'yyyy-MM-dd')
   editableOccurrences.value = generateOccurrences(
     amount,
     count,
-    form.due_date,
+    firstDate,
     form.status,
     form.recurrence
   )
@@ -258,7 +261,6 @@ function addOccurrence() {
     due_date: nextDate,
     status: 'pending'
   })
-  form.recurrence_count = editableOccurrences.value.length
 }
 
 function removeOccurrence(index: number) {
@@ -267,8 +269,19 @@ function removeOccurrence(index: number) {
   editableOccurrences.value.forEach((occ, i) => {
     occ.number = i + 1
   })
-  form.recurrence_count = editableOccurrences.value.length
 }
+
+// Select "Quantidade de ocorrências": só regenera quando o usuário mexe
+// nele de propósito — nunca como efeito colateral de addOccurrence/
+// removeOccurrence (que já mutam a lista direto). O valor exibido prioriza
+// o tamanho real da lista, então fica sempre coerente com o que tem na tela.
+const recurrenceCountSelect = computed({
+  get: () => editableOccurrences.value.length || form.recurrence_count,
+  set: (count: number) => {
+    form.recurrence_count = count
+    regenerateOccurrences()
+  }
+})
 
 const occurrencesTotal = computed(() =>
   editableOccurrences.value.reduce((sum, occ) => sum + (Number(occ.amount) || 0), 0)
@@ -311,12 +324,16 @@ const form = reactive({
   is_editing_installment: false
 })
 
-// Regenrate when checkbox is toggled on, or when count/amount/date/status changes
+// Regenerate when the checkbox is toggled on, or when amount/date/status
+// changes — NOT when installment_count changes, since that field only ever
+// changes as a side effect of addInstallment/removeInstallment, which
+// already mutate editableInstallments directly. Watching it here used to
+// wipe/regenerate the whole list (discarding the row just added) every
+// single time "Adicionar parcela" was clicked.
 watch(
   () =>
     [
       form.is_installment,
-      form.installment_count,
       form.amount,
       form.due_date,
       form.status
@@ -330,12 +347,15 @@ watch(
   }
 )
 
-// Mesma ideia, pra recorrência — gera/atualiza a lista de ocorrências
+// Mesma ideia, pra recorrência — gera a lista quando o tipo é ligado, ou
+// quando amount/due_date/status mudam. Sem `recurrence_count` aqui — isso é
+// tratado à parte pelo `recurrenceCountSelect` acima, senão clicar em
+// "Adicionar ocorrência" (que também precisa ajustar a contagem) regeneraria
+// a lista do zero, exatamente como o Bug do parcelamento.
 watch(
   () =>
     [
       form.recurrence,
-      form.recurrence_count,
       form.amount,
       form.due_date,
       form.status
@@ -775,13 +795,25 @@ function formatCurrency(value: number) {
         <!-- ── Recorrência ────────────────────────────────────────────── -->
         <template #recurrence>
           <div class="space-y-4 pt-4">
-            <UAlert
-              icon="i-lucide-info"
-              color="neutral"
-              variant="soft"
-              title="Como funciona a recorrência"
-              description="Use para lançamentos que se repetem com o mesmo valor, como aluguel, assinaturas ou mensalidades. O sistema já gera todas as ocorrências agora, de uma vez (não existe verificação automática depois) — você pode ajustar o vencimento ou o valor de uma ocorrência específica antes de salvar, e adicionar mais ocorrências depois, quando a série acabar."
-            />
+            <div class="flex items-center gap-1.5">
+              <h3 class="text-sm font-semibold text-highlighted">
+                Recorrência
+              </h3>
+              <UPopover mode="hover" :content="{ side: 'right', align: 'start' }">
+                <UButton
+                  icon="i-lucide-info"
+                  color="neutral"
+                  variant="ghost"
+                  size="xs"
+                  square
+                />
+                <template #content>
+                  <p class="max-w-xs p-3 text-xs text-muted">
+                    Use para lançamentos que se repetem com o mesmo valor, como aluguel, assinaturas ou mensalidades. O sistema já gera todas as ocorrências agora, de uma vez (não existe verificação automática depois) — você pode ajustar o vencimento ou o valor de uma ocorrência específica antes de salvar, e adicionar mais ocorrências depois, quando a série acabar.
+                  </p>
+                </template>
+              </UPopover>
+            </div>
 
             <!-- Editando uma ocorrência que já faz parte de uma série real: só informação -->
             <template v-if="isEditing && isEditingRecurring">
@@ -834,7 +866,7 @@ function formatCurrency(value: number) {
 
                   <UFormField v-if="!isEditing" label="Quantidade de ocorrências">
                     <USelectMenu
-                      v-model="form.recurrence_count"
+                      v-model="recurrenceCountSelect"
                       :items="recurrenceCountOptions"
                       value-key="value"
                       class="w-full"
@@ -921,13 +953,25 @@ function formatCurrency(value: number) {
         <!-- ── Parcelamento ───────────────────────────────────────────── -->
         <template #installments>
           <div class="space-y-4 pt-4">
-            <UAlert
-              icon="i-lucide-info"
-              color="neutral"
-              variant="soft"
-              title="Como funciona o parcelamento"
-              description="Use para dividir um valor total em partes — por exemplo, um conserto caro pago em várias vezes. O valor de cada parcela normalmente é uma fração do valor total (ajustável linha a linha, se as parcelas não forem todas iguais). Se o lançamento se repete todo mês com o mesmo valor (aluguel, assinatura), use a aba Recorrência em vez desta."
-            />
+            <div class="flex items-center gap-1.5">
+              <h3 class="text-sm font-semibold text-highlighted">
+                Parcelamento
+              </h3>
+              <UPopover mode="hover" :content="{ side: 'right', align: 'start' }">
+                <UButton
+                  icon="i-lucide-info"
+                  color="neutral"
+                  variant="ghost"
+                  size="xs"
+                  square
+                />
+                <template #content>
+                  <p class="max-w-xs p-3 text-xs text-muted">
+                    Use para dividir um valor total em partes — por exemplo, um conserto caro pago em várias vezes. O valor de cada parcela normalmente é uma fração do valor total (ajustável linha a linha, se as parcelas não forem todas iguais). Se o lançamento se repete todo mês com o mesmo valor (aluguel, assinatura), use a aba Recorrência em vez desta.
+                  </p>
+                </template>
+              </UPopover>
+            </div>
 
             <!-- Aviso: já é parcelado (edição) -->
             <UAlert
