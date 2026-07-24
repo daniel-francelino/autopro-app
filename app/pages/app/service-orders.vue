@@ -31,6 +31,7 @@ const canCreate = computed(() => workshop.can(ActionCode.ORDERS_CREATE))
 const canUpdate = computed(() => workshop.can(ActionCode.ORDERS_UPDATE))
 const canDelete = computed(() => workshop.can(ActionCode.ORDERS_DELETE))
 const canCancel = computed(() => workshop.can(ActionCode.ORDERS_CANCEL))
+const canDeleteInstallment = computed(() => workshop.can(ActionCode.FINANCIAL_DELETE))
 const canIssueNfse = computed(() => workshop.can(ActionCode.SERVICE_INVOICE_CREATE))
 
 // ─── Filters (URL-synced) ──────────────────────────────────────────────────────
@@ -637,6 +638,7 @@ function onNfseIssued() {
     :can-cancel="canCancel"
     :can-delete="canDelete"
     :can-create="canCreate"
+    :can-delete-installment="canDeleteInstallment"
     @quote="openQuoteFromDetail"
     @edit="openEdit"
     @updated="forceReload"

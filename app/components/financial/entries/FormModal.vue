@@ -51,10 +51,9 @@ function normalizeRecurrence(value: unknown) {
     .toLowerCase()
   if (!v || ['null', 'none', 'nao_recorrente', NO_RECURRENCE].includes(v))
     return NO_RECURRENCE
-  if (v === 'mensal' || v === 'monthly') return 'monthly'
-  if (v === 'anual' || v === 'annual') return 'yearly'
-  if (v === 'semanal') return 'weekly'
-  return ['monthly', 'yearly', 'weekly'].includes(v) ? v : NO_RECURRENCE
+  if (v === 'monthly' || v === 'mensal') return 'monthly'
+  if (v === 'annual' || v === 'anual') return 'yearly'
+  return ['monthly', 'yearly'].includes(v) ? v : NO_RECURRENCE
 }
 
 function recurrenceForApi(value: string) {
@@ -104,6 +103,13 @@ interface Installment {
 }
 
 const installmentCountOptions = Array.from({ length: 23 }, (_, i) => ({
+  label: `${i + 2}x`,
+  value: i + 2
+}))
+
+// Ceiling of 60 occurrences per call (creation or later extension) — 5 years
+// of monthly. See docs/financial-recurrence-flow.md section 5.
+const recurrenceCountOptions = Array.from({ length: 59 }, (_, i) => ({
   label: `${i + 2}x`,
   value: i + 2
 }))
@@ -161,6 +167,7 @@ const form = reactive({
   notes: '',
   recurrence: NO_RECURRENCE,
   recurrence_end_date: '',
+  recurrence_count: 12,
   is_installment: false,
   installment_count: 2,
   is_editing_installment: false
@@ -182,6 +189,22 @@ watch(
     } else {
       editableInstallments.value = []
     }
+  }
+)
+
+// Recorrência e parcelamento são mutuamente exclusivos (docs/financial-recurrence-flow.md
+// Bug 5 / seção 6.1) — marcar um desliga o outro, em vez de deixar o backend
+// descartar um dos dois em silêncio.
+watch(
+  () => form.is_installment,
+  (checked) => {
+    if (checked) form.recurrence = NO_RECURRENCE
+  }
+)
+watch(
+  () => form.recurrence,
+  (recurrence) => {
+    if (recurrence !== NO_RECURRENCE) form.is_installment = false
   }
 )
 
@@ -223,14 +246,11 @@ const installmentTotalsMatch = computed(
 
 const isEditing = computed(() => Boolean(props.entry?.id))
 
-// Only monthly/yearly are treated as recurring series (weekly is not managed as a series)
 const isEditingRecurring = computed(() => {
   if (!props.entry) return false
   const rec = String(props.entry.recurrence || '').toLowerCase()
-  const hasParent
-    = Boolean(props.entry.recurring_parent_id)
-      || Boolean(props.entry.parent_recurrence_id)
-  const isRecurring = ['mensal', 'anual', 'monthly', 'yearly'].includes(rec)
+  const hasParent = Boolean(props.entry.parent_recurrence_id)
+  const isRecurring = ['mensal', 'anual', 'monthly', 'annual', 'yearly'].includes(rec)
   return hasParent || isRecurring
 })
 
@@ -260,6 +280,7 @@ watch(
         recurrence_end_date: e.recurrence_end_date
           ? String(e.recurrence_end_date)
           : '',
+        recurrence_count: 12,
         is_installment: false,
         installment_count: 2,
         is_editing_installment: Boolean(e.is_installment)
@@ -278,6 +299,7 @@ watch(
       notes: '',
       recurrence: NO_RECURRENCE,
       recurrence_end_date: '',
+      recurrence_count: 12,
       is_installment: false,
       installment_count: 2,
       is_editing_installment: false
@@ -334,7 +356,10 @@ function buildBody() {
     recurrence_end_date:
       form.recurrence !== NO_RECURRENCE && form.recurrence_end_date
         ? form.recurrence_end_date
-        : null
+        : null,
+    ...(!isEditing.value && form.recurrence !== NO_RECURRENCE
+      ? { recurrence_count: form.recurrence_count }
+      : {})
   }
 }
 
@@ -575,14 +600,29 @@ function formatCurrency(value: number) {
               v-model="form.recurrence"
               :items="recurrenceOptions"
               value-key="value"
+              :disabled="!isEditing && form.is_installment"
               class="w-full"
             />
           </UFormField>
 
-          <!-- Data encerramento recorrência -->
+          <!-- Quantidade de ocorrências (só na criação — gera tudo de uma vez, sem cron) -->
+          <UFormField
+            v-if="!isEditing && form.recurrence !== NO_RECURRENCE"
+            label="Quantidade de ocorrências"
+          >
+            <USelectMenu
+              v-model="form.recurrence_count"
+              :items="recurrenceCountOptions"
+              value-key="value"
+              class="w-full"
+            />
+          </UFormField>
+
+          <!-- Data encerramento recorrência (só informativo, não afeta a quantidade gerada) -->
           <UFormField
             v-if="form.recurrence !== NO_RECURRENCE"
             label="Encerrar recorrência em"
+            hint="Só uma anotação — não muda quantas ocorrências são criadas"
           >
             <UiDatePicker v-model="form.recurrence_end_date" class="w-full" />
           </UFormField>
@@ -606,6 +646,7 @@ function formatCurrency(value: number) {
               <UCheckbox
                 v-model="form.is_installment"
                 label="Criar lançamento parcelado?"
+                :disabled="form.recurrence !== NO_RECURRENCE"
               />
               <UButton
                 v-if="form.is_installment"

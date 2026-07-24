@@ -78,9 +78,21 @@ const emit = defineEmits<{
   'open-detail': [entry: Entry]
   'pay': [entry: Entry]
   'duplicate': [entry: Entry]
+  'extend-recurrence': [entry: Entry]
   'open-edit': [entry: Entry]
   'remove': [entry: Entry]
 }>()
+
+function isRecurringEntry(entry: Entry) {
+  return Boolean(entry.recurrence) && entry.recurrence !== 'non_recurring'
+}
+
+function formatRecurrence(value: unknown) {
+  const normalized = String(value || '').trim().toLowerCase()
+  if (normalized === 'monthly' || normalized === 'mensal') return 'Mensal'
+  if (normalized === 'annual' || normalized === 'anual') return 'Anual'
+  return 'Recorrente'
+}
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 
@@ -296,6 +308,14 @@ const columns = [
                   size="xs"
                   :label="`${(row.original as Entry).current_installment}/${(row.original as Entry).installment_count}x`"
                 />
+                <UBadge
+                  v-if="isRecurringEntry(row.original as Entry)"
+                  variant="outline"
+                  color="primary"
+                  size="xs"
+                  icon="i-lucide-repeat"
+                  :label="formatRecurrence((row.original as Entry).recurrence)"
+                />
               </div>
               <p class="truncate text-xs text-muted">
                 {{ formatDate(String((row.original as Entry).due_date || '')) }}
@@ -351,7 +371,17 @@ const columns = [
               />
             </UTooltip>
 
-            <UTooltip v-if="canCreate" text="Duplicar lançamento">
+            <UTooltip v-if="canCreate && isRecurringEntry(row.original as Entry)" text="Adicionar mais ocorrências">
+              <UButton
+                icon="i-lucide-calendar-plus"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                @click="emit('extend-recurrence', row.original as Entry)"
+              />
+            </UTooltip>
+
+            <UTooltip v-else-if="canCreate" text="Duplicar lançamento">
               <UButton
                 icon="i-lucide-copy"
                 color="neutral"

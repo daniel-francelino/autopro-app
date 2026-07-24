@@ -1,7 +1,25 @@
 <script setup lang="ts">
 import { formatCategoryName } from '~/utils/financial-category-options'
 
-type Entry = Record<string, unknown>
+interface Entry {
+  id: string
+  description: string
+  amount: number | string
+  due_date: string
+  type: string
+  status: string
+  category_id?: string | null
+  category_ref?: { id: string, name: string, icon: string, color: string } | null
+  bank_account_id?: string | null
+  notes?: string | null
+  recurrence?: string | null
+  recurrence_end_date?: string | null
+  parent_recurrence_id?: string | null
+  is_installment?: boolean | null
+  installment_count?: number | null
+  current_installment?: number | null
+  [key: string]: unknown
+}
 
 type LinkedEntry = {
   id: string
@@ -31,6 +49,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:open': [value: boolean]
   'edit': [entry: Entry]
+  'extend-recurrence': [entry: Entry]
+  'delete-future': [ids: string[]]
 }>()
 
 const toast = useToast()
@@ -82,9 +102,8 @@ function normalizeStatus(value: unknown) {
 function normalizeRecurrence(value: unknown) {
   const v = String(value || '').trim().toLowerCase()
   if (!v || ['null', 'none', 'non_recurring', 'nao_recorrente', 'sem recorrencia', 'sem recorrência'].includes(v)) return ''
-  if (v === 'mensal') return 'monthly'
-  if (v === 'anual') return 'yearly'
-  if (v === 'semanal') return 'weekly'
+  if (v === 'monthly' || v === 'mensal') return 'monthly'
+  if (v === 'annual' || v === 'anual') return 'yearly'
   return v
 }
 
@@ -129,10 +148,7 @@ const statusIconMap: Record<string, string> = {
 
 const recurrenceLabelMap: Record<string, string> = {
   monthly: 'Mensal',
-  mensal: 'Mensal',
   yearly: 'Anual',
-  anual: 'Anual',
-  weekly: 'Semanal',
   non_recurring: 'Sem recorrência'
 }
 
@@ -163,6 +179,49 @@ const isInstallment = computed(() => Boolean(entry.value?.is_installment))
 const hasRecurrence = computed(() =>
   Boolean(entryRecurrence.value)
 )
+
+// Histórico completo da recorrência: a ocorrência atual + toda a série
+// (passado e futuro), numa única linha do tempo ordenada por vencimento —
+// não só "as outras", como installmentSiblings/recurringSiblings tratam.
+type TimelineItem = LinkedEntry & { isCurrent: boolean }
+const recurrenceTimeline = computed<TimelineItem[]>(() => {
+  if (!entry.value) return []
+  const current: LinkedEntry = {
+    id: String(entry.value.id),
+    description: String(entry.value.description ?? ''),
+    amount: entry.value.amount,
+    due_date: String(entry.value.due_date ?? ''),
+    status: String(entry.value.status ?? '')
+  }
+  return [current, ...recurringSiblings.value]
+    .map(item => ({ ...item, isCurrent: item.id === current.id }))
+    .sort((a, b) => a.due_date.localeCompare(b.due_date))
+})
+const recurrenceCounts = computed(() => {
+  const counts = { paid: 0, pending: 0, cancelled: 0 }
+  for (const item of recurrenceTimeline.value) {
+    const status = linkedEntryStatus(item.status)
+    if (status in counts) counts[status as keyof typeof counts]++
+  }
+  return counts
+})
+
+// IDs eligible for "excluir esta e as futuras": this occurrence plus every
+// sibling due on/after it, but only while still pending — a paid occurrence
+// is never swept into this automatically (see docs/financial-recurrence-flow.md
+// section 6.4).
+const futurePendingIds = computed(() => {
+  if (!entry.value) return []
+  const currentDueDate = String(entry.value.due_date ?? '')
+  const ids: string[] = []
+  if (normalizeStatus(entry.value.status) === 'pending') ids.push(String(entry.value.id))
+  for (const sibling of recurringSiblings.value) {
+    if (normalizeStatus(sibling.status) === 'pending' && String(sibling.due_date ?? '') >= currentDueDate) {
+      ids.push(sibling.id)
+    }
+  }
+  return ids
+})
 
 const bankAccountLabel = computed(() => {
   const id = String(entry.value?.bank_account_id || '')
@@ -371,36 +430,49 @@ function linkedEntryStatus(status: string) {
           </div>
         </section>
 
-        <!-- ── Série recorrente ────────────────────────────────────── -->
-        <section v-if="hasRecurrence && recurringSiblings.length > 0" class="px-6 py-4 space-y-3">
-          <div class="flex items-center gap-2">
-            <UIcon name="i-lucide-repeat" class="size-4 text-primary" />
-            <h3 class="text-xs font-semibold uppercase tracking-wide text-muted">
-              Série recorrente
-            </h3>
+        <!-- ── Histórico da recorrência (passado + futuro) ─────────── -->
+        <section v-if="hasRecurrence" class="px-6 py-4 space-y-3">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <UIcon name="i-lucide-repeat" class="size-4 text-primary" />
+              <h3 class="text-xs font-semibold uppercase tracking-wide text-muted">
+                Histórico da recorrência ({{ recurrenceTimeline.length }})
+              </h3>
+            </div>
+            <span class="text-xs text-muted">
+              {{ recurrenceCounts.paid }} paga(s) · {{ recurrenceCounts.pending }} pendente(s)
+            </span>
           </div>
           <div class="divide-y divide-default rounded-lg border border-default overflow-hidden max-h-72 overflow-y-auto">
             <div
-              v-for="sibling in recurringSiblings"
-              :key="sibling.id"
-              class="flex items-center justify-between px-3 py-2.5 hover:bg-elevated transition-colors"
+              v-for="item in recurrenceTimeline"
+              :key="item.id"
+              class="flex items-center justify-between px-3 py-2.5 transition-colors"
+              :class="item.isCurrent ? 'bg-primary/5' : 'hover:bg-elevated'"
             >
               <div class="flex items-center gap-2 min-w-0">
                 <UIcon name="i-lucide-calendar" class="size-3.5 shrink-0 text-muted" />
-                <span class="text-sm text-highlighted">
-                  {{ formatDate(sibling.due_date) }}
+                <span class="text-sm" :class="item.isCurrent ? 'font-semibold text-highlighted' : 'text-highlighted'">
+                  {{ formatDate(item.due_date) }}
                 </span>
+                <UBadge
+                  v-if="item.isCurrent"
+                  label="Atual"
+                  color="primary"
+                  variant="subtle"
+                  size="xs"
+                />
               </div>
               <div class="flex items-center gap-2 shrink-0">
                 <UBadge
-                  :color="statusColorMap[linkedEntryStatus(sibling.status)] ?? 'neutral'"
-                  :icon="statusIconMap[linkedEntryStatus(sibling.status)]"
-                  :label="statusLabelMap[linkedEntryStatus(sibling.status)] ?? sibling.status"
+                  :color="statusColorMap[linkedEntryStatus(item.status)] ?? 'neutral'"
+                  :icon="statusIconMap[linkedEntryStatus(item.status)]"
+                  :label="statusLabelMap[linkedEntryStatus(item.status)] ?? item.status"
                   variant="soft"
                   size="xs"
                 />
                 <span class="text-sm font-semibold tabular-nums" :class="amountClass">
-                  {{ formatCurrency(sibling.amount) }}
+                  {{ formatCurrency(item.amount) }}
                 </span>
               </div>
             </div>
@@ -417,6 +489,22 @@ function linkedEntryStatus(status: string) {
           color="neutral"
           variant="ghost"
           @click="emit('update:open', false)"
+        />
+        <UButton
+          v-if="hasRecurrence && futurePendingIds.length > 0"
+          label="Excluir esta e as futuras"
+          icon="i-lucide-calendar-x"
+          color="error"
+          variant="outline"
+          @click="emit('delete-future', futurePendingIds)"
+        />
+        <UButton
+          v-if="hasRecurrence"
+          label="Adicionar ocorrências"
+          icon="i-lucide-calendar-plus"
+          color="neutral"
+          variant="outline"
+          @click="emit('extend-recurrence', entry)"
         />
         <UButton
           label="Editar lançamento"

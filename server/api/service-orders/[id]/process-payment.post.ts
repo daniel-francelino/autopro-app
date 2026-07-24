@@ -92,6 +92,7 @@ export default defineEventHandler(async (event) => {
     .select('kind, amount')
     .eq('service_order_id', orderId)
     .eq('organization_id', organizationId)
+    .is('deleted_at', null)
 
   const existingRows = existingInstallments || []
 

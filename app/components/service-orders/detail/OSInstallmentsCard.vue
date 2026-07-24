@@ -10,6 +10,7 @@ const props = defineProps<{
   installments: ServiceOrderInstallment[]
   orderId: string
   canUpdate?: boolean
+  canDeleteInstallment?: boolean
 }>()
 
 const emit = defineEmits<{ changed: [] }>()
@@ -192,35 +193,40 @@ async function confirmEdit() {
   }
 }
 
-// ─── Remove a still-pending line (e.g. merged into another) ─────────────────────
+// ─── Delete a line (any status) — always requires a reason ─────────────────────
 
-const removingInstallment = ref<ServiceOrderInstallment | null>(null)
-const isRemoving = ref(false)
+const deletingInstallment = ref<ServiceOrderInstallment | null>(null)
+const deletionReason = ref('')
+const deletionReasonValid = computed(() => deletionReason.value.trim().length > 0)
+const isDeletingInstallment = ref(false)
 
-function requestRemove(installment: ServiceOrderInstallment) {
-  removingInstallment.value = installment
+function requestDelete(installment: ServiceOrderInstallment) {
+  deletingInstallment.value = installment
+  deletionReason.value = ''
 }
 
-async function confirmRemove() {
-  if (!removingInstallment.value || isRemoving.value) return
-  isRemoving.value = true
+async function confirmDelete() {
+  if (!deletingInstallment.value || isDeletingInstallment.value || !deletionReasonValid.value) return
+  isDeletingInstallment.value = true
 
   try {
-    await $fetch(`/api/service-orders/${props.orderId}/installments/${removingInstallment.value.id}`, {
-      method: 'DELETE'
+    await $fetch(`/api/service-orders/${props.orderId}/installments/${deletingInstallment.value.id}`, {
+      method: 'DELETE',
+      body: { reason: deletionReason.value.trim() }
     })
-    toast.add({ title: 'Parcela removida', color: 'success' })
-    removingInstallment.value = null
+    toast.add({ title: 'Parcela excluída', color: 'success' })
+    deletingInstallment.value = null
+    deletionReason.value = ''
     emit('changed')
   } catch (error: unknown) {
     const err = error as { data?: { statusMessage?: string } }
     toast.add({
-      title: 'Erro ao remover parcela',
+      title: 'Erro ao excluir parcela',
       description: err?.data?.statusMessage || 'Tente novamente.',
       color: 'error'
     })
   } finally {
-    isRemoving.value = false
+    isDeletingInstallment.value = false
   }
 }
 
@@ -347,9 +353,9 @@ async function confirmUndoReceipt() {
           </div>
         </div>
 
-        <!-- Pending lines can be rescheduled/renegotiated or dropped (e.g. merged elsewhere) -->
-        <div v-if="canUpdate && installment.status === 'pending'" class="mt-2 flex items-center justify-end gap-1">
-          <UTooltip text="Editar vencimento/valor">
+        <!-- Pending lines can be rescheduled/renegotiated; any line can be deleted -->
+        <div v-if="(canUpdate && installment.status === 'pending') || canDeleteInstallment" class="mt-2 flex items-center justify-end gap-1">
+          <UTooltip v-if="canUpdate && installment.status === 'pending'" text="Editar vencimento/valor">
             <UButton
               icon="i-lucide-pencil"
               color="neutral"
@@ -358,13 +364,13 @@ async function confirmUndoReceipt() {
               @click="requestEdit(installment)"
             />
           </UTooltip>
-          <UTooltip text="Remover linha">
+          <UTooltip v-if="canDeleteInstallment" text="Excluir parcela">
             <UButton
               icon="i-lucide-trash-2"
               color="error"
               variant="ghost"
               size="xs"
-              @click="requestRemove(installment)"
+              @click="requestDelete(installment)"
             />
           </UTooltip>
         </div>
@@ -495,20 +501,32 @@ async function confirmUndoReceipt() {
     </template>
   </AppConfirmModal>
 
-  <!-- Remove a pending line -->
+  <!-- Delete a line (any status) — reason always required -->
   <AppConfirmModal
-    :open="!!removingInstallment"
-    title="Remover parcela"
-    confirm-label="Remover"
+    :open="!!deletingInstallment"
+    title="Excluir parcela"
+    confirm-label="Excluir parcela"
     confirm-color="error"
-    :loading="isRemoving"
-    @update:open="removingInstallment = null"
-    @confirm="confirmRemove"
+    :loading="isDeletingInstallment"
+    :confirm-disabled="!deletionReasonValid"
+    @update:open="(v) => { if (!v && !isDeletingInstallment) { deletingInstallment = null; deletionReason = '' } }"
+    @confirm="confirmDelete"
   >
     <template #description>
-      <p class="text-sm text-muted">
-        Remove esta linha do plano de pagamento — use pra juntar o valor em outra parcela durante uma renegociação. Não pode ser desfeito.
-      </p>
+      <div v-if="deletingInstallment" class="space-y-3">
+        <p class="text-sm text-muted">
+          <template v-if="deletingInstallment.status === 'paid' || deletingInstallment.status === 'partial'">
+            Isso reverte o(s) recebimento(s) ligados a esta parcela (o valor volta pro saldo da conta bancária) e remove a linha do plano de pagamento.
+          </template>
+          <template v-else>
+            Remove esta linha do plano de pagamento.
+          </template>
+          Não pode ser desfeito.
+        </p>
+        <UFormField label="Motivo da exclusão" required>
+          <UTextarea v-model="deletionReason" class="w-full" :rows="2" />
+        </UFormField>
+      </div>
     </template>
   </AppConfirmModal>
 

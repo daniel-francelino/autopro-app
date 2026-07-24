@@ -20,7 +20,7 @@ interface Entry {
   bank_account_id?: string | null
   notes?: string | null
   recurrence?: string | null
-  recurring_parent_id?: string | null
+  parent_recurrence_id?: string | null
   is_installment?: boolean | null
   installment_count?: number | null
   current_installment?: number | null
@@ -110,10 +110,13 @@ function normalizeStatusForApi(value: string) {
 function normalizeRecurrenceValue(value: unknown) {
   const normalized = String(value || '').trim().toLowerCase()
   if (!normalized || ['null', 'none', 'non_recurring', 'nao_recorrente', 'sem recorrencia', 'sem recorrência'].includes(normalized)) return null
-  if (normalized === 'mensal') return 'monthly'
-  if (normalized === 'anual') return 'yearly'
-  if (normalized === 'semanal') return 'weekly'
+  if (normalized === 'monthly' || normalized === 'mensal') return 'monthly'
+  if (normalized === 'annual' || normalized === 'anual') return 'yearly'
   return normalized
+}
+
+function isRecurringEntry(entry: Entry) {
+  return Boolean(entry.recurrence) && entry.recurrence !== 'non_recurring'
 }
 
 function isPaidStatus(value: unknown) {
@@ -655,6 +658,63 @@ async function duplicate(entry: Entry) {
   }
 }
 
+// ── Extend recurrence (add more occurrences to an existing series) ────────────
+// No cron in this infra — series are generated upfront at creation and need
+// this explicit action to keep going once exhausted. See
+// docs/financial-recurrence-flow.md section 6.7.
+
+const extendCountOptions = Array.from({ length: 60 }, (_, i) => ({
+  label: `${i + 1}x`,
+  value: i + 1
+}))
+
+const showExtendModal = ref(false)
+const extendingEntry = ref<Entry | null>(null)
+const extendCount = ref(12)
+const isExtending = ref(false)
+
+function requestExtend(entry: Entry) {
+  extendingEntry.value = entry
+  extendCount.value = 12
+  showExtendModal.value = true
+}
+
+function onDetailExtend(entry: Entry) {
+  showDetailSlideover.value = false
+  requestExtend(entry)
+}
+
+// Reuses the existing bulk-delete flow (motivo obrigatório) — just
+// pre-selects the series' still-pending future occurrences instead of
+// requiring the user to find and check each row manually.
+function onDetailDeleteFuture(ids: string[]) {
+  showDetailSlideover.value = false
+  const selection: RowSelectionState = {}
+  for (const id of ids) selection[id] = true
+  rowSelection.value = selection
+  requestBulkRemove()
+}
+
+async function confirmExtend() {
+  if (!extendingEntry.value || isExtending.value) return
+  isExtending.value = true
+  try {
+    await $fetch(`/api/financial/${String(extendingEntry.value.id)}/extend-recurrence`, {
+      method: 'POST',
+      body: { additional_count: extendCount.value }
+    })
+    toast.add({ title: `${extendCount.value} ocorrência(s) adicionada(s)`, color: 'success' })
+    showExtendModal.value = false
+    extendingEntry.value = null
+    await resetAndRefresh()
+  } catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
+    toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Falha ao adicionar ocorrências', color: 'error' })
+  } finally {
+    isExtending.value = false
+  }
+}
+
 // ── Fullscreen modal ─────────────────────────────────────────────────────────
 
 const showFullscreen = ref(false)
@@ -740,14 +800,9 @@ function formatStatusLabel(value: unknown) {
 function formatRecurrence(value: unknown) {
   const normalized = normalizeRecurrenceValue(value)
   if (!normalized) return 'Sem recorrência'
-  if (normalized === 'weekly') return 'Semanal'
   if (normalized === 'monthly') return 'Mensal'
   if (normalized === 'yearly') return 'Anual'
   return String(value || 'Sem recorrência')
-}
-
-function hasRecurrence(value: unknown) {
-  return Boolean(normalizeRecurrenceValue(value))
 }
 
 function getBankAccountLabel(entry: Entry) {
@@ -951,6 +1006,14 @@ const columns = [
                     size="xs"
                     :label="`${(row.original as Entry).current_installment}/${(row.original as Entry).installment_count}x`"
                   />
+                  <UBadge
+                    v-if="isRecurringEntry(row.original as Entry)"
+                    variant="outline"
+                    color="primary"
+                    size="xs"
+                    icon="i-lucide-repeat"
+                    :label="formatRecurrence((row.original as Entry).recurrence)"
+                  />
                 </div>
                 <p class="truncate text-xs text-muted">
                   {{ formatDate(String((row.original as Entry).due_date || '')) }}
@@ -1006,7 +1069,17 @@ const columns = [
                 />
               </UTooltip>
 
-              <UTooltip v-if="canCreate" text="Duplicar lançamento">
+              <UTooltip v-if="canCreate && isRecurringEntry(row.original as Entry)" text="Adicionar mais ocorrências">
+                <UButton
+                  icon="i-lucide-calendar-plus"
+                  color="neutral"
+                  variant="ghost"
+                  size="xs"
+                  @click="requestExtend(row.original as Entry)"
+                />
+              </UTooltip>
+
+              <UTooltip v-else-if="canCreate" text="Duplicar lançamento">
                 <UButton
                   icon="i-lucide-copy"
                   color="neutral"
@@ -1096,6 +1169,7 @@ const columns = [
     @open-detail="openDetail"
     @pay="pay"
     @duplicate="duplicate"
+    @extend-recurrence="requestExtend"
     @open-edit="openEdit"
     @remove="requestRemove"
   />
@@ -1105,7 +1179,41 @@ const columns = [
     :entry-id="detailEntryId"
     :bank-account-by-id="bankAccountById"
     @edit="onDetailEdit"
+    @extend-recurrence="onDetailExtend"
+    @delete-future="onDetailDeleteFuture"
   />
+
+  <!-- Adicionar mais ocorrências a uma série recorrente -->
+  <AppConfirmModal
+    v-model:open="showExtendModal"
+    title="Adicionar mais ocorrências"
+    confirm-label="Adicionar"
+    confirm-color="primary"
+    :loading="isExtending"
+    @confirm="confirmExtend"
+    @update:open="
+      (v) => {
+        showExtendModal = v
+        if (!v && !isExtending) extendingEntry = null
+      }
+    "
+  >
+    <template #description>
+      <div class="space-y-3">
+        <p class="text-sm text-muted">
+          Gera mais ocorrências desta série a partir da última já existente, seguindo o mesmo valor/categoria/conta bancária.
+        </p>
+        <UFormField label="Quantidade">
+          <USelectMenu
+            v-model="extendCount"
+            :items="extendCountOptions"
+            value-key="value"
+            class="w-full"
+          />
+        </UFormField>
+      </div>
+    </template>
+  </AppConfirmModal>
 
   <AppConfirmModal
     v-model:open="showDeleteModal"

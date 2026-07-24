@@ -29,6 +29,7 @@ export async function recalculateServiceOrderPaymentStatus({
     .select('status')
     .eq('service_order_id', orderId)
     .eq('organization_id', organizationId)
+    .is('deleted_at', null)
 
   const rows = installments || []
   const allPaid = rows.length > 0 && rows.every(row => row.status === 'paid')

@@ -11,6 +11,7 @@ export const FINANCIAL_TRANSACTION_DELETION_SOURCES = {
   SERVICE_ORDER_DELETE: 'service_orders.delete',
   SERVICE_ORDER_PAYMENT_DELETE: 'service_orders.payment_delete',
   SERVICE_ORDER_RECEIPT_REVERSAL: 'service_orders.financial_transactions.delete',
+  SERVICE_ORDER_INSTALLMENT_DELETE: 'service_orders.installment_delete',
   PAY_COMMISSIONS_BULK_ROLLBACK: 'financial.pay_commissions_bulk.rollback',
   COMMISSION_PAY_ROLLBACK: 'reports.commissions.pay.rollback',
   INCOME_TRANSACTION_ROLLBACK: 'financial_income.rollback'

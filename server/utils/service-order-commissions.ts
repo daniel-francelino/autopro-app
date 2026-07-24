@@ -232,6 +232,7 @@ export async function releaseServiceOrderCommissions({
     .eq('service_order_id', orderId)
     .eq('organization_id', organizationId)
     .eq('status', 'paid')
+    .is('deleted_at', null)
 
   const receivedTotal = (paidInstallments || []).reduce((sum, row) => sum + asNumber(row.amount), 0)
   const totalAmount = asNumber(order.total_amount)

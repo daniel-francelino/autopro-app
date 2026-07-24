@@ -61,6 +61,7 @@ export default defineEventHandler(async (event) => {
     .select('id')
     .eq('service_order_id', orderId)
     .eq('organization_id', organizationId)
+    .is('deleted_at', null)
     .limit(1)
 
   if (installments && installments.length > 0) {

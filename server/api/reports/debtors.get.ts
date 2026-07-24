@@ -117,7 +117,8 @@ export default defineEventHandler(async (event) => {
     }),
     fetchAllOrganizationRows<InstallmentRecord>(supabase, {
       table: 'service_order_installments',
-      organizationId
+      organizationId,
+      nullColumns: ['deleted_at']
     }),
     fetchAllOrganizationRows<ClientRecord>(supabase, {
       table: 'clients',

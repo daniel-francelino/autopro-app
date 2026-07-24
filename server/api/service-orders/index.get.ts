@@ -37,7 +37,7 @@ export default defineEventHandler(async (event) => {
     supabase.from('vehicles').select('id, brand, model, license_plate').eq('organization_id', organizationId).is('deleted_at', null),
     supabase.from('employees').select('id, name').eq('organization_id', organizationId).is('deleted_at', null),
     supabase.from('master_products').select('id, name').eq('organization_id', organizationId).is('deleted_at', null),
-    supabase.from('service_order_installments').select('id, service_order_id, status').eq('organization_id', organizationId)
+    supabase.from('service_order_installments').select('id, service_order_id, status').eq('organization_id', organizationId).is('deleted_at', null)
   ])
 
   const orders = ordersResult.data || []
