@@ -1,9 +1,9 @@
 import { defineEventHandler, readBody, createError } from 'h3'
-import { addMonths, addYears, format } from 'date-fns'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 import { resolveFinancialCategory } from '../../utils/resolve-financial-category'
+import { assertNotInstallmentAndRecurring } from '../../utils/financial-mutual-exclusion'
 
 const MAX_RECURRENCE_COUNT = 60
 
@@ -12,9 +12,13 @@ const MAX_RECURRENCE_COUNT = 60
  * Create a new financial transaction.
  * When body.installments is provided, creates all installments in a batch
  * linking them via parent_transaction_id.
- * When body.recurrence and body.recurrence_count > 1 are provided, creates
- * every occurrence of the recurring series upfront (no cron in this infra —
- * see docs/financial-recurrence-flow.md), linking them via parent_recurrence_id.
+ * When body.recurrence and body.occurrences (length > 1) are provided,
+ * creates every occurrence of the recurring series upfront (no cron in this
+ * infra — see docs/financial-recurrence-flow.md), linking them via
+ * parent_recurrence_id. The frontend computes and can edit each occurrence's
+ * due_date/amount before saving (same UX as installments) — this endpoint
+ * only validates and inserts exactly what it's given, it doesn't recalculate
+ * dates itself.
  */
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
@@ -29,10 +33,8 @@ export default defineEventHandler(async (event) => {
   if (!body.type) throw createError({ statusCode: 400, statusMessage: 'O campo "type" é obrigatório' })
   if (!body.category_id && !body.category) throw createError({ statusCode: 400, statusMessage: 'O campo "category_id" é obrigatório' })
 
+  assertNotInstallmentAndRecurring(body.is_installment, body.recurrence)
   const hasRecurrence = Boolean(body.recurrence) && body.recurrence !== 'non_recurring'
-  if (body.is_installment && hasRecurrence) {
-    throw createError({ statusCode: 400, statusMessage: 'Um lançamento não pode ser parcelado e recorrente ao mesmo tempo' })
-  }
 
   const resolvedCategory = await resolveFinancialCategory(supabase, organizationId, body.type, {
     category_id: body.category_id,
@@ -42,24 +44,30 @@ export default defineEventHandler(async (event) => {
   const installmentList: Array<{ number: number, amount: number, due_date: string, status: string }>
     = Array.isArray(body.installments) ? body.installments : []
 
-  // Batch recurrence creation — generates the whole series upfront
-  if (hasRecurrence && Number(body.recurrence_count) > 1) {
-    const total = Math.min(Math.floor(Number(body.recurrence_count)), MAX_RECURRENCE_COUNT)
-    const advance = (date: Date) => (body.recurrence === 'annual' ? addYears(date, 1) : addMonths(date, 1))
+  const occurrenceList: Array<{ number: number, amount: number, due_date: string, status: string }>
+    = Array.isArray(body.occurrences) ? body.occurrences : []
 
+  // Batch recurrence creation — generates the whole series upfront, from the
+  // (possibly hand-edited) list the frontend already built and validated.
+  if (hasRecurrence && occurrenceList.length > 1) {
+    const total = Math.min(occurrenceList.length, MAX_RECURRENCE_COUNT)
+    const occurrences = occurrenceList.slice(0, total)
+    const recurrenceEndDate = occurrences[total - 1]!.due_date
+
+    const first = occurrences[0]!
     const { data: root, error: rootError } = await supabase
       .from('financial_transactions')
       .insert({
         organization_id: organizationId,
         description: body.description,
-        amount: body.amount,
-        due_date: body.due_date,
+        amount: first.amount,
+        due_date: first.due_date,
         type: body.type,
-        status: body.status ?? 'pending',
+        status: first.status ?? body.status ?? 'pending',
         category: resolvedCategory.name,
         category_id: resolvedCategory.id,
         recurrence: body.recurrence,
-        recurrence_end_date: body.recurrence_end_date ?? null,
+        recurrence_end_date: recurrenceEndDate,
         parent_recurrence_id: null,
         bank_account_id: body.bank_account_id ?? null,
         notes: body.notes ?? null,
@@ -71,27 +79,23 @@ export default defineEventHandler(async (event) => {
 
     if (rootError || !root) throw createError({ statusCode: 500, statusMessage: rootError?.message ?? 'Erro ao criar lançamento recorrente' })
 
-    let cursor = new Date(`${body.due_date}T00:00:00`)
-    const children = Array.from({ length: total - 1 }, () => {
-      cursor = advance(cursor)
-      return {
-        organization_id: organizationId,
-        description: body.description,
-        amount: body.amount,
-        due_date: format(cursor, 'yyyy-MM-dd'),
-        type: body.type,
-        status: 'pending',
-        category: resolvedCategory.name,
-        category_id: resolvedCategory.id,
-        recurrence: body.recurrence,
-        recurrence_end_date: body.recurrence_end_date ?? null,
-        parent_recurrence_id: root.id,
-        bank_account_id: body.bank_account_id ?? null,
-        notes: body.notes ?? null,
-        created_by: authUser.email,
-        updated_by: authUser.email
-      }
-    })
+    const children = occurrences.slice(1).map(occ => ({
+      organization_id: organizationId,
+      description: body.description,
+      amount: occ.amount,
+      due_date: occ.due_date,
+      type: body.type,
+      status: occ.status ?? 'pending',
+      category: resolvedCategory.name,
+      category_id: resolvedCategory.id,
+      recurrence: body.recurrence,
+      recurrence_end_date: recurrenceEndDate,
+      parent_recurrence_id: root.id,
+      bank_account_id: body.bank_account_id ?? null,
+      notes: body.notes ?? null,
+      created_by: authUser.email,
+      updated_by: authUser.email
+    }))
 
     if (children.length > 0) {
       const { error: childError } = await supabase.from('financial_transactions').insert(children)
