@@ -64,6 +64,7 @@ export default defineEventHandler(async (event) => {
     .select('id', { count: 'exact', head: true })
     .eq('service_order_id', orderId)
     .eq('organization_id', organizationId)
+    .is('deleted_at', null)
 
   const installmentNumber = (existingRowsCount || 0) + 1
   const effectiveDate = paymentDate || new Date().toISOString().split('T')[0]

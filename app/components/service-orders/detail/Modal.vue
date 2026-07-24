@@ -9,6 +9,7 @@ const props = defineProps<{
   canCancel?: boolean
   canDelete?: boolean
   canCreate?: boolean
+  canDeleteInstallment?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -413,6 +414,7 @@ defineExpose({ refreshNfseCard })
           :installments="detail.installments"
           :order-id="detail.order.id"
           :can-update="canUpdate"
+          :can-delete-installment="canDeleteInstallment"
           @changed="() => { loadDetail(); emit('updated') }"
         />
 

@@ -116,6 +116,7 @@ export default defineEventHandler(async (event) => {
     .select('*')
     .eq('service_order_id', orderId)
     .eq('organization_id', organizationId)
+    .is('deleted_at', null)
 
   for (const installment of installments || []) {
     if (installment.financial_transaction_id) {
