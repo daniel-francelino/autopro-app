@@ -78,9 +78,14 @@ const emit = defineEmits<{
   'open-detail': [entry: Entry]
   'pay': [entry: Entry]
   'duplicate': [entry: Entry]
+  'extend-recurrence': [entry: Entry]
   'open-edit': [entry: Entry]
   'remove': [entry: Entry]
 }>()
+
+function isRecurringEntry(entry: Entry) {
+  return Boolean(entry.recurrence) && entry.recurrence !== 'non_recurring'
+}
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 
@@ -351,7 +356,17 @@ const columns = [
               />
             </UTooltip>
 
-            <UTooltip v-if="canCreate" text="Duplicar lançamento">
+            <UTooltip v-if="canCreate && isRecurringEntry(row.original as Entry)" text="Adicionar mais ocorrências">
+              <UButton
+                icon="i-lucide-calendar-plus"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                @click="emit('extend-recurrence', row.original as Entry)"
+              />
+            </UTooltip>
+
+            <UTooltip v-else-if="canCreate" text="Duplicar lançamento">
               <UButton
                 icon="i-lucide-copy"
                 color="neutral"

@@ -146,6 +146,9 @@ export default defineEventHandler(async (event) => {
       const id = String(entry?.id || '')
       if (!id || seen.has(id)) return false
       seen.add(id)
+      // Never rewrite an occurrence that's already been paid and reconciled
+      // in the bank statement — only propagate to what's still pending.
+      if (entry?.status === 'paid') return false
       return String(entry?.due_date || '') >= baseDate
     })
     .sort((a: any, b: any) => String(a?.due_date || '').localeCompare(String(b?.due_date || '')))
