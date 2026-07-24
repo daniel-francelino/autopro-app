@@ -541,6 +541,12 @@ async function onEntrySaved() {
   await resetAndRefresh()
 }
 
+function onFormViewHistory(entryId: string) {
+  showFormModal.value = false
+  detailEntryId.value = entryId
+  showDetailSlideover.value = true
+}
+
 // ── Delete single ─────────────────────────────────────────────────────────────
 
 const isDeleting = ref(false)
@@ -1126,6 +1132,7 @@ const columns = [
     :entry="selectedEntry"
     :bank-account-options="bankAccountOptions"
     @saved="onEntrySaved"
+    @view-history="onFormViewHistory"
   />
 
   <!-- Fullscreen modal -->

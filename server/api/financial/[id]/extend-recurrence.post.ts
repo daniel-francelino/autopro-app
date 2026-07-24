@@ -71,29 +71,44 @@ export default defineEventHandler(async (event) => {
   const advance = (date: Date) => (root.recurrence === 'annual' ? addYears(date, 1) : addMonths(date, 1))
 
   let cursor = new Date(`${template.due_date}T00:00:00`)
-  const newRows = Array.from({ length: total }, () => {
+  const newDueDates = Array.from({ length: total }, () => {
     cursor = advance(cursor)
-    return {
-      organization_id: organizationId,
-      description: template.description,
-      amount: template.amount,
-      due_date: format(cursor, 'yyyy-MM-dd'),
-      type: template.type,
-      status: 'pending',
-      category: template.category,
-      category_id: template.category_id,
-      recurrence: root.recurrence,
-      recurrence_end_date: root.recurrence_end_date,
-      parent_recurrence_id: root.id,
-      bank_account_id: template.bank_account_id,
-      notes: template.notes,
-      created_by: authUser.email,
-      updated_by: authUser.email
-    }
+    return format(cursor, 'yyyy-MM-dd')
   })
+  const newRecurrenceEndDate = newDueDates[newDueDates.length - 1]!
+
+  const newRows = newDueDates.map(dueDate => ({
+    organization_id: organizationId,
+    description: template.description,
+    amount: template.amount,
+    due_date: dueDate,
+    type: template.type,
+    status: 'pending',
+    category: template.category,
+    category_id: template.category_id,
+    recurrence: root.recurrence,
+    recurrence_end_date: newRecurrenceEndDate,
+    parent_recurrence_id: root.id,
+    bank_account_id: template.bank_account_id,
+    notes: template.notes,
+    created_by: authUser.email,
+    updated_by: authUser.email
+  }))
 
   const { error: insertError } = await supabase.from('financial_transactions').insert(newRows)
   if (insertError) throw createError({ statusCode: 500, statusMessage: insertError.message })
+
+  // The series just grew — every existing row (root + previously-created
+  // children) needs recurrence_end_date bumped to the new final date too,
+  // or it goes stale the moment a series is extended (docs/financial-
+  // recurrence-flow.md section 10.4a/10.7).
+  const existingIds = seriesEntries.map(e => e.id)
+  const { error: updateError } = await supabase
+    .from('financial_transactions')
+    .update({ recurrence_end_date: newRecurrenceEndDate, updated_by: authUser.email })
+    .in('id', existingIds)
+    .eq('organization_id', organizationId)
+  if (updateError) throw createError({ statusCode: 500, statusMessage: updateError.message })
 
   return { success: true, created: total }
 })
