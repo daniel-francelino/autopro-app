@@ -805,10 +805,6 @@ function formatRecurrence(value: unknown) {
   return String(value || 'Sem recorrência')
 }
 
-function hasRecurrence(value: unknown) {
-  return Boolean(normalizeRecurrenceValue(value))
-}
-
 function getBankAccountLabel(entry: Entry) {
   const accountId = String(entry.bank_account_id || '')
   if (!accountId) return null
@@ -1009,6 +1005,14 @@ const columns = [
                     color="info"
                     size="xs"
                     :label="`${(row.original as Entry).current_installment}/${(row.original as Entry).installment_count}x`"
+                  />
+                  <UBadge
+                    v-if="isRecurringEntry(row.original as Entry)"
+                    variant="outline"
+                    color="primary"
+                    size="xs"
+                    icon="i-lucide-repeat"
+                    :label="formatRecurrence((row.original as Entry).recurrence)"
                   />
                 </div>
                 <p class="truncate text-xs text-muted">

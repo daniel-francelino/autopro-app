@@ -87,6 +87,13 @@ function isRecurringEntry(entry: Entry) {
   return Boolean(entry.recurrence) && entry.recurrence !== 'non_recurring'
 }
 
+function formatRecurrence(value: unknown) {
+  const normalized = String(value || '').trim().toLowerCase()
+  if (normalized === 'monthly' || normalized === 'mensal') return 'Mensal'
+  if (normalized === 'annual' || normalized === 'anual') return 'Anual'
+  return 'Recorrente'
+}
+
 // ── Formatters ────────────────────────────────────────────────────────────────
 
 function formatCurrency(value: number | string) {
@@ -300,6 +307,14 @@ const columns = [
                   color="info"
                   size="xs"
                   :label="`${(row.original as Entry).current_installment}/${(row.original as Entry).installment_count}x`"
+                />
+                <UBadge
+                  v-if="isRecurringEntry(row.original as Entry)"
+                  variant="outline"
+                  color="primary"
+                  size="xs"
+                  icon="i-lucide-repeat"
+                  :label="formatRecurrence((row.original as Entry).recurrence)"
                 />
               </div>
               <p class="truncate text-xs text-muted">
