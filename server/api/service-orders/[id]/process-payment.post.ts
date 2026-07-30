@@ -5,6 +5,7 @@ import { resolveOrganizationId } from '../../../utils/organization'
 import { releaseServiceOrderCommissions } from '../../../utils/service-order-commissions'
 import { recalculateServiceOrderPaymentStatus } from '../../../utils/service-order-payment-status'
 import { createIncomeTransaction } from '../../../utils/financial-income'
+import { getNextInstallmentNumber } from '../../../utils/service-order-installments'
 
 /**
  * POST /api/service-orders/:id/process-payment
@@ -142,7 +143,7 @@ export default defineEventHandler(async (event) => {
   }
 
   let parentTransactionId: string | null = null
-  const installmentNumberOffset = existingRows.length
+  const installmentNumberOffset = (await getNextInstallmentNumber({ supabase, organizationId, orderId })) - 1
   const paidInstallmentIdsThisCall: string[] = []
 
   for (let i = 0; i < installmentsData.length; i++) {

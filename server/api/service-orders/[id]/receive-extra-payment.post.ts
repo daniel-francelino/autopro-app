@@ -5,6 +5,7 @@ import { resolveOrganizationId } from '../../../utils/organization'
 import { createIncomeTransaction } from '../../../utils/financial-income'
 import { recalculateServiceOrderPaymentStatus } from '../../../utils/service-order-payment-status'
 import { releaseServiceOrderCommissions } from '../../../utils/service-order-commissions'
+import { getNextInstallmentNumber } from '../../../utils/service-order-installments'
 
 /**
  * POST /api/service-orders/:id/receive-extra-payment
@@ -59,14 +60,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 409, statusMessage: 'Só é possível registrar um recebimento avulso em uma OS concluída' })
   }
 
-  const { count: existingRowsCount } = await supabase
-    .from('service_order_installments')
-    .select('id', { count: 'exact', head: true })
-    .eq('service_order_id', orderId)
-    .eq('organization_id', organizationId)
-    .is('deleted_at', null)
-
-  const installmentNumber = (existingRowsCount || 0) + 1
+  const installmentNumber = await getNextInstallmentNumber({ supabase, organizationId, orderId })
   const effectiveDate = paymentDate || new Date().toISOString().split('T')[0]
 
   const { data: installmentRow, error: installmentError } = await supabase

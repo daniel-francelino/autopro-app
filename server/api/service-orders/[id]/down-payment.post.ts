@@ -3,6 +3,7 @@ import { getSupabaseAdminClient } from '../../../utils/supabase'
 import { requireAuthUser } from '../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../utils/organization'
 import { createIncomeTransaction } from '../../../utils/financial-income'
+import { getNextInstallmentNumber } from '../../../utils/service-order-installments'
 
 const ORDER_STATUSES_THAT_CAN_RECEIVE_A_DOWN_PAYMENT = ['open', 'in_progress', 'waiting_for_part']
 
@@ -57,14 +58,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const { count: existingRowsCount } = await supabase
-    .from('service_order_installments')
-    .select('id', { count: 'exact', head: true })
-    .eq('service_order_id', orderId)
-    .eq('organization_id', organizationId)
-    .is('deleted_at', null)
-
-  const installmentNumber = (existingRowsCount || 0) + 1
+  const installmentNumber = await getNextInstallmentNumber({ supabase, organizationId, orderId })
   const effectiveDate = paymentDate || new Date().toISOString().split('T')[0]
 
   const { data: installmentRow, error: installmentError } = await supabase
