@@ -29,7 +29,7 @@ function formatCurrency(v: number | string) {
   return parseFloat(String(v || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-const costsDescription = computed(() => {
+const costsTooltip = computed(() => {
   const partsCost = props.currentData?.partsCost
   const generalExpenses = props.currentData?.generalExpenses
   const commissionCost = props.currentData?.commissionCost
@@ -39,7 +39,7 @@ const costsDescription = computed(() => {
   if (partsCost !== undefined && commissionCost !== undefined) {
     return `peças: ${formatCurrency(partsCost)} · comissão: ${formatCurrency(commissionCost)}`
   }
-  return 'despesas consideradas'
+  return undefined
 })
 
 function formatPercent(v: number | string) {
@@ -68,7 +68,7 @@ function variationColor(value?: VariationValue, invert = false) {
 
 <template>
   <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-    <UCard
+    <UTooltip
       v-for="stat in [
         {
           label: 'Faturamento',
@@ -86,7 +86,8 @@ function variationColor(value?: VariationValue, invert = false) {
           icon: 'i-lucide-wallet-cards',
           color: 'text-error',
           bg: 'bg-error/10',
-          description: costsDescription,
+          description: 'despesas consideradas',
+          tooltip: costsTooltip,
           variation: variations?.costs,
           invertVariation: true
         },
@@ -113,33 +114,36 @@ function variationColor(value?: VariationValue, invert = false) {
         }
       ]"
       :key="stat.label"
-      :ui="{ body: 'p-3 sm:p-4' }"
+      :text="stat.tooltip"
+      class="w-full"
     >
-      <div class="flex items-start gap-3">
-        <div :class="[stat.bg, 'rounded-xl p-2 shrink-0']">
-          <UIcon :name="stat.icon" :class="[stat.color, 'size-5']" />
-        </div>
-        <div class="min-w-0">
-          <p class="text-lg font-bold leading-tight">
-            {{ stat.value }}
-          </p>
-          <p class="text-xs font-medium text-highlighted">
-            {{ stat.label }}
-          </p>
-          <p class="text-xs text-muted">
-            {{ stat.description }}
-          </p>
-          <div v-if="stat.variation" class="mt-1.5 flex items-center gap-1.5 text-xs">
-            <UIcon
-              :name="variationIcon(stat.variation)"
-              :class="[variationColor(stat.variation, stat.invertVariation), 'size-3.5']"
-            />
-            <span :class="variationColor(stat.variation, stat.invertVariation)">
-              {{ variationText(stat.variation, stat.variationSuffix ?? '') }}
-            </span>
+      <UCard :ui="{ body: 'p-3 sm:p-4' }" class="w-full">
+        <div class="flex items-start gap-3">
+          <div :class="[stat.bg, 'rounded-xl p-2 shrink-0']">
+            <UIcon :name="stat.icon" :class="[stat.color, 'size-5']" />
+          </div>
+          <div class="min-w-0">
+            <p class="text-lg font-bold leading-tight">
+              {{ stat.value }}
+            </p>
+            <p class="text-xs font-medium text-highlighted">
+              {{ stat.label }}
+            </p>
+            <p class="text-xs text-muted">
+              {{ stat.description }}
+            </p>
+            <div v-if="stat.variation" class="mt-1.5 flex items-center gap-1.5 text-xs">
+              <UIcon
+                :name="variationIcon(stat.variation)"
+                :class="[variationColor(stat.variation, stat.invertVariation), 'size-3.5']"
+              />
+              <span :class="variationColor(stat.variation, stat.invertVariation)">
+                {{ variationText(stat.variation, stat.variationSuffix ?? '') }}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
-    </UCard>
+      </UCard>
+    </UTooltip>
   </div>
 </template>

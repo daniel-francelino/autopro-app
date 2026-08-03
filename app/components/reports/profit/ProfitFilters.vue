@@ -53,7 +53,7 @@ const compareOptions = [
 const modeItems = [
   { label: 'Fluxo de Caixa', value: 'cash_flow' as const, slot: 'cash_flow' as const, icon: 'i-lucide-wallet' },
   { label: 'Pelas OS', value: 'by_order' as const, slot: 'by_order' as const, icon: 'i-lucide-wrench' },
-  { label: 'Resultado do Período', value: 'period_result' as const, slot: 'period_result' as const, icon: 'i-lucide-scale' }
+  //{ label: 'Resultado do Período', value: 'period_result' as const, slot: 'period_result' as const, icon: 'i-lucide-scale' }
 ]
 
 const modeDescription: Record<'cash_flow' | 'by_order' | 'period_result', string> = {
