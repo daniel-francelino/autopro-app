@@ -5,7 +5,7 @@ import { resolveOrganizationId } from '../../utils/organization'
 import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
 import { parseDateStart, parseDateEnd } from '../../utils/report-helpers'
 import { enforceReportAccess } from '../../utils/license'
-import { calculateCashFlowPeriodData, buildCashFlowEvolutionData, resolveComparison, buildVariations, toPublicPeriodData } from '../../utils/profit-report-helpers'
+import { calculateAccrualPeriodData, buildAccrualEvolutionData, resolveComparison, buildVariations, toPublicPeriodData } from '../../utils/profit-report-helpers'
 
 // Modo "Resultado do Período": P&L de competência completo — receita de OS reconhecida
 // menos despesas gerais reconhecidas, ambas independentes de status de pagamento.
@@ -43,16 +43,16 @@ export default defineEventHandler(async (event) => {
     })
   ])
 
-  const currentData = calculateCashFlowPeriodData(orders, transactions, dateFrom, dateTo, [])
+  const currentData = calculateAccrualPeriodData(orders, transactions, dateFrom, dateTo)
   const { previousData, comparisonMeta } = resolveComparison(
     dateFrom,
     dateTo,
     compareMode,
     compareWithPreviousPeriod,
-    (start, end) => calculateCashFlowPeriodData(orders, transactions, start, end, [])
+    (start, end) => calculateAccrualPeriodData(orders, transactions, start, end)
   )
   const variations = buildVariations(currentData, previousData)
-  const evolutionData = buildCashFlowEvolutionData(currentData, dateFrom, dateTo)
+  const evolutionData = buildAccrualEvolutionData(currentData, dateFrom, dateTo)
 
   return {
     data: {

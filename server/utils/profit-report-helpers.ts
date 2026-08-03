@@ -15,6 +15,7 @@ export interface PeriodProfitData {
   orderCount: number
   orders: ReportRow[]
   costsData?: ReportRow[]
+  incomeData?: ReportRow[]
 }
 
 export interface PublicPeriodProfitData {
@@ -62,18 +63,25 @@ function isOrderCompleted(status: unknown): boolean {
   return status === 'completed' || status === 'invoiced' || status === 'delivered'
 }
 
-// ─── Modo "Fluxo de Caixa" (também reaproveitado pelo modo "Resultado do Período", chamando com statusFilters=[]) ───
+// ─── Modo "Fluxo de Caixa" — dinheiro que efetivamente circulou no financeiro ───
+//
+// Receita = financial_transactions tipo 'income' (criadas em server/utils/financial-income.ts
+// a cada pagamento recebido de uma OS — down payment, parcela, quitação), a mesma fonte que
+// alimenta os cards "Receitas" de server/api/financial/summary.get.ts. Não usa service_orders:
+// o payment_status da OS não é a mesma coisa que "existe uma transação de income registrada e
+// com o status certo" — os dois podem divergir bastante (parcelas, estornos, ajustes manuais).
 
-export function calculateCashFlowPeriodData(
-  orders: ReportRow[],
+export function calculateCashFlowFromTransactions(
   transactions: ReportRow[],
   start: Date,
   end: Date,
   statusFilters: string[]
 ): PeriodProfitData {
-  const periodOrders = orders.filter((o: ReportRow) => {
-    const entryDate = o?.entry_date ? new Date(`${o.entry_date}T00:00:00`) : null
-    return !!entryDate && !Number.isNaN(entryDate.getTime()) && isOrderCompleted(o?.status) && matchesStatusFilters(o?.payment_status, statusFilters) && entryDate >= start && entryDate <= end
+  const periodIncome = transactions.filter((t: ReportRow) => {
+    const dueDate = t?.due_date ? new Date(`${t.due_date}T00:00:00`) : null
+    const isIncome = t?.type === 'income'
+    const isCancelled = normalizeReportStatus(t?.status) === 'cancelled'
+    return !!dueDate && !Number.isNaN(dueDate.getTime()) && isIncome && !isCancelled && matchesStatusFilters(t?.status, statusFilters) && dueDate >= start && dueDate <= end
   })
   const periodCosts = transactions.filter((t: ReportRow) => {
     const dueDate = t?.due_date ? new Date(`${t.due_date}T00:00:00`) : null
@@ -81,13 +89,51 @@ export function calculateCashFlowPeriodData(
     const isCancelled = normalizeReportStatus(t?.status) === 'cancelled'
     return !!dueDate && !Number.isNaN(dueDate.getTime()) && isCost && !isCancelled && matchesStatusFilters(t?.status, statusFilters) && dueDate >= start && dueDate <= end
   })
+  const revenue = periodIncome.reduce((acc: number, t: ReportRow) => acc + toNumber(t?.amount, 0), 0)
+  const costs = periodCosts.reduce((acc: number, t: ReportRow) => acc + toNumber(t?.amount, 0), 0)
+  const profit = revenue - costs
+  return { revenue, costs, profit, profitMargin: revenue > 0 ? (profit / revenue) * 100 : 0, orderCount: periodIncome.length, orders: [], costsData: periodCosts, incomeData: periodIncome }
+}
+
+export function buildCashFlowTransactionsEvolutionData(periodData: PeriodProfitData | null, start: Date, end: Date): EvolutionPoint[] {
+  const dailyData: Record<string, { revenue: number, costs: number }> = {}
+  const cursor = new Date(start)
+  while (cursor <= end) {
+    dailyData[formatDateKey(cursor)] = { revenue: 0, costs: 0 }
+    cursor.setDate(cursor.getDate() + 1)
+  }
+  for (const t of periodData?.incomeData || []) {
+    const key = String(t?.due_date || '')
+    if (dailyData[key]) dailyData[key].revenue += toNumber(t?.amount, 0)
+  }
+  for (const t of periodData?.costsData || []) {
+    const key = String(t?.due_date || '')
+    if (dailyData[key]) dailyData[key].costs += toNumber(t?.amount, 0)
+  }
+  return Object.entries(dailyData).map(([date, v]) => ({ name: formatDayLabel(date), ...v, profit: v.revenue - v.costs }))
+}
+
+// ─── Modo "Resultado do Período" — regime de competência (receita de OS reconhecida no
+// entry_date, despesa geral reconhecida no due_date, ambas independente de status de pagamento) ───
+
+export function calculateAccrualPeriodData(orders: ReportRow[], transactions: ReportRow[], start: Date, end: Date): PeriodProfitData {
+  const periodOrders = orders.filter((o: ReportRow) => {
+    const entryDate = o?.entry_date ? new Date(`${o.entry_date}T00:00:00`) : null
+    return !!entryDate && !Number.isNaN(entryDate.getTime()) && isOrderCompleted(o?.status) && entryDate >= start && entryDate <= end
+  })
+  const periodCosts = transactions.filter((t: ReportRow) => {
+    const dueDate = t?.due_date ? new Date(`${t.due_date}T00:00:00`) : null
+    const isCost = t?.type === 'expense'
+    const isCancelled = normalizeReportStatus(t?.status) === 'cancelled'
+    return !!dueDate && !Number.isNaN(dueDate.getTime()) && isCost && !isCancelled && dueDate >= start && dueDate <= end
+  })
   const revenue = periodOrders.reduce((acc: number, o: ReportRow) => acc + toNumber(o?.total_amount, 0), 0)
   const costs = periodCosts.reduce((acc: number, t: ReportRow) => acc + toNumber(t?.amount, 0), 0)
   const profit = revenue - costs
   return { revenue, costs, profit, profitMargin: revenue > 0 ? (profit / revenue) * 100 : 0, orderCount: periodOrders.length, orders: periodOrders, costsData: periodCosts }
 }
 
-export function buildCashFlowEvolutionData(periodData: PeriodProfitData | null, start: Date, end: Date): EvolutionPoint[] {
+export function buildAccrualEvolutionData(periodData: PeriodProfitData | null, start: Date, end: Date): EvolutionPoint[] {
   const dailyData: Record<string, { revenue: number, costs: number }> = {}
   const cursor = new Date(start)
   while (cursor <= end) {
