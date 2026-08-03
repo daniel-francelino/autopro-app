@@ -4,6 +4,8 @@ interface PeriodData {
   costs?: number
   profit?: number
   profitMargin?: number
+  partsCost?: number
+  generalExpenses?: number
 }
 
 interface VariationValue {
@@ -12,7 +14,7 @@ interface VariationValue {
   fromZeroBase?: boolean
 }
 
-defineProps<{
+const props = defineProps<{
   currentData: PeriodData | null | undefined
   variations: {
     revenue?: VariationValue
@@ -25,6 +27,13 @@ defineProps<{
 function formatCurrency(v: number | string) {
   return parseFloat(String(v || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
+
+const costsDescription = computed(() => {
+  const partsCost = props.currentData?.partsCost
+  const generalExpenses = props.currentData?.generalExpenses
+  if (partsCost === undefined || generalExpenses === undefined) return 'despesas consideradas'
+  return `peças: ${formatCurrency(partsCost)} · despesas: ${formatCurrency(generalExpenses)}`
+})
 
 function formatPercent(v: number | string) {
   return `${parseFloat(String(v || 0)).toFixed(1)}%`
@@ -70,7 +79,7 @@ function variationColor(value?: VariationValue, invert = false) {
           icon: 'i-lucide-wallet-cards',
           color: 'text-error',
           bg: 'bg-error/10',
-          description: 'despesas consideradas',
+          description: costsDescription,
           variation: variations?.costs,
           invertVariation: true
         },

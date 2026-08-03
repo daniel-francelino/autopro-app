@@ -16,6 +16,8 @@ export interface PeriodProfitData {
   orders: ReportRow[]
   costsData?: ReportRow[]
   incomeData?: ReportRow[]
+  partsCost?: number
+  generalExpenses?: number
 }
 
 export interface PublicPeriodProfitData {
@@ -24,6 +26,8 @@ export interface PublicPeriodProfitData {
   profit: number
   profitMargin: number
   orderCount: number
+  partsCost?: number
+  generalExpenses?: number
 }
 
 export interface ProfitVariations {
@@ -114,7 +118,14 @@ export function buildCashFlowTransactionsEvolutionData(periodData: PeriodProfitD
 }
 
 // ─── Modo "Resultado do Período" — regime de competência (receita de OS reconhecida no
-// entry_date, despesa geral reconhecida no due_date, ambas independente de status de pagamento) ───
+// entry_date, custo reconhecido independente de status de pagamento) ───
+//
+// Custo = custo de peças da própria OS (total_cost_amount, o COGS do serviço) + despesas
+// gerais da empresa (financial_transactions tipo expense). As duas fontes NUNCA se sobrepõem
+// hoje: comprar/repor peças não gera nenhuma linha em financial_transactions neste sistema
+// (confirmado — nenhum endpoint de compras/estoque escreve na tabela financeira), então
+// somar as duas é a única forma de este modo representar o custo total do período. Sem o
+// custo de peças, este modo superestimava o lucro (ignorava por completo o CMV/COGS).
 
 export function calculateAccrualPeriodData(orders: ReportRow[], transactions: ReportRow[], start: Date, end: Date): PeriodProfitData {
   const periodOrders = orders.filter((o: ReportRow) => {
@@ -128,9 +139,11 @@ export function calculateAccrualPeriodData(orders: ReportRow[], transactions: Re
     return !!dueDate && !Number.isNaN(dueDate.getTime()) && isCost && !isCancelled && dueDate >= start && dueDate <= end
   })
   const revenue = periodOrders.reduce((acc: number, o: ReportRow) => acc + toNumber(o?.total_amount, 0), 0)
-  const costs = periodCosts.reduce((acc: number, t: ReportRow) => acc + toNumber(t?.amount, 0), 0)
+  const partsCost = periodOrders.reduce((acc: number, o: ReportRow) => acc + toNumber(o?.total_cost_amount, 0), 0)
+  const generalExpenses = periodCosts.reduce((acc: number, t: ReportRow) => acc + toNumber(t?.amount, 0), 0)
+  const costs = partsCost + generalExpenses
   const profit = revenue - costs
-  return { revenue, costs, profit, profitMargin: revenue > 0 ? (profit / revenue) * 100 : 0, orderCount: periodOrders.length, orders: periodOrders, costsData: periodCosts }
+  return { revenue, costs, profit, profitMargin: revenue > 0 ? (profit / revenue) * 100 : 0, orderCount: periodOrders.length, orders: periodOrders, costsData: periodCosts, partsCost, generalExpenses }
 }
 
 export function buildAccrualEvolutionData(periodData: PeriodProfitData | null, start: Date, end: Date): EvolutionPoint[] {
@@ -142,7 +155,10 @@ export function buildAccrualEvolutionData(periodData: PeriodProfitData | null, s
   }
   for (const o of periodData?.orders || []) {
     const key = String(o?.entry_date || '')
-    if (dailyData[key]) dailyData[key].revenue += toNumber(o?.total_amount, 0)
+    if (dailyData[key]) {
+      dailyData[key].revenue += toNumber(o?.total_amount, 0)
+      dailyData[key].costs += toNumber(o?.total_cost_amount, 0)
+    }
   }
   for (const t of periodData?.costsData || []) {
     const key = String(t?.due_date || '')
@@ -242,5 +258,13 @@ export function buildVariations(current: PeriodProfitData | null, previous: Peri
 
 export function toPublicPeriodData(data: PeriodProfitData | null): PublicPeriodProfitData | null {
   if (!data) return null
-  return { revenue: data.revenue, costs: data.costs, profit: data.profit, profitMargin: data.profitMargin, orderCount: data.orderCount }
+  return {
+    revenue: data.revenue,
+    costs: data.costs,
+    profit: data.profit,
+    profitMargin: data.profitMargin,
+    orderCount: data.orderCount,
+    partsCost: data.partsCost,
+    generalExpenses: data.generalExpenses
+  }
 }
