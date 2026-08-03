@@ -11,6 +11,9 @@ interface PeriodData {
   costs: number
   profit: number
   profitMargin: number
+  partsCost?: number
+  generalExpenses?: number
+  commissionCost?: number
 }
 
 interface VariationValue {
@@ -63,23 +66,33 @@ const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : unde
 const { dateFrom, dateTo } = useReportDateRange()
 const statusFilters = useReportQueryParam('status', ['paid'] as string[])
 const compareMode = useReportQueryParam('compare', 'no_compare')
+const mode = useReportQueryParam('mode', 'cash_flow' as 'cash_flow' | 'by_order' | 'period_result')
+const orderStatusFilters = useReportQueryParam('orderStatus', ['completed', 'invoiced', 'delivered'] as string[])
+const orderPaymentStatusFilters = useReportQueryParam('orderPaymentStatus', [] as string[])
 
 const compareWithPreviousPeriod = computed(() => compareMode.value !== 'no_compare')
 
+const endpointPath = computed(() => {
+  if (mode.value === 'by_order') return '/api/reports/profit-by-order'
+  if (mode.value === 'period_result') return '/api/reports/profit-period-result'
+  return '/api/reports/profit-cash-flow'
+})
+
 const { data, status } = await useAsyncData(
-  () => `report-profit-${dateFrom.value}-${dateTo.value}-${statusFilters.value.join(',')}-${compareMode.value}`,
-  () => requestFetch<ProfitReportResponse>('/api/reports/costs-profit', {
+  () => `report-profit-${mode.value}-${dateFrom.value}-${dateTo.value}-${statusFilters.value.join(',')}-${orderStatusFilters.value.join(',')}-${orderPaymentStatusFilters.value.join(',')}-${compareMode.value}`,
+  () => requestFetch<ProfitReportResponse>(endpointPath.value, {
     headers: requestHeaders,
     query: {
       dateFrom: dateFrom.value,
       dateTo: dateTo.value,
-      status: statusFilters.value.length ? statusFilters.value : undefined,
-      includeProfitReport: 'true',
+      status: mode.value === 'cash_flow' && statusFilters.value.length ? statusFilters.value : undefined,
+      orderStatus: mode.value === 'by_order' && orderStatusFilters.value.length ? orderStatusFilters.value : undefined,
+      orderPaymentStatus: mode.value === 'by_order' && orderPaymentStatusFilters.value.length ? orderPaymentStatusFilters.value : undefined,
       compareWithPreviousPeriod: compareWithPreviousPeriod.value ? 'true' : 'false',
       compareMode: compareWithPreviousPeriod.value ? compareMode.value : undefined
     }
   }),
-  { watch: [dateFrom, dateTo, statusFilters, compareMode] }
+  { watch: [dateFrom, dateTo, statusFilters, orderStatusFilters, orderPaymentStatusFilters, compareMode, mode] }
 )
 
 const profitReport = computed(() => data.value?.data?.profitReport)
@@ -144,6 +157,9 @@ function variationColor(value?: VariationValue | null, invert = false) {
           v-model:date-to="dateTo"
           v-model:status-filters="statusFilters"
           v-model:compare-mode="compareMode"
+          v-model:mode="mode"
+          v-model:order-status-filters="orderStatusFilters"
+          v-model:order-payment-status-filters="orderPaymentStatusFilters"
         />
 
         <UCard :ui="{ body: 'p-3' }">
@@ -315,7 +331,7 @@ function variationColor(value?: VariationValue | null, invert = false) {
           </div>
         </UCard>
 
-        <UCard :ui="{ body: 'p-0' }">
+        <UCard v-if="mode === 'by_order'" :ui="{ body: 'p-0' }">
           <div class="flex items-center gap-2 border-b border-default px-4 py-3">
             <UIcon name="i-lucide-trophy" class="size-4 text-primary" />
             <p class="text-sm font-semibold text-highlighted">

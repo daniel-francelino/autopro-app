@@ -3,49 +3,13 @@ import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 import { fetchAllOrganizationRows, type SupabaseReportRow } from '../../utils/supabase-pagination'
-import { parseDateRange, toNumber, qArr, formatDateKey, formatDayLabel, normalizeStatusFilters, matchesStatusFilters, paginate, sortFactor, getPreviousRangeByMode, calculateVariation, getComparisonModeLabel, formatPeriodLabel, normalizeReportStatus } from '../../utils/report-helpers'
+import { toNumber, qArr, normalizeStatusFilters, matchesStatusFilters, paginate, sortFactor, normalizeReportStatus } from '../../utils/report-helpers'
 import { enforceReportAccess } from '../../utils/license'
 
 type ReportRow = SupabaseReportRow
 
 const UNCATEGORIZED_KEY = 'uncategorized'
 const UNCATEGORIZED_META = { name: 'Sem categoria', icon: 'i-lucide-circle-help', color: '#64748b' }
-
-function calculatePeriodData(orders: ReportRow[], transactions: ReportRow[], start: Date, end: Date, statusFilters: string[]) {
-  const periodOrders = orders.filter((o: ReportRow) => {
-    const entryDate = o?.entry_date ? new Date(`${o.entry_date}T00:00:00`) : null
-    const isCompleted = o?.status === 'completed' || o?.status === 'invoiced' || o?.status === 'delivered'
-    return !!entryDate && !Number.isNaN(entryDate.getTime()) && isCompleted && matchesStatusFilters(o?.payment_status, statusFilters) && entryDate >= start && entryDate <= end
-  })
-  const periodCosts = transactions.filter((t: ReportRow) => {
-    const dueDate = t?.due_date ? new Date(`${t.due_date}T00:00:00`) : null
-    const isCost = t?.type === 'expense'
-    const isCancelled = normalizeReportStatus(t?.status) === 'cancelled'
-    return !!dueDate && !Number.isNaN(dueDate.getTime()) && isCost && !isCancelled && matchesStatusFilters(t?.status, statusFilters) && dueDate >= start && dueDate <= end
-  })
-  const revenue = periodOrders.reduce((acc: number, o: ReportRow) => acc + toNumber(o?.total_amount, 0), 0)
-  const costs = periodCosts.reduce((acc: number, t: ReportRow) => acc + toNumber(t?.amount, 0), 0)
-  const profit = revenue - costs
-  return { revenue, costs, profit, profitMargin: revenue > 0 ? (profit / revenue) * 100 : 0, orderCount: periodOrders.length, orders: periodOrders, costsData: periodCosts }
-}
-
-function buildEvolutionData(periodData: { orders?: ReportRow[], costsData?: ReportRow[] } | null, start: Date, end: Date) {
-  const dailyData: Record<string, { revenue: number, costs: number, profit: number }> = {}
-  const cursor = new Date(start)
-  while (cursor <= end) {
-    dailyData[formatDateKey(cursor)] = { revenue: 0, costs: 0, profit: 0 }
-    cursor.setDate(cursor.getDate() + 1)
-  }
-  for (const o of periodData?.orders || []) {
-    const key = String(o?.entry_date || '')
-    if (dailyData[key]) dailyData[key].revenue += toNumber(o?.total_amount, 0)
-  }
-  for (const t of periodData?.costsData || []) {
-    const key = String(t?.due_date || '')
-    if (dailyData[key]) dailyData[key].costs += toNumber(t?.amount, 0)
-  }
-  return Object.entries(dailyData).map(([date, v]) => ({ name: formatDayLabel(date), ...v, profit: v.revenue - v.costs }))
-}
 
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
@@ -69,10 +33,7 @@ export default defineEventHandler(async (event) => {
   const page = Math.max(1, Math.floor(toNumber(query.page, 1)))
   const pageSize = Math.min(100, Math.max(1, Math.floor(toNumber(query.pageSize, 10))))
   const includeRawData = query.includeRawData === 'true'
-  const includeProfitReport = query.includeProfitReport === 'true'
   const includeCategoryDetails = query.includeCategoryDetails === 'true'
-  const compareWithPreviousPeriod = query.compareWithPreviousPeriod !== 'false'
-  const compareMode = ['same_period_last_year', 'previous_month', 'previous_quarter'].includes(query.compareMode as string) ? String(query.compareMode) : 'previous_period'
   const selectedCategory = String(query.selectedCategory || '').trim()
 
   const [transactions, orders, categories] = await Promise.all([
@@ -217,45 +178,6 @@ export default defineEventHandler(async (event) => {
         current_installment: t?.current_installment ?? null, installment_count: t?.installment_count ?? null,
         notes: t?.notes || null
       }))
-    }
-  }
-
-  if (includeProfitReport) {
-    const hasPeriod = !!dateFrom && !!dateTo
-    const currentData = hasPeriod ? calculatePeriodData(orders, transactions, dateFrom, dateTo, statusFilters) : null
-    let previousData = null
-    let comparisonMeta = null
-    if (hasPeriod && compareWithPreviousPeriod) {
-      const { previousStartDate, previousEndDate } = getPreviousRangeByMode(dateFrom, dateTo, compareMode)
-      previousData = calculatePeriodData(orders, transactions, previousStartDate, previousEndDate, statusFilters)
-      comparisonMeta = {
-        mode: compareMode, modeLabel: getComparisonModeLabel(compareMode),
-        currentPeriodLabel: formatPeriodLabel(dateFrom, dateTo),
-        previousPeriodLabel: formatPeriodLabel(previousStartDate, previousEndDate),
-        currentStartDate: formatDateKey(dateFrom), currentEndDate: formatDateKey(dateTo),
-        previousStartDate: formatDateKey(previousStartDate), previousEndDate: formatDateKey(previousEndDate)
-      }
-    }
-    const topProfitableOrders = (currentData?.orders || []).map((o: ReportRow) => {
-      const revenue = toNumber(o?.total_amount, 0)
-      const cost = toNumber(o?.total_cost_amount, 0)
-      const profit = revenue - cost
-      return { number: o?.number, revenue, cost, profit, margin: revenue > 0 ? (profit / revenue) * 100 : 0 }
-    }).sort((a, b) => b.profit - a.profit).slice(0, 10)
-
-    const variations = currentData && previousData
-      ? {
-          revenue: calculateVariation(currentData.revenue, previousData.revenue),
-          costs: calculateVariation(currentData.costs, previousData.costs),
-          profit: calculateVariation(currentData.profit, previousData.profit),
-          margin: calculateVariation(currentData.profitMargin, previousData.profitMargin)
-        }
-      : null
-
-    responseData.profitReport = {
-      currentData, previousData, variations, comparisonMeta,
-      evolutionData: hasPeriod && currentData ? buildEvolutionData(currentData, dateFrom, dateTo) : [],
-      topProfitableOrders
     }
   }
 
