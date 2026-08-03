@@ -13,6 +13,7 @@ interface PeriodData {
   profitMargin: number
   partsCost?: number
   generalExpenses?: number
+  commissionCost?: number
 }
 
 interface VariationValue {

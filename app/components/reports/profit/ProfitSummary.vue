@@ -6,6 +6,7 @@ interface PeriodData {
   profitMargin?: number
   partsCost?: number
   generalExpenses?: number
+  commissionCost?: number
 }
 
 interface VariationValue {
@@ -31,8 +32,14 @@ function formatCurrency(v: number | string) {
 const costsDescription = computed(() => {
   const partsCost = props.currentData?.partsCost
   const generalExpenses = props.currentData?.generalExpenses
-  if (partsCost === undefined || generalExpenses === undefined) return 'despesas consideradas'
-  return `peças: ${formatCurrency(partsCost)} · despesas: ${formatCurrency(generalExpenses)}`
+  const commissionCost = props.currentData?.commissionCost
+  if (partsCost !== undefined && generalExpenses !== undefined) {
+    return `peças: ${formatCurrency(partsCost)} · despesas: ${formatCurrency(generalExpenses)}`
+  }
+  if (partsCost !== undefined && commissionCost !== undefined) {
+    return `peças: ${formatCurrency(partsCost)} · comissão: ${formatCurrency(commissionCost)}`
+  }
+  return 'despesas consideradas'
 })
 
 function formatPercent(v: number | string) {

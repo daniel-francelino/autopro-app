@@ -18,6 +18,7 @@ export interface PeriodProfitData {
   incomeData?: ReportRow[]
   partsCost?: number
   generalExpenses?: number
+  commissionCost?: number
 }
 
 export interface PublicPeriodProfitData {
@@ -28,6 +29,7 @@ export interface PublicPeriodProfitData {
   orderCount: number
   partsCost?: number
   generalExpenses?: number
+  commissionCost?: number
 }
 
 export interface ProfitVariations {
@@ -167,7 +169,16 @@ export function buildAccrualEvolutionData(periodData: PeriodProfitData | null, s
   return Object.entries(dailyData).map(([date, v]) => ({ name: formatDayLabel(date), ...v, profit: v.revenue - v.costs }))
 }
 
-// ─── Modo "Pelas OS" — margem por serviço (receita da OS menos custo de peças da própria OS) ───
+// ─── Modo "Pelas OS" — margem por serviço (receita da OS menos custo de peças e comissão da própria OS) ───
+//
+// Custo = total_cost_amount (peças/produtos usados) + commission_amount (comissão total já
+// entitulada aos funcionários responsáveis pela OS, somada e mantida em sincronia por
+// server/utils/service-order-commissions.ts / service-order-item-commissions.ts). Somar os dois
+// é seguro aqui porque este modo nunca lê financial_transactions — ao contrário do modo
+// "Resultado do Período", que já inclui a parcela PAGA da comissão dentro de "despesas gerais"
+// (toda comissão paga gera uma linha financial_transactions tipo expense, categoria "Salários",
+// em server/api/reports/commissions/[id]/pay.post.ts) — por isso commission_amount NÃO deve ser
+// somado de novo lá, só aqui.
 //
 // orderStatusFilters: status do ciclo de vida da OS (open/in_progress/waiting_for_part/completed/
 // invoiced/delivered/estimate/cancelled) — array vazio = sem restrição (inclui até orçamento e
@@ -190,9 +201,11 @@ export function calculateByOrderPeriodData(
     return true
   })
   const revenue = periodOrders.reduce((acc: number, o: ReportRow) => acc + toNumber(o?.total_amount, 0), 0)
-  const costs = periodOrders.reduce((acc: number, o: ReportRow) => acc + toNumber(o?.total_cost_amount, 0), 0)
+  const partsCost = periodOrders.reduce((acc: number, o: ReportRow) => acc + toNumber(o?.total_cost_amount, 0), 0)
+  const commissionCost = periodOrders.reduce((acc: number, o: ReportRow) => acc + toNumber(o?.commission_amount, 0), 0)
+  const costs = partsCost + commissionCost
   const profit = revenue - costs
-  return { revenue, costs, profit, profitMargin: revenue > 0 ? (profit / revenue) * 100 : 0, orderCount: periodOrders.length, orders: periodOrders }
+  return { revenue, costs, profit, profitMargin: revenue > 0 ? (profit / revenue) * 100 : 0, orderCount: periodOrders.length, orders: periodOrders, partsCost, commissionCost }
 }
 
 export function buildByOrderEvolutionData(periodData: PeriodProfitData | null, start: Date, end: Date): EvolutionPoint[] {
@@ -206,7 +219,7 @@ export function buildByOrderEvolutionData(periodData: PeriodProfitData | null, s
     const key = String(o?.entry_date || '')
     if (dailyData[key]) {
       dailyData[key].revenue += toNumber(o?.total_amount, 0)
-      dailyData[key].costs += toNumber(o?.total_cost_amount, 0)
+      dailyData[key].costs += toNumber(o?.total_cost_amount, 0) + toNumber(o?.commission_amount, 0)
     }
   }
   return Object.entries(dailyData).map(([date, v]) => ({ name: formatDayLabel(date), ...v, profit: v.revenue - v.costs }))
@@ -215,7 +228,7 @@ export function buildByOrderEvolutionData(periodData: PeriodProfitData | null, s
 export function buildTopProfitableOrders(orders: ReportRow[]): TopProfitableOrder[] {
   return orders.map((o: ReportRow) => {
     const revenue = toNumber(o?.total_amount, 0)
-    const cost = toNumber(o?.total_cost_amount, 0)
+    const cost = toNumber(o?.total_cost_amount, 0) + toNumber(o?.commission_amount, 0)
     const profit = revenue - cost
     return { number: o?.number, revenue, cost, profit, margin: revenue > 0 ? (profit / revenue) * 100 : 0 }
   }).sort((a, b) => b.profit - a.profit).slice(0, 10)
@@ -265,6 +278,7 @@ export function toPublicPeriodData(data: PeriodProfitData | null): PublicPeriodP
     profitMargin: data.profitMargin,
     orderCount: data.orderCount,
     partsCost: data.partsCost,
-    generalExpenses: data.generalExpenses
+    generalExpenses: data.generalExpenses,
+    commissionCost: data.commissionCost
   }
 }
