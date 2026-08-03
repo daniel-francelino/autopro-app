@@ -152,11 +152,26 @@ export function buildAccrualEvolutionData(periodData: PeriodProfitData | null, s
 }
 
 // ─── Modo "Pelas OS" — margem por serviço (receita da OS menos custo de peças da própria OS) ───
+//
+// orderStatusFilters: status do ciclo de vida da OS (open/in_progress/waiting_for_part/completed/
+// invoiced/delivered/estimate/cancelled) — array vazio = sem restrição (inclui até orçamento e
+// cancelada, se o usuário escolher isso explicitamente). paymentStatusFilters: payment_status da
+// própria OS (paid/pending, mesma normalização de report-helpers.ts) — array vazio = sem restrição,
+// que é o comportamento padrão deste modo (regime de competência, independente de pagamento).
 
-export function calculateByOrderPeriodData(orders: ReportRow[], start: Date, end: Date): PeriodProfitData {
+export function calculateByOrderPeriodData(
+  orders: ReportRow[],
+  start: Date,
+  end: Date,
+  orderStatusFilters: string[] = [],
+  paymentStatusFilters: string[] = []
+): PeriodProfitData {
   const periodOrders = orders.filter((o: ReportRow) => {
     const entryDate = o?.entry_date ? new Date(`${o.entry_date}T00:00:00`) : null
-    return !!entryDate && !Number.isNaN(entryDate.getTime()) && isOrderCompleted(o?.status) && entryDate >= start && entryDate <= end
+    if (!entryDate || Number.isNaN(entryDate.getTime()) || entryDate < start || entryDate > end) return false
+    if (orderStatusFilters.length > 0 && !orderStatusFilters.includes(String(o?.status || ''))) return false
+    if (!matchesStatusFilters(o?.payment_status, paymentStatusFilters)) return false
+    return true
   })
   const revenue = periodOrders.reduce((acc: number, o: ReportRow) => acc + toNumber(o?.total_amount, 0), 0)
   const costs = periodOrders.reduce((acc: number, o: ReportRow) => acc + toNumber(o?.total_cost_amount, 0), 0)

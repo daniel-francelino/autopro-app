@@ -6,11 +6,15 @@ const props = withDefaults(
     dateLabel?: string
     statusLabel?: string
     compareLabel?: string
+    orderStatusLabel?: string
+    orderPaymentStatusLabel?: string
   }>(),
   {
     dateLabel: 'Período',
     statusLabel: 'Status do pagamento',
-    compareLabel: 'Comparação'
+    compareLabel: 'Comparação',
+    orderStatusLabel: 'Status da OS',
+    orderPaymentStatusLabel: 'Status do pagamento'
   }
 )
 
@@ -19,10 +23,23 @@ const dateTo = defineModel<string>('dateTo')
 const statusFilters = defineModel<string[]>('statusFilters', { default: () => ['paid'] })
 const compareMode = defineModel<string>('compareMode', { default: 'no_compare' })
 const mode = defineModel<'cash_flow' | 'by_order' | 'period_result'>('mode', { default: 'cash_flow' })
+const orderStatusFilters = defineModel<string[]>('orderStatusFilters', { default: () => ['completed', 'invoiced', 'delivered'] })
+const orderPaymentStatusFilters = defineModel<string[]>('orderPaymentStatusFilters', { default: () => [] })
 
 const statusOptions: TagFilterOption[] = [
   { value: 'paid', label: 'Pago', color: 'success', icon: 'i-lucide-circle-check' },
   { value: 'pending', label: 'Pendente', color: 'warning', icon: 'i-lucide-clock' }
+]
+
+const orderStatusOptions: TagFilterOption[] = [
+  { value: 'open', label: 'Aberta', color: 'info', icon: 'i-lucide-circle-dot' },
+  { value: 'in_progress', label: 'Em andamento', color: 'warning', icon: 'i-lucide-wrench' },
+  { value: 'waiting_for_part', label: 'Aguard. peça', color: 'warning', icon: 'i-lucide-package-search' },
+  { value: 'completed', label: 'Concluída', color: 'success', icon: 'i-lucide-check-circle-2' },
+  { value: 'invoiced', label: 'Faturada', color: 'primary', icon: 'i-lucide-receipt' },
+  { value: 'delivered', label: 'Entregue', color: 'success', icon: 'i-lucide-truck' },
+  { value: 'estimate', label: 'Orçamento', color: 'neutral', icon: 'i-lucide-file-text' },
+  { value: 'cancelled', label: 'Cancelada', color: 'error', icon: 'i-lucide-ban' }
 ]
 
 const compareOptions = [
@@ -41,7 +58,7 @@ const modeItems = [
 
 const modeDescription: Record<'cash_flow' | 'by_order' | 'period_result', string> = {
   cash_flow: 'Dinheiro que já entrou/saiu (ou está prestes a) — tenho dinheiro no caixa?',
-  by_order: 'Receita de cada OS menos o custo de peças da própria OS, independente de status de pagamento — o preço do serviço cobre o custo da peça?',
+  by_order: 'Receita de cada OS menos o custo de peças da própria OS — o preço do serviço cobre o custo da peça?',
   period_result: 'Toda receita de OS reconhecida menos toda despesa geral reconhecida no período, independente de status de pagamento — o negócio deu lucro de verdade?'
 }
 </script>
@@ -78,24 +95,6 @@ const modeDescription: Record<'cash_flow' | 'by_order' | 'period_result', string
           />
         </div>
 
-        <div />
-
-        <div>
-          <p class="mb-1 text-xs font-medium text-muted">
-            {{ props.statusLabel }}
-          </p>
-          <UiTagFilter
-            v-if="mode === 'cash_flow'"
-            v-model="statusFilters"
-            :options="statusOptions"
-            placeholder="Todos"
-            class="w-full"
-          />
-          <p v-else class="rounded-md border border-dashed border-default px-3 py-2 text-xs text-muted">
-            Considera todas as OS do período, independente do status de pagamento.
-          </p>
-        </div>
-
         <div>
           <p class="mb-1 text-xs font-medium text-muted">
             {{ props.compareLabel }}
@@ -108,6 +107,52 @@ const modeDescription: Record<'cash_flow' | 'by_order' | 'period_result', string
             class="w-full"
             @update:model-value="compareMode = String($event || 'no_compare')"
           />
+        </div>
+
+        <!-- Fluxo de Caixa: status de pagamento das transações financeiras -->
+        <div v-if="mode === 'cash_flow'" class="col-span-2">
+          <p class="mb-1 text-xs font-medium text-muted">
+            {{ props.statusLabel }}
+          </p>
+          <UiTagFilter
+            v-model="statusFilters"
+            :options="statusOptions"
+            placeholder="Todos"
+            class="w-full"
+          />
+        </div>
+
+        <!-- Pelas OS: status da OS e status de pagamento da própria OS, independentes -->
+        <template v-else-if="mode === 'by_order'">
+          <div>
+            <p class="mb-1 text-xs font-medium text-muted">
+              {{ props.orderStatusLabel }}
+            </p>
+            <UiTagFilter
+              v-model="orderStatusFilters"
+              :options="orderStatusOptions"
+              placeholder="Todos"
+              class="w-full"
+            />
+          </div>
+          <div>
+            <p class="mb-1 text-xs font-medium text-muted">
+              {{ props.orderPaymentStatusLabel }}
+            </p>
+            <UiTagFilter
+              v-model="orderPaymentStatusFilters"
+              :options="statusOptions"
+              placeholder="Todos"
+              class="w-full"
+            />
+          </div>
+        </template>
+
+        <!-- Resultado do Período: sem filtro de status, sempre considera tudo -->
+        <div v-else class="col-span-2">
+          <p class="rounded-md border border-dashed border-default px-3 py-2 text-xs text-muted">
+            Considera toda receita e despesa do período, independente do status de pagamento.
+          </p>
         </div>
       </div>
     </div>
