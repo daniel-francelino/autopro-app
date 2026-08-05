@@ -34,6 +34,19 @@ const popoverOpen = ref(false)
 const dfShort = new DateFormatter('pt-BR', { dateStyle: 'short' })
 const tz = getLocalTimeZone()
 
+// Staged (pending) selection — only emitted to the parent when the user
+// clicks "Confirmar". This avoids the previous behavior where every click
+// on the calendar re-emitted the range and triggered a full data reload.
+const localFrom = ref<string | undefined>(props.from ?? undefined)
+const localTo = ref<string | undefined>(props.to ?? undefined)
+
+watch(popoverOpen, (open) => {
+  if (open) {
+    localFrom.value = props.from ?? undefined
+    localTo.value = props.to ?? undefined
+  }
+})
+
 function isoToCalendarDate(
   iso: string | null | undefined
 ): CalendarDate | undefined {
@@ -53,23 +66,18 @@ function calendarDateToISO(date: DateValue): string {
 
 const calendarValue = computed<DateRange>({
   get: () => ({
-    start: isoToCalendarDate(props.from),
-    end: isoToCalendarDate(props.to)
+    start: isoToCalendarDate(localFrom.value),
+    end: isoToCalendarDate(localTo.value)
   }),
   set: (val) => {
-    emit('update:from', val?.start ? calendarDateToISO(val.start) : undefined)
-    emit('update:to', val?.end ? calendarDateToISO(val.end) : undefined)
-    if (val?.start && val?.end) {
-      nextTick(() => {
-        popoverOpen.value = false
-      })
-    }
+    localFrom.value = val?.start ? calendarDateToISO(val.start) : undefined
+    localTo.value = val?.end ? calendarDateToISO(val.end) : undefined
   }
 })
 
-const displayValue = computed(() => {
-  const start = isoToCalendarDate(props.from)
-  const end = isoToCalendarDate(props.to)
+function formatRange(from: string | undefined, to: string | undefined) {
+  const start = isoToCalendarDate(from)
+  const end = isoToCalendarDate(to)
   if (!start) return ''
   try {
     const startStr = dfShort.format(start.toDate(tz))
@@ -78,7 +86,10 @@ const displayValue = computed(() => {
   } catch {
     return ''
   }
-})
+}
+
+const displayValue = computed(() => formatRange(props.from, props.to))
+const pendingDisplayValue = computed(() => formatRange(localFrom.value, localTo.value))
 
 const rangePresets = [
   {
@@ -128,26 +139,32 @@ const rangePresets = [
 ]
 
 function isPresetActive(preset: (typeof rangePresets)[number]): boolean {
-  if (!props.from || !props.to) return false
+  if (!localFrom.value || !localTo.value) return false
   const { start, end } = preset.getRange()
-  const fromDate = isoToCalendarDate(props.from)
-  const toDate = isoToCalendarDate(props.to)
+  const fromDate = isoToCalendarDate(localFrom.value)
+  const toDate = isoToCalendarDate(localTo.value)
   if (!fromDate || !toDate) return false
   return fromDate.compare(start) === 0 && toDate.compare(end) === 0
 }
 
 function selectPreset(preset: (typeof rangePresets)[number]) {
   const { start, end } = preset.getRange()
-  emit('update:from', calendarDateToISO(start))
-  emit('update:to', calendarDateToISO(end))
-  nextTick(() => {
-    popoverOpen.value = false
-  })
+  localFrom.value = calendarDateToISO(start)
+  localTo.value = calendarDateToISO(end)
+}
+
+function confirm() {
+  emit('update:from', localFrom.value)
+  emit('update:to', localTo.value)
+  popoverOpen.value = false
 }
 
 function clear() {
+  localFrom.value = undefined
+  localTo.value = undefined
   emit('update:from', undefined)
   emit('update:to', undefined)
+  popoverOpen.value = false
 }
 </script>
 
@@ -227,19 +244,27 @@ function clear() {
           />
 
           <div
-            v-if="from || to"
             class="mt-3 flex items-center justify-between border-t border-default pt-3"
           >
             <span class="truncate text-xs text-muted">
-              {{ displayValue || "—" }}
+              {{ pendingDisplayValue || "—" }}
             </span>
-            <UButton
-              size="xs"
-              color="neutral"
-              variant="ghost"
-              label="Limpar"
-              @click="clear"
-            />
+            <div class="flex items-center gap-2">
+              <UButton
+                size="xs"
+                color="neutral"
+                variant="ghost"
+                label="Limpar"
+                @click="clear"
+              />
+              <UButton
+                size="xs"
+                color="primary"
+                label="Confirmar"
+                :disabled="!localFrom || !localTo"
+                @click="confirm"
+              />
+            </div>
           </div>
         </div>
       </div>
