@@ -11,7 +11,11 @@ export interface BulkPayItem {
   osLabel: string | null
   dateLabel: string
   amount: number
+  isOld: boolean
+  hasCompletionDate: boolean
 }
+
+export type BulkDateStrategy = 'today' | 'os_completion'
 
 const props = defineProps<{
   open: boolean
@@ -23,16 +27,21 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  'confirm': [accountId: string]
+  'confirm': [accountId: string, dateStrategy: BulkDateStrategy]
 }>()
 
 const selectedAccountId = ref('')
+const dateStrategy = ref<BulkDateStrategy>('today')
 
 watch(() => props.accounts, (accounts) => {
   if (accounts.length > 0 && !selectedAccountId.value) {
     selectedAccountId.value = accounts[0]!.id
   }
 }, { immediate: true })
+
+watch(() => props.open, (open) => {
+  if (open) dateStrategy.value = 'today'
+})
 
 function formatCurrency(v: number) {
   return parseFloat(String(v || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -44,13 +53,34 @@ const accountOptions = computed(() =>
     label: [a.account_name, a.bank_name].filter(Boolean).join(' — ') || 'Conta'
   }))
 )
+
+const oldItems = computed(() => props.items.filter(item => item.isOld))
+const oldItemsWithoutCompletionDate = computed(() => oldItems.value.filter(item => !item.hasCompletionDate))
+
+const dateStrategyOptions = computed(() => {
+  const options: Array<{ label: string, description: string, value: BulkDateStrategy }> = [
+    {
+      label: 'Pagar tudo com a data de hoje',
+      description: 'Todas as despesas entram no fluxo de caixa e nos relatórios do mês atual.',
+      value: 'today'
+    },
+    {
+      label: 'Usar data de conclusão da OS nas comissões antigas',
+      description: oldItemsWithoutCompletionDate.value.length > 0
+        ? `As recentes continuam com a data de hoje. Das ${oldItems.value.length} antigas, ${oldItemsWithoutCompletionDate.value.length} não têm OS com data de conclusão e também usarão hoje.`
+        : `As recentes continuam com a data de hoje. As ${oldItems.value.length} antigas retroagem para a data de conclusão da respectiva OS.`,
+      value: 'os_completion'
+    }
+  ]
+  return options
+})
 </script>
 
 <template>
   <UModal
     :open="open"
     title="Pagar comissões selecionadas"
-    @update:open="$emit('update:open', $event)"
+    @update:open="emit('update:open', $event)"
   >
     <template #body>
       <div class="space-y-4">
@@ -86,11 +116,29 @@ const accountOptions = computed(() =>
                 </p>
                 <p class="text-xs text-muted">
                   <span v-if="item.osLabel">{{ item.osLabel }} · </span>{{ item.dateLabel }}
+                  <span v-if="item.isOld" class="text-warning">· pendente há bastante tempo</span>
                 </p>
               </div>
               <span class="shrink-0 text-sm font-bold text-success">{{ formatCurrency(item.amount) }}</span>
             </div>
           </div>
+        </div>
+
+        <!-- Old items warning + date strategy -->
+        <div v-if="oldItems.length > 0" class="space-y-2">
+          <div class="flex items-start gap-2 rounded-xl bg-warning/10 px-3 py-2.5 text-sm text-warning">
+            <UIcon name="i-lucide-triangle-alert" class="mt-0.5 size-4 shrink-0" />
+            <span>
+              {{ oldItems.length }} de {{ items.length }} comissões selecionadas estão pendentes há bastante tempo.
+              Escolha como registrar a data de pagamento delas.
+            </span>
+          </div>
+
+          <URadioGroup
+            v-model="dateStrategy"
+            variant="card"
+            :items="dateStrategyOptions"
+          />
         </div>
 
         <!-- Total -->
@@ -105,7 +153,7 @@ const accountOptions = computed(() =>
             color="neutral"
             variant="ghost"
             :disabled="loading"
-            @click="$emit('update:open', false)"
+            @click="emit('update:open', false)"
           />
           <UButton
             label="Confirmar pagamento"
@@ -113,7 +161,7 @@ const accountOptions = computed(() =>
             icon="i-lucide-credit-card"
             :loading="loading"
             :disabled="!selectedAccountId || items.length === 0"
-            @click="$emit('confirm', selectedAccountId)"
+            @click="emit('confirm', selectedAccountId, dateStrategy)"
           />
         </div>
       </div>

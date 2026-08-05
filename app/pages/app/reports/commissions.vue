@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { SortingState } from '@tanstack/vue-table'
 import type { CommissionDetailData } from '~/components/reports/commissions/CommissionsDetailSlideover.vue'
+import type { PayConfirmTarget } from '~/components/reports/commissions/CommissionsPayConfirmModal.vue'
+import type { BulkDateStrategy } from '~/components/reports/commissions/CommissionsBulkPayModal.vue'
 import { ActionCode } from '~/constants/action-codes'
 
 interface CommissionReportItem {
@@ -8,11 +10,29 @@ interface CommissionReportItem {
   employee_name: string
   order_number: string | null
   order_entry_date: string | null
+  order_completion_date: string | null
   order_status: string | null
   order_payment_status: string | null
   reference_date: string
   amount: number
   status: string
+}
+
+// A commission pending for longer than this is flagged so the user can
+// choose to backdate the payment to when the OS was actually completed,
+// instead of silently recording it against today's competência.
+const OLD_COMMISSION_THRESHOLD_DAYS = 45
+
+function daysSince(dateIso: string): number {
+  const [y, m, d] = dateIso.split('-').map(Number)
+  const date = new Date(y!, (m ?? 1) - 1, d)
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  return Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
+}
+
+function isOldCommission(referenceDate: string): boolean {
+  return daysSince(referenceDate) > OLD_COMMISSION_THRESHOLD_DAYS
 }
 
 interface CommissionSummary {
@@ -108,6 +128,9 @@ const bulkPayLoading = ref(false)
 const detailOpen = ref(false)
 const detailLoading = ref(false)
 const detailData = ref<CommissionDetailData | null>(null)
+const payConfirmOpen = ref(false)
+const payConfirmTarget = ref<PayConfirmTarget | null>(null)
+const payConfirmLoading = ref(false)
 
 interface CommissionDeleteTarget {
   id: string
@@ -297,7 +320,9 @@ const bulkPayItems = computed(() =>
       employeeName: item.employee_name,
       osLabel: item.order_number ? `#${item.order_number}` : null,
       dateLabel: formatDate(item.reference_date),
-      amount: item.amount
+      amount: item.amount,
+      isOld: isOldCommission(item.reference_date),
+      hasCompletionDate: Boolean(item.order_completion_date)
     }))
 )
 
@@ -331,13 +356,13 @@ async function openDetail(row: CommissionReportItem) {
   }
 }
 
-async function handleBulkPay(accountId: string) {
+async function handleBulkPay(accountId: string, dateStrategy: BulkDateStrategy) {
   bulkPayLoading.value = true
   const pendingIds = bulkPayItems.value.map(item => item.id)
   try {
     await $fetch('/api/financial/pay-commissions-bulk', {
       method: 'POST',
-      body: { registroIds: pendingIds, contaBancariaId: accountId }
+      body: { registroIds: pendingIds, contaBancariaId: accountId, dateStrategy }
     })
     toast.add({ title: 'Comissões pagas com sucesso!', color: 'success' })
     bulkPayOpen.value = false
@@ -351,12 +376,46 @@ async function handleBulkPay(accountId: string) {
 
 // Row actions
 async function payCommission(id: string) {
+  const item = accumulatedItems.value.find(candidate => candidate.id === id)
+
+  if (item && isOldCommission(item.reference_date)) {
+    payConfirmTarget.value = {
+      id: item.id,
+      employeeName: item.employee_name,
+      osLabel: item.order_number ? `#${item.order_number}` : null,
+      referenceDateLabel: formatDate(item.reference_date),
+      daysPending: daysSince(item.reference_date),
+      amount: item.amount,
+      completionDateIso: item.order_completion_date,
+      completionDateLabel: item.order_completion_date ? formatDate(item.order_completion_date) : null
+    }
+    payConfirmOpen.value = true
+    return
+  }
+
   try {
     await $fetch(`/api/reports/commissions/${id}/pay`, { method: 'POST' })
     toast.add({ title: 'Comissão marcada como paga!', color: 'success' })
     await resetAndRefresh()
   } catch {
     toast.add({ title: 'Erro ao pagar comissão', color: 'error' })
+  }
+}
+
+async function confirmPayFromModal(paymentDate: string) {
+  if (!payConfirmTarget.value) return
+  const id = payConfirmTarget.value.id
+  payConfirmLoading.value = true
+  try {
+    await $fetch(`/api/reports/commissions/${id}/pay`, { method: 'POST', body: { paymentDate } })
+    toast.add({ title: 'Comissão marcada como paga!', color: 'success' })
+    payConfirmOpen.value = false
+    payConfirmTarget.value = null
+    await resetAndRefresh()
+  } catch {
+    toast.add({ title: 'Erro ao pagar comissão', color: 'error' })
+  } finally {
+    payConfirmLoading.value = false
   }
 }
 
@@ -649,6 +708,14 @@ async function exportReport(format: 'csv' | 'pdf') {
     :accounts="bankAccounts"
     :loading="bulkPayLoading"
     @confirm="handleBulkPay"
+  />
+
+  <!-- Single pay confirm modal (old commissions) -->
+  <ReportsCommissionsPayConfirmModal
+    v-model:open="payConfirmOpen"
+    :target="payConfirmTarget"
+    :loading="payConfirmLoading"
+    @confirm="confirmPayFromModal"
   />
 
   <!-- Delete confirm modal -->

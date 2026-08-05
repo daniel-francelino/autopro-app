@@ -10,6 +10,15 @@ function normalizeNumber(value: unknown) {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
+function normalizeIsoDateOrNull(value: unknown) {
+  const raw = String(value ?? '').trim()
+  if (!raw) return null
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw
+  const date = new Date(raw)
+  if (Number.isNaN(date.getTime())) return null
+  return date.toISOString().split('T')[0]
+}
+
 /**
  * POST /api/reports/commissions/:id/pay
  * Marks a single employee_financial_record (commission) as paid, creating
@@ -36,6 +45,7 @@ export default defineEventHandler(async (event) => {
 
   const body = (await readBody(event).catch(() => null)) || {}
   const requestedAccountId = body?.bankAccountId ? String(body.bankAccountId) : null
+  const paymentDate = normalizeIsoDateOrNull(body?.paymentDate) || new Date().toISOString().split('T')[0]
 
   let bankAccount: { id: string, current_balance: number | string | null } | null = null
 
@@ -61,7 +71,6 @@ export default defineEventHandler(async (event) => {
     bankAccount = activeAccounts[0]
   }
 
-  const today = new Date().toISOString().split('T')[0]
   const amount = normalizeNumber(existing.amount)
   const previousBalance = normalizeNumber(bankAccount.current_balance)
   const nextBalance = previousBalance - amount
@@ -80,7 +89,7 @@ export default defineEventHandler(async (event) => {
       .insert({
         description,
         amount,
-        due_date: today,
+        due_date: paymentDate,
         type: 'expense',
         status: 'paid',
         category: salariesCategory.name,
@@ -111,7 +120,7 @@ export default defineEventHandler(async (event) => {
       .insert({
         bank_account_id: bankAccount.id,
         financial_transaction_id: transactionId,
-        transaction_date: today,
+        transaction_date: paymentDate,
         description,
         transaction_type: 'expense',
         amount,
@@ -131,7 +140,7 @@ export default defineEventHandler(async (event) => {
       .from('employee_financial_records')
       .update({
         status: 'paid',
-        payment_date: today,
+        payment_date: paymentDate,
         financial_transaction_id: transactionId,
         updated_by: authUser.email
       })
