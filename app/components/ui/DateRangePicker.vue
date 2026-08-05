@@ -246,9 +246,6 @@ function clear() {
           <div
             class="mt-3 flex items-center justify-between border-t border-default pt-3"
           >
-            <span class="truncate text-xs text-muted">
-              {{ pendingDisplayValue || "—" }}
-            </span>
             <div class="flex items-center gap-2">
               <UButton
                 size="xs"
