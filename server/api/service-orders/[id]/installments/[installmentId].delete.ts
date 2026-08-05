@@ -12,12 +12,17 @@ import { softDeleteFinancialTransaction, FINANCIAL_TRANSACTION_DELETION_SOURCES 
  * partial, paid). A motive is always required, regardless of status: it's
  * the only thing distinguishing "delete" from a silent data-loss action.
  *
- * If the installment has money received against it (partial/paid), every
- * linked financial_transactions row is reversed first (bank balance +
- * statement + soft delete with the same user-supplied reason) — same
- * guard/mechanics as financial-transactions/[transactionId].delete.ts,
- * repeated per transaction instead of a single one. A pending/overdue
- * installment has no linked transactions, so that step is a no-op.
+ * Every financial_transactions row still linked to this installment is
+ * soft-deleted first, regardless of its status — same guard/mechanics as
+ * financial-transactions/[transactionId].delete.ts, repeated per
+ * transaction instead of a single one. A `paid` transaction also has its
+ * bank balance/statement reversed; a `pending`/`cancelled` one never moved
+ * the balance, so that part is a no-op and it's just soft-deleted. This
+ * matters for migrated/imported data, where a `pending` installment can
+ * already have a transaction linked to it (unlike installments created
+ * through this app's own payment flow) — filtering to `status='paid'` here
+ * used to leave that transaction orphaned (still live, no installment
+ * pointing at it) once the installment was deleted.
  */
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
@@ -50,16 +55,18 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Parcela não encontrada' })
   }
 
-  // Any receipt still linked to this installment — via the new
+  // Any transaction still linked to this installment — via the new
   // service_order_installment_id FK or the legacy financial_transaction_id
-  // column (dedupe by id). Empty for a pending/overdue line.
+  // column (dedupe by id). Not filtered by status: a pending/cancelled
+  // transaction never moved the bank balance (the reversal loop below is a
+  // no-op for it), but it still needs to be soft-deleted along with the
+  // installment, or it's left behind as an orphaned live row.
   const linkedIds = new Set<string>()
   const { data: linkedByFk } = await supabase
     .from('financial_transactions')
     .select('*')
     .eq('organization_id', organizationId)
     .eq('service_order_installment_id', installmentId)
-    .eq('status', 'paid')
     .is('deleted_at', null)
 
   const linkedTransactions = [...(linkedByFk || [])]
@@ -71,7 +78,6 @@ export default defineEventHandler(async (event) => {
       .select('*')
       .eq('id', installment.financial_transaction_id)
       .eq('organization_id', organizationId)
-      .eq('status', 'paid')
       .is('deleted_at', null)
       .maybeSingle()
 
@@ -84,21 +90,29 @@ export default defineEventHandler(async (event) => {
   if (linkedTransactions.length > 0) {
     // Same guard as cancelling the whole order's payment / undoing a single
     // receipt: never silently revert money that's already left the bank to
-    // pay an employee's commission.
-    const { data: paidCommissions } = await supabase
-      .from('employee_financial_records')
-      .select('id')
-      .eq('service_order_id', orderId)
-      .eq('record_type', 'commission')
-      .eq('organization_id', organizationId)
-      .eq('status', 'paid')
-      .limit(1)
+    // pay an employee's commission. Only relevant when a linked transaction
+    // is actually `paid` — a pending/cancelled one never moved the balance,
+    // so it can't be undoing money behind a paid commission, and shouldn't
+    // block deleting an otherwise-ordinary pending installment just because
+    // some other commission on the same OS happens to be paid already.
+    const hasPaidLinkedTransaction = linkedTransactions.some(transaction => transaction.status === 'paid')
 
-    if (paidCommissions && paidCommissions.length > 0) {
-      throw createError({
-        statusCode: 409,
-        statusMessage: 'Não é possível excluir esta parcela: existe comissão já paga a funcionário(s) nesta OS. Resolva isso manualmente antes de continuar.'
-      })
+    if (hasPaidLinkedTransaction) {
+      const { data: paidCommissions } = await supabase
+        .from('employee_financial_records')
+        .select('id')
+        .eq('service_order_id', orderId)
+        .eq('record_type', 'commission')
+        .eq('organization_id', organizationId)
+        .eq('status', 'paid')
+        .limit(1)
+
+      if (paidCommissions && paidCommissions.length > 0) {
+        throw createError({
+          statusCode: 409,
+          statusMessage: 'Não é possível excluir esta parcela: existe comissão já paga a funcionário(s) nesta OS. Resolva isso manualmente antes de continuar.'
+        })
+      }
     }
 
     for (const transaction of linkedTransactions) {
