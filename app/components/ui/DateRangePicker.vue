@@ -89,7 +89,6 @@ function formatRange(from: string | undefined, to: string | undefined) {
 }
 
 const displayValue = computed(() => formatRange(props.from, props.to))
-const pendingDisplayValue = computed(() => formatRange(localFrom.value, localTo.value))
 
 const rangePresets = [
   {
@@ -149,8 +148,15 @@ function isPresetActive(preset: (typeof rangePresets)[number]): boolean {
 
 function selectPreset(preset: (typeof rangePresets)[number]) {
   const { start, end } = preset.getRange()
-  localFrom.value = calendarDateToISO(start)
-  localTo.value = calendarDateToISO(end)
+  const fromIso = calendarDateToISO(start)
+  const toIso = calendarDateToISO(end)
+  localFrom.value = fromIso
+  localTo.value = toIso
+  // Presets are a shortcut, not a staged edit — apply immediately instead
+  // of waiting for "Confirmar".
+  emit('update:from', fromIso)
+  emit('update:to', toIso)
+  popoverOpen.value = false
 }
 
 function confirm() {
@@ -244,24 +250,22 @@ function clear() {
           />
 
           <div
-            class="mt-3 flex items-center justify-between border-t border-default pt-3"
+            class="mt-3 flex items-center justify-end gap-2 border-t border-default pt-3"
           >
-            <div class="flex items-center gap-2">
-              <UButton
-                size="xs"
-                color="neutral"
-                variant="ghost"
-                label="Limpar"
-                @click="clear"
-              />
-              <UButton
-                size="xs"
-                color="primary"
-                label="Confirmar"
-                :disabled="!localFrom || !localTo"
-                @click="confirm"
-              />
-            </div>
+            <UButton
+              size="xs"
+              color="neutral"
+              variant="ghost"
+              label="Limpar"
+              @click="clear"
+            />
+            <UButton
+              size="xs"
+              color="primary"
+              label="Confirmar"
+              :disabled="!localFrom || !localTo"
+              @click="confirm"
+            />
           </div>
         </div>
       </div>
