@@ -136,7 +136,7 @@ export default defineEventHandler(async (event) => {
         status: 'paid',
         category: salariesCategory.name,
         category_id: salariesCategory.id,
-        recurrence: 'nao_recorrente',
+        recurrence: 'non_recurring',
         bank_account_id: contaId,
         employee_financial_record_id: registroId,
         notes: `Pagamento de comissão - ${String(registro?.employee_id || '')}`,

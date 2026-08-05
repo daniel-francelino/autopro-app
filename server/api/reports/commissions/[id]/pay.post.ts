@@ -85,7 +85,7 @@ export default defineEventHandler(async (event) => {
         status: 'paid',
         category: salariesCategory.name,
         category_id: salariesCategory.id,
-        recurrence: 'nao_recorrente',
+        recurrence: 'non_recurring',
         bank_account_id: bankAccount.id,
         employee_financial_record_id: id,
         notes,
