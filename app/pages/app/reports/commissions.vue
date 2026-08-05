@@ -1,52 +1,32 @@
 <script setup lang="ts">
 import type { SortingState } from '@tanstack/vue-table'
 import type { CommissionDetailData } from '~/components/reports/commissions/CommissionsDetailSlideover.vue'
+import type { PayConfirmTarget } from '~/components/reports/commissions/CommissionsPayConfirmModal.vue'
+import type { BulkDateStrategy } from '~/components/reports/commissions/CommissionsBulkPayModal.vue'
+import type { CommissionReportItem } from '~/composables/useCommissionsReportList'
 import { ActionCode } from '~/constants/action-codes'
 
-interface CommissionReportItem {
-  id: string
-  employee_name: string
-  order_number: string | null
-  order_entry_date: string | null
-  order_status: string | null
-  order_payment_status: string | null
-  reference_date: string
-  amount: number
-  status: string
+// A commission pending for longer than this is flagged so the user can
+// choose to backdate the payment to when the OS was actually completed,
+// instead of silently recording it against today's competência.
+const OLD_COMMISSION_THRESHOLD_DAYS = 45
+
+function daysSince(dateIso: string): number {
+  const [y, m, d] = dateIso.split('-').map(Number)
+  const date = new Date(y!, (m ?? 1) - 1, d)
+  const now = new Date()
+  now.setHours(0, 0, 0, 0)
+  return Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
 }
 
-interface CommissionSummary {
-  totalCommissions?: number
-  totalPaid?: number
-  totalPending?: number
-  employeeCount?: number
-  count?: number
-}
-
-interface CommissionCharts {
-  byEmployee: Array<{ name: string, total: number, paid: number, pending: number }>
-  statusDistribution: Array<{ name: string, value: number, color: string }>
-}
-
-interface EmployeeOption {
-  value: string
-  label: string
+function isOldCommission(referenceDate: string): boolean {
+  return daysSince(referenceDate) > OLD_COMMISSION_THRESHOLD_DAYS
 }
 
 interface BankAccountItem {
   id: string
   account_name?: string
   bank_name?: string
-}
-
-interface CommissionsReportResponse {
-  data?: {
-    items?: CommissionReportItem[]
-    summary?: CommissionSummary
-    pagination?: { totalItems?: number } | null
-    charts?: CommissionCharts
-    employees?: EmployeeOption[]
-  }
 }
 
 interface CommissionDetailResponse {
@@ -60,9 +40,6 @@ type BadgeColor = 'neutral' | 'primary' | 'secondary' | 'success' | 'info' | 'wa
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Relatório de Comissões' })
 
-const requestFetch = useRequestFetch()
-const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
-
 const { can } = useWorkshopPermissions()
 const toast = useToast()
 
@@ -74,10 +51,6 @@ const commissionStatus = useReportQueryParam('commissionStatus', [] as string[])
 const recordType = useReportQueryParam('recordType', [] as string[])
 
 // Pagination / sorting
-const pageSize = 20
-const page = ref(1)
-const accumulatedItems = ref<CommissionReportItem[]>([])
-const totalFromServer = ref(0)
 const sortByParam = useReportQueryParam('sortBy', 'reference_date')
 const sortOrderParam = useReportQueryParam('sortOrder', 'desc')
 const sorting = computed<SortingState>({
@@ -85,8 +58,6 @@ const sorting = computed<SortingState>({
   set: (val) => {
     sortByParam.value = val[0]?.id ?? 'reference_date'
     sortOrderParam.value = val[0]?.desc === false ? 'asc' : 'desc'
-    accumulatedItems.value = []
-    page.value = 1
   }
 })
 
@@ -108,6 +79,9 @@ const bulkPayLoading = ref(false)
 const detailOpen = ref(false)
 const detailLoading = ref(false)
 const detailData = ref<CommissionDetailData | null>(null)
+const payConfirmOpen = ref(false)
+const payConfirmTarget = ref<PayConfirmTarget | null>(null)
+const payConfirmLoading = ref(false)
 
 interface CommissionDeleteTarget {
   id: string
@@ -145,73 +119,31 @@ const exportItems = computed(() => [[
   }
 ]])
 
-// Reset on filter changes
+const {
+  items: accumulatedItems,
+  total: totalFromServer,
+  hasMore,
+  isLoading,
+  isLoadingMore,
+  load: loadCommissions,
+  loadMore,
+  softRefresh,
+  summary,
+  charts,
+  employees
+} = useCommissionsReportList({
+  dateFrom, dateTo, selectedEmployees, commissionStatus, recordType,
+  orderStatusFilters, paymentStatusFilters, paymentMethods, sortBy, sortOrder
+})
+
+await loadCommissions()
+
+// The composable already resets the list itself for these same dependencies —
+// this only clears the row selection, which is page-level UI state it doesn't know about.
 watch(
   [dateFrom, dateTo, selectedEmployees, commissionStatus, recordType, orderStatusFilters, paymentStatusFilters, paymentMethods, sortBy, sortOrder],
-  () => {
-    accumulatedItems.value = []
-    page.value = 1
-  }
+  () => { selectedIds.value = [] }
 )
-
-const queryKey = computed(() =>
-  `rc-${dateFrom.value}-${dateTo.value}-${page.value}-${selectedEmployees.value.join(',')}-${commissionStatus.value.join(',')}-${recordType.value.join(',')}-${orderStatusFilters.value.join(',')}-${paymentStatusFilters.value.join(',')}-${paymentMethods.value.join(',')}-${sortBy.value}-${sortOrder.value}`
-)
-
-const { data, status, refresh } = await useAsyncData(
-  () => queryKey.value,
-  () => requestFetch<CommissionsReportResponse>('/api/reports/commissions', {
-    headers: requestHeaders,
-    query: {
-      dateFrom: dateFrom.value,
-      dateTo: dateTo.value,
-      page: page.value,
-      pageSize,
-      employeeIds: selectedEmployees.value.length ? selectedEmployees.value : undefined,
-      status: commissionStatus.value.length === 1 ? commissionStatus.value[0] : undefined,
-      recordType: recordType.value.length === 1 ? recordType.value[0] : undefined,
-      orderStatusFilters: orderStatusFilters.value.length ? orderStatusFilters.value : undefined,
-      paymentStatusFilters: paymentStatusFilters.value.length ? paymentStatusFilters.value : undefined,
-      paymentMethods: paymentMethods.value.length ? paymentMethods.value : undefined,
-      sortBy: sortBy.value,
-      sortOrder: sortOrder.value
-    }
-  }),
-  { watch: [queryKey] }
-)
-
-const summary = computed<CommissionSummary>(() => data.value?.data?.summary ?? {})
-const charts = computed<CommissionCharts>(() => data.value?.data?.charts ?? { byEmployee: [], statusDistribution: [] })
-const employees = computed<EmployeeOption[]>(() => data.value?.data?.employees ?? [])
-
-watch(data, (newData) => {
-  const newItems = newData?.data?.items ?? []
-  totalFromServer.value = newData?.data?.pagination?.totalItems ?? 0
-  if (page.value === 1) {
-    accumulatedItems.value = newItems
-  } else {
-    accumulatedItems.value = [...accumulatedItems.value, ...newItems]
-  }
-}, { immediate: true })
-
-const hasMore = computed(() => accumulatedItems.value.length < totalFromServer.value)
-const loadingMore = computed(() => status.value === 'pending' && page.value > 1)
-
-function loadMore() {
-  if (hasMore.value && status.value !== 'pending') {
-    page.value++
-  }
-}
-
-async function resetAndRefresh() {
-  accumulatedItems.value = []
-  selectedIds.value = []
-  if (page.value !== 1) {
-    page.value = 1
-  } else {
-    await refresh()
-  }
-}
 
 // Status maps
 const commissionStatusColorMap: Record<string, BadgeColor> = { pending: 'warning', paid: 'success', cancelled: 'error' }
@@ -297,7 +229,8 @@ const bulkPayItems = computed(() =>
       employeeName: item.employee_name,
       osLabel: item.order_number ? `#${item.order_number}` : null,
       dateLabel: formatDate(item.reference_date),
-      amount: item.amount
+      amount: item.amount,
+      isOld: isOldCommission(item.reference_date)
     }))
 )
 
@@ -331,17 +264,18 @@ async function openDetail(row: CommissionReportItem) {
   }
 }
 
-async function handleBulkPay(accountId: string) {
+async function handleBulkPay(accountId: string, dateStrategy: BulkDateStrategy) {
   bulkPayLoading.value = true
   const pendingIds = bulkPayItems.value.map(item => item.id)
   try {
     await $fetch('/api/financial/pay-commissions-bulk', {
       method: 'POST',
-      body: { registroIds: pendingIds, contaBancariaId: accountId }
+      body: { registroIds: pendingIds, contaBancariaId: accountId, dateStrategy }
     })
     toast.add({ title: 'Comissões pagas com sucesso!', color: 'success' })
     bulkPayOpen.value = false
-    await resetAndRefresh()
+    selectedIds.value = selectedIds.value.filter(v => !pendingIds.includes(v))
+    await softRefresh()
   } catch {
     toast.add({ title: 'Erro ao pagar comissões', color: 'error' })
   } finally {
@@ -351,12 +285,47 @@ async function handleBulkPay(accountId: string) {
 
 // Row actions
 async function payCommission(id: string) {
+  const item = accumulatedItems.value.find(candidate => candidate.id === id)
+
+  if (item && isOldCommission(item.reference_date)) {
+    payConfirmTarget.value = {
+      id: item.id,
+      employeeName: item.employee_name,
+      osLabel: item.order_number ? `#${item.order_number}` : null,
+      referenceDateIso: item.reference_date,
+      referenceDateLabel: formatDate(item.reference_date),
+      daysPending: daysSince(item.reference_date),
+      amount: item.amount
+    }
+    payConfirmOpen.value = true
+    return
+  }
+
   try {
     await $fetch(`/api/reports/commissions/${id}/pay`, { method: 'POST' })
     toast.add({ title: 'Comissão marcada como paga!', color: 'success' })
-    await resetAndRefresh()
+    selectedIds.value = selectedIds.value.filter(v => v !== id)
+    await softRefresh()
   } catch {
     toast.add({ title: 'Erro ao pagar comissão', color: 'error' })
+  }
+}
+
+async function confirmPayFromModal(paymentDate: string) {
+  if (!payConfirmTarget.value) return
+  const id = payConfirmTarget.value.id
+  payConfirmLoading.value = true
+  try {
+    await $fetch(`/api/reports/commissions/${id}/pay`, { method: 'POST', body: { paymentDate } })
+    toast.add({ title: 'Comissão marcada como paga!', color: 'success' })
+    payConfirmOpen.value = false
+    payConfirmTarget.value = null
+    selectedIds.value = selectedIds.value.filter(v => v !== id)
+    await softRefresh()
+  } catch {
+    toast.add({ title: 'Erro ao pagar comissão', color: 'error' })
+  } finally {
+    payConfirmLoading.value = false
   }
 }
 
@@ -368,7 +337,8 @@ async function confirmDelete() {
     await $fetch(`/api/reports/commissions/${targetId}`, { method: 'DELETE' })
     toast.add({ title: 'Comissão excluída', color: 'success' })
     deleteTarget.value = null
-    await resetAndRefresh()
+    selectedIds.value = selectedIds.value.filter(v => v !== targetId)
+    await softRefresh()
   } catch {
     toast.add({ title: 'Erro ao excluir comissão', color: 'error' })
   } finally {
@@ -388,11 +358,13 @@ function setDeleteTarget(row: CommissionReportItem) {
 
 async function handleBulkDelete() {
   bulkDeleteLoading.value = true
+  const idsToDelete = [...selectedIds.value]
   try {
-    await Promise.all(selectedIds.value.map(id => $fetch(`/api/reports/commissions/${id}`, { method: 'DELETE' })))
-    toast.add({ title: `${selectedIds.value.length} comissões excluídas`, color: 'success' })
+    await Promise.all(idsToDelete.map(id => $fetch(`/api/reports/commissions/${id}`, { method: 'DELETE' })))
+    toast.add({ title: `${idsToDelete.length} comissões excluídas`, color: 'success' })
     bulkDeleteOpen.value = false
-    await resetAndRefresh()
+    selectedIds.value = selectedIds.value.filter(v => !idsToDelete.includes(v))
+    await softRefresh()
   } catch {
     toast.add({ title: 'Erro ao excluir comissões', color: 'error' })
   } finally {
@@ -474,8 +446,8 @@ async function exportReport(format: 'csv' | 'pdf') {
           v-model:sorting="sorting"
           :columns="columns"
           :data="accumulatedItems as unknown as Record<string, unknown>[]"
-          :loading="status === 'pending' && page === 1"
-          :loading-more="loadingMore"
+          :loading="isLoading"
+          :loading-more="isLoadingMore"
           :has-more="hasMore"
           :total="totalFromServer"
           empty-icon="i-lucide-badge-percent"
@@ -649,6 +621,14 @@ async function exportReport(format: 'csv' | 'pdf') {
     :accounts="bankAccounts"
     :loading="bulkPayLoading"
     @confirm="handleBulkPay"
+  />
+
+  <!-- Single pay confirm modal (old commissions) -->
+  <ReportsCommissionsPayConfirmModal
+    v-model:open="payConfirmOpen"
+    :target="payConfirmTarget"
+    :loading="payConfirmLoading"
+    @confirm="confirmPayFromModal"
   />
 
   <!-- Delete confirm modal -->

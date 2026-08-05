@@ -63,7 +63,9 @@ export default defineEventHandler(async (event) => {
   }
 
   const requestedContaId = normalizeId(body.contaBancariaId)
-  const dataPagamento = normalizeIsoDateOrNull(body.dataPagamento) || new Date().toISOString().split('T')[0]
+  const today = new Date().toISOString().split('T')[0]
+  const dataPagamento = normalizeIsoDateOrNull(body.dataPagamento) || today
+  const dateStrategy = body.dateStrategy === 'reference_date' ? 'reference_date' : 'today'
 
   let contaBancaria: any = null
 
@@ -114,6 +116,10 @@ export default defineEventHandler(async (event) => {
       continue
     }
 
+    const registroDataPagamento = dateStrategy === 'reference_date'
+      ? (registro?.reference_date || today)
+      : dataPagamento
+
     let lancamento: any = null
     let extrato: any = null
     let saldoAnterior: number | null = null
@@ -131,12 +137,12 @@ export default defineEventHandler(async (event) => {
       const { data: lancamentoCreated } = await supabase.from('financial_transactions').insert({
         description: registro?.description || `Pagamento de comissão (${registroId})`,
         amount: valor,
-        due_date: dataPagamento,
+        due_date: registroDataPagamento,
         type: 'expense',
         status: 'paid',
         category: salariesCategory.name,
         category_id: salariesCategory.id,
-        recurrence: 'nao_recorrente',
+        recurrence: 'non_recurring',
         bank_account_id: contaId,
         employee_financial_record_id: registroId,
         notes: `Pagamento de comissão - ${String(registro?.employee_id || '')}`,
@@ -152,7 +158,7 @@ export default defineEventHandler(async (event) => {
       const { data: extratoCreated } = await supabase.from('bank_account_statements').insert({
         bank_account_id: contaId,
         financial_transaction_id: String(lancamento?.id || ''),
-        transaction_date: dataPagamento,
+        transaction_date: registroDataPagamento,
         description: registro?.description || `Pagamento de comissão (${registroId})`,
         transaction_type: 'expense',
         amount: valor,
@@ -168,7 +174,7 @@ export default defineEventHandler(async (event) => {
       // Status must be 'paid' (DB check constraint only allows 'paid'/'pending')
       const { error: registroError } = await supabase.from('employee_financial_records').update({
         status: 'paid',
-        payment_date: dataPagamento,
+        payment_date: registroDataPagamento,
         financial_transaction_id: String(lancamento?.id || ''),
         updated_by: authUser.email
       }).eq('id', registroId)
