@@ -10,7 +10,6 @@ interface CommissionReportItem {
   employee_name: string
   order_number: string | null
   order_entry_date: string | null
-  order_completion_date: string | null
   order_status: string | null
   order_payment_status: string | null
   reference_date: string
@@ -321,8 +320,7 @@ const bulkPayItems = computed(() =>
       osLabel: item.order_number ? `#${item.order_number}` : null,
       dateLabel: formatDate(item.reference_date),
       amount: item.amount,
-      isOld: isOldCommission(item.reference_date),
-      hasCompletionDate: Boolean(item.order_completion_date)
+      isOld: isOldCommission(item.reference_date)
     }))
 )
 
@@ -383,11 +381,10 @@ async function payCommission(id: string) {
       id: item.id,
       employeeName: item.employee_name,
       osLabel: item.order_number ? `#${item.order_number}` : null,
+      referenceDateIso: item.reference_date,
       referenceDateLabel: formatDate(item.reference_date),
       daysPending: daysSince(item.reference_date),
-      amount: item.amount,
-      completionDateIso: item.order_completion_date,
-      completionDateLabel: item.order_completion_date ? formatDate(item.order_completion_date) : null
+      amount: item.amount
     }
     payConfirmOpen.value = true
     return

@@ -12,10 +12,9 @@ export interface BulkPayItem {
   dateLabel: string
   amount: number
   isOld: boolean
-  hasCompletionDate: boolean
 }
 
-export type BulkDateStrategy = 'today' | 'os_completion'
+export type BulkDateStrategy = 'today' | 'reference_date'
 
 const props = defineProps<{
   open: boolean
@@ -55,25 +54,19 @@ const accountOptions = computed(() =>
 )
 
 const oldItems = computed(() => props.items.filter(item => item.isOld))
-const oldItemsWithoutCompletionDate = computed(() => oldItems.value.filter(item => !item.hasCompletionDate))
 
-const dateStrategyOptions = computed(() => {
-  const options: Array<{ label: string, description: string, value: BulkDateStrategy }> = [
-    {
-      label: 'Pagar tudo com a data de hoje',
-      description: 'Todas as despesas entram no fluxo de caixa e nos relatórios do mês atual.',
-      value: 'today'
-    },
-    {
-      label: 'Usar data de conclusão da OS nas comissões antigas',
-      description: oldItemsWithoutCompletionDate.value.length > 0
-        ? `As recentes continuam com a data de hoje. Das ${oldItems.value.length} antigas, ${oldItemsWithoutCompletionDate.value.length} não têm OS com data de conclusão e também usarão hoje.`
-        : `As recentes continuam com a data de hoje. As ${oldItems.value.length} antigas retroagem para a data de conclusão da respectiva OS.`,
-      value: 'os_completion'
-    }
-  ]
-  return options
-})
+const dateStrategyOptions = computed(() => [
+  {
+    label: 'Pagar tudo com a data de hoje',
+    description: 'Todas as despesas entram no fluxo de caixa e nos relatórios do mês atual.',
+    value: 'today' as const
+  },
+  {
+    label: 'Usar a data de referência nas comissões antigas',
+    description: `As recentes continuam com a data de hoje. As ${oldItems.value.length} antigas retroagem para a respectiva data de referência.`,
+    value: 'reference_date' as const
+  }
+])
 </script>
 
 <template>

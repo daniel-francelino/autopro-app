@@ -3,11 +3,10 @@ export interface PayConfirmTarget {
   id: string
   employeeName: string
   osLabel: string | null
+  referenceDateIso: string
   referenceDateLabel: string
   daysPending: number
   amount: number
-  completionDateIso: string | null
-  completionDateLabel: string | null
 }
 
 const props = defineProps<{
@@ -21,7 +20,7 @@ const emit = defineEmits<{
   'confirm': [paymentDate: string]
 }>()
 
-type DateChoice = 'today' | 'os_completion'
+type DateChoice = 'today' | 'reference_date'
 
 const choice = ref<DateChoice>('today')
 const todayIso = new Date().toISOString().split('T')[0]!
@@ -38,31 +37,26 @@ watch(() => props.target, () => {
   choice.value = 'today'
 })
 
-const dateOptions = computed(() => {
-  const options: Array<{ label: string, description: string, value: DateChoice }> = [
-    {
-      label: `Pagar com data de hoje (${todayLabel})`,
-      description: 'A despesa entra no fluxo de caixa e nos relatórios do mês atual.',
-      value: 'today'
-    }
-  ]
-  if (props.target?.completionDateIso) {
-    options.push({
-      label: `Pagar na data de conclusão da OS (${props.target.completionDateLabel})`,
-      description: 'Lançamento, extrato bancário e data de pagamento retroagem para o período em que o serviço foi concluído.',
-      value: 'os_completion'
-    })
+const dateOptions = computed(() => [
+  {
+    label: `Pagar com data de hoje (${todayLabel})`,
+    description: 'A despesa entra no fluxo de caixa e nos relatórios do mês atual.',
+    value: 'today' as const
+  },
+  {
+    label: `Pagar na data de referência (${props.target?.referenceDateLabel ?? ''})`,
+    description: 'Lançamento, extrato bancário e data de pagamento retroagem para o período de referência da comissão.',
+    value: 'reference_date' as const
   }
-  return options
-})
+])
 
 function formatCurrency(v: number) {
   return parseFloat(String(v || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
 function confirm() {
-  const paymentDate = choice.value === 'os_completion' && props.target?.completionDateIso
-    ? props.target.completionDateIso
+  const paymentDate = choice.value === 'reference_date' && props.target?.referenceDateIso
+    ? props.target.referenceDateIso
     : todayIso
   emit('confirm', paymentDate)
 }
@@ -109,11 +103,6 @@ function confirm() {
             variant="card"
             :items="dateOptions"
           />
-
-          <div v-if="!target.completionDateIso" class="flex items-start gap-2 rounded-xl border border-dashed border-default p-3 text-xs text-muted">
-            <UIcon name="i-lucide-info" class="mt-0.5 size-3.5 shrink-0" />
-            <span>Esta comissão não tem uma OS vinculada com data de conclusão, então só é possível pagar com a data de hoje.</span>
-          </div>
         </div>
 
         <div class="flex justify-end gap-3">

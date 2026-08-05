@@ -65,7 +65,7 @@ export default defineEventHandler(async (event) => {
   const requestedContaId = normalizeId(body.contaBancariaId)
   const today = new Date().toISOString().split('T')[0]
   const dataPagamento = normalizeIsoDateOrNull(body.dataPagamento) || today
-  const dateStrategy = body.dateStrategy === 'os_completion' ? 'os_completion' : 'today'
+  const dateStrategy = body.dateStrategy === 'reference_date' ? 'reference_date' : 'today'
 
   let contaBancaria: any = null
 
@@ -116,20 +116,9 @@ export default defineEventHandler(async (event) => {
       continue
     }
 
-    let registroDataPagamento = dataPagamento
-    if (dateStrategy === 'os_completion') {
-      let completionDate: string | null = null
-      if (registro?.service_order_id) {
-        const { data: order } = await supabase
-          .from('service_orders')
-          .select('completion_date')
-          .eq('id', registro.service_order_id)
-          .eq('organization_id', organizationId)
-          .maybeSingle()
-        completionDate = order?.completion_date || null
-      }
-      registroDataPagamento = completionDate || today
-    }
+    const registroDataPagamento = dateStrategy === 'reference_date'
+      ? (registro?.reference_date || today)
+      : dataPagamento
 
     let lancamento: any = null
     let extrato: any = null
