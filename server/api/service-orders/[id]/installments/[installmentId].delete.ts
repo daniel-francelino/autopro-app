@@ -158,6 +158,28 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 500, statusMessage: deleteError.message })
   }
 
+  // Keep installment_count/is_installment in sync with what's actually left
+  // in service_order_installments — otherwise they go stale after a delete
+  // (e.g. a 1-line plan gets its only installment removed but the order
+  // keeps reporting installment_count=1/is_installment=false forever,
+  // which is exactly the mismatch that made the debtors report and the OS
+  // detail page disagree about whether a payment plan exists).
+  const { count: remainingCount } = await supabase
+    .from('service_order_installments')
+    .select('id', { count: 'exact', head: true })
+    .eq('service_order_id', orderId)
+    .eq('organization_id', organizationId)
+    .is('deleted_at', null)
+
+  await supabase
+    .from('service_orders')
+    .update({
+      installment_count: remainingCount || 0,
+      is_installment: Boolean(remainingCount && remainingCount > 0),
+      updated_by: authUser.email
+    })
+    .eq('id', orderId)
+
   await recalculateServiceOrderPaymentStatus({
     supabase,
     organizationId,
