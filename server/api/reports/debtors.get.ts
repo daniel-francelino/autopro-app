@@ -145,6 +145,12 @@ export default defineEventHandler(async (event) => {
     receivedByInstallmentId.set(installmentId, (receivedByInstallmentId.get(installmentId) || 0) + toNumber(tx.amount, 0))
   }
 
+  function installmentLabel(installment: InstallmentRecord) {
+    if (installment.kind === 'down_payment') return 'Entrada'
+    if (installment.kind === 'extra') return 'Avulso'
+    return `P${installment.installment_number || '?'}`
+  }
+
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
@@ -217,7 +223,7 @@ export default defineEventHandler(async (event) => {
     if (amount <= 0.01) continue
 
     addPendingItem(clientId, {
-      type: 'installment', id: installment.id, orderId: order.id, orderNumber: String(order?.number || '-'), number: String(order?.number || '-'),
+      type: 'installment', id: installment.id, orderId: order.id, orderNumber: String(order?.number || '-'), number: `${order?.number || '-'} ${installmentLabel(installment)}`,
       amount, dueDate, paymentMethod: installment?.payment_method || null,
       orderStatus: order?.status || null, daysOverdue: dueInfo.daysOverdue,
       status: dueInfo.status
