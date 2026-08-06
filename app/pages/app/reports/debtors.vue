@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { SortingState } from '@tanstack/vue-table'
+import type { RowSelectionState, SortingState } from '@tanstack/vue-table'
 import type { DebtorDetailData, DebtorPendingItem } from '~/components/reports/debtors/DebtorsDetailSlideover.vue'
 import {
   debtorStatusColor,
@@ -87,6 +87,30 @@ const statusFilters = useReportQueryParam('debtorStatus', [] as string[])
 const detailOpen = ref(false)
 const detailData = ref<DebtorDetailData | null>(null)
 
+const rowSelection = ref<RowSelectionState>({})
+function getRowId(row: Record<string, unknown>) {
+  return String(viewMode.value === 'clients' ? row.clientId : row.rowId)
+}
+const selectedIds = computed(() =>
+  Object.entries(rowSelection.value).filter(([, v]) => v).map(([id]) => id)
+)
+const selectedCount = computed(() => selectedIds.value.length)
+const selectedEntries = computed(() =>
+  accumulatedItems.value.filter(item => selectedIds.value.includes(getRowId(item as Record<string, unknown>)))
+)
+const selectionSummary = computed(() => {
+  let total = 0
+  let overdue = 0
+  let current = 0
+  for (const item of selectedEntries.value) {
+    const owed = Number(item.totalOwed || 0)
+    total += owed
+    if (item.status === 'overdue') overdue += owed
+    else current += owed
+  }
+  return { total, overdue, current }
+})
+
 const sortByParam = useReportQueryParam('sortBy', 'earliestDue')
 const sortOrderParam = useReportQueryParam('sortOrder', 'asc')
 const sorting = computed<SortingState>({
@@ -114,6 +138,7 @@ const sortOrder = computed(() => sortOrderParam.value)
 watch([dateFrom, dateTo, search, clientIds, statusFilters, paymentMethodFilters, orderStatusFilters, viewMode, sortBy, sortOrder], () => {
   accumulatedItems.value = []
   page.value = 1
+  rowSelection.value = {}
 })
 
 const queryKey = computed(() =>
@@ -285,12 +310,15 @@ function handleOpenDetails(row: DebtorReportItem | DebtorOrderRow) {
         <AppDataTableInfinite
           v-model:sorting="sorting"
           v-model:search-term="search"
+          v-model:row-selection="rowSelection"
           :columns="columns"
           :data="accumulatedItems as Record<string, unknown>[]"
           :loading="status === 'pending' && page === 1"
           :loading-more="loadingMore"
           :has-more="hasMore"
           :total="totalFromServer"
+          :selectable="true"
+          :get-row-id="getRowId"
           show-search
           search-placeholder="Buscar por nome, telefone ou e-mail..."
           empty-icon="i-lucide-badge-alert"
@@ -300,6 +328,14 @@ function handleOpenDetails(row: DebtorReportItem | DebtorOrderRow) {
         >
           <template #toolbar-right>
             <div class="flex items-center gap-2">
+              <ReportsDebtorsSelectionSummaryPopover
+                v-if="selectedCount > 0"
+                :count="selectedCount"
+                :total="selectionSummary.total"
+                :overdue="selectionSummary.overdue"
+                :current="selectionSummary.current"
+              />
+
               <div class="inline-flex">
                 <UTooltip :text="`Visualização por cliente (${counts.clients ?? 0})`">
                   <UButton
