@@ -226,11 +226,15 @@ export default defineEventHandler(async (event) => {
 
   // Update order fields; payment_status is recalculated from the
   // installments that were just persisted, not from the request body.
+  // is_installment marks "this order has a payment plan in
+  // service_order_installments" — true even for a single line — so
+  // reports that branch on it (e.g. debtors) don't also count the order
+  // via its own total_amount and double the pending amount.
   await supabase
     .from('service_orders')
     .update({
       payment_method: paymentMethod,
-      is_installment: installmentsData.length > 1,
+      is_installment: true,
       installment_count: installmentsData.length,
       updated_by: authUser.email
     })
