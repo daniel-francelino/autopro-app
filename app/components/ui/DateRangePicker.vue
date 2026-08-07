@@ -56,7 +56,6 @@ onBeforeUnmount(() => {
 })
 
 const [DefineTrigger, ReuseTrigger] = createReusableTemplate()
-const [DefineCalendar, ReuseCalendar] = createReusableTemplate()
 const [DefinePanel, ReusePanel] = createReusableTemplate()
 
 // Staged (pending) selection — only emitted to the parent when the user
@@ -235,56 +234,9 @@ function clear() {
       </UButton>
     </DefineTrigger>
 
-    <DefineCalendar>
-      <div class="flex flex-col items-center p-3">
-        <UCalendar
-          v-model="calendarValue"
-          range
-          :number-of-months="1"
-          color="primary"
-        />
-
-        <div
-          class="mt-3 flex w-full items-center justify-end gap-2 border-t border-default pt-3"
-        >
-          <UButton
-            size="xs"
-            color="neutral"
-            variant="ghost"
-            label="Limpar"
-            @click="clear"
-          />
-          <UButton
-            size="xs"
-            color="primary"
-            label="Confirmar"
-            :disabled="!localFrom || !localTo"
-            @click="confirm"
-          />
-        </div>
-      </div>
-    </DefineCalendar>
-
     <DefinePanel>
-      <!-- Compact/modal mode: presets as a horizontally scrollable chip row above the calendar -->
-      <div v-if="isCompact" class="flex flex-col">
-        <div class="flex gap-2 overflow-x-auto border-b border-default px-3 py-2.5">
-          <UButton
-            v-for="preset in rangePresets"
-            :key="preset.label"
-            :label="preset.label"
-            size="xs"
-            color="neutral"
-            :variant="isPresetActive(preset) ? 'solid' : 'soft'"
-            class="shrink-0 rounded-full"
-            @click="selectPreset(preset)"
-          />
-        </div>
-        <ReuseCalendar />
-      </div>
-
-      <!-- Desktop: presets as a sidebar next to the calendar -->
-      <div v-else class="flex items-stretch divide-x divide-default">
+      <!-- Same layout everywhere: presets sidebar on the left, calendar on the right -->
+      <div class="flex items-stretch divide-x divide-default">
         <div class="flex flex-col justify-center py-2">
           <UButton
             v-for="preset in rangePresets"
@@ -300,7 +252,34 @@ function clear() {
             @click="selectPreset(preset)"
           />
         </div>
-        <ReuseCalendar />
+
+        <div class="p-3">
+          <UCalendar
+            v-model="calendarValue"
+            range
+            :number-of-months="1"
+            color="primary"
+          />
+
+          <div
+            class="mt-3 flex items-center justify-end gap-2 border-t border-default pt-3"
+          >
+            <UButton
+              size="xs"
+              color="neutral"
+              variant="ghost"
+              label="Limpar"
+              @click="clear"
+            />
+            <UButton
+              size="xs"
+              color="primary"
+              label="Confirmar"
+              :disabled="!localFrom || !localTo"
+              @click="confirm"
+            />
+          </div>
+        </div>
       </div>
     </DefinePanel>
 
@@ -335,7 +314,7 @@ function clear() {
       scrollable
       :ui="{
         overlay: 'z-[500]',
-        content: 'z-[500] w-auto max-w-[min(92vw,26rem)] rounded-xl border border-default p-0 shadow-xl'
+        content: 'z-[500] w-auto max-w-[min(94vw,40rem)] rounded-xl border border-default p-0 shadow-xl'
       }"
     >
       <ReuseTrigger />
