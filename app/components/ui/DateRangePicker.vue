@@ -236,7 +236,7 @@ function clear() {
     </DefineTrigger>
 
     <DefineCalendar>
-      <div class="p-3">
+      <div class="flex flex-col items-center p-3">
         <UCalendar
           v-model="calendarValue"
           range
@@ -245,7 +245,7 @@ function clear() {
         />
 
         <div
-          class="mt-3 flex items-center justify-end gap-2 border-t border-default pt-3"
+          class="mt-3 flex w-full items-center justify-end gap-2 border-t border-default pt-3"
         >
           <UButton
             size="xs"
@@ -335,7 +335,7 @@ function clear() {
       scrollable
       :ui="{
         overlay: 'z-[500]',
-        content: 'z-[500] max-w-[min(92vw,26rem)] rounded-xl border border-default p-0 shadow-xl'
+        content: 'z-[500] w-auto max-w-[min(92vw,26rem)] rounded-xl border border-default p-0 shadow-xl'
       }"
     >
       <ReuseTrigger />
