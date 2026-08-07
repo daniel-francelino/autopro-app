@@ -56,6 +56,7 @@ onBeforeUnmount(() => {
 })
 
 const [DefineTrigger, ReuseTrigger] = createReusableTemplate()
+const [DefineCalendar, ReuseCalendar] = createReusableTemplate()
 const [DefinePanel, ReusePanel] = createReusableTemplate()
 
 // Staged (pending) selection — only emitted to the parent when the user
@@ -234,10 +235,57 @@ function clear() {
       </UButton>
     </DefineTrigger>
 
+    <DefineCalendar>
+      <div class="p-3">
+        <UCalendar
+          v-model="calendarValue"
+          range
+          :number-of-months="1"
+          color="primary"
+        />
+
+        <div
+          class="mt-3 flex items-center justify-end gap-2 border-t border-default pt-3"
+        >
+          <UButton
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            label="Limpar"
+            @click="clear"
+          />
+          <UButton
+            size="xs"
+            color="primary"
+            label="Confirmar"
+            :disabled="!localFrom || !localTo"
+            @click="confirm"
+          />
+        </div>
+      </div>
+    </DefineCalendar>
+
     <DefinePanel>
-      <div class="flex items-stretch divide-x divide-default">
-        <!-- Preset ranges — hidden in compact/modal mode to keep the dialog narrow -->
-        <div v-if="!isCompact" class="hidden flex-col justify-center py-2 sm:flex">
+      <!-- Compact/modal mode: presets as a horizontally scrollable chip row above the calendar -->
+      <div v-if="isCompact" class="flex flex-col">
+        <div class="flex gap-2 overflow-x-auto border-b border-default px-3 py-2.5">
+          <UButton
+            v-for="preset in rangePresets"
+            :key="preset.label"
+            :label="preset.label"
+            size="xs"
+            color="neutral"
+            :variant="isPresetActive(preset) ? 'solid' : 'soft'"
+            class="shrink-0 rounded-full"
+            @click="selectPreset(preset)"
+          />
+        </div>
+        <ReuseCalendar />
+      </div>
+
+      <!-- Desktop: presets as a sidebar next to the calendar -->
+      <div v-else class="flex items-stretch divide-x divide-default">
+        <div class="flex flex-col justify-center py-2">
           <UButton
             v-for="preset in rangePresets"
             :key="preset.label"
@@ -252,35 +300,7 @@ function clear() {
             @click="selectPreset(preset)"
           />
         </div>
-
-        <!-- Calendar -->
-        <div class="p-3">
-          <UCalendar
-            v-model="calendarValue"
-            range
-            :number-of-months="1"
-            color="primary"
-          />
-
-          <div
-            class="mt-3 flex items-center justify-end gap-2 border-t border-default pt-3"
-          >
-            <UButton
-              size="xs"
-              color="neutral"
-              variant="ghost"
-              label="Limpar"
-              @click="clear"
-            />
-            <UButton
-              size="xs"
-              color="primary"
-              label="Confirmar"
-              :disabled="!localFrom || !localTo"
-              @click="confirm"
-            />
-          </div>
-        </div>
+        <ReuseCalendar />
       </div>
     </DefinePanel>
 
