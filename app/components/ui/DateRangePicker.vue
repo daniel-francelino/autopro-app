@@ -314,7 +314,8 @@ function clear() {
       v-model:open="popoverOpen"
       scrollable
       :ui="{
-        content: 'max-w-[min(92vw,26rem)] rounded-xl border border-default p-0 shadow-xl'
+        overlay: 'z-[500]',
+        content: 'z-[500] max-w-[min(92vw,26rem)] rounded-xl border border-default p-0 shadow-xl'
       }"
     >
       <ReuseTrigger />
