@@ -7,6 +7,7 @@ import {
   today
 } from '@internationalized/date'
 import type { DateRange, DateValue } from '@internationalized/date'
+import { createReusableTemplate } from '@vueuse/core'
 
 const props = withDefaults(
   defineProps<{
@@ -33,6 +34,29 @@ const emit = defineEmits<{
 const popoverOpen = ref(false)
 const dfShort = new DateFormatter('pt-BR', { dateStyle: 'short' })
 const tz = getLocalTimeZone()
+
+// Below this size, an anchored popover has nowhere to breathe (common on
+// notebook screens with limited height) and ends up clipped by the
+// viewport — fall back to a centered modal with overlay instead.
+const isCompact = ref(false)
+let compactQuery: MediaQueryList | null = null
+
+function syncCompactMode() {
+  isCompact.value = compactQuery?.matches ?? false
+}
+
+onMounted(() => {
+  compactQuery = window.matchMedia('(max-width: 1024px), (max-height: 700px)')
+  syncCompactMode()
+  compactQuery.addEventListener?.('change', syncCompactMode)
+})
+
+onBeforeUnmount(() => {
+  compactQuery?.removeEventListener?.('change', syncCompactMode)
+})
+
+const [DefineTrigger, ReuseTrigger] = createReusableTemplate()
+const [DefinePanel, ReusePanel] = createReusableTemplate()
 
 // Staged (pending) selection — only emitted to the parent when the user
 // clicks "Confirmar". This avoids the previous behavior where every click
@@ -175,19 +199,8 @@ function clear() {
 </script>
 
 <template>
-  <UPopover
-    v-model:open="popoverOpen"
-    :content="{ align: 'start', side: 'bottom', sideOffset: 8 }"
-    :ui="{
-      content:
-        'z-[500] w-auto max-w-[min(95vw,46rem)] rounded-xl border border-default bg-default p-0 shadow-xl overflow-hidden'
-    }"
-    :modal="true"
-  >
-    <div class="w-full">
-      <p v-if="label" class="mb-1 text-xs font-medium text-muted">
-        {{ label }}
-      </p>
+  <div class="w-full">
+    <DefineTrigger>
       <UButton
         color="neutral"
         variant="outline"
@@ -219,12 +232,12 @@ function clear() {
           class="size-4 shrink-0 text-dimmed"
         />
       </UButton>
-    </div>
+    </DefineTrigger>
 
-    <template #content>
+    <DefinePanel>
+      <!-- Same layout everywhere: presets sidebar on the left, calendar on the right -->
       <div class="flex items-stretch divide-x divide-default">
-        <!-- Preset ranges -->
-        <div class="hidden flex-col justify-center py-2 sm:flex">
+        <div class="flex flex-col justify-center py-2">
           <UButton
             v-for="preset in rangePresets"
             :key="preset.label"
@@ -240,7 +253,6 @@ function clear() {
           />
         </div>
 
-        <!-- Calendar -->
         <div class="p-3">
           <UCalendar
             v-model="calendarValue"
@@ -269,6 +281,47 @@ function clear() {
           </div>
         </div>
       </div>
-    </template>
-  </UPopover>
+    </DefinePanel>
+
+    <p v-if="label" class="mb-1 text-xs font-medium text-muted">
+      {{ label }}
+    </p>
+
+    <!-- Desktop: anchored popover next to the trigger -->
+    <UPopover
+      v-if="!isCompact"
+      v-model:open="popoverOpen"
+      :content="{ align: 'start', side: 'bottom', sideOffset: 8 }"
+      :ui="{
+        content:
+          'z-[500] w-auto max-w-[min(95vw,46rem)] rounded-xl border border-default bg-default p-0 shadow-xl overflow-hidden'
+      }"
+      :modal="true"
+    >
+      <ReuseTrigger />
+
+      <template #content>
+        <ReusePanel />
+      </template>
+    </UPopover>
+
+    <!-- Small/short screens (e.g. notebooks): centered modal with overlay
+         so the calendar always has room, instead of an anchored popover
+         that can get clipped by the viewport. -->
+    <UModal
+      v-else
+      v-model:open="popoverOpen"
+      scrollable
+      :ui="{
+        overlay: 'z-[500]',
+        content: 'z-[500] w-auto max-w-[min(94vw,40rem)] rounded-xl border border-default p-0 shadow-xl'
+      }"
+    >
+      <ReuseTrigger />
+
+      <template #content>
+        <ReusePanel />
+      </template>
+    </UModal>
+  </div>
 </template>
