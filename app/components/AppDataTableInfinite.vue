@@ -291,9 +291,18 @@ const virtualizer = useVirtualizer(
     count: rows.value.length,
     getScrollElement: () => scrollContainerRef.value,
     estimateSize: () => props.estimatedRowHeight,
-    overscan: props.overscan
+    overscan: props.overscan,
+    getItemKey: (index: number) => rows.value[index]?.id ?? index
   }))
 )
+
+// Reports each row's real rendered height back to the virtualizer (via
+// ResizeObserver) instead of trusting the fixed estimateSize — table rows
+// vary in height (badges, wrapped text), and without this the spacer rows
+// misjudge the offsets and rows visibly jump/shake while scrolling.
+function measureRow(el: unknown) {
+  if (el instanceof HTMLElement) virtualizer.value.measureElement(el)
+}
 
 const virtualRows = computed(() => virtualizer.value.getVirtualItems())
 const totalVirtualSize = computed(() => virtualizer.value.getTotalSize())
@@ -491,6 +500,7 @@ function getTdClass(cell: ReturnType<typeof rows.value[0]['getVisibleCells']>[0]
           <tr
             v-for="virtualRow in virtualRows"
             :key="String(virtualRow.key)"
+            :ref="measureRow"
             :data-index="virtualRow.index"
             class="transition-colors duration-150 hover:bg-elevated/40"
           >
