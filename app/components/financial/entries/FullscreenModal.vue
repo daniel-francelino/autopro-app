@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { RowSelectionState } from '@tanstack/table-core'
+import type { RowSelectionState, SortingState } from '@tanstack/table-core'
 
 type BadgeColor = 'success' | 'error' | 'warning' | 'primary' | 'secondary' | 'info' | 'neutral'
 
@@ -36,6 +36,7 @@ const props = defineProps<{
   total: number
   search: string
   rowSelection: RowSelectionState
+  sorting: SortingState
   dateFrom: string
   dateTo: string
   typeFilters: string[]
@@ -65,6 +66,7 @@ const emit = defineEmits<{
   'update:open': [value: boolean]
   'update:search': [value: string]
   'update:rowSelection': [value: RowSelectionState]
+  'update:sorting': [value: SortingState]
   'update:dateFrom': [value: string]
   'update:dateTo': [value: string]
   'update:typeFilters': [value: string[]]
@@ -145,9 +147,9 @@ function onDateToUpdate(v: string | undefined) {
 }
 
 const columns = [
-  { accessorKey: 'description', header: 'Lançamento', enableSorting: false, meta: { class: { th: 'w-[56%]', td: 'w-[56%]' } } },
-  { id: 'status_col', header: 'Status', enableSorting: false, meta: { class: { th: 'w-32', td: 'w-32' } } },
-  { id: 'amount_col', header: 'Valor', enableSorting: false, meta: { class: { th: 'w-36 text-right', td: 'w-36 text-right whitespace-nowrap' } } },
+  { accessorKey: 'description', header: 'Lançamento', enableSorting: true, meta: { class: { th: 'w-[56%]', td: 'w-[56%]' } } },
+  { id: 'status_col', header: 'Status', enableSorting: true, meta: { class: { th: 'w-32', td: 'w-32' } } },
+  { id: 'amount_col', header: 'Valor', enableSorting: true, meta: { class: { th: 'w-36 text-right', td: 'w-36 text-right whitespace-nowrap' } } },
   { id: 'actions', header: '', enableSorting: false, meta: { class: { th: 'w-40', td: 'w-40' } } }
 ]
 </script>
@@ -183,6 +185,7 @@ const columns = [
       <AppDataTableInfinite
         :search-term="search"
         :row-selection="rowSelection"
+        :sorting="sorting"
         :columns="columns"
         :data="data as Record<string, unknown>[]"
         :loading="loading"
@@ -200,6 +203,7 @@ const columns = [
         empty-description="Cadastre lançamentos ou ajuste os filtros para continuar."
         @update:search-term="emit('update:search', $event)"
         @update:row-selection="emit('update:rowSelection', $event)"
+        @update:sorting="emit('update:sorting', $event)"
         @search-submit="emit('search-submit', $event)"
         @load-more="emit('load-more')"
       >

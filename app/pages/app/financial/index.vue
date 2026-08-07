@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { watchDebounced } from '@vueuse/core'
-import type { RowSelectionState } from '@tanstack/table-core'
+import type { RowSelectionState, SortingState } from '@tanstack/table-core'
 import { ActionCode } from '~/constants/action-codes'
 
 definePageMeta({ layout: 'app' })
@@ -54,7 +54,17 @@ type SummaryResponse = {
 }
 
 const PAGE_SIZE = 20
-const MANAGED_QUERY_KEYS = ['search', 'status', 'type', 'category_id', 'dateFrom', 'dateTo', 'page'] as const
+const MANAGED_QUERY_KEYS = ['search', 'status', 'type', 'category_id', 'dateFrom', 'dateTo', 'page', 'sortBy', 'sortOrder'] as const
+
+const DEFAULT_SORT_BY = 'description'
+const DEFAULT_SORT_ORDER: 'asc' | 'desc' = 'desc'
+// Maps the clickable column id to the backend field it should sort by —
+// "Lançamento" sorts by due date, not alphabetically by description.
+const SORT_FIELD_MAP: Record<string, string> = {
+  description: 'due_date',
+  status_col: 'status',
+  amount_col: 'amount'
+}
 
 const defaultSummary: SummaryResponse = {
   total: { income: 0, expense: 0, balance: 0 },
@@ -133,6 +143,17 @@ const dateFrom = ref(typeof route.query.dateFrom === 'string' ? route.query.date
 const dateTo = ref(typeof route.query.dateTo === 'string' ? route.query.dateTo : defaultDateRange.to)
 const categoryFilter = ref(typeof route.query.category_id === 'string' ? route.query.category_id : '')
 const page = ref(parsePage(route.query.page))
+const sortByParam = ref(typeof route.query.sortBy === 'string' ? route.query.sortBy : DEFAULT_SORT_BY)
+const sortOrderParam = ref<'asc' | 'desc'>(route.query.sortOrder === 'asc' ? 'asc' : DEFAULT_SORT_ORDER)
+
+const sorting = computed<SortingState>({
+  get: () => [{ id: sortByParam.value, desc: sortOrderParam.value !== 'asc' }],
+  set: (value) => {
+    sortByParam.value = value[0]?.id ?? DEFAULT_SORT_BY
+    sortOrderParam.value = value[0]?.desc === false ? 'asc' : 'desc'
+  }
+})
+const sortBy = computed(() => SORT_FIELD_MAP[sortByParam.value] ?? 'due_date')
 
 const requestQuery = computed(() => ({
   search: debouncedSearch.value || undefined,
@@ -142,7 +163,9 @@ const requestQuery = computed(() => ({
   date_from: dateFrom.value || undefined,
   date_to: dateTo.value || undefined,
   page: page.value,
-  page_size: PAGE_SIZE
+  page_size: PAGE_SIZE,
+  sort_by: sortBy.value,
+  sort_order: sortOrderParam.value
 }))
 
 // Summary query — excludes status so the breakdown is always full
@@ -155,7 +178,7 @@ const summaryQuery = computed(() => ({
 }))
 
 const { data, status, refresh } = await useAsyncData(
-  () => `financial-${debouncedSearch.value}-${statusFilters.value.join(',')}-${typeFilters.value.join(',')}-${dateFrom.value}-${dateTo.value}-${page.value}`,
+  () => `financial-${debouncedSearch.value}-${statusFilters.value.join(',')}-${typeFilters.value.join(',')}-${dateFrom.value}-${dateTo.value}-${page.value}-${sortByParam.value}-${sortOrderParam.value}`,
   async () => {
     if (!canRead.value) return { items: [], total: 0, page: 1, page_size: PAGE_SIZE } satisfies FinancialResponse
     return requestFetch<FinancialResponse>('/api/financial', { headers: requestHeaders, query: requestQuery.value })
@@ -242,7 +265,9 @@ onMounted(async () => {
       category_id: categoryFilter.value || undefined,
       date_from: dateFrom.value || undefined,
       date_to: dateTo.value || undefined,
-      page_size: PAGE_SIZE
+      page_size: PAGE_SIZE,
+      sort_by: sortBy.value,
+      sort_order: sortOrderParam.value
     }
     const prefetchedItems: Entry[] = []
     for (let p = 1; p < initialPage; p++) {
@@ -338,7 +363,9 @@ function buildManagedQuery() {
     category_id: categoryFilter.value || undefined,
     dateFrom: dateFrom.value !== defaultDateRange.from ? dateFrom.value : undefined,
     dateTo: dateTo.value !== defaultDateRange.to ? dateTo.value : undefined,
-    page: page.value > 1 ? String(page.value) : undefined
+    page: page.value > 1 ? String(page.value) : undefined,
+    sortBy: sortByParam.value !== DEFAULT_SORT_BY ? sortByParam.value : undefined,
+    sortOrder: sortOrderParam.value !== DEFAULT_SORT_ORDER ? sortOrderParam.value : undefined
   }
 }
 
@@ -371,6 +398,8 @@ watch(
     const nextDateTo = typeof query.dateTo === 'string' ? query.dateTo : defaultDateRange.to
     const nextCategory = typeof query.category_id === 'string' ? query.category_id : ''
     const nextPage = parsePage(query.page)
+    const nextSortBy = typeof query.sortBy === 'string' ? query.sortBy : DEFAULT_SORT_BY
+    const nextSortOrder = query.sortOrder === 'asc' ? 'asc' : DEFAULT_SORT_ORDER
 
     if (search.value !== nextSearch) {
       search.value = nextSearch
@@ -382,6 +411,8 @@ watch(
     if (dateTo.value !== nextDateTo) dateTo.value = nextDateTo
     if (categoryFilter.value !== nextCategory) categoryFilter.value = nextCategory
     if (page.value !== nextPage) page.value = nextPage
+    if (sortByParam.value !== nextSortBy) sortByParam.value = nextSortBy
+    if (sortOrderParam.value !== nextSortOrder) sortOrderParam.value = nextSortOrder
   }
 )
 
@@ -398,7 +429,7 @@ watchDebounced(
 )
 
 watch(
-  [statusFilters, typeFilters, dateFrom, dateTo, categoryFilter],
+  [statusFilters, typeFilters, dateFrom, dateTo, categoryFilter, sortByParam, sortOrderParam],
   async () => {
     accumulatedItems.value = []
     rowSelection.value = {}
@@ -823,9 +854,9 @@ const statusBadgeColor: Record<string, BadgeColor> = { paid: 'success', pending:
 const statusBadgeIcon: Record<string, string> = { paid: 'i-lucide-circle-check', pending: 'i-lucide-clock' }
 
 const columns = [
-  { accessorKey: 'description', header: 'Lançamento', enableSorting: false, meta: { class: { th: 'w-[56%]', td: 'w-[56%]' } } },
-  { id: 'status_col', header: 'Status', enableSorting: false, meta: { class: { th: 'w-32', td: 'w-32' } } },
-  { id: 'amount_col', header: 'Valor', enableSorting: false, meta: { class: { th: 'w-36 text-right', td: 'w-36 text-right whitespace-nowrap' } } },
+  { accessorKey: 'description', header: 'Lançamento', enableSorting: true, meta: { class: { th: 'w-[56%]', td: 'w-[56%]' } } },
+  { id: 'status_col', header: 'Status', enableSorting: true, meta: { class: { th: 'w-32', td: 'w-32' } } },
+  { id: 'amount_col', header: 'Valor', enableSorting: true, meta: { class: { th: 'w-36 text-right', td: 'w-36 text-right whitespace-nowrap' } } },
   { id: 'actions', header: '', enableSorting: false, meta: { class: { th: 'w-40', td: 'w-40' } } }
 ]
 </script>
@@ -882,6 +913,7 @@ const columns = [
         <AppDataTableInfinite
           v-model:search-term="search"
           v-model:row-selection="rowSelection"
+          v-model:sorting="sorting"
           :columns="columns"
           :data="accumulatedItems as Record<string, unknown>[]"
           :loading="!isHydrated || (status === 'pending' && page === 1) || isBootstrapping"
@@ -1145,6 +1177,7 @@ const columns = [
     v-model:type-filters="typeFilters"
     v-model:status-filters="statusFilters"
     v-model:category-filter="categoryFilter"
+    v-model:sorting="sorting"
     :data="accumulatedItems"
     :loading="!isHydrated || (status === 'pending' && page === 1) || isBootstrapping"
     :loading-more="loadingMore"

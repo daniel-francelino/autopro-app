@@ -23,6 +23,10 @@ export default defineEventHandler(async (event) => {
   const page = Math.max(1, parseInt(String(query.page || '1'), 10))
   const pageSize = Math.min(100, Math.max(1, parseInt(String(query.page_size || '20'), 10)))
 
+  const SORTABLE_COLUMNS = new Set(['due_date', 'status', 'amount'])
+  const sortBy = SORTABLE_COLUMNS.has(String(query.sort_by)) ? String(query.sort_by) : 'due_date'
+  const sortOrder = query.sort_order === 'asc' ? 'asc' : 'desc'
+
   let q = supabase
     .from('financial_transactions')
     .select('*, category_ref:financial_categories(id, name, icon, color)', { count: 'exact' })
@@ -37,7 +41,10 @@ export default defineEventHandler(async (event) => {
   if (dateTo) q = q.lte('due_date', dateTo)
   if (search) q = q.ilike('description', `%${search}%`)
 
-  q = q.order('due_date', { ascending: false }).range((page - 1) * pageSize, page * pageSize - 1)
+  q = q
+    .order(sortBy, { ascending: sortOrder === 'asc' })
+    .order('id', { ascending: true })
+    .range((page - 1) * pageSize, page * pageSize - 1)
 
   const { data, error, count } = await q
 
