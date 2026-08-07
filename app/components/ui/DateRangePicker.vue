@@ -199,91 +199,91 @@ function clear() {
 </script>
 
 <template>
-  <DefineTrigger>
-    <UButton
-      color="neutral"
-      variant="outline"
-      block
-      class="h-9 w-full justify-between gap-1.5 rounded-md border border-default bg-default px-3 py-2 text-sm shadow-xs"
-      :disabled="disabled"
-    >
-      <div class="flex min-w-0 items-center gap-2">
+  <div class="w-full">
+    <DefineTrigger>
+      <UButton
+        color="neutral"
+        variant="outline"
+        block
+        class="h-9 w-full justify-between gap-1.5 rounded-md border border-default bg-default px-3 py-2 text-sm shadow-xs"
+        :disabled="disabled"
+      >
+        <div class="flex min-w-0 items-center gap-2">
+          <UIcon
+            name="i-lucide-calendar-range"
+            class="size-4 shrink-0 text-dimmed"
+          />
+          <span
+            class="truncate"
+            :class="displayValue ? 'text-highlighted' : 'text-dimmed'"
+          >
+            {{ displayValue || placeholder }}
+          </span>
+        </div>
         <UIcon
-          name="i-lucide-calendar-range"
+          v-if="displayValue"
+          name="i-lucide-x"
+          class="size-3.5 shrink-0 text-dimmed hover:text-highlighted"
+          @click.stop="clear"
+        />
+        <UIcon
+          v-else
+          name="i-lucide-chevron-down"
           class="size-4 shrink-0 text-dimmed"
         />
-        <span
-          class="truncate"
-          :class="displayValue ? 'text-highlighted' : 'text-dimmed'"
-        >
-          {{ displayValue || placeholder }}
-        </span>
-      </div>
-      <UIcon
-        v-if="displayValue"
-        name="i-lucide-x"
-        class="size-3.5 shrink-0 text-dimmed hover:text-highlighted"
-        @click.stop="clear"
-      />
-      <UIcon
-        v-else
-        name="i-lucide-chevron-down"
-        class="size-4 shrink-0 text-dimmed"
-      />
-    </UButton>
-  </DefineTrigger>
+      </UButton>
+    </DefineTrigger>
 
-  <DefinePanel>
-    <div class="flex items-stretch divide-x divide-default">
-      <!-- Preset ranges — hidden in compact/modal mode to keep the dialog narrow -->
-      <div v-if="!isCompact" class="hidden flex-col justify-center py-2 sm:flex">
-        <UButton
-          v-for="preset in rangePresets"
-          :key="preset.label"
-          :label="preset.label"
-          color="neutral"
-          variant="ghost"
-          class="rounded-none px-4"
-          :class="
-            isPresetActive(preset) ? 'bg-elevated' : 'hover:bg-elevated/50'
-          "
-          truncate
-          @click="selectPreset(preset)"
-        />
-      </div>
-
-      <!-- Calendar -->
-      <div class="p-3">
-        <UCalendar
-          v-model="calendarValue"
-          range
-          :number-of-months="1"
-          color="primary"
-        />
-
-        <div
-          class="mt-3 flex items-center justify-end gap-2 border-t border-default pt-3"
-        >
+    <DefinePanel>
+      <div class="flex items-stretch divide-x divide-default">
+        <!-- Preset ranges — hidden in compact/modal mode to keep the dialog narrow -->
+        <div v-if="!isCompact" class="hidden flex-col justify-center py-2 sm:flex">
           <UButton
-            size="xs"
+            v-for="preset in rangePresets"
+            :key="preset.label"
+            :label="preset.label"
             color="neutral"
             variant="ghost"
-            label="Limpar"
-            @click="clear"
-          />
-          <UButton
-            size="xs"
-            color="primary"
-            label="Confirmar"
-            :disabled="!localFrom || !localTo"
-            @click="confirm"
+            class="rounded-none px-4"
+            :class="
+              isPresetActive(preset) ? 'bg-elevated' : 'hover:bg-elevated/50'
+            "
+            truncate
+            @click="selectPreset(preset)"
           />
         </div>
-      </div>
-    </div>
-  </DefinePanel>
 
-  <div class="w-full">
+        <!-- Calendar -->
+        <div class="p-3">
+          <UCalendar
+            v-model="calendarValue"
+            range
+            :number-of-months="1"
+            color="primary"
+          />
+
+          <div
+            class="mt-3 flex items-center justify-end gap-2 border-t border-default pt-3"
+          >
+            <UButton
+              size="xs"
+              color="neutral"
+              variant="ghost"
+              label="Limpar"
+              @click="clear"
+            />
+            <UButton
+              size="xs"
+              color="primary"
+              label="Confirmar"
+              :disabled="!localFrom || !localTo"
+              @click="confirm"
+            />
+          </div>
+        </div>
+      </div>
+    </DefinePanel>
+
     <p v-if="label" class="mb-1 text-xs font-medium text-muted">
       {{ label }}
     </p>
