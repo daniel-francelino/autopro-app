@@ -1,5 +1,5 @@
-// Shared calculation helpers for the profit report's 3 modes
-// (server/api/reports/profit-cash-flow.get.ts, profit-by-order.get.ts, profit-period-result.get.ts).
+// Shared calculation helpers for the profit report's modes
+// (server/api/reports/profit-cash-flow.get.ts, profit-by-order.get.ts).
 // See docs/profit-report.md for the business rationale behind each mode.
 
 import type { SupabaseReportRow } from './supabase-pagination'
@@ -17,7 +17,6 @@ export interface PeriodProfitData {
   costsData?: ReportRow[]
   incomeData?: ReportRow[]
   partsCost?: number
-  generalExpenses?: number
   commissionCost?: number
 }
 
@@ -28,7 +27,6 @@ export interface PublicPeriodProfitData {
   profitMargin: number
   orderCount: number
   partsCost?: number
-  generalExpenses?: number
   commissionCost?: number
 }
 
@@ -63,10 +61,6 @@ export interface TopProfitableOrder {
   cost: number
   profit: number
   margin: number
-}
-
-function isOrderCompleted(status: unknown): boolean {
-  return status === 'completed' || status === 'invoiced' || status === 'delivered'
 }
 
 // ─── Modo "Fluxo de Caixa" — dinheiro que efetivamente circulou no financeiro ───
@@ -111,56 +105,6 @@ export function buildCashFlowTransactionsEvolutionData(periodData: PeriodProfitD
   for (const t of periodData?.incomeData || []) {
     const key = String(t?.due_date || '')
     if (dailyData[key]) dailyData[key].revenue += toNumber(t?.amount, 0)
-  }
-  for (const t of periodData?.costsData || []) {
-    const key = String(t?.due_date || '')
-    if (dailyData[key]) dailyData[key].costs += toNumber(t?.amount, 0)
-  }
-  return Object.entries(dailyData).map(([date, v]) => ({ name: formatDayLabel(date), ...v, profit: v.revenue - v.costs }))
-}
-
-// ─── Modo "Resultado do Período" — regime de competência (receita de OS reconhecida no
-// entry_date, custo reconhecido independente de status de pagamento) ───
-//
-// Custo = custo de peças da própria OS (total_cost_amount, o COGS do serviço) + despesas
-// gerais da empresa (financial_transactions tipo expense). As duas fontes NUNCA se sobrepõem
-// hoje: comprar/repor peças não gera nenhuma linha em financial_transactions neste sistema
-// (confirmado — nenhum endpoint de compras/estoque escreve na tabela financeira), então
-// somar as duas é a única forma de este modo representar o custo total do período. Sem o
-// custo de peças, este modo superestimava o lucro (ignorava por completo o CMV/COGS).
-
-export function calculateAccrualPeriodData(orders: ReportRow[], transactions: ReportRow[], start: Date, end: Date): PeriodProfitData {
-  const periodOrders = orders.filter((o: ReportRow) => {
-    const entryDate = o?.entry_date ? new Date(`${o.entry_date}T00:00:00`) : null
-    return !!entryDate && !Number.isNaN(entryDate.getTime()) && isOrderCompleted(o?.status) && entryDate >= start && entryDate <= end
-  })
-  const periodCosts = transactions.filter((t: ReportRow) => {
-    const dueDate = t?.due_date ? new Date(`${t.due_date}T00:00:00`) : null
-    const isCost = t?.type === 'expense'
-    const isCancelled = normalizeReportStatus(t?.status) === 'cancelled'
-    return !!dueDate && !Number.isNaN(dueDate.getTime()) && isCost && !isCancelled && dueDate >= start && dueDate <= end
-  })
-  const revenue = periodOrders.reduce((acc: number, o: ReportRow) => acc + toNumber(o?.total_amount, 0), 0)
-  const partsCost = periodOrders.reduce((acc: number, o: ReportRow) => acc + toNumber(o?.total_cost_amount, 0), 0)
-  const generalExpenses = periodCosts.reduce((acc: number, t: ReportRow) => acc + toNumber(t?.amount, 0), 0)
-  const costs = partsCost + generalExpenses
-  const profit = revenue - costs
-  return { revenue, costs, profit, profitMargin: revenue > 0 ? (profit / revenue) * 100 : 0, orderCount: periodOrders.length, orders: periodOrders, costsData: periodCosts, partsCost, generalExpenses }
-}
-
-export function buildAccrualEvolutionData(periodData: PeriodProfitData | null, start: Date, end: Date): EvolutionPoint[] {
-  const dailyData: Record<string, { revenue: number, costs: number }> = {}
-  const cursor = new Date(start)
-  while (cursor <= end) {
-    dailyData[formatDateKey(cursor)] = { revenue: 0, costs: 0 }
-    cursor.setDate(cursor.getDate() + 1)
-  }
-  for (const o of periodData?.orders || []) {
-    const key = String(o?.entry_date || '')
-    if (dailyData[key]) {
-      dailyData[key].revenue += toNumber(o?.total_amount, 0)
-      dailyData[key].costs += toNumber(o?.total_cost_amount, 0)
-    }
   }
   for (const t of periodData?.costsData || []) {
     const key = String(t?.due_date || '')
@@ -278,7 +222,6 @@ export function toPublicPeriodData(data: PeriodProfitData | null): PublicPeriodP
     profitMargin: data.profitMargin,
     orderCount: data.orderCount,
     partsCost: data.partsCost,
-    generalExpenses: data.generalExpenses,
     commissionCost: data.commissionCost
   }
 }

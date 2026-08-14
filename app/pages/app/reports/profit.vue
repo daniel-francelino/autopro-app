@@ -12,7 +12,6 @@ interface PeriodData {
   profit: number
   profitMargin: number
   partsCost?: number
-  generalExpenses?: number
   commissionCost?: number
 }
 
@@ -66,7 +65,7 @@ const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : unde
 const { dateFrom, dateTo } = useReportDateRange()
 const statusFilters = useReportQueryParam('status', ['paid'] as string[])
 const compareMode = useReportQueryParam('compare', 'no_compare')
-const mode = useReportQueryParam('mode', 'cash_flow' as 'cash_flow' | 'by_order' | 'period_result')
+const mode = useReportQueryParam('mode', 'cash_flow' as 'cash_flow' | 'by_order')
 const orderStatusFilters = useReportQueryParam('orderStatus', ['completed', 'invoiced', 'delivered'] as string[])
 const orderPaymentStatusFilters = useReportQueryParam('orderPaymentStatus', [] as string[])
 
@@ -74,7 +73,6 @@ const compareWithPreviousPeriod = computed(() => compareMode.value !== 'no_compa
 
 const endpointPath = computed(() => {
   if (mode.value === 'by_order') return '/api/reports/profit-by-order'
-  if (mode.value === 'period_result') return '/api/reports/profit-period-result'
   return '/api/reports/profit-cash-flow'
 })
 
