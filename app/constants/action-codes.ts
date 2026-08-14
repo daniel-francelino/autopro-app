@@ -74,6 +74,7 @@ export enum ActionCode {
   REPORTS_DEBTORS = 'reports.debtors',
   REPORTS_SUPPLIERS = 'reports.suppliers',
   REPORTS_PROFIT = 'reports.profit',
+  REPORTS_EMPLOYEES = 'reports.employees',
 
   SETTINGS_VIEW = 'settings.view',
   SETTINGS_UPDATE = 'settings.update',
