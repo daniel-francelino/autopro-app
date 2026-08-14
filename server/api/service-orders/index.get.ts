@@ -9,7 +9,11 @@ import { resolveOrganizationId } from '../../utils/organization'
  */
 
 function normalizeString(value: unknown) {
-  return String(value ?? '').trim().toLowerCase()
+  return String(value ?? '')
+    .trim()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
 }
 
 function safeParseDate(value: unknown) {
