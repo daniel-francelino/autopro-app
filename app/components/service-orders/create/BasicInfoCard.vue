@@ -1,7 +1,8 @@
 <script setup lang="ts">
-interface SelectOption { label: string, value: string }
 interface MasterProductDisplay { name: string, description?: string | null }
 interface MasterProductSelected { id: string, name: string, description: string | null, notes: string | null }
+interface ClientRecord { id: string, name: string }
+interface VehicleRecord { id: string, brand: string | null, model: string | null, license_plate: string | null, client_id?: string | null }
 
 defineProps<{
   number: string
@@ -11,8 +12,8 @@ defineProps<{
   masterProductId: string
   entryDate: string | undefined
   expectedDate: string | undefined
-  clientOptions: SelectOption[]
-  vehicleOptions: SelectOption[]
+  clientSelectedLabel: string | null
+  vehicleSelectedLabel: string | null
   selectedMasterProduct: MasterProductDisplay | null
   isLoadingNextNumber: boolean
 }>()
@@ -25,11 +26,19 @@ const emit = defineEmits<{
   'update:masterProductId': [v: string]
   'update:entryDate': [v: string | undefined]
   'update:expectedDate': [v: string | undefined]
+  'selectClient': [client: ClientRecord]
+  'clearClient': []
+  'selectVehicle': [vehicle: VehicleRecord]
+  'clearVehicle': []
   'selectMasterProduct': [product: MasterProductSelected]
   'clearMasterProduct': []
   'openMasterProductEditor': []
   'openMasterProductManager': []
 }>()
+
+function vehicleLabel(v: VehicleRecord) {
+  return [v.brand, v.model, v.license_plate].filter(Boolean).join(' - ') || '—'
+}
 
 const statusOptions = [
   { label: 'Orçamento', value: 'estimate' },
@@ -99,25 +108,39 @@ const statusOptions = [
         </UFormField>
 
         <UFormField label="Cliente">
-          <USelectMenu
+          <UiAsyncPaginatedSelect
             :model-value="clientId"
-            :items="[{ label: 'Sem cliente', value: '' }, ...clientOptions]"
-            value-key="value"
+            fetch-url="/api/clients"
+            :get-label="(c: ClientRecord) => c.name"
+            :selected-label="clientSelectedLabel"
+            placeholder="Sem cliente"
+            search-placeholder="Buscar cliente por nome, CPF/CNPJ, telefone..."
+            empty-message="Nenhum cliente encontrado"
+            icon="i-lucide-user"
+            item-icon="i-lucide-user"
             class="w-full"
-            searchable
-            @update:model-value="emit('update:clientId', String($event ?? ''))"
+            @update:model-value="emit('update:clientId', $event)"
+            @select="(c: ClientRecord) => emit('selectClient', c)"
+            @clear="emit('clearClient')"
           />
         </UFormField>
 
         <UFormField label="Veículo">
-          <USelectMenu
+          <UiAsyncPaginatedSelect
             :model-value="vehicleId"
-            :items="[{ label: 'Sem veículo', value: '' }, ...vehicleOptions]"
-            value-key="value"
+            fetch-url="/api/vehicles"
+            :query-params="{ client_id: clientId || undefined }"
+            :get-label="vehicleLabel"
+            :selected-label="vehicleSelectedLabel"
+            placeholder="Sem veículo"
+            search-placeholder="Buscar por placa, marca ou modelo..."
+            empty-message="Nenhum veículo encontrado"
+            icon="i-lucide-car"
+            item-icon="i-lucide-car"
             class="w-full"
-            searchable
-            :disabled="!!clientId && !vehicleOptions.length"
-            @update:model-value="emit('update:vehicleId', String($event ?? ''))"
+            @update:model-value="emit('update:vehicleId', $event)"
+            @select="(v: VehicleRecord) => emit('selectVehicle', v)"
+            @clear="emit('clearVehicle')"
           />
         </UFormField>
 

@@ -78,14 +78,19 @@ function getOptionsForIndex(index: number) {
         <div class="flex flex-col gap-3 lg:flex-row lg:items-start">
           <div class="min-w-0 flex-1">
             <UFormField>
-              <USelectMenu
+              <UiAsyncPaginatedSelect
                 :model-value="employeeId"
                 :items="getOptionsForIndex(index)"
-                value-key="value"
-                class="w-full"
-                searchable
+                :get-id="(o: SelectOption) => o.value"
+                :get-label="(o: SelectOption) => o.label"
                 placeholder="Selecione o funcionário"
-                @update:model-value="emit('update', index, String($event ?? ''))"
+                search-placeholder="Buscar funcionário..."
+                empty-message="Nenhum funcionário disponível"
+                icon="i-lucide-user-round"
+                item-icon="i-lucide-user-round"
+                :clearable="false"
+                class="w-full"
+                @update:model-value="emit('update', index, $event)"
               />
             </UFormField>
 

@@ -2,19 +2,12 @@ import { defineEventHandler, getQuery } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
+import { normalizeSearchText as normalizeString } from '../../utils/search'
 
 /**
  * GET /api/service-orders
  * Lists service orders with filters, pagination and search.
  */
-
-function normalizeString(value: unknown) {
-  return String(value ?? '')
-    .trim()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-}
 
 function safeParseDate(value: unknown) {
   if (!value) return null

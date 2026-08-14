@@ -24,6 +24,8 @@ import type { ItemCommissionDisplayDetail } from './create/ItemsCard.vue'
 const props = defineProps<{
   open: boolean
   orderToEdit?: ServiceOrderRaw | null
+  orderToEditClientLabel?: string | null
+  orderToEditVehicleLabel?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -35,19 +37,6 @@ const emit = defineEmits<{
 interface SelectOption {
   label: string
   value: string
-}
-
-interface ClientItem {
-  id: string
-  name: string
-}
-
-interface VehicleItem {
-  id: string
-  brand: string | null
-  model: string | null
-  license_plate: string | null
-  client_id?: string | null
 }
 
 interface EmployeeItem {
@@ -115,8 +104,8 @@ const appointmentPriorityMeta: Record<
 
 const toast = useToast()
 
-const clientOptions = ref<SelectOption[]>([])
-const vehicleCatalog = ref<VehicleItem[]>([])
+const selectedClientLabel = ref<string | null>(null)
+const selectedVehicleLabel = ref<string | null>(null)
 const employeeCatalog = ref<EmployeeItem[]>([])
 const masterProducts = ref<MasterProductItem[]>([])
 const taxesCatalog = ref<TaxItem[]>([])
@@ -346,14 +335,8 @@ async function loadOptions() {
   if (optionsLoaded.value || isLoadingOptions.value) return
   isLoadingOptions.value = true
   try {
-    const [clientsRes, vehiclesRes, employeesRes, masterProductsRes, taxesRes]
+    const [employeesRes, masterProductsRes, taxesRes]
       = await Promise.all([
-        $fetch<{ items: ClientItem[] }>('/api/clients', {
-          query: { page_size: 500 }
-        }),
-        $fetch<{ items: VehicleItem[] }>('/api/vehicles', {
-          query: { page_size: 500 }
-        }),
         $fetch<{ items: EmployeeItem[] }>('/api/employees'),
         $fetch<{ items: MasterProductItem[] }>('/api/master-products', {
           query: { page_size: 500 }
@@ -362,11 +345,6 @@ async function loadOptions() {
           query: { page_size: 500, sort_by: 'name', sort_order: 'asc' }
         })
       ])
-    clientOptions.value = (clientsRes.items ?? []).map(c => ({
-      label: c.name,
-      value: c.id
-    }))
-    vehicleCatalog.value = vehiclesRes.items ?? []
     employeeCatalog.value = employeesRes.items ?? []
     masterProducts.value = masterProductsRes.items ?? []
     taxesCatalog.value = taxesRes.items ?? []
@@ -379,19 +357,6 @@ async function loadOptions() {
 }
 
 // ─── Computed options ─────────────────────────────────────────────────────────
-
-const vehicleOptions = computed<SelectOption[]>(() => {
-  const filtered = form.client_id
-    ? vehicleCatalog.value.filter(
-        v => !v.client_id || v.client_id === form.client_id
-      )
-    : vehicleCatalog.value
-  return filtered.map(v => ({
-    label:
-      [v.brand, v.model, v.license_plate].filter(Boolean).join(' - ') || '—',
-    value: v.id
-  }))
-})
 
 const employeeSelectOptions = computed<SelectOption[]>(() =>
   employeeCatalog.value.map(e => ({ label: e.name, value: e.id }))
@@ -837,6 +802,8 @@ watch(
       loadOptions()
       if (isEditMode.value && props.orderToEdit) {
         populateFormFromOrder(props.orderToEdit)
+        selectedClientLabel.value = props.orderToEditClientLabel ?? null
+        selectedVehicleLabel.value = props.orderToEditVehicleLabel ?? null
         backfillItemCategories()
       } else {
         loadNextNumber()
@@ -848,18 +815,29 @@ watch(
   }
 )
 
-watch(
-  () => form.client_id,
-  (clientId) => {
-    if (!form.vehicle_id) return
-    const matchesVehicle = vehicleCatalog.value.some(
-      v =>
-        v.id === form.vehicle_id
-        && (!clientId || !v.client_id || v.client_id === clientId)
-    )
-    if (!matchesVehicle) form.vehicle_id = ''
+interface ClientRecord { id: string, name: string }
+interface VehicleRecord { id: string, brand: string | null, model: string | null, license_plate: string | null }
+
+function onSelectClient(client: ClientRecord) {
+  selectedClientLabel.value = client.name
+  if (form.vehicle_id) {
+    form.vehicle_id = ''
+    selectedVehicleLabel.value = null
   }
-)
+}
+
+function onClearClient() {
+  selectedClientLabel.value = null
+}
+
+function onSelectVehicle(vehicle: VehicleRecord) {
+  selectedVehicleLabel.value
+    = [vehicle.brand, vehicle.model, vehicle.license_plate].filter(Boolean).join(' - ') || null
+}
+
+function onClearVehicle() {
+  selectedVehicleLabel.value = null
+}
 
 watch(
   () => form.create_appointment,
@@ -875,6 +853,8 @@ watch(
 function resetForm() {
   itemCounter.value = 0
   selectedMasterProductRef.value = null
+  selectedClientLabel.value = null
+  selectedVehicleLabel.value = null
   form.number = ''
   form.status = 'estimate'
   form.client_id = ''
@@ -1127,10 +1107,14 @@ async function submit() {
               v-model:master-product-id="form.master_product_id"
               v-model:entry-date="form.entry_date"
               v-model:expected-date="form.expected_date"
-              :client-options="clientOptions"
-              :vehicle-options="vehicleOptions"
+              :client-selected-label="selectedClientLabel"
+              :vehicle-selected-label="selectedVehicleLabel"
               :selected-master-product="selectedMasterProduct"
               :is-loading-next-number="isLoadingNextNumber"
+              @select-client="onSelectClient"
+              @clear-client="onClearClient"
+              @select-vehicle="onSelectVehicle"
+              @clear-vehicle="onClearVehicle"
               @select-master-product="onSelectMasterProduct"
               @clear-master-product="onClearMasterProduct"
               @open-master-product-editor="openMasterProductCreate"
