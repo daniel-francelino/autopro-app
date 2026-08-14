@@ -24,7 +24,6 @@ interface Props {
   emptyMessage?: string
   icon?: string
   itemIcon?: string
-  clearable?: boolean
   disabled?: boolean
 }
 
@@ -41,7 +40,6 @@ const props = withDefaults(defineProps<Props>(), {
   emptyMessage: 'Nenhum resultado encontrado',
   icon: 'i-lucide-search',
   itemIcon: 'i-lucide-circle',
-  clearable: true,
   disabled: false
 })
 
@@ -201,15 +199,16 @@ function onListScroll(e: Event) {
 }
 
 function selectItem(item: T) {
-  emit('update:modelValue', resolveId(item))
-  emit('select', item)
+  const id = resolveId(item)
+  if (id === props.modelValue) {
+    emit('update:modelValue', '')
+    emit('clear')
+  } else {
+    emit('update:modelValue', id)
+    emit('select', item)
+  }
   open.value = false
   search.value = ''
-}
-
-function clearSelection() {
-  emit('update:modelValue', '')
-  emit('clear')
 }
 </script>
 
@@ -312,16 +311,5 @@ function clearSelection() {
         </div>
       </template>
     </UPopover>
-
-    <UTooltip v-if="clearable && modelValue" text="Limpar seleção">
-      <UButton
-        icon="i-lucide-x"
-        color="neutral"
-        variant="ghost"
-        size="sm"
-        :disabled="disabled"
-        @click="clearSelection"
-      />
-    </UTooltip>
   </div>
 </template>

@@ -88,7 +88,6 @@ function getOptionsForIndex(index: number) {
                 empty-message="Nenhum funcionário disponível"
                 icon="i-lucide-user-round"
                 item-icon="i-lucide-user-round"
-                :clearable="false"
                 class="w-full"
                 @update:model-value="emit('update', index, $event)"
               />
