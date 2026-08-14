@@ -335,13 +335,13 @@ async function exportReport(format: 'csv' | 'pdf') {
             </template>
 
             <!-- OS trabalhadas -->
-            <template v-if="view === 'orders'" #number-cell="{ row }">
+            <template #o_number-cell="{ row }">
               <span class="font-mono text-sm text-muted">#{{ orderRow(row).number }}</span>
             </template>
-            <template v-if="view === 'orders'" #entryDate-cell="{ row }">
+            <template #o_entryDate-cell="{ row }">
               {{ formatDate(orderRow(row).entryDate) }}
             </template>
-            <template v-if="view === 'orders'" #status_col-cell="{ row }">
+            <template #o_status-cell="{ row }">
               <UBadge
                 v-if="orderRow(row).status"
                 :color="orderStatusColorMap[orderRow(row).status || ''] ?? 'neutral'"
@@ -351,7 +351,7 @@ async function exportReport(format: 'csv' | 'pdf') {
               />
               <span v-else class="text-sm text-muted">—</span>
             </template>
-            <template v-if="view === 'orders'" #payment_col-cell="{ row }">
+            <template #o_payment-cell="{ row }">
               <UBadge
                 v-if="orderRow(row).paymentStatus"
                 :color="paymentStatusColorMap[orderRow(row).paymentStatus || ''] ?? 'neutral'"
@@ -361,32 +361,32 @@ async function exportReport(format: 'csv' | 'pdf') {
               />
               <span v-else class="text-sm text-muted">—</span>
             </template>
-            <template v-if="view === 'orders'" #totalAmount-cell="{ row }">
+            <template #o_totalAmount-cell="{ row }">
               {{ formatCurrency(orderRow(row).totalAmount) }}
             </template>
-            <template v-if="view === 'orders'" #totalCostAmount-cell="{ row }">
+            <template #o_totalCostAmount-cell="{ row }">
               <span class="text-error">{{ formatCurrency(orderRow(row).totalCostAmount) }}</span>
             </template>
-            <template v-if="view === 'orders'" #employeeCommission-cell="{ row }">
+            <template #o_employeeCommission-cell="{ row }">
               <span class="text-warning">{{ formatCurrency(orderRow(row).employeeCommission) }}</span>
             </template>
-            <template v-if="view === 'orders'" #netAmount-cell="{ row }">
+            <template #o_netAmount-cell="{ row }">
               <span class="font-bold" :class="orderRow(row).netAmount >= 0 ? 'text-success' : 'text-error'">
                 {{ formatCurrency(orderRow(row).netAmount) }}
               </span>
             </template>
 
             <!-- Comissões -->
-            <template v-if="view === 'commissions'" #referenceDate-cell="{ row }">
+            <template #c_referenceDate-cell="{ row }">
               {{ formatDate(commissionRow(row).referenceDate) }}
             </template>
-            <template v-if="view === 'commissions'" #orderNumber-cell="{ row }">
+            <template #c_orderNumber-cell="{ row }">
               <span v-if="commissionRow(row).orderNumber" class="font-mono text-sm text-muted">
                 #{{ commissionRow(row).orderNumber }}
               </span>
               <span v-else class="text-muted">—</span>
             </template>
-            <template v-if="view === 'commissions'" #order_status_col-cell="{ row }">
+            <template #c_orderStatus-cell="{ row }">
               <UBadge
                 v-if="commissionRow(row).orderStatus"
                 :color="orderStatusColorMap[commissionRow(row).orderStatus || ''] ?? 'neutral'"
@@ -396,7 +396,7 @@ async function exportReport(format: 'csv' | 'pdf') {
               />
               <span v-else class="text-sm text-muted">—</span>
             </template>
-            <template v-if="view === 'commissions'" #order_payment_col-cell="{ row }">
+            <template #c_orderPayment-cell="{ row }">
               <UBadge
                 v-if="commissionRow(row).orderPaymentStatus"
                 :color="paymentStatusColorMap[commissionRow(row).orderPaymentStatus || ''] ?? 'neutral'"
@@ -406,10 +406,10 @@ async function exportReport(format: 'csv' | 'pdf') {
               />
               <span v-else class="text-sm text-muted">—</span>
             </template>
-            <template v-if="view === 'commissions'" #amount-cell="{ row }">
+            <template #c_amount-cell="{ row }">
               <span class="font-bold text-success">{{ formatCurrency(commissionRow(row).amount) }}</span>
             </template>
-            <template v-if="view === 'commissions'" #status_col-cell="{ row }">
+            <template #c_status-cell="{ row }">
               <UBadge
                 :color="commissionStatusColorMap[commissionRow(row).status] ?? 'neutral'"
                 variant="subtle"
@@ -419,22 +419,22 @@ async function exportReport(format: 'csv' | 'pdf') {
             </template>
 
             <!-- Itens vendidos -->
-            <template v-if="view === 'items'" #orderNumber-cell="{ row }">
+            <template #i_orderNumber-cell="{ row }">
               <span class="font-mono text-sm text-muted">#{{ itemRow(row).orderNumber }}</span>
             </template>
-            <template v-if="view === 'items'" #date-cell="{ row }">
+            <template #i_date-cell="{ row }">
               {{ formatDate(itemRow(row).date) }}
             </template>
-            <template v-if="view === 'items'" #totalValue-cell="{ row }">
+            <template #i_totalValue-cell="{ row }">
               {{ formatCurrency(itemRow(row).totalValue) }}
             </template>
-            <template v-if="view === 'items'" #totalCost-cell="{ row }">
+            <template #i_totalCost-cell="{ row }">
               <span class="text-error">{{ formatCurrency(itemRow(row).totalCost) }}</span>
             </template>
-            <template v-if="view === 'items'" #commissionCost-cell="{ row }">
+            <template #i_commissionCost-cell="{ row }">
               <span class="text-warning">{{ formatCurrency(itemRow(row).commissionCost) }}</span>
             </template>
-            <template v-if="view === 'items'" #profit-cell="{ row }">
+            <template #i_profit-cell="{ row }">
               <span class="font-bold" :class="itemRow(row).profit >= 0 ? 'text-success' : 'text-error'">
                 {{ formatCurrency(itemRow(row).profit) }}
               </span>
