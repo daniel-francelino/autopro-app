@@ -132,6 +132,7 @@ export interface EmployeeItemRow {
   totalValue: number
   totalCost: number
   commissionCost: number
+  otherEmployeesCommissionCost: number
   profit: number
 }
 
@@ -380,23 +381,30 @@ export async function getEmployeeReport(
     const hasStoredCommissions = normalizedItems.length > 0
       && normalizedItems.every(item => item.rawItem?.commission_total != null && Array.isArray(item.rawItem?.commissions))
 
-    let commissionByItemKey = new Map<string, number>()
-    if (!hasPersistedCommissionRecords) {
-      commissionByItemKey = new Map(normalizedItems.map(item => [item.key, 0]))
-    } else if (hasStoredCommissions) {
-      for (const item of normalizedItems) {
-        const commissions = Array.isArray(item.rawItem?.commissions) ? item.rawItem.commissions : []
-        let total = 0
-        for (const commission of commissions) {
-          if (String(commission?.employee_id || '') === employeeId) total += normalizeNumber(commission?.amount)
-        }
-        commissionByItemKey.set(item.key, roundMoney(total))
+    // Same 3-tier priority as the selected employee's own commission, just
+    // parameterized by which employee id(s) to attribute it to — reused here
+    // both for the selected employee and for "everyone else responsible".
+    function computeItemCommissionsFor(targetEmployeeIds: Set<string>): Map<string, number> {
+      if (targetEmployeeIds.size === 0 || !hasPersistedCommissionRecords) {
+        return new Map(normalizedItems.map(item => [item.key, 0]))
       }
-    } else {
-      commissionByItemKey = computeOrderItemCommissionMap({
+      if (hasStoredCommissions) {
+        const map = new Map<string, number>()
+        for (const item of normalizedItems) {
+          const commissions = Array.isArray(item.rawItem?.commissions) ? item.rawItem.commissions : []
+          let total = 0
+          for (const commission of commissions) {
+            const commissionEmployeeId = String(commission?.employee_id || '')
+            if (commissionEmployeeId && targetEmployeeIds.has(commissionEmployeeId)) total += normalizeNumber(commission?.amount)
+          }
+          map.set(item.key, roundMoney(total))
+        }
+        return map
+      }
+      return computeOrderItemCommissionMap({
         order,
         responsibles,
-        responsibleIdsSet,
+        responsibleIdsSet: targetEmployeeIds,
         employeesMap,
         commissionTotalsByOrderEmployee,
         normalizedItems: normalizedItems.map(item => ({
@@ -408,12 +416,17 @@ export async function getEmployeeReport(
       })
     }
 
+    const otherResponsibleIdsSet = new Set(responsibles.map(responsible => responsible.id).filter(id => id !== employeeId))
+    const commissionByItemKey = computeItemCommissionsFor(responsibleIdsSet)
+    const otherCommissionByItemKey = computeItemCommissionsFor(otherResponsibleIdsSet)
+
     for (const item of normalizedItems) {
       const itemResponsiblesFromCommissions = getItemResponsiblesFromCommissions(item.rawItem, employeesMap)
       const itemResponsibles = itemResponsiblesFromCommissions.length > 0 ? itemResponsiblesFromCommissions : responsibles
       if (!itemResponsibles.some(responsible => responsible.id === employeeId)) continue
 
       const commissionCost = roundMoney(normalizeNumber(commissionByItemKey.get(item.key)))
+      const otherEmployeesCommissionCost = roundMoney(normalizeNumber(otherCommissionByItemKey.get(item.key)))
       const profit = roundMoney(item.totalValue - item.totalCost - commissionCost)
 
       itemsView.push({
@@ -427,6 +440,7 @@ export async function getEmployeeReport(
         totalValue: item.totalValue,
         totalCost: item.totalCost,
         commissionCost,
+        otherEmployeesCommissionCost,
         profit
       })
     }

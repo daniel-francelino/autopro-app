@@ -45,6 +45,7 @@ interface EmployeeItemRow {
   totalValue: number
   totalCost: number
   commissionCost: number
+  otherEmployeesCommissionCost: number
   profit: number
 }
 
@@ -159,6 +160,7 @@ const columnsByView: Record<ViewMode, { accessorKey?: string, id: string, header
     { id: 'i_totalValue', accessorKey: 'totalValue', header: 'Valor' },
     { id: 'i_totalCost', accessorKey: 'totalCost', header: 'Custo' },
     { id: 'i_commissionCost', accessorKey: 'commissionCost', header: 'Comissão' },
+    { id: 'i_otherEmployeesCommissionCost', accessorKey: 'otherEmployeesCommissionCost', header: 'Comissão (outros)' },
     { id: 'i_profit', accessorKey: 'profit', header: 'Lucro' }
   ]
 }
@@ -439,6 +441,9 @@ async function exportReport(format: 'csv' | 'pdf') {
             </template>
             <template #i_commissionCost-cell="{ row }">
               <span class="text-warning">{{ formatCurrency(itemRow(row).commissionCost) }}</span>
+            </template>
+            <template #i_otherEmployeesCommissionCost-cell="{ row }">
+              <span class="text-info">{{ formatCurrency(itemRow(row).otherEmployeesCommissionCost) }}</span>
             </template>
             <template #i_profit-cell="{ row }">
               <span class="font-bold" :class="itemRow(row).profit >= 0 ? 'text-success' : 'text-error'">
