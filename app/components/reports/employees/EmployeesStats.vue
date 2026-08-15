@@ -17,7 +17,7 @@ const netSales = computed(() => props.summary?.netSales ?? 0)
 </script>
 
 <template>
-  <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+  <div class="grid grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] gap-3">
     <UCard
       v-for="stat in [
         { label: 'Venda bruta', value: formatCurrency(summary?.grossSales ?? 0), icon: 'i-lucide-banknote', color: 'text-primary', bg: 'bg-primary/10', description: 'total das OS' },
@@ -27,14 +27,15 @@ const netSales = computed(() => props.summary?.netSales ?? 0)
         { label: 'Venda líquida', value: formatCurrency(netSales), icon: 'i-lucide-calculator', color: netSales >= 0 ? 'text-success' : 'text-error', bg: netSales >= 0 ? 'bg-success/10' : 'bg-error/10', description: 'bruta − despesas − comissões' }
       ]"
       :key="stat.label"
+      class="max-w-72"
       :ui="{ body: 'p-3 sm:p-4' }"
     >
       <div class="flex items-start gap-3">
         <div :class="[stat.bg, 'rounded-xl p-2 shrink-0']">
           <UIcon :name="stat.icon" :class="[stat.color, 'size-5']" />
         </div>
-        <div>
-          <p class="text-lg font-bold leading-tight">
+        <div class="min-w-0">
+          <p class="text-lg font-bold leading-tight truncate">
             {{ stat.value }}
           </p>
           <p class="text-xs font-medium text-highlighted">
