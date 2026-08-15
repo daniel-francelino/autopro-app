@@ -80,14 +80,15 @@ export default defineEventHandler(async (event) => {
     title = 'Relatório de Funcionários — Itens vendidos'
     fileNameBase = 'relatorio_funcionario_itens'
     columns = [
-      { header: 'OS', widthRatio: 0.09 },
-      { header: 'DATA', widthRatio: 0.09 },
-      { header: 'ITEM', widthRatio: 0.27 },
-      { header: 'CATEGORIA', widthRatio: 0.15 },
-      { header: 'QTD', widthRatio: 0.07, align: 'right' },
-      { header: 'VALOR', widthRatio: 0.11, align: 'right' },
-      { header: 'CUSTO', widthRatio: 0.11, align: 'right' },
-      { header: 'COMISSÃO', widthRatio: 0.11, align: 'right' }
+      { header: 'OS', widthRatio: 0.07 },
+      { header: 'DATA', widthRatio: 0.07 },
+      { header: 'ITEM', widthRatio: 0.22 },
+      { header: 'CATEGORIA', widthRatio: 0.12 },
+      { header: 'QTD', widthRatio: 0.06, align: 'right' },
+      { header: 'VALOR', widthRatio: 0.1, align: 'right' },
+      { header: 'CUSTO', widthRatio: 0.1, align: 'right' },
+      { header: 'COMISSÃO', widthRatio: 0.1, align: 'right' },
+      { header: 'COM. OUTROS', widthRatio: 0.16, align: 'right' }
     ]
     dataRows = report.itemsView.map(row => [
       `#${row.orderNumber}`,
@@ -97,7 +98,8 @@ export default defineEventHandler(async (event) => {
       String(row.quantity),
       formatCurrency(row.totalValue),
       formatCurrency(row.totalCost),
-      formatCurrency(row.commissionCost)
+      formatCurrency(row.commissionCost),
+      formatCurrency(row.otherEmployeesCommissionCost)
     ])
     footerRows = [
       { label: 'Total de Linhas', value: String(report.itemsView.length) },
