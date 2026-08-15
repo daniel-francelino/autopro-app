@@ -104,6 +104,7 @@ export interface EmployeeOrderRow {
   totalAmount: number
   totalCostAmount: number
   employeeCommission: number
+  otherEmployeesCommission: number
   netAmount: number
 }
 
@@ -138,6 +139,7 @@ export interface EmployeeReportSummary {
   grossSales: number
   osExpenses: number
   totalCommissions: number
+  otherEmployeesCommissions: number
   netSales: number
   orderCount: number
 }
@@ -249,18 +251,55 @@ export async function getEmployeeReport(
 
   // ─── Summary (4 totals, "Pelas OS" profit formula scoped to one employee) ──
 
+  const matchingOrderIds = new Set(
+    matchingOrders
+      .map(order => normalizeId(order.id))
+      .filter((id): id is string => id !== null)
+  )
+
+  // On orders with more than one responsible employee, grossSales/osExpenses
+  // already count the order in full (same convention as the "Pelas OS" profit
+  // mode — no splitting). This means netSales only discounts THIS employee's
+  // commission, not what the order also paid out to co-responsible employees.
+  // Surfaced separately (not folded into netSales) so it stays clear whose
+  // number is whose.
+  const otherEmployeesCommissionRecords = financialRecords.filter((record) => {
+    const recordEmployeeId = String(record?.employee_id || '')
+    if (!recordEmployeeId || recordEmployeeId === employeeId) return false
+    const orderId = normalizeId(record?.service_order_id)
+    if (!orderId || !matchingOrderIds.has(orderId)) return false
+    if (commissionStatus.length > 0 && !commissionStatus.includes(normalizeReportStatus(record?.status))) return false
+    if (recordType.length > 0 && !recordType.includes(String(record?.record_type || ''))) return false
+    return true
+  })
+
   const grossSales = roundMoney(matchingOrders.reduce((sum, order) => sum + toNumber(order?.total_amount, 0), 0))
   const osExpenses = roundMoney(matchingOrders.reduce((sum, order) => sum + toNumber(order?.total_cost_amount, 0), 0))
   const totalCommissions = roundMoney(matchingCommissionRecords.reduce((sum, record) => sum + toNumber(record?.amount, 0), 0))
+  const otherEmployeesCommissions = roundMoney(otherEmployeesCommissionRecords.reduce((sum, record) => sum + toNumber(record?.amount, 0), 0))
   const netSales = roundMoney(grossSales - osExpenses - totalCommissions)
 
-  const summary: EmployeeReportSummary = { grossSales, osExpenses, totalCommissions, netSales, orderCount: matchingOrders.length }
+  const summary: EmployeeReportSummary = {
+    grossSales,
+    osExpenses,
+    totalCommissions,
+    otherEmployeesCommissions,
+    netSales,
+    orderCount: matchingOrders.length
+  }
 
   const commissionsByOrderId = new Map<string, number>()
   for (const record of matchingCommissionRecords) {
     const orderId = normalizeId(record?.service_order_id)
     if (!orderId) continue
     commissionsByOrderId.set(orderId, roundMoney(normalizeNumber(commissionsByOrderId.get(orderId)) + toNumber(record?.amount, 0)))
+  }
+
+  const otherEmployeesCommissionsByOrderId = new Map<string, number>()
+  for (const record of otherEmployeesCommissionRecords) {
+    const orderId = normalizeId(record?.service_order_id)
+    if (!orderId) continue
+    otherEmployeesCommissionsByOrderId.set(orderId, roundMoney(normalizeNumber(otherEmployeesCommissionsByOrderId.get(orderId)) + toNumber(record?.amount, 0)))
   }
 
   // ─── "OS trabalhadas" view ──────────────────────────────────────────────────
@@ -273,6 +312,7 @@ export async function getEmployeeReport(
       const totalAmount = roundMoney(toNumber(order.total_amount, 0))
       const totalCostAmount = roundMoney(toNumber(order.total_cost_amount, 0))
       const employeeCommission = roundMoney(commissionsByOrderId.get(orderId) || 0)
+      const otherEmployeesCommission = roundMoney(otherEmployeesCommissionsByOrderId.get(orderId) || 0)
       const netAmount = roundMoney(totalAmount - totalCostAmount - employeeCommission)
 
       return {
@@ -285,6 +325,7 @@ export async function getEmployeeReport(
         totalAmount,
         totalCostAmount,
         employeeCommission,
+        otherEmployeesCommission,
         netAmount
       }
     })

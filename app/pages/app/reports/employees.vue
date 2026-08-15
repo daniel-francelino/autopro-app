@@ -17,6 +17,7 @@ interface EmployeeOrderRow {
   totalAmount: number
   totalCostAmount: number
   employeeCommission: number
+  otherEmployeesCommission: number
   netAmount: number
 }
 
@@ -51,6 +52,7 @@ interface EmployeeReportSummary {
   grossSales: number
   osExpenses: number
   totalCommissions: number
+  otherEmployeesCommissions: number
   netSales: number
   orderCount: number
 }
@@ -136,6 +138,7 @@ const columnsByView: Record<ViewMode, { accessorKey?: string, id: string, header
     { id: 'o_totalAmount', accessorKey: 'totalAmount', header: 'Venda bruta' },
     { id: 'o_totalCostAmount', accessorKey: 'totalCostAmount', header: 'Despesas' },
     { id: 'o_employeeCommission', accessorKey: 'employeeCommission', header: 'Comissão' },
+    { id: 'o_otherEmployeesCommission', accessorKey: 'otherEmployeesCommission', header: 'Comissão (outros)' },
     { id: 'o_netAmount', accessorKey: 'netAmount', header: 'Líquido' }
   ],
   commissions: [
@@ -369,6 +372,9 @@ async function exportReport(format: 'csv' | 'pdf') {
             </template>
             <template #o_employeeCommission-cell="{ row }">
               <span class="text-warning">{{ formatCurrency(orderRow(row).employeeCommission) }}</span>
+            </template>
+            <template #o_otherEmployeesCommission-cell="{ row }">
+              <span class="text-info">{{ formatCurrency(orderRow(row).otherEmployeesCommission) }}</span>
             </template>
             <template #o_netAmount-cell="{ row }">
               <span class="font-bold" :class="orderRow(row).netAmount >= 0 ? 'text-success' : 'text-error'">
