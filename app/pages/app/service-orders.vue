@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { watchDebounced } from '@vueuse/core'
 import { ActionCode } from '~/constants/action-codes'
-import type { ServiceOrder, ServiceOrderRaw } from '~/types/service-orders'
+import type { ServiceOrder, ServiceOrderDetailFull, ServiceOrderRaw } from '~/types/service-orders'
 
 type ServiceOrdersApiResponse = {
   data: {
@@ -383,6 +383,8 @@ function forceReload() {
 
 const showCreateModal = ref(false)
 const editingOrder = ref<ServiceOrderRaw | null>(null)
+const editingOrderClientLabel = ref<string | null>(null)
+const editingOrderVehicleLabel = ref<string | null>(null)
 const editingIds = ref(new Set<string>())
 const showQuoteModal = ref(false)
 const quoteOrderId = ref<string | null>(null)
@@ -390,7 +392,11 @@ const showPdfModal = ref(false)
 const pdfOrderId = ref<string | null>(null)
 
 watch(showCreateModal, (opened) => {
-  if (!opened) editingOrder.value = null
+  if (!opened) {
+    editingOrder.value = null
+    editingOrderClientLabel.value = null
+    editingOrderVehicleLabel.value = null
+  }
 })
 
 watch(showQuoteModal, (opened) => {
@@ -401,9 +407,11 @@ watch(showPdfModal, (opened) => {
   if (!opened) pdfOrderId.value = null
 })
 
-function openEdit(order: ServiceOrderRaw) {
+function openEdit(order: ServiceOrderRaw, clientLabel: string | null, vehicleLabel: string | null) {
   closeDetail()
   editingOrder.value = order
+  editingOrderClientLabel.value = clientLabel
+  editingOrderVehicleLabel.value = vehicleLabel
   showCreateModal.value = true
 }
 
@@ -412,8 +420,13 @@ async function openEditFromList(order: ServiceOrder) {
 
   editingIds.value.add(order.id)
   try {
-    const res = await $fetch<{ data: { order: ServiceOrderRaw } }>(`/api/service-orders/${order.id}`)
+    const res = await $fetch<{ data: ServiceOrderDetailFull }>(`/api/service-orders/${order.id}`)
+    const vehicle = res.data.vehicle
     editingOrder.value = res.data.order
+    editingOrderClientLabel.value = res.data.client?.name ?? null
+    editingOrderVehicleLabel.value = vehicle
+      ? [vehicle.brand, vehicle.model, vehicle.license_plate].filter(Boolean).join(' - ') || null
+      : null
     showCreateModal.value = true
   } catch (error: unknown) {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
@@ -573,6 +586,8 @@ function onNfseIssued() {
   <ServiceOrdersCreateModal
     v-model:open="showCreateModal"
     :order-to-edit="editingOrder"
+    :order-to-edit-client-label="editingOrderClientLabel"
+    :order-to-edit-vehicle-label="editingOrderVehicleLabel"
     @created="forceReload"
     @updated="forceReload"
   />

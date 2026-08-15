@@ -5,7 +5,6 @@ interface PeriodData {
   profit?: number
   profitMargin?: number
   partsCost?: number
-  generalExpenses?: number
   commissionCost?: number
 }
 
@@ -31,11 +30,7 @@ function formatCurrency(v: number | string) {
 
 const costsTooltip = computed(() => {
   const partsCost = props.currentData?.partsCost
-  const generalExpenses = props.currentData?.generalExpenses
   const commissionCost = props.currentData?.commissionCost
-  if (partsCost !== undefined && generalExpenses !== undefined) {
-    return `peças: ${formatCurrency(partsCost)} · despesas: ${formatCurrency(generalExpenses)}`
-  }
   if (partsCost !== undefined && commissionCost !== undefined) {
     return `peças: ${formatCurrency(partsCost)} · comissão: ${formatCurrency(commissionCost)}`
   }

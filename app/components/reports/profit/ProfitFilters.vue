@@ -22,7 +22,7 @@ const dateFrom = defineModel<string>('dateFrom')
 const dateTo = defineModel<string>('dateTo')
 const statusFilters = defineModel<string[]>('statusFilters', { default: () => ['paid'] })
 const compareMode = defineModel<string>('compareMode', { default: 'no_compare' })
-const mode = defineModel<'cash_flow' | 'by_order' | 'period_result'>('mode', { default: 'cash_flow' })
+const mode = defineModel<'cash_flow' | 'by_order'>('mode', { default: 'cash_flow' })
 const orderStatusFilters = defineModel<string[]>('orderStatusFilters', { default: () => ['completed', 'invoiced', 'delivered'] })
 const orderPaymentStatusFilters = defineModel<string[]>('orderPaymentStatusFilters', { default: () => [] })
 
@@ -52,14 +52,12 @@ const compareOptions = [
 
 const modeItems = [
   { label: 'Fluxo de Caixa', value: 'cash_flow' as const, slot: 'cash_flow' as const, icon: 'i-lucide-wallet' },
-  { label: 'Pelas OS', value: 'by_order' as const, slot: 'by_order' as const, icon: 'i-lucide-wrench' },
-  //{ label: 'Resultado do Período', value: 'period_result' as const, slot: 'period_result' as const, icon: 'i-lucide-scale' }
+  { label: 'Pelas OS', value: 'by_order' as const, slot: 'by_order' as const, icon: 'i-lucide-wrench' }
 ]
 
-const modeDescription: Record<'cash_flow' | 'by_order' | 'period_result', string> = {
+const modeDescription: Record<'cash_flow' | 'by_order', string> = {
   cash_flow: 'Dinheiro que já entrou/saiu (ou está prestes a) — tenho dinheiro no caixa?',
-  by_order: 'Receita de cada OS menos o custo de peças da própria OS — o preço do serviço cobre o custo da peça?',
-  period_result: 'Toda receita de OS reconhecida menos toda despesa geral reconhecida no período, independente de status de pagamento — o negócio deu lucro de verdade?'
+  by_order: 'Receita de cada OS menos o custo de peças da própria OS — o preço do serviço cobre o custo da peça?'
 }
 </script>
 
@@ -123,7 +121,7 @@ const modeDescription: Record<'cash_flow' | 'by_order' | 'period_result', string
         </div>
 
         <!-- Pelas OS: status da OS e status de pagamento da própria OS, independentes -->
-        <template v-else-if="mode === 'by_order'">
+        <template v-else>
           <div>
             <p class="mb-1 text-xs font-medium text-muted">
               {{ props.orderStatusLabel }}
@@ -147,13 +145,6 @@ const modeDescription: Record<'cash_flow' | 'by_order' | 'period_result', string
             />
           </div>
         </template>
-
-        <!-- Resultado do Período: sem filtro de status, sempre considera tudo -->
-        <div v-else class="col-span-2">
-          <p class="rounded-md border border-dashed border-default px-3 py-2 text-xs text-muted">
-            Considera toda receita e despesa do período, independente do status de pagamento.
-          </p>
-        </div>
       </div>
     </div>
   </UCard>

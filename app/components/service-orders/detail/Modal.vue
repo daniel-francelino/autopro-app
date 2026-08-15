@@ -17,7 +17,7 @@ const emit = defineEmits<{
   'updated': []
   'deleted': []
   'quote': [orderId: string]
-  'edit': [order: ServiceOrderRaw]
+  'edit': [order: ServiceOrderRaw, clientLabel: string | null, vehicleLabel: string | null]
   'issue-nfse': [orderId: string]
   'completed': [orderId: string]
 }>()
@@ -57,7 +57,11 @@ function close() {
 
 function requestEdit() {
   if (!detail.value) return
-  emit('edit', detail.value.order)
+  const vehicle = detail.value.vehicle
+  const vehicleLabel = vehicle
+    ? [vehicle.brand, vehicle.model, vehicle.license_plate].filter(Boolean).join(' - ') || null
+    : null
+  emit('edit', detail.value.order, detail.value.client?.name ?? null, vehicleLabel)
 }
 
 function requestQuote() {
