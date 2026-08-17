@@ -58,6 +58,7 @@ export interface BonusGenerationRecord {
 
 interface ServiceOrderForBonus {
   id?: string | null
+  status?: string | null
   employee_responsible_id?: string | null
   responsible_employees?: Array<{ employee_id?: string | null }> | null
   entry_date?: string | null
@@ -106,6 +107,10 @@ function isOrderResponsible(order: ServiceOrderForBonus, employeeId: string): bo
   return responsibles.some(responsible => String(responsible?.employee_id || '') === employeeId)
 }
 
+function isOrderEligibleForBonus(order: ServiceOrderForBonus): boolean {
+  return order?.status === 'completed' || order?.status === 'invoiced'
+}
+
 /**
  * Sums this employee's gross revenue (or net profit) from orders they're
  * responsible for, entered within the given month — the "X" in the bonus
@@ -121,6 +126,7 @@ export function sumAchievedAmount(
   const { start, end } = monthDateRange(referenceMonth)
 
   const total = orders.reduce((sum, order) => {
+    if (!isOrderEligibleForBonus(order)) return sum
     if (!isOrderResponsible(order, employeeId)) return sum
     const entryDate = order?.entry_date ? new Date(`${order.entry_date}T00:00:00`) : null
     if (!entryDate || Number.isNaN(entryDate.getTime())) return sum
@@ -143,7 +149,7 @@ export async function fetchOrdersForBonusProgress(
   return fetchAllOrganizationRows<ServiceOrderForBonus>(supabase, {
     table: 'service_orders',
     organizationId,
-    columns: 'id, employee_responsible_id, responsible_employees, entry_date, total_amount, total_cost_amount',
+    columns: 'id, status, employee_responsible_id, responsible_employees, entry_date, total_amount, total_cost_amount',
     nullColumns: ['deleted_at']
   })
 }
