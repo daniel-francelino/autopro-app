@@ -82,6 +82,14 @@ function currentMonthValue() {
 const referenceMonth = ref(currentMonthValue())
 const isCurrentMonth = computed(() => referenceMonth.value === currentMonthValue())
 
+// Wraps referenceMonth for the picker: "Limpar" emits undefined, which isn't
+// a valid state here (there's always a month being viewed) — fall back to
+// the current month instead of leaking an empty value into the API calls.
+const referenceMonthInput = computed({
+  get: () => referenceMonth.value,
+  set: (value: string | undefined) => { referenceMonth.value = value || currentMonthValue() }
+})
+
 const { data: progressData, status: progressStatus, refresh: refreshProgress } = await useAsyncData(
   () => `bonus-progress-${bonusId.value}-${referenceMonth.value}`,
   () => requestFetch<{ items: ProgressItem[] }>(`/api/bonuses/${bonusId.value}/progress`, {
@@ -413,11 +421,7 @@ function confirmRetroactiveGenerate() {
                 Funcionários atribuídos
               </p>
               <div class="flex flex-wrap items-center gap-2">
-                <input
-                  v-model="referenceMonth"
-                  type="month"
-                  class="h-8 rounded-md border border-default bg-default px-2 text-sm text-highlighted outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-                >
+                <UiDatePicker v-model="referenceMonthInput" mode="month" class="w-44" />
                 <UButton
                   v-if="canUpdate"
                   label="Atribuir funcionário"

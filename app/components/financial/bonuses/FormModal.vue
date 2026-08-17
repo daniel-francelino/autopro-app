@@ -16,16 +16,14 @@ function currentMonthValue() {
 
 const form = reactive({
   name: '',
-  description: '',
   commissionBase: 'revenue' as 'revenue' | 'profit',
   goalAmount: '' as number | string,
   bonusAmount: '' as number | string,
-  effectiveMonth: currentMonthValue()
+  effectiveMonth: currentMonthValue() as string | undefined
 })
 
 function resetForm() {
   form.name = ''
-  form.description = ''
   form.commissionBase = 'revenue'
   form.goalAmount = ''
   form.bonusAmount = ''
@@ -55,6 +53,10 @@ async function save() {
     toast.add({ title: 'Informe o valor do bônus', color: 'warning' })
     return
   }
+  if (!form.effectiveMonth) {
+    toast.add({ title: 'Informe a partir de qual mês o bônus vale', color: 'warning' })
+    return
+  }
 
   isSaving.value = true
   try {
@@ -62,7 +64,6 @@ async function save() {
       method: 'POST',
       body: {
         name,
-        description: form.description.trim() || undefined,
         commissionBase: form.commissionBase,
         goalAmount,
         bonusAmount,
@@ -94,15 +95,6 @@ async function save() {
           <UInput v-model="form.name" class="w-full" placeholder="Ex: Meta de vendas — Peças" />
         </UFormField>
 
-        <UFormField label="Descrição">
-          <UTextarea
-            v-model="form.description"
-            class="w-full"
-            :rows="2"
-            placeholder="Opcional"
-          />
-        </UFormField>
-
         <UFormField label="Base de cálculo" required>
           <USelectMenu
             v-model="form.commissionBase"
@@ -122,11 +114,7 @@ async function save() {
         </div>
 
         <UFormField label="Vale a partir de" required>
-          <input
-            v-model="form.effectiveMonth"
-            type="month"
-            class="h-9 w-full rounded-md border border-default bg-default px-3 text-sm text-highlighted outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-          >
+          <UiDatePicker v-model="form.effectiveMonth" mode="month" />
         </UFormField>
       </div>
     </template>
