@@ -143,47 +143,56 @@ const activeTab = useReportQueryParam('tab', 'orders' as ViewMode)
 
 const queryKey = computed(() => `employee-commission-detail-${employeeId.value}-${dateFrom.value}-${dateTo.value}`)
 
-const { data, status, error, refresh } = await useAsyncData(
-  () => queryKey.value,
-  () => requestFetch<EmployeeCommissionResponse>(`/api/employees/${employeeId.value}/commissions`, {
-    headers: requestHeaders,
-    query: {
-      dateFrom: dateFrom.value,
-      dateTo: dateTo.value
-    }
-  }),
-  {
-    watch: [queryKey],
-    server: true
-  }
-)
-
-const employee = computed(() => data.value?.data?.employee ?? null)
-
 // Segunda busca: OS trabalhadas / Comissões / Itens vendidos, mesmo endpoint
 // usado pelo Relatório de Funcionários (server/utils/employee-report.ts) —
-// os dados de perfil (foto, telefone, endereço) só existem na busca acima,
-// por isso as duas convivem na mesma tela.
+// os dados de perfil (foto, telefone, endereço) só existem na busca de cima,
+// por isso as duas convivem na mesma tela. Disparadas juntas via Promise.all
+// (não uma depois da outra) para não dobrar o tempo de carregamento.
 const reportQueryKey = computed(() => `employee-detail-report-${employeeId.value}-${dateFrom.value}-${dateTo.value}`)
 
-const { data: reportData, status: reportStatus } = await useAsyncData(
-  () => reportQueryKey.value,
-  () => requestFetch<EmployeeReportResponse>('/api/reports/employees', {
-    headers: requestHeaders,
-    query: {
-      employeeId: employeeId.value,
-      dateFrom: dateFrom.value,
-      dateTo: dateTo.value
+const [
+  { data, status, error, refresh },
+  { data: reportData, status: reportStatus }
+] = await Promise.all([
+  useAsyncData(
+    () => queryKey.value,
+    () => requestFetch<EmployeeCommissionResponse>(`/api/employees/${employeeId.value}/commissions`, {
+      headers: requestHeaders,
+      query: {
+        dateFrom: dateFrom.value,
+        dateTo: dateTo.value
+      }
+    }),
+    {
+      watch: [queryKey],
+      server: true
     }
-  }),
-  { watch: [reportQueryKey] }
-)
+  ),
+  useAsyncData(
+    () => reportQueryKey.value,
+    () => requestFetch<EmployeeReportResponse>('/api/reports/employees', {
+      headers: requestHeaders,
+      query: {
+        employeeId: employeeId.value,
+        dateFrom: dateFrom.value,
+        dateTo: dateTo.value
+      }
+    }),
+    { watch: [reportQueryKey] }
+  )
+])
+
+const employee = computed(() => data.value?.data?.employee ?? null)
 
 const reportSummary = computed(() => reportData.value?.data?.summary ?? null)
 const ordersView = computed(() => reportData.value?.data?.ordersView ?? [])
 const commissionsView = computed(() => reportData.value?.data?.commissionsView ?? [])
 const itemsView = computed(() => reportData.value?.data?.itemsView ?? [])
 const isTableLoading = computed(() => reportStatus.value === 'pending')
+// Só mostra o skeleton dos cards de resumo na primeira carga (sem dados
+// ainda) — trocar o período depois disso é uma atualização silenciosa, sem
+// piscar skeleton por cima de números que o usuário já está vendo.
+const isFirstReportLoad = computed(() => reportStatus.value === 'pending' && !reportData.value)
 
 // Cards de resumo (Total/Pagas/Pendentes/Cobertura) — derivados da aba
 // Comissões, para refletir exatamente o que está na tabela abaixo.
@@ -302,8 +311,6 @@ const employeeStatus = computed<{ label: string, color: 'success' | 'warning' | 
 
   return { label: 'Demissão agendada', color: 'warning' }
 })
-
-const periodLabel = computed(() => `${formatDate(dateFrom.value)} a ${formatDate(dateTo.value)}`)
 
 const exportItems = computed(() => [[
   {
@@ -623,7 +630,11 @@ async function exportReport(format: 'csv' | 'pdf') {
             <UiDateRangePicker v-model:from="dateFrom" v-model:to="dateTo" class="w-auto" />
           </div>
 
-          <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div v-if="isFirstReportLoad" class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <USkeleton v-for="i in 4" :key="i" class="h-24 w-full rounded-2xl" />
+          </div>
+
+          <div v-else class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div class="rounded-2xl border border-default bg-elevated/50 p-4">
               <div class="flex items-start gap-3">
                 <div class="rounded-xl bg-primary/10 p-2 shrink-0">
