@@ -620,10 +620,6 @@ async function exportReport(format: 'csv' | 'pdf') {
           </div>
 
           <div class="flex flex-wrap items-center justify-between gap-3">
-            <div class="flex items-center gap-2 text-muted">
-              <UIcon name="i-lucide-calendar-range" class="size-4" />
-              <span class="text-sm font-medium">Período</span>
-            </div>
             <UiDateRangePicker v-model:from="dateFrom" v-model:to="dateTo" class="w-auto" />
           </div>
 
@@ -639,9 +635,6 @@ async function exportReport(format: 'csv' | 'pdf') {
                   </p>
                   <p class="mt-2 text-2xl font-semibold text-highlighted">
                     {{ formatCurrency(summary.totalCommissions) }}
-                  </p>
-                  <p class="mt-1 text-xs text-muted">
-                    Período {{ periodLabel }}
                   </p>
                 </div>
               </div>
