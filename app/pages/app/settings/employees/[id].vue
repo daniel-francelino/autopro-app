@@ -115,6 +115,18 @@ interface EmployeeReportResponse {
   }
 }
 
+interface EmployeeBonusItem {
+  bonusId: string
+  bonusName: string
+  referenceMonth: string
+  commissionBase: 'revenue' | 'profit' | null
+  goalAmount: number | null
+  bonusAmount: number | null
+  achievedAmount: number
+  goalMet: boolean
+  generated: boolean
+}
+
 function defaultFrom(): string {
   const now = new Date()
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
@@ -152,7 +164,8 @@ const reportQueryKey = computed(() => `employee-detail-report-${employeeId.value
 
 const [
   { data, status, error, refresh },
-  { data: reportData, status: reportStatus }
+  { data: reportData, status: reportStatus },
+  { data: bonusesData }
 ] = await Promise.all([
   useAsyncData(
     () => queryKey.value,
@@ -179,10 +192,19 @@ const [
       }
     }),
     { watch: [reportQueryKey] }
+  ),
+  // Bônus atribuídos — não depende do período do relatório (dateFrom/dateTo
+  // acima), sempre mostra o progresso do mês corrente
+  // (docs/employee-bonus-feature-design.md §6.3).
+  useAsyncData(
+    () => `employee-bonuses-${employeeId.value}`,
+    () => requestFetch<{ items: EmployeeBonusItem[] }>(`/api/employees/${employeeId.value}/bonuses`, { headers: requestHeaders }),
+    { default: () => ({ items: [] }) }
   )
 ])
 
 const employee = computed(() => data.value?.data?.employee ?? null)
+const assignedBonuses = computed(() => bonusesData.value?.items ?? [])
 
 const reportSummary = computed(() => reportData.value?.data?.summary ?? null)
 const ordersView = computed(() => reportData.value?.data?.ordersView ?? [])
@@ -377,6 +399,12 @@ function formatCommissionBase(value: string | null | undefined) {
   if (value === 'profit') return 'Lucro'
   if (value === 'revenue') return 'Receita'
   return '—'
+}
+
+function bonusStatusLabel(item: EmployeeBonusItem): { label: string, color: 'success' | 'warning' | 'neutral' } {
+  if (item.goalAmount == null) return { label: 'Sem valor configurado', color: 'neutral' }
+  if (item.goalMet) return { label: item.achievedAmount > item.goalAmount ? 'Meta superada' : 'Meta atingida', color: 'success' }
+  return { label: 'Abaixo da meta', color: 'warning' }
 }
 
 function buildAddress(profile: EmployeeCommissionProfile | null) {
@@ -618,6 +646,43 @@ async function exportReport(format: 'csv' | 'pdf') {
                     <span v-if="employee.commissionCategoryNames.length === 0" class="text-sm text-muted">
                       Todas as categorias contam para a comissão.
                     </span>
+                  </div>
+                </div>
+
+                <div class="rounded-2xl border border-default/70 bg-default/50 p-4 sm:col-span-2">
+                  <div class="flex items-start gap-3">
+                    <UIcon name="i-lucide-gift" class="mt-0.5 size-5 shrink-0 text-success" />
+                    <div class="min-w-0 flex-1 space-y-2">
+                      <p class="text-xs uppercase tracking-widest text-muted">
+                        Bônus atribuídos
+                      </p>
+                      <p v-if="assignedBonuses.length === 0" class="text-sm text-muted">
+                        Nenhum bônus atribuído a este funcionário.
+                      </p>
+                      <ul v-else class="space-y-2">
+                        <li
+                          v-for="bonus in assignedBonuses"
+                          :key="bonus.bonusId"
+                          class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-default/60 bg-elevated/30 px-3 py-2"
+                        >
+                          <div class="min-w-0">
+                            <NuxtLink
+                              :to="`/app/financial/bonuses/${bonus.bonusId}`"
+                              class="truncate text-sm font-medium text-highlighted hover:underline"
+                            >
+                              {{ bonus.bonusName }}
+                            </NuxtLink>
+                            <p class="text-xs text-muted">
+                              {{ formatCurrency(bonus.achievedAmount) }} / {{ bonus.goalAmount != null ? formatCurrency(bonus.goalAmount) : '—' }}
+                              <span v-if="bonus.commissionBase"> · {{ formatCommissionBase(bonus.commissionBase) }}</span>
+                            </p>
+                          </div>
+                          <UBadge :color="bonusStatusLabel(bonus).color" variant="subtle" size="sm">
+                            {{ bonusStatusLabel(bonus).label }}
+                          </UBadge>
+                        </li>
+                      </ul>
+                    </div>
                   </div>
                 </div>
               </div>
