@@ -185,31 +185,52 @@ const exportItems = computed(() => [[
 ]])
 
 const commissionColumns = [
-  { accessorKey: 'referenceDate', header: 'Referência', enableSorting: false },
-  { accessorKey: 'orderNumber', header: 'OS', enableSorting: false },
-  { accessorKey: 'itemName', header: 'Item', enableSorting: false },
-  { accessorKey: 'orderClientName', header: 'Cliente', enableSorting: false },
-  { accessorKey: 'amount', header: 'Comissão', enableSorting: false },
-  { id: 'status_col', header: 'Status', enableSorting: false },
-  { accessorKey: 'paymentDate', header: 'Pago em', enableSorting: false },
-  { id: 'actions', header: '', enableSorting: false }
+  { id: 'c_referenceDate', accessorKey: 'referenceDate', header: 'Referência', enableSorting: false },
+  { id: 'c_orderNumber', accessorKey: 'orderNumber', header: 'OS', enableSorting: false },
+  { id: 'c_itemName', accessorKey: 'itemName', header: 'Item', enableSorting: false },
+  { id: 'c_orderClientName', accessorKey: 'orderClientName', header: 'Cliente', enableSorting: false },
+  { id: 'c_amount', accessorKey: 'amount', header: 'Comissão', enableSorting: false },
+  { id: 'c_status', header: 'Status', enableSorting: false },
+  { id: 'c_paymentDate', accessorKey: 'paymentDate', header: 'Pago em', enableSorting: false },
+  { id: 'c_actions', header: '', enableSorting: false }
 ]
 
 const itemColumns = [
-  { accessorKey: 'itemName', header: 'Item', enableSorting: false },
-  { accessorKey: 'orderNumber', header: 'OS', enableSorting: false },
-  { accessorKey: 'baseAmount', header: 'Base', enableSorting: false },
-  { accessorKey: 'commissionRule', header: 'Regra', enableSorting: false },
-  { accessorKey: 'itemAmount', header: 'Receita', enableSorting: false },
-  { accessorKey: 'itemProfit', header: 'Lucro', enableSorting: false },
-  { accessorKey: 'amount', header: 'Comissão', enableSorting: false },
-  { id: 'item_actions', header: '', enableSorting: false }
+  { id: 'i_itemName', accessorKey: 'itemName', header: 'Item', enableSorting: false },
+  { id: 'i_orderNumber', accessorKey: 'orderNumber', header: 'OS', enableSorting: false },
+  { id: 'i_baseAmount', accessorKey: 'baseAmount', header: 'Base', enableSorting: false },
+  { id: 'i_commissionRule', accessorKey: 'commissionRule', header: 'Regra', enableSorting: false },
+  { id: 'i_itemAmount', accessorKey: 'itemAmount', header: 'Receita', enableSorting: false },
+  { id: 'i_itemProfit', accessorKey: 'itemProfit', header: 'Lucro', enableSorting: false },
+  { id: 'i_amount', accessorKey: 'amount', header: 'Comissão', enableSorting: false },
+  { id: 'i_actions', header: '', enableSorting: false }
 ]
 
 const itemTableRows = computed(() => filteredItems.value.map(item => ({
   ...item,
   commissionRule: getCommissionRuleLabel(item)
 })))
+
+function commissionRow(row: { original: unknown }): EmployeeCommissionItem {
+  return row.original as EmployeeCommissionItem
+}
+function itemRow(row: { original: unknown }): EmployeeCommissionItem & { commissionRule: string } {
+  return row.original as EmployeeCommissionItem & { commissionRule: string }
+}
+
+const activeColumns = computed(() => activeTab.value === 'items' ? itemColumns : commissionColumns)
+const activeTableData = computed<Record<string, unknown>[]>(() =>
+  activeTab.value === 'items'
+    ? (itemTableRows.value as unknown as Record<string, unknown>[])
+    : (filteredItems.value as unknown as Record<string, unknown>[])
+)
+const activeActionsColumnKey = computed(() => activeTab.value === 'items' ? 'i_actions' : 'c_actions')
+
+const emptyStateByTab: Record<'commissions' | 'items', { icon: string, title: string, description: string }> = {
+  commissions: { icon: 'i-lucide-hand-coins', title: 'Nenhuma comissão encontrada', description: 'Não há comissões registradas para esse funcionário no período selecionado.' },
+  items: { icon: 'i-lucide-package-search', title: 'Nenhum item encontrado', description: 'Não há itens vendidos por esse funcionário no período selecionado.' }
+}
+const activeEmptyState = computed(() => emptyStateByTab[activeTab.value === 'items' ? 'items' : 'commissions'])
 
 const detailOpen = ref(false)
 const detailLoading = ref(false)
@@ -275,32 +296,6 @@ function getCommissionRuleLabel(item: EmployeeCommissionItem) {
   }
 
   return 'Sem regra definida'
-}
-
-function orderStatusLabel(statusValue: string | null | undefined) {
-  const map: Record<string, string> = {
-    open: 'Aberta',
-    in_progress: 'Em andamento',
-    waiting_for_part: 'Aguard. peça',
-    completed: 'Concluída',
-    delivered: 'Entregue',
-    estimate: 'Orçamento',
-    cancelled: 'Cancelada'
-  }
-  return map[String(statusValue || '')] ?? String(statusValue || '—')
-}
-
-function orderStatusColor(statusValue: string | null | undefined): 'success' | 'warning' | 'neutral' | 'info' | 'error' {
-  const map: Record<string, 'success' | 'warning' | 'neutral' | 'info' | 'error'> = {
-    open: 'info',
-    in_progress: 'warning',
-    waiting_for_part: 'warning',
-    completed: 'success',
-    delivered: 'success',
-    estimate: 'neutral',
-    cancelled: 'error'
-  }
-  return map[String(statusValue || '')] ?? 'neutral'
 }
 
 function commissionStatusLabel(statusValue: EmployeeCommissionItem['status']) {
@@ -560,50 +555,203 @@ async function exportReport(format: 'csv' | 'pdf') {
 
           <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div class="rounded-2xl border border-default bg-elevated/50 p-4">
-              <p class="text-sm text-muted">
-                Total de comissões
-              </p>
-              <p class="mt-2 text-2xl font-semibold text-highlighted">
-                {{ formatCurrency(summary.totalCommissions) }}
-              </p>
-              <p class="mt-1 text-xs text-muted">
-                Período {{ periodLabel }}
-              </p>
+              <div class="flex items-start gap-3">
+                <div class="rounded-xl bg-primary/10 p-2 shrink-0">
+                  <UIcon name="i-lucide-hand-coins" class="size-5 text-primary" />
+                </div>
+                <div class="min-w-0">
+                  <p class="text-sm text-muted">
+                    Total de comissões
+                  </p>
+                  <p class="mt-2 text-2xl font-semibold text-highlighted">
+                    {{ formatCurrency(summary.totalCommissions) }}
+                  </p>
+                  <p class="mt-1 text-xs text-muted">
+                    Período {{ periodLabel }}
+                  </p>
+                </div>
+              </div>
             </div>
             <div class="rounded-2xl border border-success/20 bg-success/5 p-4">
-              <p class="text-sm text-muted">
-                Pagas
-              </p>
-              <p class="mt-2 text-2xl font-semibold text-success">
-                {{ formatCurrency(summary.totalPaid) }}
-              </p>
-              <p class="mt-1 text-xs text-muted">
-                {{ summary.paidItemsCount }} item(ns) quitados
-              </p>
+              <div class="flex items-start gap-3">
+                <div class="rounded-xl bg-success/10 p-2 shrink-0">
+                  <UIcon name="i-lucide-circle-check-big" class="size-5 text-success" />
+                </div>
+                <div class="min-w-0">
+                  <p class="text-sm text-muted">
+                    Pagas
+                  </p>
+                  <p class="mt-2 text-2xl font-semibold text-success">
+                    {{ formatCurrency(summary.totalPaid) }}
+                  </p>
+                  <p class="mt-1 text-xs text-muted">
+                    {{ summary.paidItemsCount }} item(ns) quitados
+                  </p>
+                </div>
+              </div>
             </div>
             <div class="rounded-2xl border border-warning/20 bg-warning/5 p-4">
-              <p class="text-sm text-muted">
-                Pendentes
-              </p>
-              <p class="mt-2 text-2xl font-semibold text-warning">
-                {{ formatCurrency(summary.totalPending) }}
-              </p>
-              <p class="mt-1 text-xs text-muted">
-                {{ summary.pendingItemsCount }} item(ns) aguardando pagamento
-              </p>
+              <div class="flex items-start gap-3">
+                <div class="rounded-xl bg-warning/10 p-2 shrink-0">
+                  <UIcon name="i-lucide-clock" class="size-5 text-warning" />
+                </div>
+                <div class="min-w-0">
+                  <p class="text-sm text-muted">
+                    Pendentes
+                  </p>
+                  <p class="mt-2 text-2xl font-semibold text-warning">
+                    {{ formatCurrency(summary.totalPending) }}
+                  </p>
+                  <p class="mt-1 text-xs text-muted">
+                    {{ summary.pendingItemsCount }} item(ns) aguardando pagamento
+                  </p>
+                </div>
+              </div>
             </div>
             <div class="rounded-2xl border border-default bg-elevated/30 p-4">
-              <p class="text-sm text-muted">
-                Cobertura
-              </p>
-              <p class="mt-2 text-2xl font-semibold text-highlighted">
-                {{ summary.orderCount }}
-              </p>
-              <p class="mt-1 text-xs text-muted">
-                OS com {{ summary.itemsCount }} item(ns) comissionados
-              </p>
+              <div class="flex items-start gap-3">
+                <div class="rounded-xl bg-info/10 p-2 shrink-0">
+                  <UIcon name="i-lucide-clipboard-list" class="size-5 text-info" />
+                </div>
+                <div class="min-w-0">
+                  <p class="text-sm text-muted">
+                    Cobertura
+                  </p>
+                  <p class="mt-2 text-2xl font-semibold text-highlighted">
+                    {{ summary.orderCount }}
+                  </p>
+                  <p class="mt-1 text-xs text-muted">
+                    OS com {{ summary.itemsCount }} item(ns) comissionados
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
+
+          <AppDataTableInfinite
+            :key="activeTab"
+            v-model:search-term="searchTerm"
+            :columns="activeColumns"
+            :data="activeTableData"
+            :loading="status === 'pending'"
+            :has-more="false"
+            :total="activeTableData.length"
+            :actions-column-key="activeActionsColumnKey"
+            show-search
+            search-placeholder="Buscar por item, cliente ou OS..."
+            :empty-icon="activeEmptyState.icon"
+            :empty-title="activeEmptyState.title"
+            :empty-description="activeEmptyState.description"
+          >
+            <template #filters>
+              <UTabs
+                v-model="activeTab"
+                :items="tabItems"
+                variant="link"
+                class="w-auto"
+              />
+            </template>
+
+            <template #toolbar-right>
+              <UTooltip :text="`Exportar comissões de ${employee.name}`">
+                <UDropdownMenu
+                  :items="exportItems"
+                  :content="{ align: 'end' }"
+                  :ui="{ content: 'min-w-44' }"
+                >
+                  <UButton
+                    icon="i-lucide-download"
+                    color="neutral"
+                    variant="outline"
+                    size="sm"
+                    square
+                    :loading="exporting !== null"
+                  />
+                </UDropdownMenu>
+              </UTooltip>
+            </template>
+
+            <!-- Comissões -->
+            <template #c_referenceDate-cell="{ row }">
+              {{ formatDate(commissionRow(row).referenceDate) }}
+            </template>
+            <template #c_orderNumber-cell="{ row }">
+              <span v-if="commissionRow(row).orderNumber" class="font-mono text-sm text-muted">#{{ commissionRow(row).orderNumber }}</span>
+              <span v-else class="text-muted">—</span>
+            </template>
+            <template #c_itemName-cell="{ row }">
+              {{ commissionRow(row).itemName || '—' }}
+            </template>
+            <template #c_orderClientName-cell="{ row }">
+              {{ commissionRow(row).orderClientName || '—' }}
+            </template>
+            <template #c_amount-cell="{ row }">
+              <span class="font-bold text-success">{{ formatCurrency(commissionRow(row).amount) }}</span>
+            </template>
+            <template #c_status-cell="{ row }">
+              <UBadge
+                :color="commissionStatusColor(commissionRow(row).status)"
+                variant="subtle"
+                :label="commissionStatusLabel(commissionRow(row).status)"
+                size="sm"
+              />
+            </template>
+            <template #c_paymentDate-cell="{ row }">
+              {{ formatDate(commissionRow(row).paymentDate) }}
+            </template>
+            <template #c_actions-cell="{ row }">
+              <div class="flex items-center justify-end">
+                <UTooltip text="Ver detalhes">
+                  <UButton
+                    icon="i-lucide-eye"
+                    color="neutral"
+                    variant="ghost"
+                    size="xs"
+                    @click="openCommissionDetail(commissionRow(row))"
+                  />
+                </UTooltip>
+              </div>
+            </template>
+
+            <!-- Itens -->
+            <template #i_itemName-cell="{ row }">
+              {{ itemRow(row).itemName || '—' }}
+            </template>
+            <template #i_orderNumber-cell="{ row }">
+              <span v-if="itemRow(row).orderNumber" class="font-mono text-sm text-muted">#{{ itemRow(row).orderNumber }}</span>
+              <span v-else class="text-muted">—</span>
+            </template>
+            <template #i_baseAmount-cell="{ row }">
+              {{ formatCurrency(itemRow(row).baseAmount) }}
+            </template>
+            <template #i_commissionRule-cell="{ row }">
+              <span class="text-sm text-muted">{{ itemRow(row).commissionRule }}</span>
+            </template>
+            <template #i_itemAmount-cell="{ row }">
+              {{ formatCurrency(itemRow(row).itemAmount) }}
+            </template>
+            <template #i_itemProfit-cell="{ row }">
+              <span class="font-bold" :class="itemRow(row).itemProfit >= 0 ? 'text-success' : 'text-error'">
+                {{ formatCurrency(itemRow(row).itemProfit) }}
+              </span>
+            </template>
+            <template #i_amount-cell="{ row }">
+              <span class="font-bold text-success">{{ formatCurrency(itemRow(row).amount) }}</span>
+            </template>
+            <template #i_actions-cell="{ row }">
+              <div class="flex items-center justify-end">
+                <UTooltip text="Ver detalhes">
+                  <UButton
+                    icon="i-lucide-eye"
+                    color="neutral"
+                    variant="ghost"
+                    size="xs"
+                    @click="openCommissionDetail(itemRow(row))"
+                  />
+                </UTooltip>
+              </div>
+            </template>
+          </AppDataTableInfinite>
         </template>
       </div>
     </template>
