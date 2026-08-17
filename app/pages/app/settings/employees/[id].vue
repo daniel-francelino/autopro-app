@@ -39,44 +39,79 @@ interface EmployeeCommissionSummary {
   averageCommission: number
 }
 
-interface EmployeeCommissionItem {
-  id: string
-  description: string | null
-  amount: number
-  status: 'paid' | 'pending' | 'cancelled'
-  referenceDate: string | null
-  paymentDate: string | null
-  itemName: string | null
-  itemAmount: number
-  itemCost: number
-  itemProfit: number
-  commissionType: string | null
-  commissionPercentage: number | null
-  commissionBase: string | null
-  baseAmount: number
-  orderId: string | null
-  orderNumber: string | null
-  orderStatus: string | null
-  orderPaymentStatus: 'paid' | 'pending' | 'cancelled' | null
-  orderEntryDate: string | null
-  orderClientName: string | null
-}
-
 interface EmployeeCommissionResponse {
   data?: {
     employee: EmployeeCommissionProfile
-    summary: EmployeeCommissionSummary
-    items: EmployeeCommissionItem[]
-    period: {
-      dateFrom: string | null
-      dateTo: string | null
-    }
   }
 }
 
 interface CommissionDetailResponse {
   data?: {
     detail?: CommissionDetailData
+  }
+}
+
+// ─── OS trabalhadas / Comissões / Itens vendidos (mesmo endpoint e formato do
+// Relatório de Funcionários — server/utils/employee-report.ts) ─────────────
+
+type BadgeColor = 'neutral' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error'
+type ViewMode = 'orders' | 'commissions' | 'items'
+
+interface EmployeeOrderRow {
+  id: string
+  number: string
+  entryDate: string | null
+  clientName: string
+  status: string | null
+  paymentStatus: 'paid' | 'pending' | 'cancelled' | null
+  totalAmount: number
+  totalCostAmount: number
+  employeeCommission: number
+  netAmount: number
+}
+
+interface EmployeeCommissionRow {
+  id: string
+  referenceDate: string | null
+  description: string | null
+  orderId: string | null
+  orderNumber: string | null
+  orderStatus: string | null
+  orderPaymentStatus: 'paid' | 'pending' | 'cancelled' | null
+  amount: number
+  status: 'paid' | 'pending' | 'cancelled'
+  recordType: string | null
+}
+
+interface EmployeeItemRow {
+  id: string
+  orderId: string
+  orderNumber: string
+  date: string | null
+  itemDescription: string
+  categoryName: string
+  quantity: number
+  totalValue: number
+  totalCost: number
+  commissionCost: number
+  profit: number
+}
+
+interface EmployeeReportSummary {
+  grossSales: number
+  osExpenses: number
+  totalCommissions: number
+  otherEmployeesCommissions: number
+  netSales: number
+  orderCount: number
+}
+
+interface EmployeeReportResponse {
+  data?: {
+    summary?: EmployeeReportSummary | null
+    ordersView?: EmployeeOrderRow[]
+    commissionsView?: EmployeeCommissionRow[]
+    itemsView?: EmployeeItemRow[]
   }
 }
 
@@ -104,13 +139,7 @@ const canRead = computed(() => workshop.can(ActionCode.EMPLOYEES_READ))
 const employeeId = computed(() => String(route.params.id || ''))
 const dateFrom = useReportQueryParam('from', defaultFrom())
 const dateTo = useReportQueryParam('to', defaultTo())
-const activeTab = useReportQueryParam('tab', 'commissions')
-const searchTerm = ref('')
-
-const tabItems = [
-  { label: 'Comissões', value: 'commissions', icon: 'i-lucide-hand-coins' },
-  { label: 'Itens', value: 'items', icon: 'i-lucide-package-search' }
-]
+const activeTab = useReportQueryParam('tab', 'orders' as ViewMode)
 
 const queryKey = computed(() => `employee-commission-detail-${employeeId.value}-${dateFrom.value}-${dateTo.value}`)
 
@@ -130,31 +159,138 @@ const { data, status, error, refresh } = await useAsyncData(
 )
 
 const employee = computed(() => data.value?.data?.employee ?? null)
-const summary = computed<EmployeeCommissionSummary>(() => data.value?.data?.summary ?? {
-  totalCommissions: 0,
-  totalPaid: 0,
-  totalPending: 0,
-  itemsCount: 0,
-  paidItemsCount: 0,
-  pendingItemsCount: 0,
-  orderCount: 0,
-  averageCommission: 0
-})
-const items = computed<EmployeeCommissionItem[]>(() => data.value?.data?.items ?? [])
 
-const normalizedSearch = computed(() => searchTerm.value.trim().toLowerCase())
-const filteredItems = computed(() => {
-  if (!normalizedSearch.value)
-    return items.value
+// Segunda busca: OS trabalhadas / Comissões / Itens vendidos, mesmo endpoint
+// usado pelo Relatório de Funcionários (server/utils/employee-report.ts) —
+// os dados de perfil (foto, telefone, endereço) só existem na busca acima,
+// por isso as duas convivem na mesma tela.
+const reportQueryKey = computed(() => `employee-detail-report-${employeeId.value}-${dateFrom.value}-${dateTo.value}`)
 
-  return items.value.filter(item => [
-    item.itemName,
-    item.description,
-    item.orderNumber,
-    item.orderClientName,
-    item.referenceDate
-  ].some(value => String(value || '').toLowerCase().includes(normalizedSearch.value)))
+const { data: reportData, status: reportStatus } = await useAsyncData(
+  () => reportQueryKey.value,
+  () => requestFetch<EmployeeReportResponse>('/api/reports/employees', {
+    headers: requestHeaders,
+    query: {
+      employeeId: employeeId.value,
+      dateFrom: dateFrom.value,
+      dateTo: dateTo.value
+    }
+  }),
+  { watch: [reportQueryKey] }
+)
+
+const reportSummary = computed(() => reportData.value?.data?.summary ?? null)
+const ordersView = computed(() => reportData.value?.data?.ordersView ?? [])
+const commissionsView = computed(() => reportData.value?.data?.commissionsView ?? [])
+const itemsView = computed(() => reportData.value?.data?.itemsView ?? [])
+const isTableLoading = computed(() => reportStatus.value === 'pending')
+
+// Cards de resumo (Total/Pagas/Pendentes/Cobertura) — derivados da aba
+// Comissões, para refletir exatamente o que está na tabela abaixo.
+const summary = computed<EmployeeCommissionSummary>(() => {
+  const rows = commissionsView.value
+  const paidRows = rows.filter(row => row.status === 'paid')
+  const pendingRows = rows.filter(row => row.status === 'pending')
+  const totalPaid = paidRows.reduce((sum, row) => sum + row.amount, 0)
+  const totalPending = pendingRows.reduce((sum, row) => sum + row.amount, 0)
+  const totalCommissions = reportSummary.value?.totalCommissions ?? rows.reduce((sum, row) => sum + row.amount, 0)
+  const orderIds = new Set(rows.map(row => row.orderId).filter((id): id is string => Boolean(id)))
+
+  return {
+    totalCommissions,
+    totalPaid,
+    totalPending,
+    itemsCount: rows.length,
+    paidItemsCount: paidRows.length,
+    pendingItemsCount: pendingRows.length,
+    orderCount: orderIds.size,
+    averageCommission: rows.length > 0 ? totalCommissions / rows.length : 0
+  }
 })
+
+const viewItems = [
+  { label: 'OS trabalhadas', value: 'orders' as const, icon: 'i-lucide-clipboard-list' },
+  { label: 'Comissões', value: 'commissions' as const, icon: 'i-lucide-hand-coins' },
+  { label: 'Itens vendidos', value: 'items' as const, icon: 'i-lucide-package-search' }
+]
+
+// Cada coluna recebe um `id` prefixado por aba (o Vue não permite dois blocos
+// <template #slot> com o mesmo nome no mesmo elemento, mesmo que só um esteja
+// ativo por vez via aba, então as 3 abas não podem compartilhar nomes de slot
+// como "orderNumber").
+const columnsByView: Record<ViewMode, { accessorKey?: string, id: string, header: string }[]> = {
+  orders: [
+    { id: 'o_number', accessorKey: 'number', header: 'OS' },
+    { id: 'o_entryDate', accessorKey: 'entryDate', header: 'Entrada' },
+    { id: 'o_clientName', accessorKey: 'clientName', header: 'Cliente' },
+    { id: 'o_status', header: 'Status' },
+    { id: 'o_payment', header: 'Pagamento' },
+    { id: 'o_totalAmount', accessorKey: 'totalAmount', header: 'Venda bruta' },
+    { id: 'o_totalCostAmount', accessorKey: 'totalCostAmount', header: 'Despesas' },
+    { id: 'o_employeeCommission', accessorKey: 'employeeCommission', header: 'Comissão' },
+    { id: 'o_netAmount', accessorKey: 'netAmount', header: 'Líquido' }
+  ],
+  commissions: [
+    { id: 'c_referenceDate', accessorKey: 'referenceDate', header: 'Referência' },
+    { id: 'c_orderNumber', accessorKey: 'orderNumber', header: 'OS' },
+    { id: 'c_description', accessorKey: 'description', header: 'Descrição' },
+    { id: 'c_orderStatus', header: 'Status OS' },
+    { id: 'c_orderPayment', header: 'Pagamento OS' },
+    { id: 'c_amount', accessorKey: 'amount', header: 'Valor' },
+    { id: 'c_status', header: 'Status comissão' },
+    { id: 'c_actions', header: '' }
+  ],
+  items: [
+    { id: 'i_orderNumber', accessorKey: 'orderNumber', header: 'OS' },
+    { id: 'i_date', accessorKey: 'date', header: 'Data' },
+    { id: 'i_itemDescription', accessorKey: 'itemDescription', header: 'Item' },
+    { id: 'i_categoryName', accessorKey: 'categoryName', header: 'Categoria' },
+    { id: 'i_quantity', accessorKey: 'quantity', header: 'Qtd' },
+    { id: 'i_totalValue', accessorKey: 'totalValue', header: 'Valor' },
+    { id: 'i_totalCost', accessorKey: 'totalCost', header: 'Custo' },
+    { id: 'i_commissionCost', accessorKey: 'commissionCost', header: 'Comissão' },
+    { id: 'i_profit', accessorKey: 'profit', header: 'Líquido' }
+  ]
+}
+
+const columns = computed(() => columnsByView[activeTab.value as ViewMode])
+
+const activeData = computed<Record<string, unknown>[]>(() => {
+  if (activeTab.value === 'commissions') return commissionsView.value as unknown as Record<string, unknown>[]
+  if (activeTab.value === 'items') return itemsView.value as unknown as Record<string, unknown>[]
+  return ordersView.value as unknown as Record<string, unknown>[]
+})
+
+const emptyStateByView: Record<ViewMode, { icon: string, title: string, description: string }> = {
+  orders: { icon: 'i-lucide-clipboard-list', title: 'Nenhuma OS encontrada', description: 'Não há ordens de serviço para esse funcionário no período selecionado.' },
+  commissions: { icon: 'i-lucide-hand-coins', title: 'Nenhuma comissão encontrada', description: 'Não há comissões registradas para esse funcionário no período selecionado.' },
+  items: { icon: 'i-lucide-package-search', title: 'Nenhum item encontrado', description: 'Não há itens vendidos por esse funcionário no período selecionado.' }
+}
+const emptyState = computed(() => emptyStateByView[activeTab.value as ViewMode])
+
+// Status maps
+const orderStatusColorMap: Record<string, BadgeColor> = {
+  open: 'info', in_progress: 'warning', waiting_for_part: 'warning',
+  completed: 'success', invoiced: 'primary', delivered: 'success', estimate: 'neutral'
+}
+const orderStatusLabelMap: Record<string, string> = {
+  open: 'Aberta', in_progress: 'Em andamento', waiting_for_part: 'Aguard. peça',
+  completed: 'Concluída', invoiced: 'Faturada', delivered: 'Entregue', estimate: 'Orçamento'
+}
+const paymentStatusColorMap: Record<string, BadgeColor> = { pending: 'warning', paid: 'success', partial: 'info' }
+const paymentStatusLabelMap: Record<string, string> = { pending: 'Pendente', paid: 'Pago', partial: 'Parcial' }
+const commissionStatusColorMap: Record<string, BadgeColor> = { pending: 'warning', paid: 'success', cancelled: 'error' }
+const commissionStatusLabelMap: Record<string, string> = { pending: 'Pendente', paid: 'Pago', cancelled: 'Cancelado' }
+
+function orderRow(row: { original: unknown }): EmployeeOrderRow {
+  return row.original as EmployeeOrderRow
+}
+function commissionRow(row: { original: unknown }): EmployeeCommissionRow {
+  return row.original as EmployeeCommissionRow
+}
+function itemRow(row: { original: unknown }): EmployeeItemRow {
+  return row.original as EmployeeItemRow
+}
 
 const employeeStatus = computed<{ label: string, color: 'success' | 'warning' | 'neutral' }>(() => {
   if (!employee.value?.terminationDate)
@@ -173,64 +309,16 @@ const exportItems = computed(() => [[
   {
     label: 'Exportar CSV',
     icon: 'i-lucide-file-spreadsheet',
-    disabled: exporting.value !== null,
+    disabled: exporting.value !== null || activeData.value.length === 0,
     onSelect: () => exportReport('csv')
   },
   {
     label: 'Exportar PDF',
     icon: 'i-lucide-file-text',
-    disabled: exporting.value !== null,
+    disabled: exporting.value !== null || activeData.value.length === 0,
     onSelect: () => exportReport('pdf')
   }
 ]])
-
-const commissionColumns = [
-  { id: 'c_referenceDate', accessorKey: 'referenceDate', header: 'Referência', enableSorting: false },
-  { id: 'c_orderNumber', accessorKey: 'orderNumber', header: 'OS', enableSorting: false },
-  { id: 'c_itemName', accessorKey: 'itemName', header: 'Item', enableSorting: false },
-  { id: 'c_orderClientName', accessorKey: 'orderClientName', header: 'Cliente', enableSorting: false },
-  { id: 'c_amount', accessorKey: 'amount', header: 'Comissão', enableSorting: false },
-  { id: 'c_status', header: 'Status', enableSorting: false },
-  { id: 'c_paymentDate', accessorKey: 'paymentDate', header: 'Pago em', enableSorting: false },
-  { id: 'c_actions', header: '', enableSorting: false }
-]
-
-const itemColumns = [
-  { id: 'i_itemName', accessorKey: 'itemName', header: 'Item', enableSorting: false },
-  { id: 'i_orderNumber', accessorKey: 'orderNumber', header: 'OS', enableSorting: false },
-  { id: 'i_baseAmount', accessorKey: 'baseAmount', header: 'Base', enableSorting: false },
-  { id: 'i_commissionRule', accessorKey: 'commissionRule', header: 'Regra', enableSorting: false },
-  { id: 'i_itemAmount', accessorKey: 'itemAmount', header: 'Receita', enableSorting: false },
-  { id: 'i_itemProfit', accessorKey: 'itemProfit', header: 'Lucro', enableSorting: false },
-  { id: 'i_amount', accessorKey: 'amount', header: 'Comissão', enableSorting: false },
-  { id: 'i_actions', header: '', enableSorting: false }
-]
-
-const itemTableRows = computed(() => filteredItems.value.map(item => ({
-  ...item,
-  commissionRule: getCommissionRuleLabel(item)
-})))
-
-function commissionRow(row: { original: unknown }): EmployeeCommissionItem {
-  return row.original as EmployeeCommissionItem
-}
-function itemRow(row: { original: unknown }): EmployeeCommissionItem & { commissionRule: string } {
-  return row.original as EmployeeCommissionItem & { commissionRule: string }
-}
-
-const activeColumns = computed(() => activeTab.value === 'items' ? itemColumns : commissionColumns)
-const activeTableData = computed<Record<string, unknown>[]>(() =>
-  activeTab.value === 'items'
-    ? (itemTableRows.value as unknown as Record<string, unknown>[])
-    : (filteredItems.value as unknown as Record<string, unknown>[])
-)
-const activeActionsColumnKey = computed(() => activeTab.value === 'items' ? 'i_actions' : 'c_actions')
-
-const emptyStateByTab: Record<'commissions' | 'items', { icon: string, title: string, description: string }> = {
-  commissions: { icon: 'i-lucide-hand-coins', title: 'Nenhuma comissão encontrada', description: 'Não há comissões registradas para esse funcionário no período selecionado.' },
-  items: { icon: 'i-lucide-package-search', title: 'Nenhum item encontrado', description: 'Não há itens vendidos por esse funcionário no período selecionado.' }
-}
-const activeEmptyState = computed(() => emptyStateByTab[activeTab.value === 'items' ? 'items' : 'commissions'])
 
 const detailOpen = ref(false)
 const detailLoading = ref(false)
@@ -286,30 +374,6 @@ function formatCommissionBase(value: string | null | undefined) {
   return '—'
 }
 
-function getCommissionRuleLabel(item: EmployeeCommissionItem) {
-  if (item.commissionType === 'percentage') {
-    return `${item.commissionPercentage ?? 0}% sobre ${item.commissionBase === 'profit' ? 'lucro' : 'receita'}`
-  }
-
-  if (item.commissionType === 'fixed_amount') {
-    return `${formatCurrency(item.commissionPercentage ?? employee.value?.commissionAmount ?? 0)} por item`
-  }
-
-  return 'Sem regra definida'
-}
-
-function commissionStatusLabel(statusValue: EmployeeCommissionItem['status']) {
-  if (statusValue === 'paid') return 'Pago'
-  if (statusValue === 'cancelled') return 'Cancelado'
-  return 'Pendente'
-}
-
-function commissionStatusColor(statusValue: EmployeeCommissionItem['status']): 'success' | 'warning' | 'neutral' | 'error' {
-  if (statusValue === 'paid') return 'success'
-  if (statusValue === 'cancelled') return 'error'
-  return 'warning'
-}
-
 function buildAddress(profile: EmployeeCommissionProfile | null) {
   if (!profile) return 'Endereço não informado'
 
@@ -324,13 +388,13 @@ function buildAddress(profile: EmployeeCommissionProfile | null) {
   return line || 'Endereço não informado'
 }
 
-async function openCommissionDetail(item: EmployeeCommissionItem) {
+async function openCommissionDetail(row: EmployeeCommissionRow) {
   detailOpen.value = true
   detailLoading.value = true
   detailData.value = null
 
   try {
-    const response = await $fetch<CommissionDetailResponse>(`/api/reports/commissions/${item.id}`)
+    const response = await $fetch<CommissionDetailResponse>(`/api/reports/commissions/${row.id}`)
     if (!response.data?.detail)
       throw new Error('Commission detail not found')
 
@@ -347,11 +411,13 @@ async function exportReport(format: 'csv' | 'pdf') {
   exporting.value = format
   try {
     const response = await $fetch<{ success: boolean, data: { fileName: string, contentType: string, base64: string } }>(
-      `/api/employees/${employeeId.value}/export-commissions`,
+      '/api/reports/export-employees',
       {
         method: 'POST',
         body: {
           format,
+          view: activeTab.value,
+          employeeId: employeeId.value,
           dateFrom: dateFrom.value,
           dateTo: dateTo.value
         }
@@ -371,7 +437,7 @@ async function exportReport(format: 'csv' | 'pdf') {
       URL.revokeObjectURL(url)
     }
   } catch {
-    toast.add({ title: 'Erro ao exportar comissões do funcionário', color: 'error' })
+    toast.add({ title: 'Erro ao exportar relatório do funcionário', color: 'error' })
   } finally {
     exporting.value = null
   }
@@ -553,6 +619,14 @@ async function exportReport(format: 'csv' | 'pdf') {
             </div>
           </div>
 
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2 text-muted">
+              <UIcon name="i-lucide-calendar-range" class="size-4" />
+              <span class="text-sm font-medium">Período</span>
+            </div>
+            <UiDateRangePicker v-model:from="dateFrom" v-model:to="dateTo" class="w-auto" />
+          </div>
+
           <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div class="rounded-2xl border border-default bg-elevated/50 p-4">
               <div class="flex items-start gap-3">
@@ -628,47 +702,83 @@ async function exportReport(format: 'csv' | 'pdf') {
             </div>
           </div>
 
+          <div class="flex items-center justify-between gap-3">
+            <UTabs
+              v-model="activeTab"
+              :items="viewItems"
+              variant="link"
+              class="w-auto"
+            />
+
+            <UTooltip :text="`Exportar relatório de ${employee.name}`">
+              <UDropdownMenu
+                :items="exportItems"
+                :content="{ align: 'end' }"
+                :ui="{ content: 'min-w-44' }"
+              >
+                <UButton
+                  icon="i-lucide-download"
+                  color="neutral"
+                  variant="outline"
+                  size="sm"
+                  square
+                  :loading="exporting !== null"
+                />
+              </UDropdownMenu>
+            </UTooltip>
+          </div>
+
           <AppDataTableInfinite
             :key="activeTab"
-            v-model:search-term="searchTerm"
-            :columns="activeColumns"
-            :data="activeTableData"
-            :loading="status === 'pending'"
+            :columns="columns"
+            :data="activeData"
+            :loading="isTableLoading"
             :has-more="false"
-            :total="activeTableData.length"
-            :actions-column-key="activeActionsColumnKey"
-            show-search
-            search-placeholder="Buscar por item, cliente ou OS..."
-            :empty-icon="activeEmptyState.icon"
-            :empty-title="activeEmptyState.title"
-            :empty-description="activeEmptyState.description"
+            :total="activeData.length"
+            :empty-icon="emptyState.icon"
+            :empty-title="emptyState.title"
+            :empty-description="emptyState.description"
           >
-            <template #filters>
-              <UTabs
-                v-model="activeTab"
-                :items="tabItems"
-                variant="link"
-                class="w-auto"
-              />
+            <!-- OS trabalhadas -->
+            <template #o_number-cell="{ row }">
+              <span class="font-mono text-sm text-muted">#{{ orderRow(row).number }}</span>
             </template>
-
-            <template #toolbar-right>
-              <UTooltip :text="`Exportar comissões de ${employee.name}`">
-                <UDropdownMenu
-                  :items="exportItems"
-                  :content="{ align: 'end' }"
-                  :ui="{ content: 'min-w-44' }"
-                >
-                  <UButton
-                    icon="i-lucide-download"
-                    color="neutral"
-                    variant="outline"
-                    size="sm"
-                    square
-                    :loading="exporting !== null"
-                  />
-                </UDropdownMenu>
-              </UTooltip>
+            <template #o_entryDate-cell="{ row }">
+              {{ formatDate(orderRow(row).entryDate) }}
+            </template>
+            <template #o_status-cell="{ row }">
+              <UBadge
+                v-if="orderRow(row).status"
+                :color="orderStatusColorMap[orderRow(row).status || ''] ?? 'neutral'"
+                variant="subtle"
+                :label="orderStatusLabelMap[orderRow(row).status || ''] ?? String(orderRow(row).status)"
+                size="sm"
+              />
+              <span v-else class="text-sm text-muted">—</span>
+            </template>
+            <template #o_payment-cell="{ row }">
+              <UBadge
+                v-if="orderRow(row).paymentStatus"
+                :color="paymentStatusColorMap[orderRow(row).paymentStatus || ''] ?? 'neutral'"
+                variant="subtle"
+                :label="paymentStatusLabelMap[orderRow(row).paymentStatus || ''] ?? String(orderRow(row).paymentStatus)"
+                size="sm"
+              />
+              <span v-else class="text-sm text-muted">—</span>
+            </template>
+            <template #o_totalAmount-cell="{ row }">
+              {{ formatCurrency(orderRow(row).totalAmount) }}
+            </template>
+            <template #o_totalCostAmount-cell="{ row }">
+              <span class="text-error">{{ formatCurrency(orderRow(row).totalCostAmount) }}</span>
+            </template>
+            <template #o_employeeCommission-cell="{ row }">
+              <span class="text-warning">{{ formatCurrency(orderRow(row).employeeCommission) }}</span>
+            </template>
+            <template #o_netAmount-cell="{ row }">
+              <span class="font-bold" :class="orderRow(row).netAmount >= 0 ? 'text-success' : 'text-error'">
+                {{ formatCurrency(orderRow(row).netAmount) }}
+              </span>
             </template>
 
             <!-- Comissões -->
@@ -676,28 +786,41 @@ async function exportReport(format: 'csv' | 'pdf') {
               {{ formatDate(commissionRow(row).referenceDate) }}
             </template>
             <template #c_orderNumber-cell="{ row }">
-              <span v-if="commissionRow(row).orderNumber" class="font-mono text-sm text-muted">#{{ commissionRow(row).orderNumber }}</span>
+              <span v-if="commissionRow(row).orderNumber" class="font-mono text-sm text-muted">
+                #{{ commissionRow(row).orderNumber }}
+              </span>
               <span v-else class="text-muted">—</span>
             </template>
-            <template #c_itemName-cell="{ row }">
-              {{ commissionRow(row).itemName || '—' }}
+            <template #c_orderStatus-cell="{ row }">
+              <UBadge
+                v-if="commissionRow(row).orderStatus"
+                :color="orderStatusColorMap[commissionRow(row).orderStatus || ''] ?? 'neutral'"
+                variant="subtle"
+                :label="orderStatusLabelMap[commissionRow(row).orderStatus || ''] ?? String(commissionRow(row).orderStatus)"
+                size="sm"
+              />
+              <span v-else class="text-sm text-muted">—</span>
             </template>
-            <template #c_orderClientName-cell="{ row }">
-              {{ commissionRow(row).orderClientName || '—' }}
+            <template #c_orderPayment-cell="{ row }">
+              <UBadge
+                v-if="commissionRow(row).orderPaymentStatus"
+                :color="paymentStatusColorMap[commissionRow(row).orderPaymentStatus || ''] ?? 'neutral'"
+                variant="subtle"
+                :label="paymentStatusLabelMap[commissionRow(row).orderPaymentStatus || ''] ?? String(commissionRow(row).orderPaymentStatus)"
+                size="sm"
+              />
+              <span v-else class="text-sm text-muted">—</span>
             </template>
             <template #c_amount-cell="{ row }">
               <span class="font-bold text-success">{{ formatCurrency(commissionRow(row).amount) }}</span>
             </template>
             <template #c_status-cell="{ row }">
               <UBadge
-                :color="commissionStatusColor(commissionRow(row).status)"
+                :color="commissionStatusColorMap[commissionRow(row).status] ?? 'neutral'"
                 variant="subtle"
-                :label="commissionStatusLabel(commissionRow(row).status)"
+                :label="commissionStatusLabelMap[commissionRow(row).status] ?? String(commissionRow(row).status)"
                 size="sm"
               />
-            </template>
-            <template #c_paymentDate-cell="{ row }">
-              {{ formatDate(commissionRow(row).paymentDate) }}
             </template>
             <template #c_actions-cell="{ row }">
               <div class="flex items-center justify-end">
@@ -713,43 +836,26 @@ async function exportReport(format: 'csv' | 'pdf') {
               </div>
             </template>
 
-            <!-- Itens -->
-            <template #i_itemName-cell="{ row }">
-              {{ itemRow(row).itemName || '—' }}
-            </template>
+            <!-- Itens vendidos -->
             <template #i_orderNumber-cell="{ row }">
-              <span v-if="itemRow(row).orderNumber" class="font-mono text-sm text-muted">#{{ itemRow(row).orderNumber }}</span>
-              <span v-else class="text-muted">—</span>
+              <span class="font-mono text-sm text-muted">#{{ itemRow(row).orderNumber }}</span>
             </template>
-            <template #i_baseAmount-cell="{ row }">
-              {{ formatCurrency(itemRow(row).baseAmount) }}
+            <template #i_date-cell="{ row }">
+              {{ formatDate(itemRow(row).date) }}
             </template>
-            <template #i_commissionRule-cell="{ row }">
-              <span class="text-sm text-muted">{{ itemRow(row).commissionRule }}</span>
+            <template #i_totalValue-cell="{ row }">
+              {{ formatCurrency(itemRow(row).totalValue) }}
             </template>
-            <template #i_itemAmount-cell="{ row }">
-              {{ formatCurrency(itemRow(row).itemAmount) }}
+            <template #i_totalCost-cell="{ row }">
+              <span class="text-error">{{ formatCurrency(itemRow(row).totalCost) }}</span>
             </template>
-            <template #i_itemProfit-cell="{ row }">
-              <span class="font-bold" :class="itemRow(row).itemProfit >= 0 ? 'text-success' : 'text-error'">
-                {{ formatCurrency(itemRow(row).itemProfit) }}
+            <template #i_commissionCost-cell="{ row }">
+              <span class="text-warning">{{ formatCurrency(itemRow(row).commissionCost) }}</span>
+            </template>
+            <template #i_profit-cell="{ row }">
+              <span class="font-bold" :class="itemRow(row).profit >= 0 ? 'text-success' : 'text-error'">
+                {{ formatCurrency(itemRow(row).profit) }}
               </span>
-            </template>
-            <template #i_amount-cell="{ row }">
-              <span class="font-bold text-success">{{ formatCurrency(itemRow(row).amount) }}</span>
-            </template>
-            <template #i_actions-cell="{ row }">
-              <div class="flex items-center justify-end">
-                <UTooltip text="Ver detalhes">
-                  <UButton
-                    icon="i-lucide-eye"
-                    color="neutral"
-                    variant="ghost"
-                    size="xs"
-                    @click="openCommissionDetail(itemRow(row))"
-                  />
-                </UTooltip>
-              </div>
             </template>
           </AppDataTableInfinite>
         </template>
