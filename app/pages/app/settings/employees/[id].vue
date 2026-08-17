@@ -523,28 +523,28 @@ async function exportReport(format: 'csv' | 'pdf') {
                     </p>
                   </div>
 
-                  <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                    <div class="rounded-2xl border border-default/70 bg-default/40 p-3">
+                  <div class="grid grid-cols-[repeat(auto-fit,minmax(9rem,1fr))] gap-3">
+                    <div class="min-w-0 rounded-2xl border border-default/70 bg-default/40 p-3">
                       <p class="text-xs uppercase tracking-widest text-muted">
                         Cargo
                       </p>
-                      <p class="mt-1 text-sm font-medium text-highlighted">
+                      <p class="mt-1 truncate text-sm font-medium text-highlighted">
                         {{ employee.role || 'Não informado' }}
                       </p>
                     </div>
-                    <div class="rounded-2xl border border-default/70 bg-default/40 p-3">
+                    <div class="min-w-0 rounded-2xl border border-default/70 bg-default/40 p-3">
                       <p class="text-xs uppercase tracking-widest text-muted">
                         Telefone
                       </p>
-                      <p class="mt-1 text-sm font-medium text-highlighted">
+                      <p class="mt-1 truncate text-sm font-medium text-highlighted">
                         {{ formatPhone(employee.phone) }}
                       </p>
                     </div>
-                    <div class="rounded-2xl border border-default/70 bg-default/40 p-3">
+                    <div class="min-w-0 rounded-2xl border border-default/70 bg-default/40 p-3">
                       <p class="text-xs uppercase tracking-widest text-muted">
                         Documento
                       </p>
-                      <p class="mt-1 text-sm font-medium text-highlighted">
+                      <p class="mt-1 truncate text-sm font-medium text-highlighted">
                         {{ formatTaxId(employee.taxId, employee.personType) }}
                       </p>
                     </div>
@@ -702,7 +702,7 @@ async function exportReport(format: 'csv' | 'pdf') {
             </div>
           </div>
 
-          <div class="flex items-center justify-between gap-3">
+          <div class="flex flex-wrap items-center justify-between gap-3">
             <UTabs
               v-model="activeTab"
               :items="viewItems"
