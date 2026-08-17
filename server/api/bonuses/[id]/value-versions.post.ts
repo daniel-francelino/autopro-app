@@ -9,10 +9,8 @@ const validCommissionBases = ['revenue', 'profit', 'revenue_minus_parts', 'emplo
 
 /**
  * POST /api/bonuses/:id/value-versions
- * Appends a new value version — editing a bonus's value NEVER updates an
- * existing row (see docs/employee-bonus-feature-design.md §4.2). The
- * unique(bonus_id, effective_from) constraint rejects a second version
- * starting the same month.
+ * Creates a new value version for a month. If this bonus already has a version
+ * starting in the same month, replace that row instead of creating a duplicate.
  */
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
@@ -48,25 +46,45 @@ export default defineEventHandler(async (event) => {
     ? body.effectiveFrom.trim()
     : currentMonthStart()
 
+  const payload = {
+    bonus_id: bonusId,
+    commission_base: body.commissionBase,
+    goal_amount: goalAmount,
+    bonus_amount: bonusAmount,
+    effective_from: effectiveFrom,
+    created_by: authUser.email
+  }
+
   const { data, error } = await supabase
     .from('bonus_value_versions')
-    .insert({
-      bonus_id: bonusId,
-      commission_base: body.commissionBase,
-      goal_amount: goalAmount,
-      bonus_amount: bonusAmount,
-      effective_from: effectiveFrom,
-      created_by: authUser.email
-    })
+    .insert(payload)
     .select()
     .single()
 
-  if (error) {
-    if (String(error.code) === '23505') {
-      throw createError({ statusCode: 409, statusMessage: 'Já existe um valor cadastrado a partir desse mês para este bônus.' })
-    }
+  if (!error) {
+    return { item: data }
+  }
+
+  if (String(error.code) !== '23505') {
     throw createError({ statusCode: 500, statusMessage: `Failed to create bonus value version: ${error.message}` })
   }
 
-  return { item: data }
+  const { data: updated, error: updateError } = await supabase
+    .from('bonus_value_versions')
+    .update({
+      commission_base: payload.commission_base,
+      goal_amount: payload.goal_amount,
+      bonus_amount: payload.bonus_amount,
+      created_by: payload.created_by
+    })
+    .eq('bonus_id', bonusId)
+    .eq('effective_from', effectiveFrom)
+    .select()
+    .single()
+
+  if (updateError || !updated) {
+    throw createError({ statusCode: 500, statusMessage: `Failed to update bonus value version: ${updateError?.message}` })
+  }
+
+  return { item: updated }
 })
