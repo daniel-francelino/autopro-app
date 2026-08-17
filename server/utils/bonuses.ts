@@ -12,7 +12,7 @@ import type { SupabaseClientLike } from './supabase-pagination'
 import { fetchAllOrganizationRows } from './supabase-pagination'
 import { roundMoney, toNumber } from './report-helpers'
 
-export type CommissionBase = 'revenue' | 'profit'
+export type CommissionBase = 'revenue' | 'profit' | 'revenue_minus_parts' | 'employee_net_profit'
 
 export interface BonusRecord {
   id: string
@@ -64,6 +64,12 @@ interface ServiceOrderForBonus {
   entry_date?: string | null
   total_amount?: number | string | null
   total_cost_amount?: number | string | null
+}
+
+export interface BonusCommissionRecord {
+  employee_id?: string | null
+  service_order_id?: string | null
+  amount?: number | string | null
 }
 
 /** Always the 1st of the month, e.g. "2026-03-01". */
@@ -121,7 +127,8 @@ export function sumAchievedAmount(
   orders: ServiceOrderForBonus[],
   employeeId: string,
   referenceMonth: string,
-  commissionBase: CommissionBase
+  commissionBase: CommissionBase,
+  commissionRecords: BonusCommissionRecord[] = []
 ): number {
   const { start, end } = monthDateRange(referenceMonth)
 
@@ -133,8 +140,20 @@ export function sumAchievedAmount(
     if (entryDate < start || entryDate > end) return sum
 
     const gross = toNumber(order?.total_amount, 0)
-    if (commissionBase === 'profit') {
-      return sum + (gross - toNumber(order?.total_cost_amount, 0))
+    const partsCost = toNumber(order?.total_cost_amount, 0)
+    const employeeCommission = commissionRecords
+      .filter(record =>
+        String(record?.employee_id || '') === employeeId
+        && String(record?.service_order_id || '') === String(order?.id || '')
+      )
+      .reduce((recordSum, record) => recordSum + toNumber(record?.amount, 0), 0)
+
+    if (commissionBase === 'profit' || commissionBase === 'revenue_minus_parts') {
+      return sum + (gross - partsCost)
+    }
+
+    if (commissionBase === 'employee_net_profit') {
+      return sum + (gross - partsCost - employeeCommission)
     }
     return sum + gross
   }, 0)
@@ -151,6 +170,19 @@ export async function fetchOrdersForBonusProgress(
     organizationId,
     columns: 'id, status, employee_responsible_id, responsible_employees, entry_date, total_amount, total_cost_amount',
     nullColumns: ['deleted_at']
+  })
+}
+
+export async function fetchCommissionRecordsForBonusProgress(
+  supabase: SupabaseClientLike,
+  organizationId: string
+): Promise<BonusCommissionRecord[]> {
+  return fetchAllOrganizationRows<BonusCommissionRecord>(supabase, {
+    table: 'employee_financial_records',
+    organizationId,
+    columns: 'employee_id, service_order_id, amount',
+    nullColumns: ['deleted_at'],
+    eq: { record_type: 'commission' }
   })
 }
 

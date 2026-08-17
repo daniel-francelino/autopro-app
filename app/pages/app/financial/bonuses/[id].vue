@@ -3,7 +3,7 @@ import { ActionCode } from '~/constants/action-codes'
 
 definePageMeta({ layout: 'app' })
 
-type CommissionBase = 'revenue' | 'profit'
+type CommissionBase = 'revenue' | 'profit' | 'revenue_minus_parts' | 'employee_net_profit'
 
 interface BonusValueHistoryEntry {
   id: string
@@ -122,7 +122,12 @@ function formatMonthLabel(monthValue: string) {
   return label.charAt(0).toUpperCase() + label.slice(1)
 }
 
-const commissionBaseLabel: Record<CommissionBase, string> = { revenue: 'Faturamento', profit: 'Lucro' }
+const commissionBaseLabel: Record<CommissionBase, string> = {
+  revenue: 'Faturamento',
+  profit: 'Lucro',
+  revenue_minus_parts: 'Faturamento - pecas',
+  employee_net_profit: 'Lucro liquido funcionario'
+}
 
 function retryLoad() {
   return refresh()

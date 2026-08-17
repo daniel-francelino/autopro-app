@@ -5,6 +5,8 @@ import { requireOrgPermission } from '../../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../../utils/organization'
 import { fetchBonus, currentMonthStart } from '../../../utils/bonuses'
 
+const validCommissionBases = ['revenue', 'profit', 'revenue_minus_parts', 'employee_net_profit']
+
 /**
  * POST /api/bonuses/:id/value-versions
  * Appends a new value version — editing a bonus's value NEVER updates an
@@ -30,8 +32,8 @@ export default defineEventHandler(async (event) => {
 
   const body = await readBody(event)
 
-  if (!['revenue', 'profit'].includes(body?.commissionBase)) {
-    throw createError({ statusCode: 400, statusMessage: 'commissionBase deve ser "revenue" ou "profit"' })
+  if (!validCommissionBases.includes(body?.commissionBase)) {
+    throw createError({ statusCode: 400, statusMessage: 'commissionBase inválido' })
   }
   const goalAmount = Number(body?.goalAmount)
   const bonusAmount = Number(body?.bonusAmount)

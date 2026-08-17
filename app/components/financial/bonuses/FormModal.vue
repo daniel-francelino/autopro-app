@@ -16,7 +16,7 @@ function currentMonthValue() {
 
 const form = reactive({
   name: '',
-  commissionBase: 'revenue' as 'revenue' | 'profit',
+  commissionBase: 'revenue' as 'revenue' | 'profit' | 'revenue_minus_parts' | 'employee_net_profit',
   goalAmount: '' as number | string,
   bonusAmount: '' as number | string,
   effectiveMonth: currentMonthValue() as string | undefined
@@ -32,7 +32,9 @@ function resetForm() {
 
 const commissionBaseOptions = [
   { label: 'Faturamento (valor bruto)', value: 'revenue' },
-  { label: 'Lucro (receita − custos)', value: 'profit' }
+  { label: 'Lucro (receita - custos)', value: 'profit' },
+  { label: 'Faturamento menos pecas', value: 'revenue_minus_parts' },
+  { label: 'Lucro liquido do funcionario (receita - pecas - comissao dele)', value: 'employee_net_profit' }
 ]
 
 async function save() {

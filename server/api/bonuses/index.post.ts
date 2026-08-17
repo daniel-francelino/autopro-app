@@ -5,6 +5,8 @@ import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
 import { currentMonthStart } from '../../utils/bonuses'
 
+const validCommissionBases = ['revenue', 'profit', 'revenue_minus_parts', 'employee_net_profit']
+
 /**
  * POST /api/bonuses
  * Creates a new bonus and its first value version in one call — a bonus
@@ -22,8 +24,8 @@ export default defineEventHandler(async (event) => {
   if (!body?.name?.trim()) {
     throw createError({ statusCode: 400, statusMessage: 'name é obrigatório' })
   }
-  if (!['revenue', 'profit'].includes(body?.commissionBase)) {
-    throw createError({ statusCode: 400, statusMessage: 'commissionBase deve ser "revenue" ou "profit"' })
+  if (!validCommissionBases.includes(body?.commissionBase)) {
+    throw createError({ statusCode: 400, statusMessage: 'commissionBase inválido' })
   }
   const goalAmount = Number(body?.goalAmount)
   const bonusAmount = Number(body?.bonusAmount)

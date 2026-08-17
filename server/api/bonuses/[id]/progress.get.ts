@@ -9,6 +9,7 @@ import {
   fetchBonusValueVersions,
   fetchBonusAssignments,
   fetchOrdersForBonusProgress,
+  fetchCommissionRecordsForBonusProgress,
   resolveEffectiveVersion,
   sumAchievedAmount,
   currentMonthStart
@@ -48,10 +49,11 @@ export default defineEventHandler(async (event) => {
     ? query.referenceMonth.trim()
     : currentMonthStart()
 
-  const [versions, assignments, orders, generationsResult] = await Promise.all([
+  const [versions, assignments, orders, commissionRecords, generationsResult] = await Promise.all([
     fetchBonusValueVersions(supabase, bonusId),
     fetchBonusAssignments(supabase, bonusId, true),
     fetchOrdersForBonusProgress(supabase as unknown as SupabaseClientLike, organizationId),
+    fetchCommissionRecordsForBonusProgress(supabase as unknown as SupabaseClientLike, organizationId),
     supabase
       .from('bonus_generations')
       .select('*')
@@ -101,7 +103,7 @@ export default defineEventHandler(async (event) => {
     }
 
     const achievedAmount = effectiveVersion
-      ? sumAchievedAmount(orders, assignment.employee_id, referenceMonth, effectiveVersion.commission_base)
+      ? sumAchievedAmount(orders, assignment.employee_id, referenceMonth, effectiveVersion.commission_base, commissionRecords)
       : 0
 
     return {

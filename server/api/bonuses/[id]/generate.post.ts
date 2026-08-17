@@ -9,6 +9,7 @@ import {
   fetchBonusValueVersions,
   fetchBonusAssignments,
   fetchOrdersForBonusProgress,
+  fetchCommissionRecordsForBonusProgress,
   resolveEffectiveVersion,
   sumAchievedAmount,
   lastDayOfMonth,
@@ -66,10 +67,11 @@ export default defineEventHandler(async (event) => {
     ? body.employeeId.trim()
     : null
 
-  const [versions, assignments, orders, existingGenerationsResult] = await Promise.all([
+  const [versions, assignments, orders, commissionRecords, existingGenerationsResult] = await Promise.all([
     fetchBonusValueVersions(supabase, bonusId),
     fetchBonusAssignments(supabase, bonusId, true),
     fetchOrdersForBonusProgress(supabase as unknown as SupabaseClientLike, organizationId),
+    fetchCommissionRecordsForBonusProgress(supabase as unknown as SupabaseClientLike, organizationId),
     supabase
       .from('bonus_generations')
       .select('employee_id')
@@ -126,7 +128,7 @@ export default defineEventHandler(async (event) => {
 
     const goalAmount = Number(effectiveVersion.goal_amount)
     const bonusAmount = Number(effectiveVersion.bonus_amount)
-    const achievedAmount = sumAchievedAmount(orders, employeeId, referenceMonth, effectiveVersion.commission_base)
+    const achievedAmount = sumAchievedAmount(orders, employeeId, referenceMonth, effectiveVersion.commission_base, commissionRecords)
     const goalMet = achievedAmount >= goalAmount
 
     let financialRecordId: string | null = null
