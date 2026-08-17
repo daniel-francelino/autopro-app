@@ -297,6 +297,7 @@ async function exportReport(format: 'csv' | 'pdf') {
 
     <AppDataTableInfinite
       :key="view"
+      class="rounded-lg! border-0! shadow-none!"
       :columns="columns"
       :data="activeData"
       :loading="isLoading"

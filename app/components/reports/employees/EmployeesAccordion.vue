@@ -50,13 +50,21 @@ const items = computed(() => props.employees.map(employee => ({
     :items="items"
     :unmount-on-hide="false"
     :ui="{
-      root: 'flex flex-col gap-3',
-      item: 'border border-default rounded-xl px-3 bg-default',
-      trigger: 'py-3',
+      root: 'flex flex-col gap-4',
+      item: 'border border-default rounded-2xl overflow-hidden bg-default',
+      header: 'bg-elevated/60 hover:bg-elevated/80 data-[state=open]:bg-elevated/80 transition-colors',
+      trigger: 'px-4 py-3.5',
       label: 'font-semibold text-highlighted',
-      body: 'pb-4'
+      trailingIcon: 'text-muted',
+      body: 'px-4 pt-4 pb-5'
     }"
   >
+    <template #leading="{ item }">
+      <span class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+        <UIcon :name="item.icon" class="size-4 text-primary" />
+      </span>
+    </template>
+
     <template #body="{ item }">
       <ReportsEmployeesAccordionPanel
         v-if="renderedIds.has(item.value)"
