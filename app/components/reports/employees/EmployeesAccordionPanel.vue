@@ -158,7 +158,6 @@ const columnsByView: Record<ViewMode, { accessorKey?: string, id: string, header
     { id: 'o_totalAmount', accessorKey: 'totalAmount', header: 'Venda bruta' },
     { id: 'o_totalCostAmount', accessorKey: 'totalCostAmount', header: 'Despesas' },
     { id: 'o_employeeCommission', accessorKey: 'employeeCommission', header: 'Comissão' },
-    { id: 'o_otherEmployeesCommission', accessorKey: 'otherEmployeesCommission', header: 'Comissão (outros)' },
     { id: 'o_netAmount', accessorKey: 'netAmount', header: 'Líquido' }
   ],
   commissions: [
@@ -179,8 +178,7 @@ const columnsByView: Record<ViewMode, { accessorKey?: string, id: string, header
     { id: 'i_totalValue', accessorKey: 'totalValue', header: 'Valor' },
     { id: 'i_totalCost', accessorKey: 'totalCost', header: 'Custo' },
     { id: 'i_commissionCost', accessorKey: 'commissionCost', header: 'Comissão' },
-    { id: 'i_otherEmployeesCommissionCost', accessorKey: 'otherEmployeesCommissionCost', header: 'Comissão (outros)' },
-    { id: 'i_profit', accessorKey: 'profit', header: 'Lucro' }
+    { id: 'i_profit', accessorKey: 'profit', header: 'Líquido' }
   ]
 }
 
@@ -363,9 +361,6 @@ async function exportReport(format: 'csv' | 'pdf') {
       <template #o_employeeCommission-cell="{ row }">
         <span class="text-warning">{{ formatCurrency(orderRow(row).employeeCommission) }}</span>
       </template>
-      <template #o_otherEmployeesCommission-cell="{ row }">
-        <span class="text-info">{{ formatCurrency(orderRow(row).otherEmployeesCommission) }}</span>
-      </template>
       <template #o_netAmount-cell="{ row }">
         <span class="font-bold" :class="orderRow(row).netAmount >= 0 ? 'text-success' : 'text-error'">
           {{ formatCurrency(orderRow(row).netAmount) }}
@@ -429,9 +424,6 @@ async function exportReport(format: 'csv' | 'pdf') {
       </template>
       <template #i_commissionCost-cell="{ row }">
         <span class="text-warning">{{ formatCurrency(itemRow(row).commissionCost) }}</span>
-      </template>
-      <template #i_otherEmployeesCommissionCost-cell="{ row }">
-        <span class="text-info">{{ formatCurrency(itemRow(row).otherEmployeesCommissionCost) }}</span>
       </template>
       <template #i_profit-cell="{ row }">
         <span class="font-bold" :class="itemRow(row).profit >= 0 ? 'text-success' : 'text-error'">

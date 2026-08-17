@@ -14,18 +14,35 @@ function formatCurrency(v: number | string) {
 }
 
 const netSales = computed(() => props.summary?.netSales ?? 0)
+
+const stats = computed(() => [
+  { label: 'Venda bruta', value: formatCurrency(props.summary?.grossSales ?? 0), icon: 'i-lucide-banknote', color: 'text-primary', bg: 'bg-primary/10', description: 'total das OS' },
+  {
+    label: 'Despesas da OS',
+    value: formatCurrency(props.summary?.osExpenses ?? 0),
+    icon: 'i-lucide-wallet-cards',
+    color: 'text-error',
+    bg: 'bg-error/10',
+    description: 'custo de peças',
+    tooltip: 'Soma do custo das peças e produtos usados nas OS deste funcionário no período selecionado. Não inclui despesas gerais da oficina (aluguel, contas, etc.).'
+  },
+  { label: 'Comissões', value: formatCurrency(props.summary?.totalCommissions ?? 0), icon: 'i-lucide-hand-coins', color: 'text-warning', bg: 'bg-warning/10', description: 'do funcionário' },
+  {
+    label: 'Venda líquida',
+    value: formatCurrency(netSales.value),
+    icon: 'i-lucide-calculator',
+    color: netSales.value >= 0 ? 'text-success' : 'text-error',
+    bg: netSales.value >= 0 ? 'bg-success/10' : 'bg-error/10',
+    description: 'bruta − despesas − comissões',
+    tooltip: 'Venda bruta menos as despesas de peças e a comissão deste funcionário. Não desconta a comissão de outros funcionários também responsáveis pela mesma OS.'
+  }
+])
 </script>
 
 <template>
   <div class="grid grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] gap-3">
     <UCard
-      v-for="stat in [
-        { label: 'Venda bruta', value: formatCurrency(summary?.grossSales ?? 0), icon: 'i-lucide-banknote', color: 'text-primary', bg: 'bg-primary/10', description: 'total das OS' },
-        { label: 'Despesas da OS', value: formatCurrency(summary?.osExpenses ?? 0), icon: 'i-lucide-wallet-cards', color: 'text-error', bg: 'bg-error/10', description: 'custo de peças' },
-        { label: 'Comissões', value: formatCurrency(summary?.totalCommissions ?? 0), icon: 'i-lucide-hand-coins', color: 'text-warning', bg: 'bg-warning/10', description: 'do funcionário' },
-        { label: 'Comissões de outros', value: formatCurrency(summary?.otherEmployeesCommissions ?? 0), icon: 'i-lucide-users', color: 'text-info', bg: 'bg-info/10', description: 'funcionários na mesma OS' },
-        { label: 'Venda líquida', value: formatCurrency(netSales), icon: 'i-lucide-calculator', color: netSales >= 0 ? 'text-success' : 'text-error', bg: netSales >= 0 ? 'bg-success/10' : 'bg-error/10', description: 'bruta − despesas − comissões' }
-      ]"
+      v-for="stat in stats"
       :key="stat.label"
       class="max-w-72"
       :ui="{ body: 'p-3 sm:p-4' }"
@@ -38,8 +55,11 @@ const netSales = computed(() => props.summary?.netSales ?? 0)
           <p class="text-lg font-bold leading-tight truncate">
             {{ stat.value }}
           </p>
-          <p class="text-xs font-medium text-highlighted">
-            {{ stat.label }}
+          <p class="flex items-center gap-1 text-xs font-medium text-highlighted">
+            <span class="truncate">{{ stat.label }}</span>
+            <UTooltip v-if="stat.tooltip" :text="stat.tooltip" :ui="{ content: 'h-auto max-w-64 py-1.5', text: 'whitespace-normal' }">
+              <UIcon name="i-lucide-info" class="size-3 shrink-0 text-muted" />
+            </UTooltip>
           </p>
           <p class="text-xs text-muted">
             {{ stat.description }}
