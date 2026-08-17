@@ -288,12 +288,31 @@ async function exportReport(format: 'csv' | 'pdf') {
   <div class="space-y-4">
     <ReportsEmployeesStats :summary="summary" />
 
-    <UTabs
-      v-model="view"
-      :items="viewItems"
-      variant="link"
-      class="w-full"
-    />
+    <div class="flex items-center justify-between gap-3">
+      <UTabs
+        v-model="view"
+        :items="viewItems"
+        variant="link"
+        class="w-auto"
+      />
+
+      <UTooltip :text="`Exportar relatório de ${employeeName}`">
+        <UDropdownMenu
+          :items="exportItems"
+          :content="{ align: 'end' }"
+          :ui="{ content: 'min-w-44' }"
+        >
+          <UButton
+            icon="i-lucide-download"
+            color="neutral"
+            variant="outline"
+            size="sm"
+            square
+            :loading="exporting !== null"
+          />
+        </UDropdownMenu>
+      </UTooltip>
+    </div>
 
     <AppDataTableInfinite
       :key="view"
@@ -307,25 +326,6 @@ async function exportReport(format: 'csv' | 'pdf') {
       :empty-title="emptyState.title"
       :empty-description="emptyState.description"
     >
-      <template #toolbar-right>
-        <UTooltip :text="`Exportar relatório de ${employeeName}`">
-          <UDropdownMenu
-            :items="exportItems"
-            :content="{ align: 'end' }"
-            :ui="{ content: 'min-w-44' }"
-          >
-            <UButton
-              icon="i-lucide-download"
-              color="neutral"
-              variant="outline"
-              size="sm"
-              square
-              :loading="exporting !== null"
-            />
-          </UDropdownMenu>
-        </UTooltip>
-      </template>
-
       <!-- OS trabalhadas -->
       <template #o_number-cell="{ row }">
         <span class="font-mono text-sm text-muted">#{{ orderRow(row).number }}</span>
