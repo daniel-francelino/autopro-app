@@ -226,7 +226,7 @@ async function confirmRemove() {
           <template #assigned-cell="{ row }">
             <div
               v-if="bonusRow(row).assignedEmployeesCount > 0"
-              class="flex items-center"
+              class="flex items-center gap-1.5"
             >
               <UTooltip
                 v-for="employee in visibleAssignedEmployees(bonusRow(row))"
@@ -238,7 +238,7 @@ async function confirmRemove() {
                   :text="getInitials(employee.name)"
                   :alt="employee.name"
                   size="xs"
-                  class="-ml-1.5 first:ml-0 ring-2 ring-default bg-primary/10 text-primary"
+                  class="ring-2 ring-default bg-primary/10 text-primary"
                 />
               </UTooltip>
 
@@ -247,7 +247,7 @@ async function confirmRemove() {
                 :text="hiddenAssignedEmployees(bonusRow(row)).map(employee => employee.name).join(', ')"
                 :ui="{ content: 'h-auto max-w-64 py-1.5', text: 'whitespace-normal' }"
               >
-                <div class="-ml-1.5 flex size-6 items-center justify-center rounded-full bg-elevated text-[10px] font-semibold text-muted ring-2 ring-default">
+                <div class="flex size-6 items-center justify-center rounded-full bg-elevated text-[10px] font-semibold text-muted ring-2 ring-default">
                   +{{ hiddenAssignedEmployees(bonusRow(row)).length }}
                 </div>
               </UTooltip>
