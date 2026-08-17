@@ -40,11 +40,11 @@ const stats = computed(() => [
 </script>
 
 <template>
-  <div class="grid grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] gap-3">
+  <div class="flex flex-wrap gap-3">
     <UCard
       v-for="stat in stats"
       :key="stat.label"
-      class="max-w-72"
+      class="w-60"
       :ui="{ body: 'p-3 sm:p-4' }"
     >
       <div class="flex items-start gap-3">
@@ -58,7 +58,7 @@ const stats = computed(() => [
           <p class="flex items-center gap-1 text-xs font-medium text-highlighted">
             <span class="truncate">{{ stat.label }}</span>
             <UTooltip v-if="stat.tooltip" :text="stat.tooltip" :ui="{ content: 'h-auto max-w-64 py-1.5', text: 'whitespace-normal' }">
-              <UIcon name="i-lucide-info" class="size-3 shrink-0 text-muted" />
+              <UIcon name="i-lucide-info" class="size-4 shrink-0 text-muted" />
             </UTooltip>
           </p>
           <p class="text-xs text-muted">
