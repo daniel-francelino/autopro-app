@@ -51,7 +51,7 @@ const items = computed(() => props.employees.map(employee => ({
     :unmount-on-hide="false"
     :ui="{
       root: 'flex flex-col gap-4',
-      item: 'border border-default rounded-2xl overflow-hidden bg-default',
+      item: 'border border-default overflow-hidden bg-default',
       header: 'bg-elevated/60 hover:bg-elevated/80 data-[state=open]:bg-elevated/80 transition-colors',
       trigger: 'px-4 py-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/50',
       label: 'font-semibold text-highlighted',

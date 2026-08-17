@@ -58,7 +58,7 @@ const stats = computed(() => [
           <p class="flex items-center gap-1 text-xs font-medium text-highlighted">
             <span class="truncate">{{ stat.label }}</span>
             <UTooltip v-if="stat.tooltip" :text="stat.tooltip" :ui="{ content: 'h-auto max-w-64 py-1.5', text: 'whitespace-normal' }">
-              <UIcon name="i-lucide-info" class="size-4 shrink-0 text-muted" />
+              <UIcon name="i-lucide-info" class="size-3 shrink-0 text-muted" />
             </UTooltip>
           </p>
           <p class="text-xs text-muted">
