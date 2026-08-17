@@ -16,7 +16,7 @@ interface BonusListItem {
     photoUrl: string | null
   }>
   currentValue: {
-    commissionBase: 'revenue' | 'profit'
+    commissionBase: 'revenue' | 'profit' | 'revenue_minus_parts' | 'employee_net_profit'
     goalAmount: number
     bonusAmount: number
     effectiveFrom: string
@@ -77,7 +77,12 @@ function generateActionLabel(bonus: BonusListItem) {
   return 'Gerar bônus do mês'
 }
 
-const commissionBaseLabel: Record<string, string> = { revenue: 'Faturamento', profit: 'Lucro' }
+const commissionBaseLabel: Record<string, string> = {
+  revenue: 'Faturamento',
+  profit: 'Lucro',
+  revenue_minus_parts: 'Faturamento - pecas',
+  employee_net_profit: 'Lucro liquido funcionario'
+}
 
 function bonusRow(row: { original: unknown }): BonusListItem {
   return row.original as BonusListItem

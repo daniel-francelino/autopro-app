@@ -31,11 +31,35 @@ function resetForm() {
 }
 
 const commissionBaseOptions = [
-  { label: 'Faturamento (valor bruto)', value: 'revenue' },
-  { label: 'Lucro (receita - custos)', value: 'profit' },
-  { label: 'Faturamento menos pecas', value: 'revenue_minus_parts' },
-  { label: 'Lucro liquido do funcionario (receita - pecas - comissao dele)', value: 'employee_net_profit' }
+  {
+    label: 'Faturamento (valor bruto)',
+    value: 'revenue',
+    description: 'Soma o valor total das OS concluídas ou faturadas.',
+    formula: 'Faturamento'
+  },
+  {
+    label: 'Lucro (receita - custos)',
+    value: 'profit',
+    description: 'Soma o valor total das OS concluídas ou faturadas, descontando os custos das peças.',
+    formula: 'Faturamento - custos das peças'
+  },
+  {
+    label: 'Faturamento menos peças',
+    value: 'revenue_minus_parts',
+    description: 'Soma o faturamento líquido de peças das OS concluídas ou faturadas.',
+    formula: 'Faturamento - custos das peças'
+  },
+  {
+    label: 'Lucro líquido do funcionário',
+    value: 'employee_net_profit',
+    description: 'Soma o resultado das OS concluídas ou faturadas, descontando peças e apenas a comissão deste funcionário.',
+    formula: 'Faturamento - custos das peças - comissão do funcionário'
+  }
 ]
+
+const selectedCommissionBase = computed(() =>
+  commissionBaseOptions.find(option => option.value === form.commissionBase) ?? commissionBaseOptions[0]
+)
 
 async function save() {
   if (isSaving.value) return
@@ -104,6 +128,19 @@ async function save() {
             value-key="value"
             class="w-full"
           />
+          <div class="mt-2 rounded-md border border-default bg-muted/30 px-3 py-2 text-sm">
+            <div class="flex items-start gap-2">
+              <UIcon name="i-lucide-calculator" class="mt-0.5 size-4 shrink-0 text-muted" />
+              <div class="space-y-1">
+                <p class="text-highlighted">
+                  {{ selectedCommissionBase.description }}
+                </p>
+                <p class="text-muted">
+                  Fórmula: {{ selectedCommissionBase.formula }}
+                </p>
+              </div>
+            </div>
+          </div>
         </UFormField>
 
         <div class="grid grid-cols-2 gap-3">
