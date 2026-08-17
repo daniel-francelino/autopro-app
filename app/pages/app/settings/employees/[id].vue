@@ -235,9 +235,7 @@ const columnsByView: Record<ViewMode, { accessorKey?: string, id: string, header
     { id: 'o_status', header: 'Status' },
     { id: 'o_payment', header: 'Pagamento' },
     { id: 'o_totalAmount', accessorKey: 'totalAmount', header: 'Venda bruta' },
-    { id: 'o_totalCostAmount', accessorKey: 'totalCostAmount', header: 'Despesas' },
-    { id: 'o_employeeCommission', accessorKey: 'employeeCommission', header: 'Comissão' },
-    { id: 'o_netAmount', accessorKey: 'netAmount', header: 'Líquido' }
+    { id: 'o_employeeCommission', accessorKey: 'employeeCommission', header: 'Comissão' }
   ],
   commissions: [
     { id: 'c_referenceDate', accessorKey: 'referenceDate', header: 'Referência' },
@@ -773,16 +771,8 @@ async function exportReport(format: 'csv' | 'pdf') {
             <template #o_totalAmount-cell="{ row }">
               {{ formatCurrency(orderRow(row).totalAmount) }}
             </template>
-            <template #o_totalCostAmount-cell="{ row }">
-              <span class="text-error">{{ formatCurrency(orderRow(row).totalCostAmount) }}</span>
-            </template>
             <template #o_employeeCommission-cell="{ row }">
               <span class="text-warning">{{ formatCurrency(orderRow(row).employeeCommission) }}</span>
-            </template>
-            <template #o_netAmount-cell="{ row }">
-              <span class="font-bold" :class="orderRow(row).netAmount >= 0 ? 'text-success' : 'text-error'">
-                {{ formatCurrency(orderRow(row).netAmount) }}
-              </span>
             </template>
 
             <!-- Comissões -->
