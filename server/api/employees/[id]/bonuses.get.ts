@@ -5,6 +5,7 @@ import { requireOrgPermission } from '../../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../../utils/organization'
 import type { SupabaseClientLike } from '../../../utils/supabase-pagination'
 import {
+  fetchCommissionRecordsForBonusProgress,
   fetchOrdersForBonusProgress,
   resolveEffectiveVersion,
   sumAchievedAmount,
@@ -57,11 +58,12 @@ export default defineEventHandler(async (event) => {
     return { items: [] }
   }
 
-  const [bonusesResult, versionsResult, generationsResult, orders] = await Promise.all([
+  const [bonusesResult, versionsResult, generationsResult, orders, commissionRecords] = await Promise.all([
     supabase.from('bonuses').select('*').in('id', bonusIds).eq('organization_id', organizationId).is('deleted_at', null),
     supabase.from('bonus_value_versions').select('*').in('bonus_id', bonusIds),
     supabase.from('bonus_generations').select('*').in('bonus_id', bonusIds).eq('employee_id', employeeId).eq('reference_month', referenceMonth),
-    fetchOrdersForBonusProgress(supabase as unknown as SupabaseClientLike, organizationId)
+    fetchOrdersForBonusProgress(supabase as unknown as SupabaseClientLike, organizationId),
+    fetchCommissionRecordsForBonusProgress(supabase as unknown as SupabaseClientLike, organizationId)
   ])
 
   if (bonusesResult.error) {
@@ -111,7 +113,7 @@ export default defineEventHandler(async (event) => {
 
       const effectiveVersion = resolveEffectiveVersion(versionsByBonus.get(bonus.id) ?? [], referenceMonth)
       const achievedAmount = effectiveVersion
-        ? sumAchievedAmount(orders, employeeId, referenceMonth, effectiveVersion.commission_base)
+        ? sumAchievedAmount(orders, employeeId, referenceMonth, effectiveVersion.commission_base, commissionRecords)
         : 0
 
       return {
