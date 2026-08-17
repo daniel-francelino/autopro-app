@@ -424,8 +424,10 @@ function confirmRetroactiveGenerate() {
               <p class="text-sm font-semibold text-highlighted">
                 Funcionários atribuídos
               </p>
-              <div class="flex flex-wrap items-center gap-2">
-                <UiDatePicker v-model="referenceMonthInput" mode="month" class="w-44" />
+              <div class="flex flex-nowrap items-center justify-end gap-2">
+                <div class="w-44 shrink-0">
+                  <UiDatePicker v-model="referenceMonthInput" mode="month" class="w-full" />
+                </div>
                 <UButton
                   v-if="canUpdate"
                   label="Atribuir funcionário"
@@ -433,7 +435,7 @@ function confirmRetroactiveGenerate() {
                   color="neutral"
                   variant="outline"
                   size="sm"
-                  class="h-9"
+                  class="h-9 shrink-0"
                   @click="showAssignModal = true"
                 />
                 <UButton
@@ -442,7 +444,7 @@ function confirmRetroactiveGenerate() {
                   icon="i-lucide-play"
                   color="neutral"
                   size="sm"
-                  class="h-9"
+                  class="h-9 shrink-0"
                   :loading="isGeneratingBulk"
                   :disabled="progressItems.length === 0"
                   @click="onGenerateClick()"
