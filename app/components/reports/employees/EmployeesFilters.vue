@@ -19,7 +19,7 @@ export interface EmployeesFiltersProps {
 
 const props = withDefaults(defineProps<EmployeesFiltersProps>(), {
   dateLabel: 'Período',
-  employeeLabel: 'Funcionário',
+  employeeLabel: 'Funcionários',
   commissionStatusLabel: 'Status comissão',
   recordTypeLabel: 'Tipo',
   orderStatusLabel: 'Status da OS',
@@ -29,17 +29,32 @@ const props = withDefaults(defineProps<EmployeesFiltersProps>(), {
 
 const dateFrom = defineModel<string>('dateFrom')
 const dateTo = defineModel<string>('dateTo')
-const employeeId = defineModel<string>('employeeId', { default: '' })
+const employeeIds = defineModel<string[]>('employeeIds', { default: () => [] })
 const commissionStatus = defineModel<string[]>('commissionStatus', { default: () => [] })
 const recordType = defineModel<string[]>('recordType', { default: () => [] })
 const orderStatusFilters = defineModel<string[]>('orderStatusFilters', { default: () => [] })
 const paymentStatusFilters = defineModel<string[]>('paymentStatusFilters', { default: () => [] })
 const paymentMethods = defineModel<string[]>('paymentMethods', { default: () => [] })
 
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  if (parts.length === 1) return (parts[0]?.charAt(0) ?? '').toUpperCase()
+  return ((parts[0]?.charAt(0) ?? '') + (parts[parts.length - 1]?.charAt(0) ?? '')).toUpperCase()
+}
+
 const sortedEmployees = computed(() =>
   [...props.employees]
     .filter(employee => employee?.label)
     .sort((employeeA, employeeB) => employeeA.label.localeCompare(employeeB.label, 'pt-BR'))
+)
+
+const employeeOptions = computed<TagFilterOption[]>(() =>
+  sortedEmployees.value.map(employee => ({
+    value: employee.value,
+    label: employee.label,
+    color: 'neutral' as const,
+    initials: getInitials(employee.label)
+  }))
 )
 
 const commissionStatusOptions: TagFilterOption[] = [
@@ -102,16 +117,10 @@ const paymentMethodOptions: TagFilterOption[] = [
         <p class="mb-1 text-xs font-medium text-muted">
           {{ props.employeeLabel }}
         </p>
-        <UiAsyncPaginatedSelect
-          v-model="employeeId"
-          :items="sortedEmployees"
-          :get-id="(employee: EmployeeOption) => employee.value"
-          :get-label="(employee: EmployeeOption) => employee.label"
-          placeholder="Selecione um funcionário"
-          search-placeholder="Buscar funcionário..."
-          empty-message="Nenhum funcionário encontrado"
-          icon="i-lucide-user-round"
-          item-icon="i-lucide-user-round"
+        <UiTagFilter
+          v-model="employeeIds"
+          :options="employeeOptions"
+          placeholder="Selecione um ou mais funcionários"
           class="w-full"
         />
       </div>
