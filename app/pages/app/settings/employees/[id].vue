@@ -407,6 +407,10 @@ function bonusStatusLabel(item: EmployeeBonusItem): { label: string, color: 'suc
   return { label: 'Abaixo da meta', color: 'warning' }
 }
 
+function retryLoad() {
+  return refresh()
+}
+
 function buildAddress(profile: EmployeeCommissionProfile | null) {
   if (!profile) return 'Endereço não informado'
 
@@ -507,7 +511,7 @@ async function exportReport(format: 'csv' | 'pdf') {
               Verifique se o cadastro ainda existe e tente novamente.
             </p>
             <div class="mt-4 flex gap-2">
-              <UButton label="Tentar novamente" color="neutral" @click="refresh" />
+              <UButton label="Tentar novamente" color="neutral" @click="retryLoad" />
               <UButton
                 label="Voltar para funcionários"
                 color="neutral"

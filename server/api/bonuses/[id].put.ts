@@ -1,6 +1,7 @@
 import { defineEventHandler, readBody, getRouterParam, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
+import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
 import { fetchBonus } from '../../utils/bonuses'
 
@@ -12,6 +13,7 @@ import { fetchBonus } from '../../utils/bonuses'
  */
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
+  await requireOrgPermission(authUser.id, 'bonuses.update')
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 

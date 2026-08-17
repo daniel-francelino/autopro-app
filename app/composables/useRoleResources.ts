@@ -2,6 +2,7 @@ export enum ResourceType {
   APPOINTMENTS = 'appointments',
   AUTHORIZATIONS = 'authorizations',
   BANK_ACCOUNTS = 'bank_accounts',
+  BONUSES = 'bonuses',
   CONSULTATION = 'consultation',
   CUSTOMERS = 'customers',
   EMPLOYEES = 'employees',
@@ -36,6 +37,7 @@ export function useRoleResources() {
     if (key.includes(ResourceType.APPOINTMENTS)) return 'i-lucide-calendar-days'
     if (key.includes(ResourceType.AUTHORIZATIONS)) return 'i-lucide-badge-check'
     if (key.includes(ResourceType.BANK_ACCOUNTS) || key.includes('bank')) return 'i-lucide-landmark'
+    if (key.includes(ResourceType.BONUSES) || key.includes('bonus')) return 'i-lucide-gift'
     if (key.includes(ResourceType.CUSTOMERS) || key.includes('client')) return 'i-lucide-users'
     if (key.includes(ResourceType.CONSULTATION)) return 'i-lucide-stethoscope'
     if (key.includes(ResourceType.EMPLOYEES) || key.includes('team')) return 'i-lucide-users-round'
@@ -63,6 +65,7 @@ export function useRoleResources() {
     if (key.includes(ResourceType.APPOINTMENTS)) return 'Agendamentos'
     if (key.includes(ResourceType.AUTHORIZATIONS)) return 'Autorizações'
     if (key.includes(ResourceType.BANK_ACCOUNTS) || key.includes('bank')) return 'Contas bancárias'
+    if (key.includes(ResourceType.BONUSES) || key.includes('bonus')) return 'Bônus'
     if (key.includes(ResourceType.CUSTOMERS) || key.includes('client')) return 'Clientes'
     if (key.includes(ResourceType.CONSULTATION)) return 'Consultas'
     if (key.includes(ResourceType.EMPLOYEES) || key.includes('team')) return 'Funcionários'

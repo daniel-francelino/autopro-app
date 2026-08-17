@@ -60,8 +60,8 @@ const workshop = useWorkshopPermissions()
 const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 
-const canRead = computed(() => workshop.can(ActionCode.FINANCIAL_READ))
-const canUpdate = computed(() => workshop.can(ActionCode.FINANCIAL_UPDATE))
+const canRead = computed(() => workshop.can(ActionCode.BONUSES_READ))
+const canUpdate = computed(() => workshop.can(ActionCode.BONUSES_UPDATE))
 
 const bonusId = computed(() => String(route.params.id || ''))
 
@@ -123,6 +123,10 @@ function formatMonthLabel(monthValue: string) {
 }
 
 const commissionBaseLabel: Record<CommissionBase, string> = { revenue: 'Faturamento', profit: 'Lucro' }
+
+function retryLoad() {
+  return refresh()
+}
 
 function progressStatusLabel(item: ProgressItem): { label: string, color: 'success' | 'warning' | 'neutral' } {
   if (item.goalAmount == null) return { label: 'Sem valor configurado', color: 'neutral' }
@@ -272,7 +276,7 @@ function confirmRetroactiveGenerate() {
               Não foi possível carregar este bônus.
             </p>
             <div class="mt-4 flex gap-2">
-              <UButton label="Tentar novamente" color="neutral" @click="refresh" />
+              <UButton label="Tentar novamente" color="neutral" @click="retryLoad" />
               <UButton
                 label="Voltar para bônus"
                 color="neutral"
@@ -428,7 +432,8 @@ function confirmRetroactiveGenerate() {
                   icon="i-lucide-user-plus"
                   color="neutral"
                   variant="outline"
-                  size="xs"
+                  size="sm"
+                  class="h-9"
                   @click="showAssignModal = true"
                 />
                 <UButton
@@ -436,7 +441,8 @@ function confirmRetroactiveGenerate() {
                   label="Gerar registros do mês"
                   icon="i-lucide-play"
                   color="neutral"
-                  size="xs"
+                  size="sm"
+                  class="h-9"
                   :loading="isGeneratingBulk"
                   :disabled="progressItems.length === 0"
                   @click="onGenerateClick()"

@@ -1,9 +1,16 @@
 import { defineEventHandler, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
+import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
 import { resolveEffectiveVersion, currentMonthStart } from '../../utils/bonuses'
 import type { BonusRecord, BonusValueVersionRecord, BonusEmployeeAssignmentRecord } from '../../utils/bonuses'
+
+interface BonusEmployeeRecord {
+  id: string
+  name?: string | null
+  photo_url?: string | null
+}
 
 /**
  * GET /api/bonuses
@@ -13,6 +20,7 @@ import type { BonusRecord, BonusValueVersionRecord, BonusEmployeeAssignmentRecor
  */
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
+  await requireOrgPermission(authUser.id, 'bonuses.read')
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
@@ -45,6 +53,25 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 500, statusMessage: `Failed to load bonus assignments: ${assignmentsResult.error.message}` })
   }
 
+  const assignments = (assignmentsResult.data || []) as BonusEmployeeAssignmentRecord[]
+  const employeeIds = [...new Set(assignments.map(assignment => assignment.employee_id))]
+  const { data: employeesData, error: employeesError } = employeeIds.length > 0
+    ? await supabase
+        .from('employees')
+        .select('id, name, photo_url')
+        .eq('organization_id', organizationId)
+        .is('deleted_at', null)
+        .in('id', employeeIds)
+    : { data: [] as BonusEmployeeRecord[], error: null }
+
+  if (employeesError) {
+    throw createError({ statusCode: 500, statusMessage: `Failed to load assigned employees: ${employeesError.message}` })
+  }
+
+  const employeeById = new Map<string, BonusEmployeeRecord>(
+    ((employeesData || []) as BonusEmployeeRecord[]).map(employee => [employee.id, employee])
+  )
+
   const versionsByBonus = new Map<string, BonusValueVersionRecord[]>()
   for (const version of (versionsResult.data || []) as BonusValueVersionRecord[]) {
     const list = versionsByBonus.get(version.bonus_id) ?? []
@@ -53,8 +80,18 @@ export default defineEventHandler(async (event) => {
   }
 
   const assignmentCountByBonus = new Map<string, number>()
-  for (const assignment of (assignmentsResult.data || []) as BonusEmployeeAssignmentRecord[]) {
+  const assignedEmployeesByBonus = new Map<string, Array<{ id: string, name: string, photoUrl: string | null }>>()
+  for (const assignment of assignments) {
     assignmentCountByBonus.set(assignment.bonus_id, (assignmentCountByBonus.get(assignment.bonus_id) ?? 0) + 1)
+
+    const employee = employeeById.get(assignment.employee_id)
+    const list = assignedEmployeesByBonus.get(assignment.bonus_id) ?? []
+    list.push({
+      id: assignment.employee_id,
+      name: employee?.name || 'Funcionário',
+      photoUrl: employee?.photo_url || null
+    })
+    assignedEmployeesByBonus.set(assignment.bonus_id, list)
   }
 
   const month = currentMonthStart()
@@ -67,6 +104,8 @@ export default defineEventHandler(async (event) => {
       description: bonus.description,
       active: bonus.active,
       assignedEmployeesCount: assignmentCountByBonus.get(bonus.id) ?? 0,
+      assignedEmployees: (assignedEmployeesByBonus.get(bonus.id) ?? [])
+        .sort((employeeA, employeeB) => employeeA.name.localeCompare(employeeB.name, 'pt-BR')),
       currentValue: currentValue
         ? {
             commissionBase: currentValue.commission_base,

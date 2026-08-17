@@ -1,6 +1,7 @@
 import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
+import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
 import { fetchBonus, fetchBonusValueVersions, fetchBonusAssignments, resolveEffectiveVersion, currentMonthStart } from '../../utils/bonuses'
 
@@ -16,6 +17,7 @@ interface EmployeeNameRecord {
  */
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
+  await requireOrgPermission(authUser.id, 'bonuses.read')
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
