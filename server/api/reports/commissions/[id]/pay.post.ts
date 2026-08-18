@@ -38,6 +38,7 @@ export default defineEventHandler(async (event) => {
     .select('*')
     .eq('id', id!)
     .eq('organization_id', organizationId)
+    .is('deleted_at', null)
     .maybeSingle()
 
   if (!existing) throw createError({ statusCode: 404, statusMessage: 'Comissão não encontrada' })
@@ -146,6 +147,7 @@ export default defineEventHandler(async (event) => {
       })
       .eq('id', id!)
       .eq('organization_id', organizationId)
+      .is('deleted_at', null)
       .select()
       .single()
 

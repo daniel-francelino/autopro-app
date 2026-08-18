@@ -89,7 +89,7 @@ export default defineEventHandler(async (event) => {
   for (const registroId of registroIds) {
     const resultBase = { registroId }
 
-    const { data: registro } = await supabase.from('employee_financial_records').select('*').eq('id', registroId).eq('organization_id', organizationId).single()
+    const { data: registro } = await supabase.from('employee_financial_records').select('*').eq('id', registroId).eq('organization_id', organizationId).is('deleted_at', null).single()
 
     if (!registro) {
       failedCount += 1
@@ -172,14 +172,19 @@ export default defineEventHandler(async (event) => {
       extrato = extratoCreated
 
       // Status must be 'paid' (DB check constraint only allows 'paid'/'pending')
-      const { error: registroError } = await supabase.from('employee_financial_records').update({
+      const { data: registroUpdated, error: registroError } = await supabase.from('employee_financial_records').update({
         status: 'paid',
         payment_date: registroDataPagamento,
         financial_transaction_id: String(lancamento?.id || ''),
         updated_by: authUser.email
-      }).eq('id', registroId)
+      }).eq('id', registroId).is('deleted_at', null).select('id')
 
       if (registroError) throw new Error(registroError.message)
+      // Matched zero rows — the record was deleted between the read above and
+      // this write (e.g. reprocessed from another tab). Roll back the
+      // transaction/statement/balance just created instead of leaving a real,
+      // untracked payment attached to a record nobody can see anymore.
+      if (!registroUpdated || registroUpdated.length === 0) throw new Error('Registro foi excluído durante o pagamento')
 
       paidCount += 1
       results.push({ ...resultBase, status: 'paid', lancamentoId: lancamento?.id })
