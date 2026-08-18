@@ -125,8 +125,8 @@ function formatMonthLabel(monthValue: string) {
 const commissionBaseLabel: Record<CommissionBase, string> = {
   revenue: 'Faturamento',
   profit: 'Lucro',
-  revenue_minus_parts: 'Faturamento - pecas',
-  employee_net_profit: 'Lucro liquido funcionario'
+  revenue_minus_parts: 'Faturamento - peças',
+  employee_net_profit: 'Lucro líquido do funcionário'
 }
 
 function retryLoad() {
@@ -137,6 +137,18 @@ function progressStatusLabel(item: ProgressItem): { label: string, color: 'succe
   if (item.goalAmount == null) return { label: 'Sem valor configurado', color: 'neutral' }
   if (item.goalMet) return { label: item.achievedAmount > item.goalAmount ? 'Meta superada' : 'Meta atingida', color: 'success' }
   return { label: 'Abaixo da meta', color: 'warning' }
+}
+
+function progressRatio(item: ProgressItem): number {
+  if (!item.goalAmount) return 0
+  return item.achievedAmount / item.goalAmount
+}
+
+function progressBarColor(item: ProgressItem): 'error' | 'warning' | 'success' {
+  const ratio = progressRatio(item)
+  if (ratio < 0.5) return 'error'
+  if (ratio < 0.9) return 'warning'
+  return 'success'
 }
 
 // ─── Toggle active ──────────────────────────────────────────────────────────
@@ -488,6 +500,14 @@ function confirmRetroactiveGenerate() {
                       Sem valor configurado para este mês
                     </template>
                   </p>
+                  <UProgress
+                    v-if="item.goalAmount != null"
+                    :model-value="Math.min(item.achievedAmount, item.goalAmount)"
+                    :max="item.goalAmount"
+                    :color="progressBarColor(item)"
+                    size="sm"
+                    class="mt-1.5 max-w-64"
+                  />
                 </div>
 
                 <UBadge

@@ -80,8 +80,8 @@ function generateActionLabel(bonus: BonusListItem) {
 const commissionBaseLabel: Record<string, string> = {
   revenue: 'Faturamento',
   profit: 'Lucro',
-  revenue_minus_parts: 'Faturamento - pecas',
-  employee_net_profit: 'Lucro liquido funcionario'
+  revenue_minus_parts: 'Faturamento - peças',
+  employee_net_profit: 'Lucro líquido do funcionário'
 }
 
 function bonusRow(row: { original: unknown }): BonusListItem {
