@@ -488,7 +488,8 @@ async function requestReprocess(item: ProgressItem) {
           <!-- Valor atual -->
           <div class="space-y-3 rounded-2xl border border-default p-4">
             <div class="flex items-center justify-between gap-3">
-              <p class="text-sm font-semibold text-highlighted">
+              <p class="flex items-center gap-2 text-sm font-semibold text-highlighted">
+                <UIcon name="i-lucide-coins" class="size-4 text-muted" />
                 Valor atual
               </p>
               <UButton
@@ -583,7 +584,8 @@ async function requestReprocess(item: ProgressItem) {
           <!-- Funcionários atribuídos -->
           <div class="space-y-3 rounded-2xl border border-default p-4">
             <div class="flex flex-wrap items-center justify-between gap-3">
-              <p class="text-sm font-semibold text-highlighted">
+              <p class="flex items-center gap-2 text-sm font-semibold text-highlighted">
+                <UIcon name="i-lucide-users-round" class="size-4 text-muted" />
                 Funcionários atribuídos
               </p>
               <div class="flex flex-nowrap items-center justify-end gap-2">
@@ -711,7 +713,8 @@ async function requestReprocess(item: ProgressItem) {
 
           <!-- Metas geradas no mês selecionado -->
           <div class="space-y-3 rounded-2xl border border-default p-4">
-            <p class="text-sm font-semibold text-highlighted">
+            <p class="flex items-center gap-2 text-sm font-semibold text-highlighted">
+              <UIcon name="i-lucide-list-checks" class="size-4 text-muted" />
               Geradas
             </p>
 
@@ -765,7 +768,8 @@ async function requestReprocess(item: ProgressItem) {
 
           <!-- Pagamentos do mês selecionado -->
           <div class="space-y-3 rounded-2xl border border-default p-4">
-            <p class="text-sm font-semibold text-highlighted">
+            <p class="flex items-center gap-2 text-sm font-semibold text-highlighted">
+              <UIcon name="i-lucide-receipt" class="size-4 text-muted" />
               Pagamentos
             </p>
 
