@@ -174,6 +174,17 @@ function progressRatio(item: ProgressItem): number {
   return item.achievedAmount / item.goalAmount
 }
 
+function progressPercentLabel(item: ProgressItem): string {
+  return `${Math.round(progressRatio(item) * 100)}%`
+}
+
+function progressPercentClass(item: ProgressItem): string {
+  const color = progressBarColor(item)
+  if (color === 'error') return 'text-error'
+  if (color === 'warning') return 'text-warning'
+  return 'text-success'
+}
+
 function progressBarColor(item: ProgressItem): 'error' | 'warning' | 'success' {
   const ratio = progressRatio(item)
   if (ratio < 0.5) return 'error'
@@ -664,6 +675,7 @@ async function requestReprocess(item: ProgressItem) {
                     <p class="text-xs text-muted">
                       <template v-if="item.goalAmount != null">
                         {{ formatCurrency(item.achievedAmount) }} / {{ formatCurrency(item.goalAmount) }}
+                        <span class="font-medium" :class="progressPercentClass(item)">({{ progressPercentLabel(item) }})</span>
                       </template>
                       <template v-else>
                         Sem valor configurado para este mês
