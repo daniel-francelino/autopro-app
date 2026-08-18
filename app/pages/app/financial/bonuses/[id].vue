@@ -159,10 +159,14 @@ function retryLoad() {
   return refresh()
 }
 
-function progressStatusLabel(item: ProgressItem): { label: string, color: 'success' | 'warning' | 'neutral' } {
-  if (item.goalAmount == null) return { label: 'Sem valor configurado', color: 'neutral' }
-  if (item.goalMet) return { label: item.achievedAmount > item.goalAmount ? 'Meta superada' : 'Meta atingida', color: 'success' }
-  return { label: 'Abaixo da meta', color: 'warning' }
+function progressStatusLabel(item: ProgressItem): { label: string, color: 'success' | 'warning' | 'neutral', icon: string } {
+  if (item.goalAmount == null) return { label: 'Sem valor configurado', color: 'neutral', icon: 'i-lucide-circle-help' }
+  if (item.goalMet) {
+    return item.achievedAmount > item.goalAmount
+      ? { label: 'Meta superada', color: 'success', icon: 'i-lucide-trophy' }
+      : { label: 'Meta atingida', color: 'success', icon: 'i-lucide-check-circle-2' }
+  }
+  return { label: 'Abaixo da meta', color: 'warning', icon: 'i-lucide-trending-down' }
 }
 
 function progressRatio(item: ProgressItem): number {
@@ -216,10 +220,10 @@ async function payFinancialRecord(id: string) {
   }
 }
 
-function financialRecordStatusLabel(status: BonusFinancialRecordItem['status']): { label: string, color: 'success' | 'warning' | 'error' } {
-  if (status === 'paid') return { label: 'Pago', color: 'success' }
-  if (status === 'cancelled') return { label: 'Cancelado', color: 'error' }
-  return { label: 'Pendente', color: 'warning' }
+function financialRecordStatusLabel(status: BonusFinancialRecordItem['status']): { label: string, color: 'success' | 'warning' | 'error', icon: string } {
+  if (status === 'paid') return { label: 'Pago', color: 'success', icon: 'i-lucide-circle-check-big' }
+  if (status === 'cancelled') return { label: 'Cancelado', color: 'error', icon: 'i-lucide-circle-x' }
+  return { label: 'Pendente', color: 'warning', icon: 'i-lucide-clock' }
 }
 
 // ─── Delete financial record ────────────────────────────────────────────────
@@ -635,56 +639,57 @@ async function requestReprocess(item: ProgressItem) {
                 :key="item.employeeId"
                 class="flex flex-col gap-2 rounded-xl border border-default/70 bg-default/40 p-3"
               >
-                <div class="min-w-0">
-                  <p class="truncate text-sm font-medium text-highlighted">
-                    {{ item.employeeName }}
-                  </p>
-                  <p class="text-xs text-muted">
-                    <template v-if="item.goalAmount != null">
-                      {{ formatCurrency(item.achievedAmount) }} / {{ formatCurrency(item.goalAmount) }}
-                    </template>
-                    <template v-else>
-                      Sem valor configurado para este mês
-                    </template>
-                  </p>
-                  <UProgress
-                    v-if="item.goalAmount != null"
-                    :model-value="Math.min(item.achievedAmount, item.goalAmount)"
-                    :max="item.goalAmount"
-                    :color="progressBarColor(item)"
-                    size="sm"
-                    class="mt-1.5"
-                  />
-                </div>
-
-                <div class="flex flex-wrap items-center justify-between gap-2">
-                  <UBadge
-                    :label="progressStatusLabel(item).label"
-                    :color="progressStatusLabel(item).color"
-                    variant="subtle"
-                    size="sm"
-                  />
-
-                  <div class="flex flex-wrap items-center gap-2">
-                    <template v-if="item.generated">
+                <div class="flex flex-wrap items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <p class="truncate text-sm font-medium text-highlighted">
+                        {{ item.employeeName }}
+                      </p>
                       <UBadge
+                        :label="progressStatusLabel(item).label"
+                        :color="progressStatusLabel(item).color"
+                        :icon="progressStatusLabel(item).icon"
+                        variant="subtle"
+                        size="sm"
+                      />
+                      <UBadge
+                        v-if="item.generated"
                         label="Gerado"
                         color="neutral"
                         variant="subtle"
                         size="sm"
                         icon="i-lucide-check"
                       />
-                      <UTooltip v-if="canUpdate" text="Reprocessar este funcionário neste mês">
-                        <UButton
-                          icon="i-lucide-refresh-cw"
-                          color="neutral"
-                          variant="outline"
-                          size="xs"
-                          :loading="reprocessingEmployeeId === item.employeeId"
-                          @click="requestReprocess(item)"
-                        />
-                      </UTooltip>
-                    </template>
+                    </div>
+                    <p class="text-xs text-muted">
+                      <template v-if="item.goalAmount != null">
+                        {{ formatCurrency(item.achievedAmount) }} / {{ formatCurrency(item.goalAmount) }}
+                      </template>
+                      <template v-else>
+                        Sem valor configurado para este mês
+                      </template>
+                    </p>
+                    <UProgress
+                      v-if="item.goalAmount != null"
+                      :model-value="Math.min(item.achievedAmount, item.goalAmount)"
+                      :max="item.goalAmount"
+                      :color="progressBarColor(item)"
+                      size="sm"
+                      class="mt-1.5"
+                    />
+                  </div>
+
+                  <div class="flex shrink-0 flex-wrap items-center gap-2">
+                    <UTooltip v-if="canUpdate && item.generated" text="Reprocessar este funcionário neste mês">
+                      <UButton
+                        icon="i-lucide-refresh-cw"
+                        color="neutral"
+                        variant="outline"
+                        size="xs"
+                        :loading="reprocessingEmployeeId === item.employeeId"
+                        @click="requestReprocess(item)"
+                      />
+                    </UTooltip>
                     <UButton
                       v-else-if="canUpdate && item.goalMet"
                       label="Gerar"
@@ -740,13 +745,22 @@ async function requestReprocess(item: ProgressItem) {
                   </p>
                 </div>
 
-                <p class="text-sm font-medium" :class="item.goalMet ? 'text-success' : 'text-muted'">
-                  {{ item.goalMet ? formatCurrency(item.bonusAmount) : 'Bônus não liberado' }}
+                <p v-if="item.goalMet" class="text-sm font-semibold text-success">
+                  {{ formatCurrency(item.bonusAmount) }}
                 </p>
+                <UBadge
+                  v-else
+                  label="Bônus não liberado"
+                  icon="i-lucide-ban"
+                  color="neutral"
+                  variant="subtle"
+                  size="sm"
+                />
 
                 <UBadge
                   :label="progressStatusLabel(item).label"
                   :color="progressStatusLabel(item).color"
+                  :icon="progressStatusLabel(item).icon"
                   variant="subtle"
                   size="sm"
                 />
@@ -804,6 +818,7 @@ async function requestReprocess(item: ProgressItem) {
                 <UBadge
                   :label="financialRecordStatusLabel(record.status).label"
                   :color="financialRecordStatusLabel(record.status).color"
+                  :icon="financialRecordStatusLabel(record.status).icon"
                   variant="subtle"
                   size="sm"
                 />
