@@ -101,6 +101,7 @@ const { data: progressData, status: progressStatus, refresh: refreshProgress } =
 
 const progressItems = computed(() => progressData.value?.items ?? [])
 const isProgressLoading = computed(() => progressStatus.value === 'pending')
+const generatedProgressItems = computed(() => progressItems.value.filter(item => item.generated))
 
 const assignedEmployeeIds = computed(() => (bonus.value?.assignments ?? []).filter(a => a.active).map(a => a.employeeId))
 
@@ -547,6 +548,49 @@ function confirmRetroactiveGenerate() {
                     />
                   </UTooltip>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Metas geradas no mês selecionado -->
+          <div class="space-y-3 rounded-2xl border border-default p-4">
+            <p class="text-sm font-semibold text-highlighted">
+              Metas geradas em {{ formatMonthLabel(referenceMonth) }}
+            </p>
+
+            <div v-if="isProgressLoading" class="space-y-2">
+              <USkeleton v-for="i in 2" :key="i" class="h-16 w-full rounded-xl" />
+            </div>
+
+            <div v-else-if="generatedProgressItems.length === 0" class="rounded-xl border border-dashed border-default p-6 text-center text-sm text-muted">
+              Nenhuma meta gerada neste mês ainda.
+            </div>
+
+            <div v-else class="space-y-2">
+              <div
+                v-for="item in generatedProgressItems"
+                :key="item.employeeId"
+                class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-default/70 bg-default/40 p-3"
+              >
+                <div class="min-w-0 flex-1">
+                  <p class="truncate text-sm font-medium text-highlighted">
+                    {{ item.employeeName }}
+                  </p>
+                  <p class="text-xs text-muted">
+                    Meta: {{ formatCurrency(item.goalAmount) }} · Atingido: {{ formatCurrency(item.achievedAmount) }}
+                  </p>
+                </div>
+
+                <p class="text-sm font-medium" :class="item.goalMet ? 'text-success' : 'text-muted'">
+                  {{ item.goalMet ? formatCurrency(item.bonusAmount) : 'Bônus não liberado' }}
+                </p>
+
+                <UBadge
+                  :label="progressStatusLabel(item).label"
+                  :color="progressStatusLabel(item).color"
+                  variant="subtle"
+                  size="sm"
+                />
               </div>
             </div>
           </div>
