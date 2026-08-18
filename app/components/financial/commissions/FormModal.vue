@@ -100,14 +100,6 @@ async function save() {
         <UFormField label="Nome" required>
           <UInput v-model="form.name" class="w-full" placeholder="Ex: Comissão mecânicos — padrão" />
         </UFormField>
-        <UFormField label="Descrição">
-          <UTextarea
-            v-model="form.description"
-            class="w-full"
-            :rows="2"
-            placeholder="Opcional"
-          />
-        </UFormField>
         <UFormField label="Vale a partir de" required>
           <UiDatePicker v-model="form.effectiveMonth" mode="month" />
         </UFormField>

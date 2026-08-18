@@ -71,15 +71,6 @@ const hasDefaultRule = computed(() => props.modelValue.some(rule => rule.isDefau
         />
       </div>
 
-      <UFormField label="Nome da regra">
-        <UInput
-          :model-value="rule.name"
-          class="w-full"
-          placeholder="Opcional, ex: Peças"
-          @update:model-value="(value: string) => updateRule(rule.key, { name: value })"
-        />
-      </UFormField>
-
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <UFormField label="Tipo de comissão" required>
           <USelectMenu
@@ -123,7 +114,7 @@ const hasDefaultRule = computed(() => props.modelValue.some(rule => rule.isDefau
 
       <UCheckbox
         :model-value="rule.isDefault"
-        label="Regra padrão (catch-all)"
+        label="Regra padrão"
         color="neutral"
         :disabled="!rule.isDefault && hasDefaultRule"
         @update:model-value="(value: boolean) => updateRule(rule.key, { isDefault: value, categoryIds: value ? [] : rule.categoryIds })"
@@ -154,7 +145,7 @@ const hasDefaultRule = computed(() => props.modelValue.some(rule => rule.isDefau
     </div>
 
     <UButton
-      label="+ Regra"
+      label="Regra"
       icon="i-lucide-plus"
       size="xs"
       color="neutral"
