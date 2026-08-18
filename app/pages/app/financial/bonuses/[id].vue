@@ -448,7 +448,6 @@ async function reprocessGeneration(item: ProgressItem) {
                   Vencimento: {{ bonus.dueDay ? `dia ${bonus.dueDay}` : 'último dia do mês' }}
                   <UButton
                     v-if="canUpdate"
-                    label="Editar"
                     icon="i-lucide-pencil"
                     variant="link"
                     color="neutral"
@@ -479,7 +478,6 @@ async function reprocessGeneration(item: ProgressItem) {
               </p>
               <UButton
                 v-if="canUpdate"
-                label="Alterar valor"
                 icon="i-lucide-pencil"
                 color="neutral"
                 variant="outline"
