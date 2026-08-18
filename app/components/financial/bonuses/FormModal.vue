@@ -19,7 +19,8 @@ const form = reactive({
   commissionBase: 'revenue' as 'revenue' | 'profit' | 'revenue_minus_parts' | 'employee_net_profit',
   goalAmount: '' as number | string,
   bonusAmount: '' as number | string,
-  effectiveMonth: currentMonthValue() as string | undefined
+  effectiveMonth: currentMonthValue() as string | undefined,
+  dueDay: '' as string
 })
 
 function resetForm() {
@@ -28,6 +29,7 @@ function resetForm() {
   form.goalAmount = ''
   form.bonusAmount = ''
   form.effectiveMonth = currentMonthValue()
+  form.dueDay = ''
 }
 
 const commissionBaseOptions = [
@@ -58,7 +60,7 @@ const commissionBaseOptions = [
 ]
 
 const selectedCommissionBase = computed(() =>
-  commissionBaseOptions.find(option => option.value === form.commissionBase) ?? commissionBaseOptions[0]
+  commissionBaseOptions.find(option => option.value === form.commissionBase) ?? commissionBaseOptions[0]!
 )
 
 async function save() {
@@ -83,6 +85,11 @@ async function save() {
     toast.add({ title: 'Informe a partir de qual mês o bônus vale', color: 'warning' })
     return
   }
+  const dueDay = form.dueDay === '' ? undefined : Number(form.dueDay)
+  if (dueDay !== undefined && (!Number.isInteger(dueDay) || dueDay < 1 || dueDay > 31)) {
+    toast.add({ title: 'Dia de vencimento deve ser um número entre 1 e 31', color: 'warning' })
+    return
+  }
 
   isSaving.value = true
   try {
@@ -93,7 +100,8 @@ async function save() {
         commissionBase: form.commissionBase,
         goalAmount,
         bonusAmount,
-        effectiveFrom: `${form.effectiveMonth}-01`
+        effectiveFrom: `${form.effectiveMonth}-01`,
+        dueDay
       }
     })
     toast.add({ title: 'Bônus criado', color: 'success' })
@@ -152,9 +160,21 @@ async function save() {
           </UFormField>
         </div>
 
-        <UFormField label="Vale a partir de" required>
-          <UiDatePicker v-model="form.effectiveMonth" mode="month" />
-        </UFormField>
+        <div class="grid grid-cols-2 gap-3">
+          <UFormField label="Vale a partir de" required>
+            <UiDatePicker v-model="form.effectiveMonth" mode="month" />
+          </UFormField>
+          <UFormField label="Dia de vencimento" required>
+            <UInput
+              v-model="form.dueDay"
+              type="number"
+              min="1"
+              max="31"
+              placeholder="Ex: 5"
+              class="w-full"
+            />
+          </UFormField>
+        </div>
       </div>
     </template>
 
@@ -162,6 +182,7 @@ async function save() {
       <div class="flex justify-end gap-2">
         <UButton
           label="Cancelar"
+          icon="i-lucide-x"
           color="neutral"
           variant="ghost"
           :disabled="isSaving"
@@ -169,6 +190,7 @@ async function save() {
         />
         <UButton
           label="Criar bônus"
+          icon="i-lucide-check"
           color="neutral"
           :loading="isSaving"
           :disabled="isSaving"

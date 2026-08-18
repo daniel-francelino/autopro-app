@@ -398,6 +398,8 @@ function formatCommissionType(value: string | null | undefined) {
 function formatCommissionBase(value: string | null | undefined) {
   if (value === 'profit') return 'Lucro'
   if (value === 'revenue') return 'Receita'
+  if (value === 'revenue_minus_parts') return 'Faturamento - peças'
+  if (value === 'employee_net_profit') return 'Lucro líquido do funcionário'
   return '—'
 }
 

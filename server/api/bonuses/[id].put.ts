@@ -42,6 +42,17 @@ export default defineEventHandler(async (event) => {
   if (body?.active !== undefined) {
     updates.active = Boolean(body.active)
   }
+  if (body?.dueDay !== undefined) {
+    if (body.dueDay === null || body.dueDay === '') {
+      updates.due_day = null
+    } else {
+      const dueDay = Number(body.dueDay)
+      if (!Number.isInteger(dueDay) || dueDay < 1 || dueDay > 31) {
+        throw createError({ statusCode: 400, statusMessage: 'dueDay deve ser um número inteiro entre 1 e 31' })
+      }
+      updates.due_day = dueDay
+    }
+  }
 
   const { data, error } = await supabase
     .from('bonuses')

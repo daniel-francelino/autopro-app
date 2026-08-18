@@ -27,9 +27,21 @@ interface BonusDetail {
   name: string
   description: string | null
   active: boolean
+  dueDay: number | null
   currentValue: { commissionBase: CommissionBase, goalAmount: number, bonusAmount: number, effectiveFrom: string } | null
   valueHistory: BonusValueHistoryEntry[]
   assignments: BonusAssignment[]
+}
+
+interface BonusFinancialRecordItem {
+  id: string
+  employeeId: string | null
+  employeeName: string
+  amount: number
+  status: 'paid' | 'pending' | 'cancelled'
+  referenceDate: string | null
+  paymentDate: string | null
+  description: string | null
 }
 
 interface ProgressItem {
@@ -62,6 +74,7 @@ const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : unde
 
 const canRead = computed(() => workshop.can(ActionCode.BONUSES_READ))
 const canUpdate = computed(() => workshop.can(ActionCode.BONUSES_UPDATE))
+const canDelete = computed(() => workshop.can(ActionCode.BONUSES_DELETE))
 
 const bonusId = computed(() => String(route.params.id || ''))
 
@@ -101,6 +114,19 @@ const { data: progressData, status: progressStatus, refresh: refreshProgress } =
 
 const progressItems = computed(() => progressData.value?.items ?? [])
 const isProgressLoading = computed(() => progressStatus.value === 'pending')
+const generatedProgressItems = computed(() => progressItems.value.filter(item => item.generated))
+
+const { data: financialRecordsData, status: financialRecordsStatus, refresh: refreshFinancialRecords } = await useAsyncData(
+  () => `bonus-financial-records-${bonusId.value}-${referenceMonth.value}`,
+  () => requestFetch<{ items: BonusFinancialRecordItem[] }>(`/api/bonuses/${bonusId.value}/financial-records`, {
+    headers: requestHeaders,
+    query: { referenceMonth: `${referenceMonth.value}-01` }
+  }),
+  { watch: [referenceMonth], default: () => ({ items: [] }) }
+)
+
+const financialRecords = computed(() => financialRecordsData.value?.items ?? [])
+const isFinancialRecordsLoading = computed(() => financialRecordsStatus.value === 'pending')
 
 const assignedEmployeeIds = computed(() => (bonus.value?.assignments ?? []).filter(a => a.active).map(a => a.employeeId))
 
@@ -125,18 +151,45 @@ function formatMonthLabel(monthValue: string) {
 const commissionBaseLabel: Record<CommissionBase, string> = {
   revenue: 'Faturamento',
   profit: 'Lucro',
-  revenue_minus_parts: 'Faturamento - pecas',
-  employee_net_profit: 'Lucro liquido funcionario'
+  revenue_minus_parts: 'Faturamento - peças',
+  employee_net_profit: 'Lucro líquido do funcionário'
 }
 
 function retryLoad() {
   return refresh()
 }
 
-function progressStatusLabel(item: ProgressItem): { label: string, color: 'success' | 'warning' | 'neutral' } {
-  if (item.goalAmount == null) return { label: 'Sem valor configurado', color: 'neutral' }
-  if (item.goalMet) return { label: item.achievedAmount > item.goalAmount ? 'Meta superada' : 'Meta atingida', color: 'success' }
-  return { label: 'Abaixo da meta', color: 'warning' }
+function progressStatusLabel(item: ProgressItem): { label: string, color: 'success' | 'warning' | 'neutral', icon: string } {
+  if (item.goalAmount == null) return { label: 'Sem valor configurado', color: 'neutral', icon: 'i-lucide-circle-help' }
+  if (item.goalMet) {
+    return item.achievedAmount > item.goalAmount
+      ? { label: 'Meta superada', color: 'success', icon: 'i-lucide-trophy' }
+      : { label: 'Meta atingida', color: 'success', icon: 'i-lucide-check-circle-2' }
+  }
+  return { label: 'Abaixo da meta', color: 'warning', icon: 'i-lucide-trending-down' }
+}
+
+function progressRatio(item: ProgressItem): number {
+  if (!item.goalAmount) return 0
+  return item.achievedAmount / item.goalAmount
+}
+
+function progressPercentLabel(item: ProgressItem): string {
+  return `${Math.round(progressRatio(item) * 100)}%`
+}
+
+function progressPercentClass(item: ProgressItem): string {
+  const color = progressBarColor(item)
+  if (color === 'error') return 'text-error'
+  if (color === 'warning') return 'text-warning'
+  return 'text-success'
+}
+
+function progressBarColor(item: ProgressItem): 'error' | 'warning' | 'success' {
+  const ratio = progressRatio(item)
+  if (ratio < 0.5) return 'error'
+  if (ratio < 0.9) return 'warning'
+  return 'success'
 }
 
 // ─── Toggle active ──────────────────────────────────────────────────────────
@@ -151,6 +204,70 @@ async function toggleActive() {
     toast.add({ title: 'Erro ao atualizar status do bônus', color: 'error' })
   } finally {
     isTogglingActive.value = false
+  }
+}
+
+// ─── Due day modal ──────────────────────────────────────────────────────────
+const showDueDayModal = ref(false)
+async function onDueDaySaved() {
+  showDueDayModal.value = false
+  await refresh()
+}
+
+// ─── Pay financial record ───────────────────────────────────────────────────
+const payingRecordId = ref<string | null>(null)
+async function payFinancialRecord(id: string) {
+  if (payingRecordId.value) return
+  payingRecordId.value = id
+  try {
+    await $fetch(`/api/reports/commissions/${id}/pay`, { method: 'POST' })
+    toast.add({ title: 'Bônus pago', color: 'success' })
+    await refreshFinancialRecords()
+  } catch (err: unknown) {
+    const error = err as { data?: { statusMessage?: string }, statusMessage?: string }
+    toast.add({ title: 'Erro ao pagar bônus', description: error?.data?.statusMessage || error?.statusMessage, color: 'error' })
+  } finally {
+    payingRecordId.value = null
+  }
+}
+
+function financialRecordStatusLabel(status: BonusFinancialRecordItem['status']): { label: string, color: 'success' | 'warning' | 'error', icon: string } {
+  if (status === 'paid') return { label: 'Pago', color: 'success', icon: 'i-lucide-circle-check-big' }
+  if (status === 'cancelled') return { label: 'Cancelado', color: 'error', icon: 'i-lucide-circle-x' }
+  return { label: 'Pendente', color: 'warning', icon: 'i-lucide-clock' }
+}
+
+// ─── Delete financial record ────────────────────────────────────────────────
+const isDeletingRecord = ref(false)
+const showDeleteRecordModal = ref(false)
+const recordPendingDeletion = ref<BonusFinancialRecordItem | null>(null)
+const deletionReason = ref('')
+const deletionReasonValid = computed(() => deletionReason.value.trim().length > 0)
+
+function requestDeleteRecord(record: BonusFinancialRecordItem) {
+  if (isDeletingRecord.value) return
+  recordPendingDeletion.value = record
+  deletionReason.value = ''
+  showDeleteRecordModal.value = true
+}
+
+async function confirmDeleteRecord() {
+  if (!recordPendingDeletion.value || isDeletingRecord.value || !deletionReasonValid.value) return
+  isDeletingRecord.value = true
+  try {
+    await $fetch(`/api/bonuses/${bonusId.value}/financial-records/${recordPendingDeletion.value.id}`, {
+      method: 'DELETE',
+      body: { reason: deletionReason.value.trim() }
+    })
+    toast.add({ title: 'Pagamento excluído — pronto para reprocessar', color: 'success' })
+    showDeleteRecordModal.value = false
+    recordPendingDeletion.value = null
+    await Promise.all([refreshFinancialRecords(), refreshProgress()])
+  } catch (err: unknown) {
+    const error = err as { data?: { statusMessage?: string }, statusMessage?: string }
+    toast.add({ title: 'Erro ao excluir pagamento', description: error?.data?.statusMessage || error?.statusMessage, color: 'error' })
+  } finally {
+    isDeletingRecord.value = false
   }
 }
 
@@ -243,12 +360,49 @@ function confirmRetroactiveGenerate() {
   showRetroactiveConfirm.value = false
   generate(pendingGenerateEmployeeId.value)
 }
+
+// ─── Reprocess ──────────────────────────────────────────────────────────────
+// A generated employee/month is locked (bonus_generations' unique
+// constraint) even after a value change (Alterar valor) or after the
+// payment gets deleted some other way — always available per-row, never in
+// bulk, so reprocessing one employee never risks touching anyone else's
+// already-settled month. No confirm-with-reason modal here (unlike "Excluir
+// pagamento" in Pagamentos, a deliberate delete) — reprocessing is routine
+// enough to fire directly, with a fixed reason on the audit trail.
+const REPROCESS_REASON = 'Reprocessamento do bônus do funcionário'
+const reprocessingEmployeeId = ref<string | null>(null)
+
+async function requestReprocess(item: ProgressItem) {
+  if (reprocessingEmployeeId.value) return
+  reprocessingEmployeeId.value = item.employeeId
+  try {
+    if (item.financialRecordId) {
+      await $fetch(`/api/bonuses/${bonusId.value}/financial-records/${item.financialRecordId}`, {
+        method: 'DELETE',
+        body: { reason: REPROCESS_REASON }
+      })
+      await Promise.all([refreshFinancialRecords(), refreshProgress()])
+    } else {
+      await $fetch(`/api/bonuses/${bonusId.value}/generations/${item.employeeId}`, {
+        method: 'DELETE',
+        query: { referenceMonth: `${referenceMonth.value}-01` }
+      })
+      await refreshProgress()
+    }
+    toast.add({ title: 'Pronto para reprocessar — use "Gerar" novamente', color: 'success' })
+  } catch (err: unknown) {
+    const error = err as { data?: { statusMessage?: string }, statusMessage?: string }
+    toast.add({ title: 'Erro ao reprocessar', description: error?.data?.statusMessage || error?.statusMessage, color: 'error' })
+  } finally {
+    reprocessingEmployeeId.value = null
+  }
+}
 </script>
 
 <template>
   <UDashboardPanel>
     <template #header>
-      <AppPageHeader :title="bonus?.name || 'Bônus'">
+      <AppPageHeader title="Bônus">
         <template #right>
           <UButton
             label="Voltar"
@@ -281,9 +435,15 @@ function confirmRetroactiveGenerate() {
               Não foi possível carregar este bônus.
             </p>
             <div class="mt-4 flex gap-2">
-              <UButton label="Tentar novamente" color="neutral" @click="retryLoad" />
+              <UButton
+                label="Tentar novamente"
+                icon="i-lucide-rotate-cw"
+                color="neutral"
+                @click="retryLoad"
+              />
               <UButton
                 label="Voltar para bônus"
+                icon="i-lucide-arrow-left"
                 color="neutral"
                 variant="ghost"
                 to="/app/financial/bonuses"
@@ -314,11 +474,24 @@ function confirmRetroactiveGenerate() {
                 <p v-if="bonus.description" class="text-sm text-muted">
                   {{ bonus.description }}
                 </p>
+                <p class="text-xs text-muted">
+                  Vencimento: {{ bonus.dueDay ? `dia ${bonus.dueDay}` : 'último dia do mês' }}
+                  <UButton
+                    v-if="canUpdate"
+                    icon="i-lucide-pencil"
+                    variant="link"
+                    color="neutral"
+                    size="xs"
+                    class="p-0"
+                    @click="showDueDayModal = true"
+                  />
+                </p>
               </div>
             </div>
             <UButton
               v-if="canUpdate"
               :label="bonus.active ? 'Desativar' : 'Ativar'"
+              :icon="bonus.active ? 'i-lucide-power-off' : 'i-lucide-power'"
               color="neutral"
               variant="outline"
               size="sm"
@@ -330,12 +503,12 @@ function confirmRetroactiveGenerate() {
           <!-- Valor atual -->
           <div class="space-y-3 rounded-2xl border border-default p-4">
             <div class="flex items-center justify-between gap-3">
-              <p class="text-sm font-semibold text-highlighted">
+              <p class="flex items-center gap-2 text-sm font-semibold text-highlighted">
+                <UIcon name="i-lucide-coins" class="size-4 text-muted" />
                 Valor atual
               </p>
               <UButton
                 v-if="canUpdate"
-                label="Alterar valor"
                 icon="i-lucide-pencil"
                 color="neutral"
                 variant="outline"
@@ -426,7 +599,8 @@ function confirmRetroactiveGenerate() {
           <!-- Funcionários atribuídos -->
           <div class="space-y-3 rounded-2xl border border-default p-4">
             <div class="flex flex-wrap items-center justify-between gap-3">
-              <p class="text-sm font-semibold text-highlighted">
+              <p class="flex items-center gap-2 text-sm font-semibold text-highlighted">
+                <UIcon name="i-lucide-users-round" class="size-4 text-muted" />
                 Funcionários atribuídos
               </p>
               <div class="flex flex-nowrap items-center justify-end gap-2">
@@ -470,9 +644,107 @@ function confirmRetroactiveGenerate() {
               Nenhum funcionário atribuído ainda.
             </div>
 
-            <div v-else class="space-y-2">
+            <div v-else class="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-3">
               <div
                 v-for="item in progressItems"
+                :key="item.employeeId"
+                class="flex flex-col gap-2 rounded-xl border border-default/70 bg-default/40 p-3"
+              >
+                <div class="flex flex-wrap items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <p class="truncate text-sm font-medium text-highlighted">
+                        {{ item.employeeName }}
+                      </p>
+                      <UBadge
+                        :label="progressStatusLabel(item).label"
+                        :color="progressStatusLabel(item).color"
+                        :icon="progressStatusLabel(item).icon"
+                        variant="subtle"
+                        size="sm"
+                      />
+                      <UBadge
+                        v-if="item.generated"
+                        label="Gerado"
+                        color="neutral"
+                        variant="subtle"
+                        size="sm"
+                        icon="i-lucide-check"
+                      />
+                    </div>
+                    <p class="text-xs text-muted">
+                      <template v-if="item.goalAmount != null">
+                        {{ formatCurrency(item.achievedAmount) }} / {{ formatCurrency(item.goalAmount) }}
+                        <span class="font-medium" :class="progressPercentClass(item)">({{ progressPercentLabel(item) }})</span>
+                      </template>
+                      <template v-else>
+                        Sem valor configurado para este mês
+                      </template>
+                    </p>
+                    <UProgress
+                      v-if="item.goalAmount != null"
+                      :model-value="Math.min(item.achievedAmount, item.goalAmount)"
+                      :max="item.goalAmount"
+                      :color="progressBarColor(item)"
+                      size="sm"
+                      class="mt-1.5"
+                    />
+                  </div>
+
+                  <div class="flex shrink-0 flex-wrap items-center gap-2">
+                    <UTooltip v-if="canUpdate && item.generated" text="Reprocessar este funcionário neste mês">
+                      <UButton
+                        icon="i-lucide-refresh-cw"
+                        color="neutral"
+                        variant="outline"
+                        size="xs"
+                        :loading="reprocessingEmployeeId === item.employeeId"
+                        @click="requestReprocess(item)"
+                      />
+                    </UTooltip>
+                    <UButton
+                      v-else-if="canUpdate && item.goalMet"
+                      label="Gerar"
+                      icon="i-lucide-play"
+                      color="neutral"
+                      variant="outline"
+                      size="xs"
+                      :loading="generatingEmployeeId === item.employeeId"
+                      @click="onGenerateClick(item.employeeId)"
+                    />
+                    <UTooltip v-if="canUpdate" text="Remover do bônus">
+                      <UButton
+                        icon="i-lucide-x"
+                        color="error"
+                        variant="ghost"
+                        size="xs"
+                        @click="requestUnassign(item)"
+                      />
+                    </UTooltip>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Metas geradas no mês selecionado -->
+          <div class="space-y-3 rounded-2xl border border-default p-4">
+            <p class="flex items-center gap-2 text-sm font-semibold text-highlighted">
+              <UIcon name="i-lucide-list-checks" class="size-4 text-muted" />
+              Geradas
+            </p>
+
+            <div v-if="isProgressLoading" class="space-y-2">
+              <USkeleton v-for="i in 2" :key="i" class="h-16 w-full rounded-xl" />
+            </div>
+
+            <div v-else-if="generatedProgressItems.length === 0" class="rounded-xl border border-dashed border-default p-6 text-center text-sm text-muted">
+              Nenhuma meta gerada neste mês ainda.
+            </div>
+
+            <div v-else class="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-3">
+              <div
+                v-for="item in generatedProgressItems"
                 :key="item.employeeId"
                 class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-default/70 bg-default/40 p-3"
               >
@@ -481,49 +753,106 @@ function confirmRetroactiveGenerate() {
                     {{ item.employeeName }}
                   </p>
                   <p class="text-xs text-muted">
-                    <template v-if="item.goalAmount != null">
-                      {{ formatCurrency(item.achievedAmount) }} / {{ formatCurrency(item.goalAmount) }}
-                    </template>
-                    <template v-else>
-                      Sem valor configurado para este mês
-                    </template>
+                    Meta: {{ formatCurrency(item.goalAmount) }} · Atingido: {{ formatCurrency(item.achievedAmount) }}
                   </p>
                 </div>
+
+                <p v-if="item.goalMet" class="text-sm font-semibold text-success">
+                  {{ formatCurrency(item.bonusAmount) }}
+                </p>
+                <UBadge
+                  v-else
+                  label="Bônus não liberado"
+                  icon="i-lucide-ban"
+                  color="neutral"
+                  variant="subtle"
+                  size="sm"
+                />
 
                 <UBadge
                   :label="progressStatusLabel(item).label"
                   :color="progressStatusLabel(item).color"
+                  :icon="progressStatusLabel(item).icon"
+                  variant="subtle"
+                  size="sm"
+                />
+
+                <UButton
+                  v-if="canUpdate && !item.financialRecordId"
+                  icon="i-lucide-refresh-cw"
+                  color="neutral"
+                  variant="outline"
+                  size="xs"
+                  :loading="reprocessingEmployeeId === item.employeeId"
+                  @click="requestReprocess(item)"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Pagamentos do mês selecionado -->
+          <div class="space-y-3 rounded-2xl border border-default p-4">
+            <p class="flex items-center gap-2 text-sm font-semibold text-highlighted">
+              <UIcon name="i-lucide-receipt" class="size-4 text-muted" />
+              Pagamentos
+            </p>
+
+            <div v-if="isFinancialRecordsLoading" class="space-y-2">
+              <USkeleton v-for="i in 2" :key="i" class="h-16 w-full rounded-xl" />
+            </div>
+
+            <div v-else-if="financialRecords.length === 0" class="rounded-xl border border-dashed border-default p-6 text-center text-sm text-muted">
+              Nenhum bônus liberado neste mês ainda.
+            </div>
+
+            <div v-else class="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-3">
+              <div
+                v-for="record in financialRecords"
+                :key="record.id"
+                class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-default/70 bg-default/40 p-3"
+              >
+                <div class="min-w-0 flex-1">
+                  <p class="truncate text-sm font-medium text-highlighted">
+                    {{ record.employeeName }}
+                  </p>
+                  <p class="text-xs text-muted">
+                    Vencimento: {{ formatDate(record.referenceDate) }}
+                    <template v-if="record.paymentDate">
+                      · Pago em {{ formatDate(record.paymentDate) }}
+                    </template>
+                  </p>
+                </div>
+
+                <p class="text-sm font-semibold text-success">
+                  {{ formatCurrency(record.amount) }}
+                </p>
+
+                <UBadge
+                  :label="financialRecordStatusLabel(record.status).label"
+                  :color="financialRecordStatusLabel(record.status).color"
+                  :icon="financialRecordStatusLabel(record.status).icon"
                   variant="subtle"
                   size="sm"
                 />
 
                 <div class="flex shrink-0 items-center gap-2">
-                  <template v-if="item.generated">
-                    <UBadge
-                      label="Gerado"
-                      color="neutral"
-                      variant="subtle"
-                      size="sm"
-                      icon="i-lucide-check"
-                    />
-                  </template>
                   <UButton
-                    v-else-if="canUpdate"
-                    label="Gerar"
+                    v-if="canUpdate && record.status === 'pending'"
+                    label="Pagar"
+                    icon="i-lucide-banknote"
                     color="neutral"
                     variant="outline"
                     size="xs"
-                    :loading="generatingEmployeeId === item.employeeId"
-                    :disabled="item.goalAmount == null"
-                    @click="onGenerateClick(item.employeeId)"
+                    :loading="payingRecordId === record.id"
+                    @click="payFinancialRecord(record.id)"
                   />
-                  <UTooltip v-if="canUpdate" text="Remover do bônus">
+                  <UTooltip v-if="canDelete" text="Excluir pagamento">
                     <UButton
-                      icon="i-lucide-x"
+                      icon="i-lucide-trash-2"
                       color="error"
                       variant="ghost"
                       size="xs"
-                      @click="requestUnassign(item)"
+                      @click="requestDeleteRecord(record)"
                     />
                   </UTooltip>
                 </div>
@@ -534,6 +863,14 @@ function confirmRetroactiveGenerate() {
       </div>
     </template>
   </UDashboardPanel>
+
+  <FinancialBonusesDueDayModal
+    v-if="bonus"
+    v-model:open="showDueDayModal"
+    :bonus-id="bonusId"
+    :current-due-day="bonus.dueDay"
+    @saved="onDueDaySaved"
+  />
 
   <FinancialBonusesValueModal
     v-if="bonus"
@@ -579,6 +916,32 @@ function confirmRetroactiveGenerate() {
         Você está gerando <strong class="text-highlighted">{{ formatMonthLabel(referenceMonth) }}</strong>, que não é o mês atual.
         Confirma que quer gerar esse mês retroativamente?
       </p>
+    </template>
+  </AppConfirmModal>
+
+  <AppConfirmModal
+    v-model:open="showDeleteRecordModal"
+    title="Excluir pagamento de bônus"
+    confirm-label="Excluir pagamento"
+    confirm-color="error"
+    :loading="isDeletingRecord"
+    :confirm-disabled="!deletionReasonValid"
+    @confirm="confirmDeleteRecord"
+    @update:open="(value: boolean) => { showDeleteRecordModal = value; if (!value && !isDeletingRecord) { recordPendingDeletion = null; deletionReason = '' } }"
+  >
+    <template #description>
+      <div class="space-y-3">
+        <p class="text-sm text-muted">
+          Tem certeza que deseja excluir o pagamento de <strong class="text-highlighted">{{ recordPendingDeletion?.employeeName || 'este funcionário' }}</strong>?
+          <template v-if="recordPendingDeletion?.status === 'paid'">
+            Como já foi pago, o valor será estornado da conta bancária.
+          </template>
+          Esta ação não pode ser desfeita.
+        </p>
+        <UFormField label="Motivo da exclusão" required>
+          <UTextarea v-model="deletionReason" class="w-full" :rows="2" />
+        </UFormField>
+      </div>
     </template>
   </AppConfirmModal>
 </template>
