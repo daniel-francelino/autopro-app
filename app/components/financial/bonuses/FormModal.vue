@@ -164,7 +164,7 @@ async function save() {
           <UFormField label="Vale a partir de" required>
             <UiDatePicker v-model="form.effectiveMonth" mode="month" />
           </UFormField>
-          <UFormField label="Dia de vencimento" hint="Opcional — padrão: último dia do mês">
+          <UFormField label="Dia de vencimento" required>
             <UInput
               v-model="form.dueDay"
               type="number"

@@ -405,7 +405,12 @@ async function reprocessGeneration(item: ProgressItem) {
               Não foi possível carregar este bônus.
             </p>
             <div class="mt-4 flex gap-2">
-              <UButton label="Tentar novamente" icon="i-lucide-rotate-cw" color="neutral" @click="retryLoad" />
+              <UButton
+                label="Tentar novamente"
+                icon="i-lucide-rotate-cw"
+                color="neutral"
+                @click="retryLoad"
+              />
               <UButton
                 label="Voltar para bônus"
                 icon="i-lucide-arrow-left"
