@@ -676,7 +676,6 @@ async function requestReprocess(item: ProgressItem) {
                       />
                       <UTooltip v-if="canUpdate" text="Reprocessar este funcionário neste mês">
                         <UButton
-                          label="Reprocessar"
                           icon="i-lucide-refresh-cw"
                           color="neutral"
                           variant="outline"
@@ -754,7 +753,6 @@ async function requestReprocess(item: ProgressItem) {
 
                 <UButton
                   v-if="canUpdate && !item.financialRecordId"
-                  label="Reprocessar"
                   icon="i-lucide-refresh-cw"
                   color="neutral"
                   variant="outline"
