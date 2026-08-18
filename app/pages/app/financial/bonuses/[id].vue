@@ -529,13 +529,12 @@ function confirmRetroactiveGenerate() {
                     />
                   </template>
                   <UButton
-                    v-else-if="canUpdate"
+                    v-else-if="canUpdate && item.goalMet"
                     label="Gerar"
                     color="neutral"
                     variant="outline"
                     size="xs"
                     :loading="generatingEmployeeId === item.employeeId"
-                    :disabled="item.goalAmount == null"
                     @click="onGenerateClick(item.employeeId)"
                   />
                   <UTooltip v-if="canUpdate" text="Remover do bônus">
