@@ -87,6 +87,9 @@ const links = computed<NavigationMenuItem[][]>(() => {
   if (workshop.can(ActionCode.PRODUCTS_READ))
     productsChildren.push(item('Visão geral', 'i-lucide-package', '/app/products'))
 
+  if (workshop.can(ActionCode.PRODUCTS_READ))
+    productsChildren.push(item('Categorias', 'i-lucide-tags', '/app/products/categories'))
+
   if (workshop.can(ActionCode.INVENTORY_READ))
     productsChildren.push(item('Estoque', 'i-lucide-box', '/app/products/inventory'))
 
@@ -128,6 +131,9 @@ const links = computed<NavigationMenuItem[][]>(() => {
 
   if (workshop.can(ActionCode.BONUSES_READ))
     financeChildren.push(item('Bônus', 'i-lucide-gift', '/app/financial/bonuses'))
+
+  if (workshop.can(ActionCode.COMMISSIONS_READ))
+    financeChildren.push(item('Comissões', 'i-lucide-badge-percent', '/app/financial/commissions'))
 
   const finance: NavigationMenuItem[] = financeChildren.length > 0
     ? [triggerItem('Financeiro', 'i-lucide-dollar-sign', '/app/financial', sortChildren(financeChildren))]

@@ -127,6 +127,24 @@ interface EmployeeBonusItem {
   generated: boolean
 }
 
+interface EmployeeCommissionPlanRule {
+  id: string
+  name: string | null
+  commissionType: 'percentage' | 'fixed_amount'
+  commissionAmount: number
+  commissionBase: 'revenue' | 'profit'
+  isDefault: boolean
+  categories: Array<{ id: string, name: string | null }>
+}
+
+interface EmployeeCommissionPlanItem {
+  planId: string
+  planName: string
+  active: boolean
+  effectiveFrom: string | null
+  rules: EmployeeCommissionPlanRule[]
+}
+
 function defaultFrom(): string {
   const now = new Date()
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
@@ -165,7 +183,8 @@ const reportQueryKey = computed(() => `employee-detail-report-${employeeId.value
 const [
   { data, status, error, refresh },
   { data: reportData, status: reportStatus },
-  { data: bonusesData }
+  { data: bonusesData },
+  { data: commissionPlansData }
 ] = await Promise.all([
   useAsyncData(
     () => queryKey.value,
@@ -200,11 +219,20 @@ const [
     () => `employee-bonuses-${employeeId.value}`,
     () => requestFetch<{ items: EmployeeBonusItem[] }>(`/api/employees/${employeeId.value}/bonuses`, { headers: requestHeaders }),
     { default: () => ({ items: [] }) }
+  ),
+  // Comissões atribuídas (nova arquitetura — Step 5 de
+  // docs/finance/commissions-configuration-architecture.md). Leitura apenas:
+  // criar/editar/atribuir continua em Financeiro > Comissões.
+  useAsyncData(
+    () => `employee-commission-plans-${employeeId.value}`,
+    () => requestFetch<{ items: EmployeeCommissionPlanItem[] }>(`/api/employees/${employeeId.value}/commission-plans`, { headers: requestHeaders }),
+    { default: () => ({ items: [] }) }
   )
 ])
 
 const employee = computed(() => data.value?.data?.employee ?? null)
 const assignedBonuses = computed(() => bonusesData.value?.items ?? [])
+const assignedCommissionPlans = computed(() => commissionPlansData.value?.items ?? [])
 
 const reportSummary = computed(() => reportData.value?.data?.summary ?? null)
 const ordersView = computed(() => reportData.value?.data?.ordersView ?? [])
@@ -401,6 +429,12 @@ function formatCommissionBase(value: string | null | undefined) {
   if (value === 'revenue_minus_parts') return 'Faturamento - peças'
   if (value === 'employee_net_profit') return 'Lucro líquido do funcionário'
   return '—'
+}
+
+function commissionRuleAmountLabel(rule: EmployeeCommissionPlanRule) {
+  return rule.commissionType === 'percentage'
+    ? `${Number(rule.commissionAmount).toLocaleString('pt-BR')}%`
+    : formatCurrency(rule.commissionAmount)
 }
 
 function bonusStatusLabel(item: EmployeeBonusItem): { label: string, color: 'success' | 'warning' | 'neutral' } {
@@ -686,6 +720,54 @@ async function exportReport(format: 'csv' | 'pdf') {
                           <UBadge :color="bonusStatusLabel(bonus).color" variant="subtle" size="sm">
                             {{ bonusStatusLabel(bonus).label }}
                           </UBadge>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="rounded-2xl border border-default/70 bg-default/50 p-4 sm:col-span-2">
+                  <div class="flex items-start gap-3">
+                    <UIcon name="i-lucide-badge-percent" class="mt-0.5 size-5 shrink-0 text-info" />
+                    <div class="min-w-0 flex-1 space-y-2">
+                      <p class="flex items-center justify-between gap-2 text-xs uppercase tracking-widest text-muted">
+                        Comissões atribuídas
+                        <NuxtLink to="/app/financial/commissions" class="normal-case text-primary hover:underline">
+                          Gerenciar em Financeiro
+                        </NuxtLink>
+                      </p>
+                      <p v-if="assignedCommissionPlans.length === 0" class="text-sm text-muted">
+                        Nenhuma comissão atribuída a este funcionário.
+                      </p>
+                      <ul v-else class="space-y-2">
+                        <li
+                          v-for="plan in assignedCommissionPlans"
+                          :key="plan.planId"
+                          class="rounded-xl border border-default/60 bg-elevated/30 px-3 py-2"
+                        >
+                          <NuxtLink
+                            :to="`/app/financial/commissions/${plan.planId}`"
+                            class="truncate text-sm font-medium text-highlighted hover:underline"
+                          >
+                            {{ plan.planName }}
+                          </NuxtLink>
+                          <p v-if="plan.rules.length === 0" class="text-xs text-muted">
+                            Sem regras vigentes.
+                          </p>
+                          <ul v-else class="mt-1 space-y-1">
+                            <li v-for="rule in plan.rules" :key="rule.id" class="flex flex-wrap items-center gap-2 text-xs text-muted">
+                              <span class="font-medium text-highlighted">{{ commissionRuleAmountLabel(rule) }}</span>
+                              <span>· {{ formatCommissionBase(rule.commissionBase) }}</span>
+                              <UBadge
+                                v-if="rule.isDefault"
+                                label="Padrão"
+                                color="info"
+                                variant="subtle"
+                                size="sm"
+                              />
+                              <span v-else-if="rule.categories.length">{{ rule.categories.map(c => c.name).join(', ') }}</span>
+                            </li>
+                          </ul>
                         </li>
                       </ul>
                     </div>

@@ -25,6 +25,37 @@ export default defineEventHandler(async (event) => {
   if (!existing)
     throw createError({ statusCode: 404, statusMessage: 'Categoria não encontrada' })
 
+  const [productsResult, commissionRulesResult] = await Promise.all([
+    supabase
+      .from('products')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', organizationId)
+      .eq('category_id', id)
+      .is('deleted_at', null),
+    supabase
+      .from('employee_commission_rule_categories')
+      .select('rule_id', { count: 'exact', head: true })
+      .eq('category_id', id)
+  ])
+
+  if (productsResult.error)
+    throw createError({ statusCode: 500, statusMessage: productsResult.error.message })
+  if (commissionRulesResult.error)
+    throw createError({ statusCode: 500, statusMessage: commissionRulesResult.error.message })
+
+  const productsCount = productsResult.count ?? 0
+  const commissionRulesCount = commissionRulesResult.count ?? 0
+
+  if (productsCount > 0 || commissionRulesCount > 0) {
+    const parts: string[] = []
+    if (productsCount > 0) parts.push(`${productsCount} produto${productsCount !== 1 ? 's' : ''}`)
+    if (commissionRulesCount > 0) parts.push(`${commissionRulesCount} regra${commissionRulesCount !== 1 ? 's' : ''} de comissão`)
+    throw createError({
+      statusCode: 409,
+      statusMessage: `Categoria em uso por ${parts.join(' e ')} e não pode ser removida.`
+    })
+  }
+
   const { error } = await supabase
     .from('product_categories')
     .update({
