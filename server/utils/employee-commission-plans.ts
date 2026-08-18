@@ -53,7 +53,8 @@ export interface CommissionRuleRecord {
   name: string | null
   commission_type: CommissionRuleType
   commission_amount: number
-  commission_base: CommissionRuleBase
+  /** Required for 'percentage' rules; null for 'fixed_amount' — a flat R$ per unit doesn't have a base. */
+  commission_base: CommissionRuleBase | null
   is_default: boolean
   sort_order: number
   category_ids: string[]
@@ -108,15 +109,25 @@ export function getApplicableCommissionRule(
 }
 
 /**
- * Computes the commission value for one rule match, given the item/order's
- * revenue and profit amounts (caller decides what those mean — full item
- * value, or an already-prorated slice of it).
+ * Computes the commission value for one rule match.
+ *
+ * - 'percentage': rate applied over the item/order's revenue or profit
+ *   (caller decides what those mean — full item value, or an already
+ *   prorated slice of it), per rule.commission_base.
+ * - 'fixed_amount': a flat R$ value PER UNIT matched, independent of the
+ *   item's price — commission_amount * quantity. This is the precise
+ *   semantics decided for fixed_amount rules (as opposed to the legacy
+ *   engines' two conflicting interpretations — prorated-per-order vs.
+ *   flat-per-order — see docs/employee-multiple-commission-rules-analysis.md
+ *   §2.3): "R$20 per tire sold", not "R$20 per order that has a tire".
  */
 export function computeCommissionAmount(
   rule: CommissionRuleRecord,
-  amounts: { revenue: number, profit: number }
+  amounts: { revenue: number, profit: number, quantity?: number }
 ): number {
-  if (rule.commission_type === 'fixed_amount') return roundMoney(rule.commission_amount)
+  if (rule.commission_type === 'fixed_amount') {
+    return roundMoney(rule.commission_amount * (amounts.quantity ?? 1))
+  }
   const base = rule.commission_base === 'profit' ? amounts.profit : amounts.revenue
   return roundMoney((base * rule.commission_amount) / 100)
 }
@@ -270,7 +281,7 @@ export interface ParsedCommissionRuleInput {
   name: string | null
   commissionType: CommissionRuleType
   commissionAmount: number
-  commissionBase: CommissionRuleBase
+  commissionBase: CommissionRuleBase | null
   isDefault: boolean
   categoryIds: string[]
   sortOrder: number
@@ -314,9 +325,15 @@ export function parseCommissionRulesInput(rawRules: unknown): ParsedCommissionRu
       throw new Error(`Regra ${index + 1}: commissionAmount percentual não pode ser maior que 100`)
     }
 
-    const commissionBase = body.commissionBase
-    if (typeof commissionBase !== 'string' || !VALID_COMMISSION_BASES.includes(commissionBase as CommissionRuleBase)) {
-      throw new Error(`Regra ${index + 1}: commissionBase deve ser "revenue" ou "profit"`)
+    // commissionBase only makes sense for a rate applied over revenue/profit.
+    // A fixed_amount rule is a flat R$ per unit, independent of either — the
+    // field is ignored (stored as null) for that type.
+    let commissionBase: CommissionRuleBase | null = null
+    if (commissionType === 'percentage') {
+      if (typeof body.commissionBase !== 'string' || !VALID_COMMISSION_BASES.includes(body.commissionBase as CommissionRuleBase)) {
+        throw new Error(`Regra ${index + 1}: commissionBase deve ser "revenue" ou "profit"`)
+      }
+      commissionBase = body.commissionBase as CommissionRuleBase
     }
 
     const isDefault = body.isDefault === true
@@ -340,7 +357,7 @@ export function parseCommissionRulesInput(rawRules: unknown): ParsedCommissionRu
       name: typeof body.name === 'string' && body.name.trim() ? body.name.trim() : null,
       commissionType: commissionType as CommissionRuleType,
       commissionAmount,
-      commissionBase: commissionBase as CommissionRuleBase,
+      commissionBase,
       isDefault,
       categoryIds: isDefault ? [] : categoryIds,
       sortOrder: index

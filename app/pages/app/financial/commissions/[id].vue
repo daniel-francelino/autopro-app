@@ -8,7 +8,7 @@ interface CommissionRuleItem {
   name: string | null
   commission_type: 'percentage' | 'fixed_amount'
   commission_amount: number
-  commission_base: 'revenue' | 'profit'
+  commission_base: 'revenue' | 'profit' | null
   is_default: boolean
   sort_order: number
   categories: Array<{ id: string, name: string | null }>
@@ -78,9 +78,10 @@ function formatDate(value: string | null | undefined) {
 function ruleAmountLabel(rule: CommissionRuleItem) {
   return rule.commission_type === 'percentage'
     ? `${Number(rule.commission_amount).toLocaleString('pt-BR')}%`
-    : formatCurrency(rule.commission_amount)
+    : `${formatCurrency(rule.commission_amount)} / unidade`
 }
 function ruleBaseLabel(rule: CommissionRuleItem) {
+  if (rule.commission_type === 'fixed_amount') return 'Por unidade'
   return rule.commission_base === 'profit' ? 'Lucro' : 'Faturamento'
 }
 

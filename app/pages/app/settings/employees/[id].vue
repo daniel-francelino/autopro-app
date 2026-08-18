@@ -132,7 +132,7 @@ interface EmployeeCommissionPlanRule {
   name: string | null
   commissionType: 'percentage' | 'fixed_amount'
   commissionAmount: number
-  commissionBase: 'revenue' | 'profit'
+  commissionBase: 'revenue' | 'profit' | null
   isDefault: boolean
   categories: Array<{ id: string, name: string | null }>
 }
@@ -434,7 +434,7 @@ function formatCommissionBase(value: string | null | undefined) {
 function commissionRuleAmountLabel(rule: EmployeeCommissionPlanRule) {
   return rule.commissionType === 'percentage'
     ? `${Number(rule.commissionAmount).toLocaleString('pt-BR')}%`
-    : formatCurrency(rule.commissionAmount)
+    : `${formatCurrency(rule.commissionAmount)} / unidade`
 }
 
 function bonusStatusLabel(item: EmployeeBonusItem): { label: string, color: 'success' | 'warning' | 'neutral' } {
@@ -757,7 +757,7 @@ async function exportReport(format: 'csv' | 'pdf') {
                           <ul v-else class="mt-1 space-y-1">
                             <li v-for="rule in plan.rules" :key="rule.id" class="flex flex-wrap items-center gap-2 text-xs text-muted">
                               <span class="font-medium text-highlighted">{{ commissionRuleAmountLabel(rule) }}</span>
-                              <span>· {{ formatCommissionBase(rule.commissionBase) }}</span>
+                              <span v-if="rule.commissionType === 'percentage'">· {{ formatCommissionBase(rule.commissionBase) }}</span>
                               <UBadge
                                 v-if="rule.isDefault"
                                 label="Padrão"

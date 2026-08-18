@@ -81,7 +81,7 @@ const hasDefaultRule = computed(() => props.modelValue.some(rule => rule.isDefau
             @update:model-value="(value: 'percentage' | 'fixed_amount') => updateRule(rule.key, { commissionType: value })"
           />
         </UFormField>
-        <UFormField :label="rule.commissionType === 'percentage' ? 'Taxa (%)' : 'Valor fixo (R$)'" required>
+        <UFormField :label="rule.commissionType === 'percentage' ? 'Taxa (%)' : 'Valor fixo por unidade (R$)'" required>
           <UInput
             v-if="rule.commissionType === 'percentage'"
             :model-value="rule.commissionAmount"
@@ -102,7 +102,11 @@ const hasDefaultRule = computed(() => props.modelValue.some(rule => rule.isDefau
         </UFormField>
       </div>
 
-      <UFormField label="Base de cálculo" required>
+      <p v-if="rule.commissionType === 'fixed_amount'" class="text-xs text-muted">
+        Pago por unidade vendida na categoria, independente do preço do item — ex: R$ 20 por pneu vendido.
+      </p>
+
+      <UFormField v-else label="Base de cálculo" required>
         <USelectMenu
           :model-value="rule.commissionBase"
           :items="commissionBaseOptions"

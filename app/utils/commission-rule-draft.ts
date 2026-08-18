@@ -59,7 +59,10 @@ export function commissionRuleDraftsToPayload(drafts: CommissionRuleDraft[]) {
     name: draft.name.trim() || undefined,
     commissionType: draft.commissionType,
     commissionAmount: Number(draft.commissionAmount),
-    commissionBase: draft.commissionBase,
+    // fixed_amount is a flat R$ per unit — it has no base, so the field
+    // (kept on the draft only so the UI has a value ready if the user
+    // switches back to percentage) is dropped before it reaches the API.
+    commissionBase: draft.commissionType === 'percentage' ? draft.commissionBase : null,
     isDefault: draft.isDefault,
     categoryIds: draft.isDefault ? [] : draft.categoryIds
   }))
@@ -69,7 +72,7 @@ export function commissionRuleDraftFromRule(rule: {
   name: string | null
   commission_type: 'percentage' | 'fixed_amount'
   commission_amount: number
-  commission_base: 'revenue' | 'profit'
+  commission_base: 'revenue' | 'profit' | null
   is_default: boolean
   category_ids: string[]
 }): CommissionRuleDraft {
@@ -78,7 +81,7 @@ export function commissionRuleDraftFromRule(rule: {
     name: rule.name ?? '',
     commissionType: rule.commission_type,
     commissionAmount: String(rule.commission_amount),
-    commissionBase: rule.commission_base,
+    commissionBase: rule.commission_base ?? 'revenue',
     isDefault: rule.is_default,
     categoryIds: [...rule.category_ids]
   }

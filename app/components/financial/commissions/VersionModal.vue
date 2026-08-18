@@ -11,7 +11,7 @@ interface CurrentRule {
   name: string | null
   commission_type: 'percentage' | 'fixed_amount'
   commission_amount: number
-  commission_base: 'revenue' | 'profit'
+  commission_base: 'revenue' | 'profit' | null
   is_default: boolean
   category_ids: string[]
 }
