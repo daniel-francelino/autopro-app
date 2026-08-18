@@ -244,10 +244,10 @@ async function confirmDeleteRecord() {
       method: 'DELETE',
       body: { reason: deletionReason.value.trim() }
     })
-    toast.add({ title: 'Pagamento excluído', color: 'success' })
+    toast.add({ title: 'Pagamento excluído — pronto para reprocessar', color: 'success' })
     showDeleteRecordModal.value = false
     recordPendingDeletion.value = null
-    await refreshFinancialRecords()
+    await Promise.all([refreshFinancialRecords(), refreshProgress()])
   } catch (err: unknown) {
     const error = err as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({ title: 'Erro ao excluir pagamento', description: error?.data?.statusMessage || error?.statusMessage, color: 'error' })
@@ -346,20 +346,35 @@ function confirmRetroactiveGenerate() {
   generate(pendingGenerateEmployeeId.value)
 }
 
-// ─── Reprocess (only for generated-but-not-met: no payment exists to delete
-// instead, so this is the only way to unstick that employee/month) ─────────
+// ─── Reprocess ──────────────────────────────────────────────────────────────
+// A generated employee/month is locked (bonus_generations' unique
+// constraint) even after a value change (Alterar valor) or after the
+// payment gets deleted some other way — always available per-row, never in
+// bulk, so reprocessing one employee never risks touching anyone else's
+// already-settled month. No confirm-with-reason modal here (unlike "Excluir
+// pagamento" in Pagamentos, a deliberate delete) — reprocessing is routine
+// enough to fire directly, with a fixed reason on the audit trail.
+const REPROCESS_REASON = 'Reprocessamento'
 const reprocessingEmployeeId = ref<string | null>(null)
 
-async function reprocessGeneration(item: ProgressItem) {
+async function requestReprocess(item: ProgressItem) {
   if (reprocessingEmployeeId.value) return
   reprocessingEmployeeId.value = item.employeeId
   try {
-    await $fetch(`/api/bonuses/${bonusId.value}/generations/${item.employeeId}`, {
-      method: 'DELETE',
-      query: { referenceMonth: `${referenceMonth.value}-01` }
-    })
+    if (item.financialRecordId) {
+      await $fetch(`/api/bonuses/${bonusId.value}/financial-records/${item.financialRecordId}`, {
+        method: 'DELETE',
+        body: { reason: REPROCESS_REASON }
+      })
+      await Promise.all([refreshFinancialRecords(), refreshProgress()])
+    } else {
+      await $fetch(`/api/bonuses/${bonusId.value}/generations/${item.employeeId}`, {
+        method: 'DELETE',
+        query: { referenceMonth: `${referenceMonth.value}-01` }
+      })
+      await refreshProgress()
+    }
     toast.add({ title: 'Pronto para reprocessar — use "Gerar" novamente', color: 'success' })
-    await refreshProgress()
   } catch (err: unknown) {
     const error = err as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({ title: 'Erro ao reprocessar', description: error?.data?.statusMessage || error?.statusMessage, color: 'error' })
@@ -656,6 +671,17 @@ async function reprocessGeneration(item: ProgressItem) {
                       size="sm"
                       icon="i-lucide-check"
                     />
+                    <UTooltip v-if="canUpdate" text="Reprocessar este funcionário neste mês">
+                      <UButton
+                        label="Reprocessar"
+                        icon="i-lucide-refresh-cw"
+                        color="neutral"
+                        variant="outline"
+                        size="xs"
+                        :loading="reprocessingEmployeeId === item.employeeId"
+                        @click="requestReprocess(item)"
+                      />
+                    </UTooltip>
                   </template>
                   <UButton
                     v-else-if="canUpdate && item.goalMet"
@@ -729,7 +755,7 @@ async function reprocessGeneration(item: ProgressItem) {
                   variant="outline"
                   size="xs"
                   :loading="reprocessingEmployeeId === item.employeeId"
-                  @click="reprocessGeneration(item)"
+                  @click="requestReprocess(item)"
                 />
               </div>
             </div>
