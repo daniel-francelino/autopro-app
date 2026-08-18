@@ -124,5 +124,18 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 500, statusMessage: `Failed to delete bonus payment: ${deleteError.message}` })
   }
 
+  // Also clears the bonus_generations row this payment came from — otherwise
+  // its (bonus_id, employee_id, reference_month) unique constraint keeps
+  // blocking "Gerar" forever for that employee/month, with no way to
+  // reprocess after fixing whatever needed fixing. bonus_generations has no
+  // deleted_at (append-only log by design), so this is a real delete; unlike
+  // employee_financial_records, there's no separate audit trail to preserve
+  // here — the deleted record's own deletion_reason already explains why.
+  await supabase
+    .from('bonus_generations')
+    .delete()
+    .eq('financial_record_id', recordId)
+    .eq('bonus_id', bonusId)
+
   return { success: true }
 })

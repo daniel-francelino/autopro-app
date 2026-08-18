@@ -345,6 +345,28 @@ function confirmRetroactiveGenerate() {
   showRetroactiveConfirm.value = false
   generate(pendingGenerateEmployeeId.value)
 }
+
+// ─── Reprocess (only for generated-but-not-met: no payment exists to delete
+// instead, so this is the only way to unstick that employee/month) ─────────
+const reprocessingEmployeeId = ref<string | null>(null)
+
+async function reprocessGeneration(item: ProgressItem) {
+  if (reprocessingEmployeeId.value) return
+  reprocessingEmployeeId.value = item.employeeId
+  try {
+    await $fetch(`/api/bonuses/${bonusId.value}/generations/${item.employeeId}`, {
+      method: 'DELETE',
+      query: { referenceMonth: `${referenceMonth.value}-01` }
+    })
+    toast.add({ title: 'Pronto para reprocessar — use "Gerar" novamente', color: 'success' })
+    await refreshProgress()
+  } catch (err: unknown) {
+    const error = err as { data?: { statusMessage?: string }, statusMessage?: string }
+    toast.add({ title: 'Erro ao reprocessar', description: error?.data?.statusMessage || error?.statusMessage, color: 'error' })
+  } finally {
+    reprocessingEmployeeId.value = null
+  }
+}
 </script>
 
 <template>
@@ -383,9 +405,10 @@ function confirmRetroactiveGenerate() {
               Não foi possível carregar este bônus.
             </p>
             <div class="mt-4 flex gap-2">
-              <UButton label="Tentar novamente" color="neutral" @click="retryLoad" />
+              <UButton label="Tentar novamente" icon="i-lucide-rotate-cw" color="neutral" @click="retryLoad" />
               <UButton
                 label="Voltar para bônus"
+                icon="i-lucide-arrow-left"
                 color="neutral"
                 variant="ghost"
                 to="/app/financial/bonuses"
@@ -421,6 +444,7 @@ function confirmRetroactiveGenerate() {
                   <UButton
                     v-if="canUpdate"
                     label="Editar"
+                    icon="i-lucide-pencil"
                     variant="link"
                     color="neutral"
                     size="xs"
@@ -433,6 +457,7 @@ function confirmRetroactiveGenerate() {
             <UButton
               v-if="canUpdate"
               :label="bonus.active ? 'Desativar' : 'Ativar'"
+              :icon="bonus.active ? 'i-lucide-power-off' : 'i-lucide-power'"
               color="neutral"
               variant="outline"
               size="sm"
@@ -632,6 +657,7 @@ function confirmRetroactiveGenerate() {
                   <UButton
                     v-else-if="canUpdate && item.goalMet"
                     label="Gerar"
+                    icon="i-lucide-play"
                     color="neutral"
                     variant="outline"
                     size="xs"
@@ -691,6 +717,17 @@ function confirmRetroactiveGenerate() {
                   variant="subtle"
                   size="sm"
                 />
+
+                <UButton
+                  v-if="canUpdate && !item.financialRecordId"
+                  label="Reprocessar"
+                  icon="i-lucide-refresh-cw"
+                  color="neutral"
+                  variant="outline"
+                  size="xs"
+                  :loading="reprocessingEmployeeId === item.employeeId"
+                  @click="reprocessGeneration(item)"
+                />
               </div>
             </div>
           </div>
@@ -742,6 +779,7 @@ function confirmRetroactiveGenerate() {
                   <UButton
                     v-if="canUpdate && record.status === 'pending'"
                     label="Pagar"
+                    icon="i-lucide-banknote"
                     color="neutral"
                     variant="outline"
                     size="xs"

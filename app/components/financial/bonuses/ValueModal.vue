@@ -162,6 +162,7 @@ async function save() {
       <div class="flex justify-end gap-2">
         <UButton
           label="Cancelar"
+          icon="i-lucide-x"
           color="neutral"
           variant="ghost"
           :disabled="isSaving"
@@ -169,6 +170,7 @@ async function save() {
         />
         <UButton
           label="Salvar novo valor"
+          icon="i-lucide-check"
           color="neutral"
           :loading="isSaving"
           :disabled="isSaving"
