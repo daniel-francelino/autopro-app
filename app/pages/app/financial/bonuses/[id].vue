@@ -74,6 +74,7 @@ const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : unde
 
 const canRead = computed(() => workshop.can(ActionCode.BONUSES_READ))
 const canUpdate = computed(() => workshop.can(ActionCode.BONUSES_UPDATE))
+const canDelete = computed(() => workshop.can(ActionCode.BONUSES_DELETE))
 
 const bonusId = computed(() => String(route.params.id || ''))
 
@@ -219,6 +220,40 @@ function financialRecordStatusLabel(status: BonusFinancialRecordItem['status']):
   if (status === 'paid') return { label: 'Pago', color: 'success' }
   if (status === 'cancelled') return { label: 'Cancelado', color: 'error' }
   return { label: 'Pendente', color: 'warning' }
+}
+
+// ─── Delete financial record ────────────────────────────────────────────────
+const isDeletingRecord = ref(false)
+const showDeleteRecordModal = ref(false)
+const recordPendingDeletion = ref<BonusFinancialRecordItem | null>(null)
+const deletionReason = ref('')
+const deletionReasonValid = computed(() => deletionReason.value.trim().length > 0)
+
+function requestDeleteRecord(record: BonusFinancialRecordItem) {
+  if (isDeletingRecord.value) return
+  recordPendingDeletion.value = record
+  deletionReason.value = ''
+  showDeleteRecordModal.value = true
+}
+
+async function confirmDeleteRecord() {
+  if (!recordPendingDeletion.value || isDeletingRecord.value || !deletionReasonValid.value) return
+  isDeletingRecord.value = true
+  try {
+    await $fetch(`/api/bonuses/${bonusId.value}/financial-records/${recordPendingDeletion.value.id}`, {
+      method: 'DELETE',
+      body: { reason: deletionReason.value.trim() }
+    })
+    toast.add({ title: 'Pagamento excluído', color: 'success' })
+    showDeleteRecordModal.value = false
+    recordPendingDeletion.value = null
+    await refreshFinancialRecords()
+  } catch (err: unknown) {
+    const error = err as { data?: { statusMessage?: string }, statusMessage?: string }
+    toast.add({ title: 'Erro ao excluir pagamento', description: error?.data?.statusMessage || error?.statusMessage, color: 'error' })
+  } finally {
+    isDeletingRecord.value = false
+  }
 }
 
 // ─── Value modal ────────────────────────────────────────────────────────────
@@ -620,7 +655,7 @@ function confirmRetroactiveGenerate() {
           <!-- Metas geradas no mês selecionado -->
           <div class="space-y-3 rounded-2xl border border-default p-4">
             <p class="text-sm font-semibold text-highlighted">
-              Geradas em {{ formatMonthLabel(referenceMonth) }}
+              Geradas
             </p>
 
             <div v-if="isProgressLoading" class="space-y-2">
@@ -663,7 +698,7 @@ function confirmRetroactiveGenerate() {
           <!-- Pagamentos do mês selecionado -->
           <div class="space-y-3 rounded-2xl border border-default p-4">
             <p class="text-sm font-semibold text-highlighted">
-              Pagamentos em {{ formatMonthLabel(referenceMonth) }}
+              Pagamentos
             </p>
 
             <div v-if="isFinancialRecordsLoading" class="space-y-2">
@@ -703,15 +738,26 @@ function confirmRetroactiveGenerate() {
                   size="sm"
                 />
 
-                <UButton
-                  v-if="canUpdate && record.status === 'pending'"
-                  label="Pagar"
-                  color="neutral"
-                  variant="outline"
-                  size="xs"
-                  :loading="payingRecordId === record.id"
-                  @click="payFinancialRecord(record.id)"
-                />
+                <div class="flex shrink-0 items-center gap-2">
+                  <UButton
+                    v-if="canUpdate && record.status === 'pending'"
+                    label="Pagar"
+                    color="neutral"
+                    variant="outline"
+                    size="xs"
+                    :loading="payingRecordId === record.id"
+                    @click="payFinancialRecord(record.id)"
+                  />
+                  <UTooltip v-if="canDelete" text="Excluir pagamento">
+                    <UButton
+                      icon="i-lucide-trash-2"
+                      color="error"
+                      variant="ghost"
+                      size="xs"
+                      @click="requestDeleteRecord(record)"
+                    />
+                  </UTooltip>
+                </div>
               </div>
             </div>
           </div>
@@ -772,6 +818,32 @@ function confirmRetroactiveGenerate() {
         Você está gerando <strong class="text-highlighted">{{ formatMonthLabel(referenceMonth) }}</strong>, que não é o mês atual.
         Confirma que quer gerar esse mês retroativamente?
       </p>
+    </template>
+  </AppConfirmModal>
+
+  <AppConfirmModal
+    v-model:open="showDeleteRecordModal"
+    title="Excluir pagamento de bônus"
+    confirm-label="Excluir pagamento"
+    confirm-color="error"
+    :loading="isDeletingRecord"
+    :confirm-disabled="!deletionReasonValid"
+    @confirm="confirmDeleteRecord"
+    @update:open="(value: boolean) => { showDeleteRecordModal = value; if (!value && !isDeletingRecord) { recordPendingDeletion = null; deletionReason = '' } }"
+  >
+    <template #description>
+      <div class="space-y-3">
+        <p class="text-sm text-muted">
+          Tem certeza que deseja excluir o pagamento de <strong class="text-highlighted">{{ recordPendingDeletion?.employeeName || 'este funcionário' }}</strong>?
+          <template v-if="recordPendingDeletion?.status === 'paid'">
+            Como já foi pago, o valor será estornado da conta bancária.
+          </template>
+          Esta ação não pode ser desfeita.
+        </p>
+        <UFormField label="Motivo da exclusão" required>
+          <UTextarea v-model="deletionReason" class="w-full" :rows="2" />
+        </UFormField>
+      </div>
     </template>
   </AppConfirmModal>
 </template>

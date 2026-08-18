@@ -69,7 +69,7 @@ const commissionBaseOptions = [
 ]
 
 const selectedCommissionBase = computed(() =>
-  commissionBaseOptions.find(option => option.value === form.commissionBase) ?? commissionBaseOptions[0]
+  commissionBaseOptions.find(option => option.value === form.commissionBase) ?? commissionBaseOptions[0]!
 )
 
 async function save() {

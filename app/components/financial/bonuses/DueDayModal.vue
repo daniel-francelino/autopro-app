@@ -12,12 +12,12 @@ const emit = defineEmits<{
 
 const toast = useToast()
 const isSaving = ref(false)
-const dueDay = ref<number | string>('')
+const dueDay = ref<string>('')
 
 watch(
   () => props.open,
   (open) => {
-    if (open) dueDay.value = props.currentDueDay ?? ''
+    if (open) dueDay.value = props.currentDueDay != null ? String(props.currentDueDay) : ''
   },
   { immediate: true }
 )

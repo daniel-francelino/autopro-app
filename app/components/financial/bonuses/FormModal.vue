@@ -20,7 +20,7 @@ const form = reactive({
   goalAmount: '' as number | string,
   bonusAmount: '' as number | string,
   effectiveMonth: currentMonthValue() as string | undefined,
-  dueDay: '' as number | string
+  dueDay: '' as string
 })
 
 function resetForm() {
@@ -60,7 +60,7 @@ const commissionBaseOptions = [
 ]
 
 const selectedCommissionBase = computed(() =>
-  commissionBaseOptions.find(option => option.value === form.commissionBase) ?? commissionBaseOptions[0]
+  commissionBaseOptions.find(option => option.value === form.commissionBase) ?? commissionBaseOptions[0]!
 )
 
 async function save() {

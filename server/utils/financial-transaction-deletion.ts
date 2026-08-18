@@ -14,11 +14,12 @@ export const FINANCIAL_TRANSACTION_DELETION_SOURCES = {
   SERVICE_ORDER_INSTALLMENT_DELETE: 'service_orders.installment_delete',
   PAY_COMMISSIONS_BULK_ROLLBACK: 'financial.pay_commissions_bulk.rollback',
   COMMISSION_PAY_ROLLBACK: 'reports.commissions.pay.rollback',
-  INCOME_TRANSACTION_ROLLBACK: 'financial_income.rollback'
+  INCOME_TRANSACTION_ROLLBACK: 'financial_income.rollback',
+  EMPLOYEE_FINANCIAL_RECORD_DELETE: 'employee_financial_records.manual_delete'
 } as const
 
-export type FinancialTransactionDeletionSource =
-  typeof FINANCIAL_TRANSACTION_DELETION_SOURCES[keyof typeof FINANCIAL_TRANSACTION_DELETION_SOURCES]
+export type FinancialTransactionDeletionSource
+  = typeof FINANCIAL_TRANSACTION_DELETION_SOURCES[keyof typeof FINANCIAL_TRANSACTION_DELETION_SOURCES]
 
 type SoftDeleteFinancialTransactionParams = {
   supabase: SupabaseClient
