@@ -402,7 +402,7 @@ async function requestReprocess(item: ProgressItem) {
 <template>
   <UDashboardPanel>
     <template #header>
-      <AppPageHeader :title="bonus?.name || 'Bônus'">
+      <AppPageHeader title="Bônus">
         <template #right>
           <UButton
             label="Voltar"
