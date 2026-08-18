@@ -37,7 +37,12 @@ interface ServiceOrderRecord {
   status?: string | null
   payment_status?: string | null
   entry_date?: string | null
-  client_name?: string | null
+  client_id?: string | null
+}
+
+interface ClientRecord {
+  id: string
+  name?: string | null
 }
 
 interface EmployeeFinancialRecord {
@@ -252,17 +257,31 @@ export async function getEmployeeCommissionReport({
       .filter(Boolean)
   ))
 
-  const ordersData = serviceOrderIds.length > 0
-    ? (await fetchAllOrganizationRows<ServiceOrderRecord>(supabase, {
-        table: 'service_orders',
-        organizationId,
-        columns: 'id, number, status, payment_status, entry_date, client_name',
-        nullColumns: ['deleted_at']
-      })).filter(order => serviceOrderIds.includes(String(order.id)))
-    : []
+  const [ordersData, clientsData] = await Promise.all([
+    serviceOrderIds.length > 0
+      ? fetchAllOrganizationRows<ServiceOrderRecord>(supabase, {
+          table: 'service_orders',
+          organizationId,
+          columns: 'id, number, status, payment_status, entry_date, client_id',
+          nullColumns: ['deleted_at']
+        }).then(orders => orders.filter(order => serviceOrderIds.includes(String(order.id))))
+      : Promise.resolve([] as ServiceOrderRecord[]),
+    serviceOrderIds.length > 0
+      ? fetchAllOrganizationRows<ClientRecord>(supabase, {
+          table: 'clients',
+          organizationId,
+          columns: 'id, name',
+          nullColumns: ['deleted_at']
+        })
+      : Promise.resolve([] as ClientRecord[])
+  ])
 
   const ordersMap = new Map<string, ServiceOrderRecord>(
     ordersData.map(order => [String(order.id), order])
+  )
+
+  const clientsMap = new Map<string, string>(
+    clientsData.map(client => [String(client.id), String(client.name || '').trim()])
   )
 
   const parsedDateFrom = parseDateStart(dateFrom || undefined)
@@ -316,7 +335,7 @@ export async function getEmployeeCommissionReport({
         orderStatus: order?.status ? String(order.status) : null,
         orderPaymentStatus: order?.payment_status ? normalizeFinancialStatus(order.payment_status) : null,
         orderEntryDate: order?.entry_date ? String(order.entry_date) : null,
-        orderClientName: order?.client_name ? String(order.client_name) : null
+        orderClientName: order?.client_id ? clientsMap.get(String(order.client_id)) || null : null
       }
     })
     .sort((itemA, itemB) => String(itemB.referenceDate || '').localeCompare(String(itemA.referenceDate || '')))

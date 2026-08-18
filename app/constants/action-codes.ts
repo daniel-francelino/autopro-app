@@ -64,6 +64,11 @@ export enum ActionCode {
   EMPLOYEES_UPDATE = 'employees.update',
   EMPLOYEES_DELETE = 'employees.delete',
 
+  BONUSES_CREATE = 'bonuses.create',
+  BONUSES_READ = 'bonuses.read',
+  BONUSES_UPDATE = 'bonuses.update',
+  BONUSES_DELETE = 'bonuses.delete',
+
   REPORTS_VIEW = 'reports.view',
   REPORTS_CUSTOMERS = 'reports.customers',
   REPORTS_FINANCIAL = 'reports.financial',

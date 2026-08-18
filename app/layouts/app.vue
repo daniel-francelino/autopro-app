@@ -126,6 +126,9 @@ const links = computed<NavigationMenuItem[][]>(() => {
   if (workshop.can(ActionCode.SERVICE_INVOICE_READ))
     financeChildren.push(item('Notas fiscais', 'i-lucide-receipt', '/app/financial/service-invoices'))
 
+  if (workshop.can(ActionCode.BONUSES_READ))
+    financeChildren.push(item('Bônus', 'i-lucide-gift', '/app/financial/bonuses'))
+
   const finance: NavigationMenuItem[] = financeChildren.length > 0
     ? [triggerItem('Financeiro', 'i-lucide-dollar-sign', '/app/financial', sortChildren(financeChildren))]
     : []

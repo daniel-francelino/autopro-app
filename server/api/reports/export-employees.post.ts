@@ -82,13 +82,12 @@ export default defineEventHandler(async (event) => {
     columns = [
       { header: 'OS', widthRatio: 0.07 },
       { header: 'DATA', widthRatio: 0.07 },
-      { header: 'ITEM', widthRatio: 0.22 },
+      { header: 'ITEM', widthRatio: 0.32 },
       { header: 'CATEGORIA', widthRatio: 0.12 },
       { header: 'QTD', widthRatio: 0.06, align: 'right' },
       { header: 'VALOR', widthRatio: 0.1, align: 'right' },
       { header: 'CUSTO', widthRatio: 0.1, align: 'right' },
-      { header: 'COMISSÃO', widthRatio: 0.1, align: 'right' },
-      { header: 'COM. OUTROS', widthRatio: 0.16, align: 'right' }
+      { header: 'COMISSÃO', widthRatio: 0.16, align: 'right' }
     ]
     dataRows = report.itemsView.map(row => [
       `#${row.orderNumber}`,
@@ -98,8 +97,7 @@ export default defineEventHandler(async (event) => {
       String(row.quantity),
       formatCurrency(row.totalValue),
       formatCurrency(row.totalCost),
-      formatCurrency(row.commissionCost),
-      formatCurrency(row.otherEmployeesCommissionCost)
+      formatCurrency(row.commissionCost)
     ])
     footerRows = [
       { label: 'Total de Linhas', value: String(report.itemsView.length) },
@@ -111,13 +109,12 @@ export default defineEventHandler(async (event) => {
     columns = [
       { header: 'OS', widthRatio: 0.07 },
       { header: 'ENTRADA', widthRatio: 0.08 },
-      { header: 'CLIENTE', widthRatio: 0.16 },
+      { header: 'CLIENTE', widthRatio: 0.26 },
       { header: 'STATUS', widthRatio: 0.1 },
       { header: 'PAGAMENTO', widthRatio: 0.1 },
       { header: 'VENDA BRUTA', widthRatio: 0.11, align: 'right' },
       { header: 'DESPESAS', widthRatio: 0.1, align: 'right' },
-      { header: 'COMISSÃO', widthRatio: 0.12, align: 'right' },
-      { header: 'COM. OUTROS', widthRatio: 0.16, align: 'right' }
+      { header: 'COMISSÃO', widthRatio: 0.18, align: 'right' }
     ]
     dataRows = report.ordersView.map(row => [
       `#${row.number}`,
@@ -127,15 +124,13 @@ export default defineEventHandler(async (event) => {
       formatStatusLabel(row.paymentStatus),
       formatCurrency(row.totalAmount),
       formatCurrency(row.totalCostAmount),
-      formatCurrency(row.employeeCommission),
-      formatCurrency(row.otherEmployeesCommission)
+      formatCurrency(row.employeeCommission)
     ])
     footerRows = [
       { label: 'Total de Linhas', value: String(report.ordersView.length) },
       { label: 'Venda Bruta', value: formatCurrency(report.summary?.grossSales ?? 0) },
       { label: 'Despesas da OS', value: formatCurrency(report.summary?.osExpenses ?? 0) },
       { label: 'Comissões', value: formatCurrency(report.summary?.totalCommissions ?? 0) },
-      { label: 'Comissões de Outros Funcionários', value: formatCurrency(report.summary?.otherEmployeesCommissions ?? 0) },
       { label: 'Venda Líquida', value: formatCurrency(report.summary?.netSales ?? 0) }
     ]
   }

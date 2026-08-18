@@ -5,10 +5,13 @@ const props = withDefaults(defineProps<{
   modelValue?: string | null
   placeholder?: string
   disabled?: boolean
+  /** 'day' (default): full calendar, modelValue is "YYYY-MM-DD". 'month': month/year grid, modelValue is "YYYY-MM". */
+  mode?: 'day' | 'month'
 }>(), {
   modelValue: undefined,
   placeholder: 'Selecione uma data',
-  disabled: false
+  disabled: false,
+  mode: 'day'
 })
 
 const emit = defineEmits<{
@@ -18,6 +21,8 @@ const emit = defineEmits<{
 const popoverOpen = ref(false)
 
 const dfShort = new DateFormatter('pt-BR', { dateStyle: 'short' })
+
+// ─── Day mode ───────────────────────────────────────────────────────────────
 
 function isoToCalendarDate(iso: string | null | undefined): CalendarDate | undefined {
   if (!iso) return undefined
@@ -41,7 +46,60 @@ const calendarValue = computed({
   }
 })
 
+function setToday() {
+  const isoToday = new Date().toISOString().split('T')[0]
+  emit('update:modelValue', isoToday)
+  popoverOpen.value = false
+}
+
+// ─── Month mode ─────────────────────────────────────────────────────────────
+
+const monthLabels = Array.from({ length: 12 }, (_, index) => {
+  const label = new Intl.DateTimeFormat('pt-BR', { month: 'short' }).format(new Date(2000, index, 1)).replace('.', '')
+  return label.charAt(0).toUpperCase() + label.slice(1)
+})
+
+function parseMonthValue(value: string | null | undefined): { year: number, month: number } | null {
+  if (!value) return null
+  const [year, month] = value.split('-').map(Number)
+  if (!year || !month) return null
+  return { year, month }
+}
+
+const selectedMonth = computed(() => parseMonthValue(props.modelValue))
+const viewYear = ref(selectedMonth.value?.year ?? new Date().getFullYear())
+
+watch(() => props.modelValue, () => {
+  const parsed = parseMonthValue(props.modelValue)
+  if (parsed) viewYear.value = parsed.year
+})
+
+function isSelectedMonth(monthIndex: number) {
+  return selectedMonth.value?.year === viewYear.value && selectedMonth.value?.month === monthIndex + 1
+}
+
+function selectMonth(monthIndex: number) {
+  emit('update:modelValue', `${viewYear.value}-${String(monthIndex + 1).padStart(2, '0')}`)
+  popoverOpen.value = false
+}
+
+function setCurrentMonth() {
+  const now = new Date()
+  viewYear.value = now.getFullYear()
+  emit('update:modelValue', `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`)
+  popoverOpen.value = false
+}
+
+// ─── Shared ─────────────────────────────────────────────────────────────────
+
 const displayValue = computed(() => {
+  if (props.mode === 'month') {
+    const parsed = selectedMonth.value
+    if (!parsed) return ''
+    const label = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' }).format(new Date(parsed.year, parsed.month - 1, 1))
+    return label.charAt(0).toUpperCase() + label.slice(1)
+  }
+
   const d = isoToCalendarDate(props.modelValue)
   if (!d) return ''
   try {
@@ -79,7 +137,7 @@ function clear() {
 
       <template #trailing>
         <UIcon
-          name="i-lucide-calendar"
+          :name="mode === 'month' ? 'i-lucide-calendar-days' : 'i-lucide-calendar'"
           class="size-4 shrink-0 text-dimmed"
         />
       </template>
@@ -87,32 +145,84 @@ function clear() {
 
     <template #content>
       <div class="overflow-hidden rounded-xl">
-        <div class="p-2">
-          <UCalendar
-            v-model="calendarValue"
-            locale="pt-BR"
-            :week-starts-on="0"
-            color="primary"
-            class="w-full"
-          />
-        </div>
+        <template v-if="mode === 'month'">
+          <div class="flex items-center justify-between border-b border-default px-2 py-2">
+            <UButton
+              icon="i-lucide-chevron-left"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              @click="viewYear--"
+            />
+            <span class="text-sm font-medium text-highlighted">{{ viewYear }}</span>
+            <UButton
+              icon="i-lucide-chevron-right"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              @click="viewYear++"
+            />
+          </div>
 
-        <div class="flex items-center gap-1 border-t border-default px-2 py-2">
-          <UButton
-            label="Hoje"
-            color="neutral"
-            variant="ghost"
-            size="xs"
-            @click="() => { const today = new Date().toISOString().split('T')[0]; emit('update:modelValue', today); popoverOpen = false }"
-          />
-          <UButton
-            label="Limpar"
-            color="neutral"
-            variant="ghost"
-            size="xs"
-            @click="clear"
-          />
-        </div>
+          <div class="grid grid-cols-3 gap-1.5 p-3">
+            <UButton
+              v-for="(label, index) in monthLabels"
+              :key="label"
+              :label="label"
+              :color="isSelectedMonth(index) ? 'primary' : 'neutral'"
+              :variant="isSelectedMonth(index) ? 'solid' : 'ghost'"
+              size="sm"
+              block
+              @click="selectMonth(index)"
+            />
+          </div>
+
+          <div class="flex items-center gap-1 border-t border-default px-2 py-2">
+            <UButton
+              label="Mês atual"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              @click="setCurrentMonth"
+            />
+            <UButton
+              label="Limpar"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              @click="clear"
+            />
+          </div>
+        </template>
+
+        <template v-else>
+          <div class="p-2">
+            <UCalendar
+              v-model="calendarValue"
+              locale="pt-BR"
+              :week-starts-on="0"
+              color="primary"
+              class="w-full"
+            />
+          </div>
+
+          <div class="flex items-center gap-1 border-t border-default px-2 py-2">
+            <UButton
+              label="Hoje"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              @click="setToday"
+            />
+            <UButton
+              label="Limpar"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              @click="clear"
+            />
+          </div>
+        </template>
       </div>
     </template>
   </UPopover>

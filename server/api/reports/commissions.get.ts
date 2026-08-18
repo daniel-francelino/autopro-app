@@ -102,11 +102,21 @@ export default defineEventHandler(async (event) => {
 
   const filteredRecords = records.filter((record) => {
     const order = record?.service_order_id ? ordersMap.get(String(record.service_order_id)) : null
-    const orderEntryDate = order?.entry_date ? new Date(`${order.entry_date}T00:00:00`) : null
 
-    if (!orderEntryDate || Number.isNaN(orderEntryDate.getTime())) return false
-    if (dateFrom && orderEntryDate < dateFrom) return false
-    if (dateTo && orderEntryDate > dateTo) return false
+    // Bonus records (see docs/employee-bonus-feature-design.md) aren't tied
+    // to a service order — filter those by their own reference_date instead
+    // of requiring an order with a valid entry_date.
+    if (String(record?.record_type || '') === 'bonus') {
+      const referenceDate = record?.reference_date ? new Date(`${record.reference_date}T00:00:00`) : null
+      if (!referenceDate || Number.isNaN(referenceDate.getTime())) return false
+      if (dateFrom && referenceDate < dateFrom) return false
+      if (dateTo && referenceDate > dateTo) return false
+    } else {
+      const orderEntryDate = order?.entry_date ? new Date(`${order.entry_date}T00:00:00`) : null
+      if (!orderEntryDate || Number.isNaN(orderEntryDate.getTime())) return false
+      if (dateFrom && orderEntryDate < dateFrom) return false
+      if (dateTo && orderEntryDate > dateTo) return false
+    }
 
     if (employeeIds.length > 0) {
       if (!employeeIds.includes(String(record?.employee_id || ''))) return false
@@ -147,11 +157,16 @@ export default defineEventHandler(async (event) => {
     status: normalizeReportStatus(record?.status)
   }))
 
-  const totalCommissions = normalizedRecords.reduce((sum, record) => sum + toNumber(record?.amount, 0), 0)
-  const paidCommissions = normalizedRecords
+  // Bonus rows can be part of normalizedRecords (e.g. no recordType filter,
+  // "Todos") but the headline "Total de comissões" must never blend the two
+  // — always sum commission-only here, independent of which record types
+  // the active filter lets into the list/table.
+  const commissionOnlyRecords = normalizedRecords.filter(record => String(record?.record_type || '') === 'commission')
+  const totalCommissions = commissionOnlyRecords.reduce((sum, record) => sum + toNumber(record?.amount, 0), 0)
+  const paidCommissions = commissionOnlyRecords
     .filter(record => record.status === 'paid')
     .reduce((sum, record) => sum + toNumber(record?.amount, 0), 0)
-  const pendingCommissions = normalizedRecords
+  const pendingCommissions = commissionOnlyRecords
     .filter(record => record.status === 'pending')
     .reduce((sum, record) => sum + toNumber(record?.amount, 0), 0)
 
