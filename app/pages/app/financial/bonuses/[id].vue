@@ -354,7 +354,7 @@ function confirmRetroactiveGenerate() {
 // already-settled month. No confirm-with-reason modal here (unlike "Excluir
 // pagamento" in Pagamentos, a deliberate delete) — reprocessing is routine
 // enough to fire directly, with a fixed reason on the audit trail.
-const REPROCESS_REASON = 'Reprocessamento'
+const REPROCESS_REASON = 'Reprocessamento do bônus do funcionário'
 const reprocessingEmployeeId = ref<string | null>(null)
 
 async function requestReprocess(item: ProgressItem) {
@@ -627,13 +627,13 @@ async function requestReprocess(item: ProgressItem) {
               Nenhum funcionário atribuído ainda.
             </div>
 
-            <div v-else class="space-y-2">
+            <div v-else class="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-3">
               <div
                 v-for="item in progressItems"
                 :key="item.employeeId"
-                class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-default/70 bg-default/40 p-3"
+                class="flex flex-col gap-2 rounded-xl border border-default/70 bg-default/40 p-3"
               >
-                <div class="min-w-0 flex-1">
+                <div class="min-w-0">
                   <p class="truncate text-sm font-medium text-highlighted">
                     {{ item.employeeName }}
                   </p>
@@ -651,57 +651,59 @@ async function requestReprocess(item: ProgressItem) {
                     :max="item.goalAmount"
                     :color="progressBarColor(item)"
                     size="sm"
-                    class="mt-1.5 max-w-64"
+                    class="mt-1.5"
                   />
                 </div>
 
-                <UBadge
-                  :label="progressStatusLabel(item).label"
-                  :color="progressStatusLabel(item).color"
-                  variant="subtle"
-                  size="sm"
-                />
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <UBadge
+                    :label="progressStatusLabel(item).label"
+                    :color="progressStatusLabel(item).color"
+                    variant="subtle"
+                    size="sm"
+                  />
 
-                <div class="flex shrink-0 items-center gap-2">
-                  <template v-if="item.generated">
-                    <UBadge
-                      label="Gerado"
-                      color="neutral"
-                      variant="subtle"
-                      size="sm"
-                      icon="i-lucide-check"
-                    />
-                    <UTooltip v-if="canUpdate" text="Reprocessar este funcionário neste mês">
-                      <UButton
-                        label="Reprocessar"
-                        icon="i-lucide-refresh-cw"
+                  <div class="flex flex-wrap items-center gap-2">
+                    <template v-if="item.generated">
+                      <UBadge
+                        label="Gerado"
                         color="neutral"
-                        variant="outline"
+                        variant="subtle"
+                        size="sm"
+                        icon="i-lucide-check"
+                      />
+                      <UTooltip v-if="canUpdate" text="Reprocessar este funcionário neste mês">
+                        <UButton
+                          label="Reprocessar"
+                          icon="i-lucide-refresh-cw"
+                          color="neutral"
+                          variant="outline"
+                          size="xs"
+                          :loading="reprocessingEmployeeId === item.employeeId"
+                          @click="requestReprocess(item)"
+                        />
+                      </UTooltip>
+                    </template>
+                    <UButton
+                      v-else-if="canUpdate && item.goalMet"
+                      label="Gerar"
+                      icon="i-lucide-play"
+                      color="neutral"
+                      variant="outline"
+                      size="xs"
+                      :loading="generatingEmployeeId === item.employeeId"
+                      @click="onGenerateClick(item.employeeId)"
+                    />
+                    <UTooltip v-if="canUpdate" text="Remover do bônus">
+                      <UButton
+                        icon="i-lucide-x"
+                        color="error"
+                        variant="ghost"
                         size="xs"
-                        :loading="reprocessingEmployeeId === item.employeeId"
-                        @click="requestReprocess(item)"
+                        @click="requestUnassign(item)"
                       />
                     </UTooltip>
-                  </template>
-                  <UButton
-                    v-else-if="canUpdate && item.goalMet"
-                    label="Gerar"
-                    icon="i-lucide-play"
-                    color="neutral"
-                    variant="outline"
-                    size="xs"
-                    :loading="generatingEmployeeId === item.employeeId"
-                    @click="onGenerateClick(item.employeeId)"
-                  />
-                  <UTooltip v-if="canUpdate" text="Remover do bônus">
-                    <UButton
-                      icon="i-lucide-x"
-                      color="error"
-                      variant="ghost"
-                      size="xs"
-                      @click="requestUnassign(item)"
-                    />
-                  </UTooltip>
+                  </div>
                 </div>
               </div>
             </div>
@@ -721,7 +723,7 @@ async function requestReprocess(item: ProgressItem) {
               Nenhuma meta gerada neste mês ainda.
             </div>
 
-            <div v-else class="space-y-2">
+            <div v-else class="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-3">
               <div
                 v-for="item in generatedProgressItems"
                 :key="item.employeeId"
@@ -775,7 +777,7 @@ async function requestReprocess(item: ProgressItem) {
               Nenhum bônus liberado neste mês ainda.
             </div>
 
-            <div v-else class="space-y-2">
+            <div v-else class="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-3">
               <div
                 v-for="record in financialRecords"
                 :key="record.id"
