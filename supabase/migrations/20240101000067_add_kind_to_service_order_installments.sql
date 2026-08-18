@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Migration: 20240101000067_add_kind_to_service_order_installments
 -- Description: Phase 0 of the service-order payment redesign (see
---              docs/service-orders-payment-flow-redesign.md). Adds a `kind`
+--              docs/service-orders/payment-flow-redesign.md). Adds a `kind`
 --              discriminator to distinguish down payments, financed
 --              installments and ad-hoc/extra receipts within the same
 --              payment plan. Existing rows are all plain installments.

@@ -9,7 +9,7 @@ import { calculateCashFlowFromTransactions, buildCashFlowTransactionsEvolutionDa
 
 // Modo "Fluxo de Caixa": dinheiro que efetivamente circulou no financeiro (receitas e despesas
 // registradas em financial_transactions), conforme o filtro de status de pagamento (Pago/Pendente).
-// Ver docs/profit-report.md seção 5.
+// Ver docs/reports/profit-report.md seção 5.
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
   const supabase = getSupabaseAdminClient()

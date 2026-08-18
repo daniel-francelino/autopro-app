@@ -11,7 +11,7 @@ import { calculateByOrderPeriodData, buildByOrderEvolutionData, buildTopProfitab
 // da própria OS (total_cost_amount). Aceita dois filtros independentes: status do ciclo de
 // vida da OS (orderStatus) e status de pagamento da própria OS (orderPaymentStatus) — nenhum
 // dos dois é obrigatório, e por padrão o payment status não restringe nada (regime de
-// competência). Ver docs/profit-report.md seção 5.
+// competência). Ver docs/reports/profit-report.md seção 5.
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
   const supabase = getSupabaseAdminClient()

@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Migration: 20240101000069_add_default_icon_color_to_financial_categories
 -- Description: Phase 0 of the financial categories FK redesign (see
---              docs/financial-categories-crud.md). Adds `is_default` so the
+--              docs/finance/financial-categories-crud.md). Adds `is_default` so the
 --              previously hardcoded default category list can become real,
 --              non-editable rows, plus `icon`/`color` so every category can
 --              be displayed consistently across screens. Widens the

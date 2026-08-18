@@ -117,7 +117,7 @@ const installmentCountOptions = Array.from({ length: 23 }, (_, i) => ({
 }))
 
 // Ceiling of 60 occurrences per call (creation or later extension) — 5 years
-// of monthly. See docs/financial-recurrence-flow.md section 5.
+// of monthly. See docs/finance/financial-recurrence-flow.md section 5.
 const recurrenceCountOptions = Array.from({ length: 59 }, (_, i) => ({
   label: `${i + 2}x`,
   value: i + 2
@@ -199,7 +199,7 @@ const installmentTotalsMatch = computed(
 
 // ── Occurrences (recurrence) ─────────────────────────────────────────────────
 // Same editable-list idea as installments, but recorrência REPEATS the
-// amount instead of DIVIDING it (docs/financial-recurrence-flow.md 10.4) —
+// amount instead of DIVIDING it (docs/finance/financial-recurrence-flow.md 10.4) —
 // an aluguel of R$1.500 × 12 is 12 occurrences of R$1.500, not R$1.500 ÷ 12.
 
 interface Occurrence {
@@ -289,7 +289,7 @@ const occurrencesTotal = computed(() =>
 
 // "Encerra em" deixou de ser um campo digitado — é sempre a última linha da
 // lista (na criação) ou o que já está gravado no lançamento (na edição).
-// Ver docs/financial-recurrence-flow.md seção 10.4a.
+// Ver docs/finance/financial-recurrence-flow.md seção 10.4a.
 const occurrenceEndDate = computed(() => {
   const last = editableOccurrences.value[editableOccurrences.value.length - 1]
   return last ? last.due_date : ''
@@ -369,7 +369,7 @@ watch(
   }
 )
 
-// Recorrência e parcelamento são mutuamente exclusivos (docs/financial-recurrence-flow.md
+// Recorrência e parcelamento são mutuamente exclusivos (docs/finance/financial-recurrence-flow.md
 // Bug 5 / seção 6.1) — marcar um desliga o outro, em vez de deixar o backend
 // descartar um dos dois em silêncio.
 watch(

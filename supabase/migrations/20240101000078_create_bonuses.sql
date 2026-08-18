@@ -8,7 +8,7 @@
 --              per-item/category commission engine (server/utils/
 --              service-order-commissions.ts and friends) — a bonus is
 --              evaluated as a simple monthly revenue/profit sum, not a
---              per-item calculation. See docs/employee-bonus-feature-design.md
+--              per-item calculation. See docs/finance/bonuses-feature-design.md
 --              for the full design rationale.
 -- =============================================================================
 

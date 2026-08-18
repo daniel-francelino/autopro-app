@@ -1,5 +1,5 @@
 // Shared types and pure helpers for the goal-based employee bonus feature.
-// See docs/employee-bonus-feature-design.md for the full design rationale.
+// See docs/finance/bonuses-feature-design.md for the full design rationale.
 //
 // Deliberately independent from the per-item/category commission engine
 // (service-order-commissions.ts, service-order-item-commissions.ts,

@@ -1,6 +1,6 @@
 -- =============================================================================
 -- Migration: 20240101000072_backfill_financial_transaction_categories
--- Description: Phase 1 backfill from docs/financial-categories-crud.md,
+-- Description: Phase 1 backfill from docs/finance/financial-categories-crud.md,
 --              done as SQL instead of calling
 --              POST /api/admin/financial-categories-backfill. Verified
 --              against a real data export before being finalized.

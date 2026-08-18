@@ -195,7 +195,7 @@ const [
   ),
   // Bônus atribuídos — não depende do período do relatório (dateFrom/dateTo
   // acima), sempre mostra o progresso do mês corrente
-  // (docs/employee-bonus-feature-design.md §6.3).
+  // (docs/finance/bonuses-feature-design.md §6.3).
   useAsyncData(
     () => `employee-bonuses-${employeeId.value}`,
     () => requestFetch<{ items: EmployeeBonusItem[] }>(`/api/employees/${employeeId.value}/bonuses`, { headers: requestHeaders }),

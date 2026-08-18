@@ -27,7 +27,7 @@ export default defineEventHandler(async (event) => {
 
   if (!existing) throw createError({ statusCode: 404, statusMessage: 'Lançamento não encontrado' })
 
-  // Bug 7 (docs/financial-recurrence-flow.md): validate the RESULTING state
+  // Bug 7 (docs/finance/financial-recurrence-flow.md): validate the RESULTING state
   // (existing row + whatever this request changes), not just what's in the
   // body — editing only `recurrence` on a row that's already an installment
   // must still be rejected.

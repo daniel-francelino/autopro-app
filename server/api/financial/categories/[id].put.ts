@@ -6,7 +6,7 @@ import { resolveOrganizationId } from '../../../utils/organization'
 /**
  * PUT /api/financial/categories/:id
  * Edit a custom financial category (name/icon/color). Default categories
- * (is_default=true) can't be edited — docs/financial-categories-crud.md,
+ * (is_default=true) can't be edited — docs/finance/financial-categories-crud.md,
  * section 3.3 leaves open whether name should ever be freely editable even
  * for custom categories; icon/color are always safe to edit since they
  * carry no "old transaction shows the old name" implication.

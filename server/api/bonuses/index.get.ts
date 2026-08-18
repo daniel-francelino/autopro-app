@@ -15,7 +15,7 @@ interface BonusEmployeeRecord {
 /**
  * GET /api/bonuses
  * Lists bonuses for the organization, each with its currently effective
- * value (see docs/employee-bonus-feature-design.md §4.2) and how many
+ * value (see docs/finance/bonuses-feature-design.md §4.2) and how many
  * employees are actively assigned.
  */
 export default defineEventHandler(async (event) => {

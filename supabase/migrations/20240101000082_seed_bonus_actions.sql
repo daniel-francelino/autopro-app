@@ -3,7 +3,7 @@
 -- Description:
 --   Seeds the bonus permission actions (bonuses.*) into the global actions
 --   catalogue. These actions gate the goal-based employee bonus feature
---   (see docs/employee-bonus-feature-design.md) both in the UI
+--   (see docs/finance/bonuses-feature-design.md) both in the UI
 --   (workshop.can(...)) and server-side (requireOrgPermission(...)).
 --
 --   Admin/owner roles bypass role_actions entirely (see

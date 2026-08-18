@@ -24,7 +24,7 @@ interface AssignmentRecord {
  * The reverse view of GET /api/bonuses/:id/progress — every bonus assigned
  * to this employee, with the same goal-vs-achieved progress for the given
  * month (default: current). Powers the read-only "Bônus atribuídos" card on
- * the employee detail page (docs/employee-bonus-feature-design.md §6.3).
+ * the employee detail page (docs/finance/bonuses-feature-design.md §6.3).
  */
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)

@@ -14,7 +14,7 @@ const MAX_RECURRENCE_COUNT = 60
  * linking them via parent_transaction_id.
  * When body.recurrence and body.occurrences (length > 1) are provided,
  * creates every occurrence of the recurring series upfront (no cron in this
- * infra — see docs/financial-recurrence-flow.md), linking them via
+ * infra — see docs/finance/financial-recurrence-flow.md), linking them via
  * parent_recurrence_id. The frontend computes and can edit each occurrence's
  * due_date/amount before saving (same UX as installments) — this endpoint
  * only validates and inserts exactly what it's given, it doesn't recalculate

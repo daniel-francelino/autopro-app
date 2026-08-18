@@ -9,7 +9,7 @@ import { fetchBonus } from '../../utils/bonuses'
  * PUT /api/bonuses/:id
  * Updates name/description/active only — the value (goal/bonus amount)
  * never updates in place, it always goes through POST .../value-versions
- * instead (see docs/employee-bonus-feature-design.md §4.2).
+ * instead (see docs/finance/bonuses-feature-design.md §4.2).
  */
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)

@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import type { SortingState } from '@tanstack/vue-table'
 import type { SalesItemsDetailData } from '~/components/reports/sales-items/SalesItemsDetailSlideover.vue'
 

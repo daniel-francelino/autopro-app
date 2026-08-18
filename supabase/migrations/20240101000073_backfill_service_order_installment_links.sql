@@ -2,7 +2,7 @@
 -- Migration: 20240101000073_backfill_service_order_installment_links
 -- Description: Fixes "histórico de pagamento" not showing for some service
 --              orders. Root cause (confirmed via data export + git history,
---              see docs/service-orders-payment-flow-redesign.md): before
+--              see docs/service-orders/payment-flow-redesign.md): before
 --              commit 1be5c21 introduced the installments-based payment
 --              model, paying an order "à vista" (in full, one shot) created
 --              a financial_transactions row and set service_orders

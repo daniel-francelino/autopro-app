@@ -160,7 +160,7 @@ const entry = computed(() => detail.value?.entry ?? null)
 
 // category_ref comes from the financial_categories join (server/api/financial/[id].get.ts).
 // Falls back to the legacy free-text category for any transaction that
-// somehow still lacks a category_id -- see docs/financial-categories-crud.md.
+// somehow still lacks a category_id -- see docs/finance/financial-categories-crud.md.
 const categoryRef = computed(() => (entry.value?.category_ref as CategoryRef) ?? null)
 const categoryLabel = computed(() => {
   const raw = categoryRef.value?.name || String(entry.value?.category ?? '')
@@ -208,7 +208,7 @@ const recurrenceCounts = computed(() => {
 
 // IDs eligible for "excluir esta e as futuras": this occurrence plus every
 // sibling due on/after it, but only while still pending — a paid occurrence
-// is never swept into this automatically (see docs/financial-recurrence-flow.md
+// is never swept into this automatically (see docs/finance/financial-recurrence-flow.md
 // section 6.4).
 const futurePendingIds = computed(() => {
   if (!entry.value) return []

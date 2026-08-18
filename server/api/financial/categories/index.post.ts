@@ -24,7 +24,7 @@ export default defineEventHandler(async (event) => {
   if (!['income', 'expense'].includes(type)) throw createError({ statusCode: 400, statusMessage: 'O campo "type" deve ser "income" ou "expense"' })
 
   // Matches against is_default rows too — a custom category can't shadow a
-  // default one of the same name+type (docs/financial-categories-crud.md,
+  // default one of the same name+type (docs/finance/financial-categories-crud.md,
   // section 4.1). Scoped by type because 'Outros' legitimately exists once
   // per type (financial_categories_org_name_type_uq).
   const { data: existing } = await supabase
