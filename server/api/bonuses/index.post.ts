@@ -35,6 +35,13 @@ export default defineEventHandler(async (event) => {
   if (!Number.isFinite(bonusAmount) || bonusAmount <= 0) {
     throw createError({ statusCode: 400, statusMessage: 'bonusAmount deve ser um número maior que zero' })
   }
+  let dueDay: number | null = null
+  if (body?.dueDay !== undefined && body?.dueDay !== null && body?.dueDay !== '') {
+    dueDay = Number(body.dueDay)
+    if (!Number.isInteger(dueDay) || dueDay < 1 || dueDay > 31) {
+      throw createError({ statusCode: 400, statusMessage: 'dueDay deve ser um número inteiro entre 1 e 31' })
+    }
+  }
 
   const effectiveFrom = typeof body?.effectiveFrom === 'string' && body.effectiveFrom.trim()
     ? body.effectiveFrom.trim()
@@ -47,6 +54,7 @@ export default defineEventHandler(async (event) => {
       name: body.name.trim(),
       description: body?.description?.trim() || null,
       active: true,
+      due_day: dueDay,
       created_by: authUser.email,
       updated_by: authUser.email
     })

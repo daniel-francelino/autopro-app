@@ -20,6 +20,7 @@ export interface BonusRecord {
   name: string
   description: string | null
   active: boolean
+  due_day: number | null
   created_at?: string
   updated_at?: string
 }
@@ -91,6 +92,19 @@ export function monthDateRange(referenceMonth: string): { start: Date, end: Date
 export function lastDayOfMonth(referenceMonth: string): string {
   const { end } = monthDateRange(referenceMonth)
   return `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`
+}
+
+/**
+ * The due date a generated bonus gets for a given month: dueDay if the
+ * bonus has one configured (clamped to the month's last day when the
+ * configured day doesn't exist that month, e.g. 31 in a 30-day month),
+ * otherwise the last day of the month (original, default behavior).
+ */
+export function resolveDueDate(referenceMonth: string, dueDay: number | null | undefined): string {
+  if (!dueDay) return lastDayOfMonth(referenceMonth)
+  const { start, end } = monthDateRange(referenceMonth)
+  const day = Math.min(dueDay, end.getDate())
+  return `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
 /**

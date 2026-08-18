@@ -27,9 +27,21 @@ interface BonusDetail {
   name: string
   description: string | null
   active: boolean
+  dueDay: number | null
   currentValue: { commissionBase: CommissionBase, goalAmount: number, bonusAmount: number, effectiveFrom: string } | null
   valueHistory: BonusValueHistoryEntry[]
   assignments: BonusAssignment[]
+}
+
+interface BonusFinancialRecordItem {
+  id: string
+  employeeId: string | null
+  employeeName: string
+  amount: number
+  status: 'paid' | 'pending' | 'cancelled'
+  referenceDate: string | null
+  paymentDate: string | null
+  description: string | null
 }
 
 interface ProgressItem {
@@ -103,6 +115,18 @@ const progressItems = computed(() => progressData.value?.items ?? [])
 const isProgressLoading = computed(() => progressStatus.value === 'pending')
 const generatedProgressItems = computed(() => progressItems.value.filter(item => item.generated))
 
+const { data: financialRecordsData, status: financialRecordsStatus, refresh: refreshFinancialRecords } = await useAsyncData(
+  () => `bonus-financial-records-${bonusId.value}-${referenceMonth.value}`,
+  () => requestFetch<{ items: BonusFinancialRecordItem[] }>(`/api/bonuses/${bonusId.value}/financial-records`, {
+    headers: requestHeaders,
+    query: { referenceMonth: `${referenceMonth.value}-01` }
+  }),
+  { watch: [referenceMonth], default: () => ({ items: [] }) }
+)
+
+const financialRecords = computed(() => financialRecordsData.value?.items ?? [])
+const isFinancialRecordsLoading = computed(() => financialRecordsStatus.value === 'pending')
+
 const assignedEmployeeIds = computed(() => (bonus.value?.assignments ?? []).filter(a => a.active).map(a => a.employeeId))
 
 function formatCurrency(value: number | string | null | undefined) {
@@ -165,6 +189,36 @@ async function toggleActive() {
   } finally {
     isTogglingActive.value = false
   }
+}
+
+// ─── Due day modal ──────────────────────────────────────────────────────────
+const showDueDayModal = ref(false)
+async function onDueDaySaved() {
+  showDueDayModal.value = false
+  await refresh()
+}
+
+// ─── Pay financial record ───────────────────────────────────────────────────
+const payingRecordId = ref<string | null>(null)
+async function payFinancialRecord(id: string) {
+  if (payingRecordId.value) return
+  payingRecordId.value = id
+  try {
+    await $fetch(`/api/reports/commissions/${id}/pay`, { method: 'POST' })
+    toast.add({ title: 'Bônus pago', color: 'success' })
+    await refreshFinancialRecords()
+  } catch (err: unknown) {
+    const error = err as { data?: { statusMessage?: string }, statusMessage?: string }
+    toast.add({ title: 'Erro ao pagar bônus', description: error?.data?.statusMessage || error?.statusMessage, color: 'error' })
+  } finally {
+    payingRecordId.value = null
+  }
+}
+
+function financialRecordStatusLabel(status: BonusFinancialRecordItem['status']): { label: string, color: 'success' | 'warning' | 'error' } {
+  if (status === 'paid') return { label: 'Pago', color: 'success' }
+  if (status === 'cancelled') return { label: 'Cancelado', color: 'error' }
+  return { label: 'Pendente', color: 'warning' }
 }
 
 // ─── Value modal ────────────────────────────────────────────────────────────
@@ -326,6 +380,18 @@ function confirmRetroactiveGenerate() {
                 </div>
                 <p v-if="bonus.description" class="text-sm text-muted">
                   {{ bonus.description }}
+                </p>
+                <p class="text-xs text-muted">
+                  Vencimento: {{ bonus.dueDay ? `dia ${bonus.dueDay}` : 'último dia do mês' }}
+                  <UButton
+                    v-if="canUpdate"
+                    label="Editar"
+                    variant="link"
+                    color="neutral"
+                    size="xs"
+                    class="p-0"
+                    @click="showDueDayModal = true"
+                  />
                 </p>
               </div>
             </div>
@@ -554,7 +620,7 @@ function confirmRetroactiveGenerate() {
           <!-- Metas geradas no mês selecionado -->
           <div class="space-y-3 rounded-2xl border border-default p-4">
             <p class="text-sm font-semibold text-highlighted">
-              Metas geradas em {{ formatMonthLabel(referenceMonth) }}
+              Geradas em {{ formatMonthLabel(referenceMonth) }}
             </p>
 
             <div v-if="isProgressLoading" class="space-y-2">
@@ -593,10 +659,74 @@ function confirmRetroactiveGenerate() {
               </div>
             </div>
           </div>
+
+          <!-- Pagamentos do mês selecionado -->
+          <div class="space-y-3 rounded-2xl border border-default p-4">
+            <p class="text-sm font-semibold text-highlighted">
+              Pagamentos em {{ formatMonthLabel(referenceMonth) }}
+            </p>
+
+            <div v-if="isFinancialRecordsLoading" class="space-y-2">
+              <USkeleton v-for="i in 2" :key="i" class="h-16 w-full rounded-xl" />
+            </div>
+
+            <div v-else-if="financialRecords.length === 0" class="rounded-xl border border-dashed border-default p-6 text-center text-sm text-muted">
+              Nenhum bônus liberado neste mês ainda.
+            </div>
+
+            <div v-else class="space-y-2">
+              <div
+                v-for="record in financialRecords"
+                :key="record.id"
+                class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-default/70 bg-default/40 p-3"
+              >
+                <div class="min-w-0 flex-1">
+                  <p class="truncate text-sm font-medium text-highlighted">
+                    {{ record.employeeName }}
+                  </p>
+                  <p class="text-xs text-muted">
+                    Vencimento: {{ formatDate(record.referenceDate) }}
+                    <template v-if="record.paymentDate">
+                      · Pago em {{ formatDate(record.paymentDate) }}
+                    </template>
+                  </p>
+                </div>
+
+                <p class="text-sm font-semibold text-success">
+                  {{ formatCurrency(record.amount) }}
+                </p>
+
+                <UBadge
+                  :label="financialRecordStatusLabel(record.status).label"
+                  :color="financialRecordStatusLabel(record.status).color"
+                  variant="subtle"
+                  size="sm"
+                />
+
+                <UButton
+                  v-if="canUpdate && record.status === 'pending'"
+                  label="Pagar"
+                  color="neutral"
+                  variant="outline"
+                  size="xs"
+                  :loading="payingRecordId === record.id"
+                  @click="payFinancialRecord(record.id)"
+                />
+              </div>
+            </div>
+          </div>
         </template>
       </div>
     </template>
   </UDashboardPanel>
+
+  <FinancialBonusesDueDayModal
+    v-if="bonus"
+    v-model:open="showDueDayModal"
+    :bonus-id="bonusId"
+    :current-due-day="bonus.dueDay"
+    @saved="onDueDaySaved"
+  />
 
   <FinancialBonusesValueModal
     v-if="bonus"

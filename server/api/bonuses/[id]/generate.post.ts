@@ -12,7 +12,7 @@ import {
   fetchCommissionRecordsForBonusProgress,
   resolveEffectiveVersion,
   sumAchievedAmount,
-  lastDayOfMonth,
+  resolveDueDate,
   currentMonthStart
 } from '../../../utils/bonuses'
 
@@ -144,7 +144,7 @@ export default defineEventHandler(async (event) => {
           bonus_id: bonusId,
           status: 'pending',
           amount: bonusAmount,
-          reference_date: lastDayOfMonth(referenceMonth),
+          reference_date: resolveDueDate(referenceMonth, bonus.due_day),
           description: `Bônus - ${bonus.name} - ${referenceMonth}`,
           created_by: authUser.email,
           updated_by: authUser.email

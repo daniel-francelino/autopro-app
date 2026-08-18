@@ -57,6 +57,7 @@ export default defineEventHandler(async (event) => {
       name: bonus.name,
       description: bonus.description,
       active: bonus.active,
+      dueDay: bonus.due_day,
       currentValue: currentValue
         ? {
             commissionBase: currentValue.commission_base,
