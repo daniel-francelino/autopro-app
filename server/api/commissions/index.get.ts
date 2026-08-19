@@ -3,12 +3,10 @@ import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
-import {
-  currentMonthStart,
-  fetchCommissionRulesForPlan,
-  resolveEffectiveVersion
-} from '../../utils/employee-commission-plans'
-import type { CommissionPlanRecord, CommissionRuleVersionRecord } from '../../utils/employee-commission-plans'
+import { fetchCommissionRulesForPlan } from '../../utils/employee-commission-plans'
+import type { CommissionPlanRecord } from '../../utils/employee-commission-plans'
+import { currentCommissionMonthStart, resolveEffectiveCommissionVersion } from '../../../shared/utils/employee-commission-engine'
+import type { CommissionRuleVersionRecord } from '../../../shared/utils/employee-commission-engine'
 
 interface CommissionEmployeeRecord {
   id: string
@@ -51,7 +49,7 @@ export default defineEventHandler(async (event) => {
   if (planList.length === 0) return { items: [] }
 
   const planIds = planList.map(plan => plan.id)
-  const referenceDate = currentMonthStart()
+  const referenceDate = currentCommissionMonthStart()
 
   const [versionsResult, assignmentsResult] = await Promise.all([
     supabase
@@ -117,7 +115,7 @@ export default defineEventHandler(async (event) => {
 
   const effectiveVersionByPlan = new Map<string, CommissionRuleVersionRecord | null>()
   for (const plan of planList) {
-    effectiveVersionByPlan.set(plan.id, resolveEffectiveVersion(versionsByPlan.get(plan.id) ?? [], referenceDate))
+    effectiveVersionByPlan.set(plan.id, resolveEffectiveCommissionVersion(versionsByPlan.get(plan.id) ?? [], referenceDate))
   }
 
   const effectiveVersions = [...effectiveVersionByPlan.values()].filter((v): v is CommissionRuleVersionRecord => v !== null)

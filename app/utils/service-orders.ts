@@ -139,14 +139,6 @@ export function formatZipCode(value: string | null | undefined) {
   return value || '—'
 }
 
-function getItemCost(item: ServiceOrderItem) {
-  return toNumber(item.cost_price ?? item.cost_amount)
-}
-
-function getOrderSubtotal(order: ServiceOrderRaw) {
-  return (order.items ?? []).reduce((total, item) => total + getItemTotal(item), 0)
-}
-
 export type ServiceOrderCommissionEstimate = {
   value: number
   hasMatchingItems: boolean
@@ -171,59 +163,40 @@ export type ServiceOrderCommissionBreakdown = {
   total: number
 }
 
-function getEligibleItemEntries(order: ServiceOrderRaw, employee: ServiceOrderEmployee) {
-  const items = order.items ?? []
-  const commissionCategories = employee.commission_categories ?? []
-
-  return items
-    .map((item, index) => ({ item, index }))
-    .filter(({ item }) => {
-      if (commissionCategories.length === 0) return true
-
-      // Current app/server behavior: migrated/manual items without category stay eligible.
-      return !item.category_id || commissionCategories.includes(item.category_id)
-    })
-}
-
 export function computeServiceOrderResponsibleCommission(
   order: ServiceOrderRaw,
   employee: ServiceOrderEmployee | null | undefined,
-  rulesByEmployeeId?: Map<string, ResolvedCommissionRule[]>
+  rulesByEmployeeId: Map<string, ResolvedCommissionRule[]>
 ): ServiceOrderCommissionEstimate {
-  const rules = employee?.id ? rulesByEmployeeId?.get(employee.id) : undefined
-  if (!employee?.id || (!employee.has_commission && !rules?.length)) {
-    return { value: 0, hasMatchingItems: true }
-  }
+  if (!employee?.id) return { value: 0, hasMatchingItems: true }
 
   const singleEmployeeOrder = {
     ...order,
     responsible_employees: [{ employee_id: employee.id }]
   } as ServiceOrderRaw
-  const breakdown = computeServiceOrderCommissionBreakdown(singleEmployeeOrder, [employee], rulesByEmployeeId)
+  const breakdown = computeServiceOrderCommissionBreakdown(singleEmployeeOrder, rulesByEmployeeId)
 
   return breakdown.byEmployeeId.get(employee.id) ?? { value: 0, hasMatchingItems: true }
 }
 
 /**
- * Step 8 cutover (docs/finance/commissions-step8-engine-cutover.md §7.1): an
- * employee with a non-empty entry in `rulesByEmployeeId` is resolved
- * exclusively through the new commission-plan model — never falls back to
- * `employee.has_commission`/`commission_type`/etc, even if no item on this
- * order matches any of their rules. Only employees with no resolved rules
- * (or callers that don't pass `rulesByEmployeeId` at all, e.g. a component
- * that hasn't loaded them yet) use the legacy calculation below, unchanged.
- * Fetching `rulesByEmployeeId` is the caller's job — see
- * useEmployeeCommissionRules() — so this function stays synchronous.
+ * Step 10 (docs/finance/commissions-configuration-architecture.md): resolved
+ * exclusively through `rulesByEmployeeId` (fetched by the caller via
+ * useEmployeeCommissionRules(), so this stays synchronous) — an employee
+ * with no entry (or an empty one) simply earns nothing on this order. The
+ * legacy employee.has_commission/commission_type/commission_amount/
+ * commission_base/commission_categories fallback this function used during
+ * the Step 8 cutover was removed along with those columns; see
+ * docs/finance/commissions-step8-engine-cutover.md §6 for the fallback this
+ * replaces.
  */
 export function computeServiceOrderCommissionBreakdown(
   order: ServiceOrderRaw,
-  employees: ServiceOrderEmployee[],
-  rulesByEmployeeId?: Map<string, ResolvedCommissionRule[]>
+  rulesByEmployeeId: Map<string, ResolvedCommissionRule[]>
 ): ServiceOrderCommissionBreakdown {
   const byItemIndex = new Map<number, ServiceOrderItemCommissionEntry>()
   const byEmployeeId = new Map<string, ServiceOrderCommissionEstimate>()
   const items = order.items ?? []
-  const subtotal = getOrderSubtotal(order)
   const totalTaxesAmount = toNumber(order.total_taxes_amount)
   const discountAmount = toNumber(order.discount)
   const responsibleEmployees = order.responsible_employees ?? []
@@ -233,114 +206,44 @@ export function computeServiceOrderCommissionBreakdown(
   })
 
   for (const responsible of responsibleEmployees) {
-    const employee = employees.find(item => item.id === responsible.employee_id)
-    if (!employee?.id) continue
+    const employeeId = responsible.employee_id
+    if (!employeeId) continue
 
-    const rules = rulesByEmployeeId?.get(employee.id) ?? []
-
-    if (rules.length > 0) {
-      const commissionOrderItems = items.map(item => toCommissionOrderItemInput({
-        category_id: item.category_id ?? null,
-        quantity: item.quantity,
-        total_price: item.total_price ?? null,
-        total_amount: item.total_amount,
-        unit_price: item.unit_price,
-        cost_price: item.cost_price ?? null,
-        cost_amount: item.cost_amount
-      }))
-
-      const result = computeEmployeeOrderCommission(rules, commissionOrderItems, {
-        discount: discountAmount,
-        totalTaxesAmount
-      })
-
-      result.perItem.forEach((matched, index) => {
-        const entry = byItemIndex.get(index)!
-        if (!matched || matched.amount <= 0) return
-        entry.total = roundCurrency(entry.total + matched.amount)
-        entry.commissions.push({
-          employee_id: employee.id,
-          amount: matched.amount,
-          commission_type: matched.rule.commission_type,
-          commission_base: matched.rule.commission_base,
-          commission_percentage: matched.rule.commission_type === 'percentage' ? matched.rule.commission_amount : null
-        })
-      })
-
-      byEmployeeId.set(employee.id, { value: result.total, hasMatchingItems: result.hasMatchingItems })
+    const rules = rulesByEmployeeId.get(employeeId) ?? []
+    if (rules.length === 0) {
+      byEmployeeId.set(employeeId, { value: 0, hasMatchingItems: true })
       continue
     }
 
-    if (!employee.has_commission) {
-      byEmployeeId.set(employee.id, { value: 0, hasMatchingItems: true })
-      continue
-    }
+    const commissionOrderItems = items.map(item => toCommissionOrderItemInput({
+      category_id: item.category_id ?? null,
+      quantity: item.quantity,
+      total_price: item.total_price ?? null,
+      total_amount: item.total_amount,
+      unit_price: item.unit_price,
+      cost_price: item.cost_price ?? null,
+      cost_amount: item.cost_amount
+    }))
 
-    const eligibleItems = getEligibleItemEntries(order, employee)
-    if (!eligibleItems.length) {
-      byEmployeeId.set(employee.id, { value: 0, hasMatchingItems: false })
-      continue
-    }
-
-    const commissionAmount = toNumber(employee.commission_amount)
-    const eligibleSale = eligibleItems.reduce((total, { item }) => total + getItemTotal(item), 0)
-    const eligibleRatio = subtotal > 0 ? eligibleSale / subtotal : 0
-    const eligibleDiscount = discountAmount * eligibleRatio
-    const eligibleTaxes = totalTaxesAmount * eligibleRatio
-    let employeeTotal = 0
-
-    if (employee.commission_type === 'percentage') {
-      for (const { item, index } of eligibleItems) {
-        const itemTotal = getItemTotal(item)
-        const fraction = eligibleSale > 0 ? itemTotal / eligibleSale : 1 / eligibleItems.length
-        const itemDiscount = eligibleDiscount * fraction
-        const itemTaxes = eligibleTaxes * fraction
-        let itemBase = itemTotal - itemDiscount
-
-        if (employee.commission_base === 'profit') {
-          itemBase = Math.max(0, itemBase - getItemCost(item) * toNumber(item.quantity) - itemTaxes)
-        }
-
-        const value = roundCurrency((itemBase * commissionAmount) / 100)
-        const entry = byItemIndex.get(index)!
-        entry.total = roundCurrency(entry.total + value)
-        if (value > 0) {
-          entry.commissions.push({
-            employee_id: employee.id,
-            amount: value,
-            commission_type: employee.commission_type ?? null,
-            commission_base: employee.commission_base ?? null,
-            commission_percentage: commissionAmount
-          })
-        }
-        employeeTotal = roundCurrency(employeeTotal + value)
-      }
-    } else {
-      const perItemValue = roundCurrency(commissionAmount / eligibleItems.length)
-      const distributedTotal = roundCurrency(perItemValue * eligibleItems.length)
-      const remainder = roundCurrency(commissionAmount - distributedTotal)
-
-      eligibleItems.forEach(({ index }, eligibleIndex) => {
-        const value = eligibleIndex === 0 ? roundCurrency(perItemValue + remainder) : perItemValue
-        const entry = byItemIndex.get(index)!
-        entry.total = roundCurrency(entry.total + value)
-        if (value > 0) {
-          entry.commissions.push({
-            employee_id: employee.id,
-            amount: value,
-            commission_type: employee.commission_type ?? null,
-            commission_base: employee.commission_base ?? null,
-            commission_percentage: null
-          })
-        }
-        employeeTotal = roundCurrency(employeeTotal + value)
-      })
-    }
-
-    byEmployeeId.set(employee.id, {
-      value: employeeTotal,
-      hasMatchingItems: eligibleSale > 0
+    const result = computeEmployeeOrderCommission(rules, commissionOrderItems, {
+      discount: discountAmount,
+      totalTaxesAmount
     })
+
+    result.perItem.forEach((matched, index) => {
+      const entry = byItemIndex.get(index)!
+      if (!matched || matched.amount <= 0) return
+      entry.total = roundCurrency(entry.total + matched.amount)
+      entry.commissions.push({
+        employee_id: employeeId,
+        amount: matched.amount,
+        commission_type: matched.rule.commission_type,
+        commission_base: matched.rule.commission_base,
+        commission_percentage: matched.rule.commission_type === 'percentage' ? matched.rule.commission_amount : null
+      })
+    })
+
+    byEmployeeId.set(employeeId, { value: result.total, hasMatchingItems: result.hasMatchingItems })
   }
 
   const total = Array.from(byEmployeeId.values()).reduce(
@@ -353,9 +256,9 @@ export function computeServiceOrderCommissionBreakdown(
 
 export function computeServiceOrderItemCommissionMap(
   order: ServiceOrderRaw,
-  employees: ServiceOrderEmployee[]
+  rulesByEmployeeId: Map<string, ResolvedCommissionRule[]>
 ) {
-  const breakdown = computeServiceOrderCommissionBreakdown(order, employees)
+  const breakdown = computeServiceOrderCommissionBreakdown(order, rulesByEmployeeId)
   const commissionByItemIndex = new Map<number, number>()
 
   for (const [index, entry] of breakdown.byItemIndex) {

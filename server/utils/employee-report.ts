@@ -26,11 +26,6 @@ interface ClientRecord {
 interface EmployeeRecord {
   id: string
   name?: string | null
-  has_commission?: boolean | null
-  commission_type?: string | null
-  commission_amount?: number | string | null
-  commission_base?: string | null
-  commission_categories?: unknown
 }
 
 interface CategoryRecord {
@@ -174,7 +169,7 @@ export async function getEmployeeReport(
     fetchAllOrganizationRows<EmployeeRecord>(supabase, {
       table: 'employees',
       organizationId,
-      columns: 'id, name, has_commission, commission_type, commission_amount, commission_base, commission_categories',
+      columns: 'id, name',
       nullColumns: ['deleted_at']
     }),
     fetchAllOrganizationRows<ClientRecord>(supabase, {

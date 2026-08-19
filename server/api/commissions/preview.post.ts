@@ -3,11 +3,8 @@ import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
-import {
-  currentMonthStart,
-  resolveEmployeeCommissionRules,
-  buildCommissionSnapshot
-} from '../../utils/employee-commission-plans'
+import { resolveEmployeeCommissionRules } from '../../utils/employee-commission-plans'
+import { currentCommissionMonthStart, buildCommissionSnapshot } from '../../../shared/utils/employee-commission-engine'
 
 interface PreviewItemInput {
   id?: string
@@ -63,7 +60,7 @@ export default defineEventHandler(async (event) => {
 
   const referenceDate = typeof body?.referenceDate === 'string' && body.referenceDate.trim()
     ? body.referenceDate.trim()
-    : currentMonthStart()
+    : currentCommissionMonthStart()
 
   const rules = await resolveEmployeeCommissionRules(supabase, organizationId, employeeId, referenceDate)
 

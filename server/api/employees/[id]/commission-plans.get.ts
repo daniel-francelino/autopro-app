@@ -4,12 +4,11 @@ import { requireAuthUser } from '../../../utils/require-auth'
 import { requireOrgPermission } from '../../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../../utils/organization'
 import {
-  currentMonthStart,
   fetchCommissionRuleVersions,
-  fetchCommissionRulesForVersion,
-  resolveEffectiveVersion
+  fetchCommissionRulesForVersion
 } from '../../../utils/employee-commission-plans'
 import type { CommissionPlanRecord } from '../../../utils/employee-commission-plans'
+import { currentCommissionMonthStart, resolveEffectiveCommissionVersion } from '../../../../shared/utils/employee-commission-engine'
 
 interface AssignmentRow {
   id: string
@@ -61,11 +60,11 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 500, statusMessage: `Failed to load commission plans: ${plansError.message}` })
   }
 
-  const referenceDate = currentMonthStart()
+  const referenceDate = currentCommissionMonthStart()
 
   const rawItems = await Promise.all(((plans || []) as CommissionPlanRecord[]).map(async (plan) => {
     const versions = await fetchCommissionRuleVersions(supabase, plan.id)
-    const effectiveVersion = resolveEffectiveVersion(versions, referenceDate)
+    const effectiveVersion = resolveEffectiveCommissionVersion(versions, referenceDate)
     const rules = effectiveVersion ? await fetchCommissionRulesForVersion(supabase, effectiveVersion.id) : []
     return { plan, effectiveVersion, rules }
   }))

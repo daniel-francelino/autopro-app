@@ -9,10 +9,20 @@
 // rules instead of a single monthly goal.
 //
 // The pure calculation logic (no Supabase) lives in
-// shared/utils/employee-commission-engine.ts, re-exported below, so the
-// frontend live preview (app/utils/service-orders.ts) can use the exact same
-// rule-matching/amount code without pulling in server-only DB access. This
-// file only adds the Supabase-backed fetch/insert wrappers around it.
+// shared/utils/employee-commission-engine.ts, so the frontend live preview
+// (app/utils/service-orders.ts) can use the exact same rule-matching/amount
+// code without pulling in server-only DB access. This file only adds the
+// Supabase-backed fetch/insert wrappers around it.
+//
+// Deliberately NOT re-exported from here (even though earlier versions of
+// this file did): Nuxt auto-imports every export of both shared/utils/*.ts
+// and server/utils/*.ts globally, so re-exporting the same names from both
+// files registered two global bindings for one symbol — harmless in dev,
+// but it broke Nitro's production Rollup build ("Could not resolve
+// .../shared/utils/employee-commission-engine.ts", plus "Duplicated
+// imports" warnings during `nuxt prepare`). Import straight from
+// shared/utils/employee-commission-engine wherever those pure functions are
+// needed instead of through this file.
 //
 // As of Step 8 (docs/finance/commissions-step8-engine-cutover.md), all 4
 // legacy commission engines (server/utils/service-order-item-commissions.ts,
@@ -23,40 +33,13 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import {
-  currentMonthStart,
-  resolveEffectiveVersion,
+  currentCommissionMonthStart,
+  resolveEffectiveCommissionVersion,
   type CommissionRuleType,
   type CommissionRuleBase,
   type CommissionRuleVersionRecord,
   type CommissionRuleRecord,
   type ResolvedCommissionRule
-} from '../../shared/utils/employee-commission-engine'
-
-export {
-  roundMoney,
-  toMonthStart,
-  currentMonthStart,
-  resolveEffectiveVersion,
-  getApplicableCommissionRule,
-  matchCommissionRule,
-  computeCommissionAmount,
-  buildCommissionSnapshot,
-  computeEmployeeOrderCommission,
-  getOrderItemQuantity,
-  getOrderItemTotal,
-  getOrderItemCost,
-  toCommissionOrderItemInput
-} from '../../shared/utils/employee-commission-engine'
-export type {
-  CommissionRuleType,
-  CommissionRuleBase,
-  CommissionRuleVersionRecord,
-  CommissionRuleRecord,
-  ResolvedCommissionRule,
-  CommissionItemSnapshot,
-  CommissionOrderItemInput,
-  CommissionOrderItemResult,
-  EmployeeOrderCommissionResult
 } from '../../shared/utils/employee-commission-engine'
 
 export interface CommissionPlanRecord {
@@ -188,7 +171,7 @@ export async function resolveEmployeeCommissionRules(
   supabase: SupabaseClient,
   organizationId: string,
   employeeId: string,
-  referenceDate: string = currentMonthStart()
+  referenceDate: string = currentCommissionMonthStart()
 ): Promise<ResolvedCommissionRule[]> {
   const { data: assignments, error: assignmentsError } = await supabase
     .from('employee_commission_plan_assignments')
@@ -214,7 +197,7 @@ export async function resolveEmployeeCommissionRules(
   const allRules: ResolvedCommissionRule[] = []
   for (const plan of plans || []) {
     const versions = await fetchCommissionRuleVersions(supabase, plan.id)
-    const effectiveVersion = resolveEffectiveVersion(versions, referenceDate)
+    const effectiveVersion = resolveEffectiveCommissionVersion(versions, referenceDate)
     if (!effectiveVersion) continue
     const rules = await fetchCommissionRulesForVersion(supabase, effectiveVersion.id)
     allRules.push(...rules.map(rule => ({ ...rule, plan_id: plan.id })))
@@ -233,7 +216,7 @@ export async function resolveEmployeeCommissionRulesForEmployees(
   supabase: SupabaseClient,
   organizationId: string,
   employeeIds: string[],
-  referenceDate: string = currentMonthStart()
+  referenceDate: string = currentCommissionMonthStart()
 ): Promise<Map<string, ResolvedCommissionRule[]>> {
   const result = new Map<string, ResolvedCommissionRule[]>()
   const uniqueEmployeeIds = [...new Set(employeeIds.filter(Boolean))]
@@ -271,7 +254,7 @@ export async function resolveEmployeeCommissionRulesForEmployees(
 
   for (const plan of plans || []) {
     const versions = await fetchCommissionRuleVersions(supabase, plan.id)
-    const effectiveVersion = resolveEffectiveVersion(versions, referenceDate)
+    const effectiveVersion = resolveEffectiveCommissionVersion(versions, referenceDate)
     if (!effectiveVersion) continue
     const rules = await fetchCommissionRulesForVersion(supabase, effectiveVersion.id)
     const resolvedRules: ResolvedCommissionRule[] = rules.map(rule => ({ ...rule, plan_id: plan.id }))

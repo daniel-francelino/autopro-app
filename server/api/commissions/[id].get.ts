@@ -4,13 +4,12 @@ import { requireAuthUser } from '../../utils/require-auth'
 import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
 import {
-  currentMonthStart,
   fetchCommissionPlan,
   fetchCommissionPlanAssignments,
   fetchCommissionRuleVersions,
-  fetchCommissionRulesForPlan,
-  resolveEffectiveVersion
+  fetchCommissionRulesForPlan
 } from '../../utils/employee-commission-plans'
+import { currentCommissionMonthStart, resolveEffectiveCommissionVersion } from '../../../shared/utils/employee-commission-engine'
 
 /**
  * GET /api/commissions/:id
@@ -73,7 +72,7 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const effectiveVersion = resolveEffectiveVersion(versions, currentMonthStart())
+  const effectiveVersion = resolveEffectiveCommissionVersion(versions, currentCommissionMonthStart())
 
   const versionsPayload = versions.map(version => ({
     ...version,

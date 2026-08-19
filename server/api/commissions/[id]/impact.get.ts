@@ -4,13 +4,12 @@ import { requireAuthUser } from '../../../utils/require-auth'
 import { requireOrgPermission } from '../../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../../utils/organization'
 import {
-  currentMonthStart,
   fetchCommissionPlan,
   fetchCommissionPlanAssignments,
   fetchCommissionRuleVersions,
-  fetchCommissionRulesForVersion,
-  resolveEffectiveVersion
+  fetchCommissionRulesForVersion
 } from '../../../utils/employee-commission-plans'
+import { currentCommissionMonthStart, resolveEffectiveCommissionVersion } from '../../../../shared/utils/employee-commission-engine'
 
 /**
  * GET /api/commissions/:id/impact
@@ -42,7 +41,7 @@ export default defineEventHandler(async (event) => {
     fetchCommissionPlanAssignments(supabase, planId, true)
   ])
 
-  const effectiveVersion = resolveEffectiveVersion(versions, currentMonthStart())
+  const effectiveVersion = resolveEffectiveCommissionVersion(versions, currentCommissionMonthStart())
   const rules = effectiveVersion ? await fetchCommissionRulesForVersion(supabase, effectiveVersion.id) : []
 
   const allCategoryIds = [...new Set(rules.flatMap(rule => rule.category_ids))]

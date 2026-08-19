@@ -4,11 +4,11 @@ import { requireAuthUser } from '../../../utils/require-auth'
 import { requireOrgPermission } from '../../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../../utils/organization'
 import {
-  currentMonthStart,
   fetchCommissionPlan,
   insertCommissionRuleVersion,
   parseCommissionRulesInput
 } from '../../../utils/employee-commission-plans'
+import { currentCommissionMonthStart } from '../../../../shared/utils/employee-commission-engine'
 
 /**
  * POST /api/commissions/:id/versions
@@ -61,7 +61,7 @@ export default defineEventHandler(async (event) => {
 
   const effectiveFrom = typeof body?.effectiveFrom === 'string' && body.effectiveFrom.trim()
     ? body.effectiveFrom.trim()
-    : currentMonthStart()
+    : currentCommissionMonthStart()
 
   const { data: existingVersion } = await supabase
     .from('employee_commission_rule_versions')

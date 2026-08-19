@@ -318,7 +318,7 @@ watch(
 
 const estimatedCommissionAmount = computed(() => {
   if (!detail.value) return 0
-  return computeServiceOrderCommissionBreakdown(detail.value.order, detail.value.employees, rulesByEmployeeId.value).total
+  return computeServiceOrderCommissionBreakdown(detail.value.order, rulesByEmployeeId.value).total
 })
 
 // ─── NFS-e ────────────────────────────────────────────────────────────────────
@@ -448,7 +448,6 @@ defineExpose({ refreshNfseCard })
         <ServiceOrdersDetailOSResponsiblesCard
           :order="detail.order"
           :responsible-names="detail.responsibleNames"
-          :employees="detail.employees"
           :commissions="detail.commissions"
         />
 

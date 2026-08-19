@@ -9,8 +9,23 @@
 // frontend live preview (app/utils/service-orders.ts) — Nuxt 4's shared/
 // directory is bundled for both the Nitro server and the Vue app. Nothing
 // here touches Supabase; DB-fetch wrappers stay in
-// server/utils/employee-commission-plans.ts, which re-exports everything in
-// this file for backward compatibility with its existing importers.
+// server/utils/employee-commission-plans.ts, which imports what it needs
+// from this file but does NOT re-export it — Nuxt auto-imports every export
+// of both shared/utils/*.ts and server/utils/*.ts globally, so re-exporting
+// the same names from both registered two global bindings for one symbol,
+// which broke Nitro's production Rollup build. Every other file imports
+// straight from here.
+//
+// Naming note: toMonthStart/currentMonthStart/resolveEffectiveVersion are
+// prefixed with "Commission" below (unlike the rest of this file's exports)
+// specifically because server/utils/bonuses.ts already exports its own
+// functions with those exact bare names for the unrelated bonus feature —
+// same collision problem as above (global auto-import, not a namespaced
+// import), confirmed by `nuxt prepare`'s "Duplicated imports" warning.
+// roundMoney is not exported at all: nothing outside this file imports it
+// from here (every real caller already has its own from
+// server/utils/report-helpers.ts), so keeping it unexported side-steps that
+// collision instead of renaming it.
 
 export type CommissionRuleType = 'percentage' | 'fixed_amount'
 export type CommissionRuleBase = 'revenue' | 'profit'
@@ -44,18 +59,18 @@ export interface ResolvedCommissionRule extends CommissionRuleRecord {
   plan_id: string
 }
 
-export function roundMoney(value: number): number {
+function roundMoney(value: number): number {
   return Number.parseFloat(Number(value || 0).toFixed(2))
 }
 
 /** Always the 1st of the month, e.g. "2026-03-01". */
-export function toMonthStart(value: string | Date): string {
+export function toCommissionMonthStart(value: string | Date): string {
   const date = typeof value === 'string' ? new Date(`${value}T00:00:00`) : value
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`
 }
 
-export function currentMonthStart(): string {
-  return toMonthStart(new Date())
+export function currentCommissionMonthStart(): string {
+  return toCommissionMonthStart(new Date())
 }
 
 /**
@@ -64,7 +79,7 @@ export function currentMonthStart(): string {
  * created row (same resolution rule as bonus_value_versions). Returns null
  * if no version was effective yet by that date.
  */
-export function resolveEffectiveVersion(
+export function resolveEffectiveCommissionVersion(
   versions: CommissionRuleVersionRecord[],
   referenceDate: string
 ): CommissionRuleVersionRecord | null {

@@ -18,12 +18,6 @@ interface EmployeeCommissionProfile {
   addressNumber: string | null
   addressComplement: string | null
   zipCode: string | null
-  hasCommission: boolean
-  commissionType: string | null
-  commissionAmount: number | null
-  commissionBase: string | null
-  commissionCategoryIds: string[]
-  commissionCategoryNames: string[]
   terminationDate: string | null
   terminationReason: string | null
 }

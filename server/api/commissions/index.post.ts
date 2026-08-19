@@ -4,10 +4,10 @@ import { requireAuthUser } from '../../utils/require-auth'
 import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
 import {
-  currentMonthStart,
   insertCommissionRuleVersion,
   parseCommissionRulesInput
 } from '../../utils/employee-commission-plans'
+import { currentCommissionMonthStart } from '../../../shared/utils/employee-commission-engine'
 
 /**
  * POST /api/commissions
@@ -74,7 +74,7 @@ export default defineEventHandler(async (event) => {
 
   const effectiveFrom = typeof body?.effectiveFrom === 'string' && body.effectiveFrom.trim()
     ? body.effectiveFrom.trim()
-    : currentMonthStart()
+    : currentCommissionMonthStart()
 
   try {
     const { version, rules } = await insertCommissionRuleVersion(

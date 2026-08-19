@@ -5,10 +5,10 @@ import { resolveOrganizationId } from '../../utils/organization'
 import { computeNextOsNumber, normalizeOsNumber } from '../../utils/service-order-number'
 import {
   computeServiceOrderItemsWithCommissionSnapshots,
-  type ServiceOrderCommissionEmployee,
   type ServiceOrderCommissionItem
 } from '../../utils/service-order-item-commissions'
-import { resolveEmployeeCommissionRulesForEmployees, toMonthStart } from '../../utils/employee-commission-plans'
+import { resolveEmployeeCommissionRulesForEmployees } from '../../utils/employee-commission-plans'
+import { toCommissionMonthStart } from '../../../shared/utils/employee-commission-engine'
 
 /**
  * POST /api/service-orders
@@ -147,22 +147,12 @@ export default defineEventHandler(async (event) => {
     : []
 
   if (itemsForCommission.length > 0 && responsiblesForCommission.length > 0) {
-    const { data: employeesForCommission, error: employeesError } = await supabase
-      .from('employees')
-      .select('id, has_commission, commission_type, commission_amount, commission_base, commission_categories')
-      .eq('organization_id', organizationId)
-      .is('deleted_at', null)
-
-    if (employeesError) {
-      throw createError({ statusCode: 500, statusMessage: employeesError.message })
-    }
-
-    // Step 8 cutover (docs/finance/commissions-step8-engine-cutover.md): resolve
-    // the new commission-plan model's rules for every responsible employee,
-    // at the order's own entry_date (not "today") — a past-dated OS must
-    // resolve the version that was vigente back then, same as the frontend
-    // preview and the reports engine already do for their own reads.
-    const referenceDate = toMonthStart(String(orderPayload.entry_date || new Date().toISOString().split('T')[0]))
+    // Resolve the commission-plan model's rules for every responsible
+    // employee, at the order's own entry_date (not "today") — a past-dated
+    // OS must resolve the version that was vigente back then, same as the
+    // frontend preview and the reports engine already do for their own
+    // reads. See docs/finance/commissions-step8-engine-cutover.md.
+    const referenceDate = toCommissionMonthStart(String(orderPayload.entry_date || new Date().toISOString().split('T')[0]))
     const rulesByEmployeeId = await resolveEmployeeCommissionRulesForEmployees(
       supabase,
       organizationId,
@@ -173,7 +163,6 @@ export default defineEventHandler(async (event) => {
     const commissionSnapshot = computeServiceOrderItemsWithCommissionSnapshots({
       items: itemsForCommission,
       responsibleEmployees: responsiblesForCommission,
-      employees: (employeesForCommission ?? []) as ServiceOrderCommissionEmployee[],
       discount: orderPayload.discount,
       totalTaxesAmount: orderPayload.total_taxes_amount,
       rulesByEmployeeId

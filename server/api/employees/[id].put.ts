@@ -62,8 +62,7 @@ export default defineEventHandler(async (event) => {
     'zip_code', 'street', 'address_number', 'address_complement',
     'neighborhood', 'city', 'state',
     'has_salary', 'salary_amount', 'payment_day', 'salary_installments',
-    'has_commission', 'commission_type', 'commission_amount', 'commission_base',
-    'commission_categories', 'has_minimum_guarantee', 'minimum_guarantee_amount',
+    'has_minimum_guarantee', 'minimum_guarantee_amount',
     'minimum_guarantee_installments', 'pix_key_type', 'pix_key',
     'termination_date', 'termination_reason'
   ] as const

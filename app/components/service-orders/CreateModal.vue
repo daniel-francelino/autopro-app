@@ -13,7 +13,6 @@ import {
 } from '../../utils/service-orders'
 import type {
   ServiceOrderDraftItem,
-  ServiceOrderEmployee,
   ServiceOrderItem,
   ServiceOrderRaw,
   ServiceOrderSelectedTax
@@ -42,11 +41,6 @@ interface SelectOption {
 interface EmployeeItem {
   id: string
   name: string
-  has_commission?: boolean | null
-  commission_type?: string | null
-  commission_amount?: number | string | null
-  commission_base?: string | null
-  commission_categories?: string[] | null
 }
 
 interface MasterProductItem {
@@ -246,16 +240,6 @@ function populateFormFromOrder(order: ServiceOrderRaw) {
 
 function getEmployeeById(employeeId: string) {
   return employeeCatalog.value.find(e => e.id === employeeId) ?? null
-}
-
-function toCommissionEmployee(employee: EmployeeItem): ServiceOrderEmployee {
-  return {
-    ...employee,
-    commission_amount:
-      employee.commission_amount == null
-        ? null
-        : toNumber(employee.commission_amount)
-  }
 }
 
 async function loadMasterProducts(force = false) {
@@ -461,14 +445,9 @@ const commissionOrderInput = computed(
     }) as ServiceOrderRaw
 )
 
-const commissionEmployees = computed<ServiceOrderEmployee[]>(() =>
-  employeeCatalog.value.map(toCommissionEmployee)
-)
-
 const commissionBreakdown = computed(() =>
   computeServiceOrderCommissionBreakdown(
     commissionOrderInput.value,
-    commissionEmployees.value,
     rulesByEmployeeId.value
   )
 )
@@ -554,7 +533,7 @@ function computeResponsibleCommission(
   return (
     commissionBreakdown.value.byEmployeeId.get(employee.id) ?? {
       value: 0,
-      hasMatchingItems: Boolean(employee.has_commission)
+      hasMatchingItems: true
     }
   )
 }
@@ -609,47 +588,18 @@ const employeeCommissionsDisplay = computed<
     const stored = getStoredCommissionForEmployee(employeeId)
     const commissionValue = fresh.value > 0 ? fresh.value : stored
 
-    // Step 9 (docs/finance/commissions-configuration-architecture.md): an
-    // employee with an active new-model plan has no single rate/base — it
-    // varies per rule/category — so those badges are replaced with a note
-    // pointing at Financeiro > Comissões, same as detail/OSResponsiblesCard.vue.
-    const hasNewModelRules = (rulesByEmployeeId.value.get(employeeId)?.length ?? 0) > 0
+    // Step 10 (docs/finance/commissions-configuration-architecture.md):
+    // commission is resolved exclusively through the new model now — an
+    // employee has no single rate/base to show (it varies per rule/category),
+    // so rateLabel/baseLabel are gone and the note always reflects whether
+    // this employee has an active plan, same as detail/OSResponsiblesCard.vue.
+    const hasCommissionPlan = (rulesByEmployeeId.value.get(employeeId)?.length ?? 0) > 0
 
-    let rateLabel: string | null = null
-    if (!hasNewModelRules && employee?.has_commission && employee.commission_amount != null) {
-      rateLabel
-        = employee.commission_type === 'percentage'
-          ? `${toNumber(employee.commission_amount)}%`
-          : formatCurrency(employee.commission_amount)
-    }
-
-    const baseLabel = !hasNewModelRules && employee
-      ? employee.commission_base === 'profit'
-        ? 'Base: lucro'
-        : 'Base: faturamento'
-      : null
-
-    let note: EmployeeCommissionDisplay['note'] = null
-    if (hasNewModelRules) {
-      note = !fresh.hasMatchingItems
-        ? { label: 'Sem itens elegíveis', color: 'warning', icon: 'i-lucide-triangle-alert' }
-        : { label: 'Por regra/categoria', color: 'primary', icon: 'i-lucide-list-checks' }
-    } else if (employee && !employee.has_commission) {
-      note = {
-        label: 'Sem comissão',
-        color: 'neutral',
-        icon: 'i-lucide-circle-off'
-      }
-    } else if (
-      employee?.commission_categories?.length
-      && !fresh.hasMatchingItems
-    ) {
-      note = {
-        label: 'Sem itens nas categorias',
-        color: 'warning',
-        icon: 'i-lucide-triangle-alert'
-      }
-    }
+    const note: EmployeeCommissionDisplay['note'] = hasCommissionPlan
+      ? (!fresh.hasMatchingItems
+          ? { label: 'Sem itens elegíveis', color: 'warning', icon: 'i-lucide-triangle-alert' }
+          : { label: 'Por regra/categoria', color: 'primary', icon: 'i-lucide-list-checks' })
+      : { label: 'Sem comissão', color: 'neutral', icon: 'i-lucide-circle-off' }
 
     const itemBreakdown = normalizedItems.value
       .map((normalizedItem) => {
@@ -664,8 +614,6 @@ const employeeCommissionsDisplay = computed<
 
     result[employeeId] = {
       commissionLabel: formatCurrency(commissionValue),
-      rateLabel,
-      baseLabel,
       note,
       hasInfo: !!employee || stored > 0,
       itemBreakdown

@@ -4,14 +4,13 @@ import { requireAuthUser } from '../../../utils/require-auth'
 import { requireOrgPermission } from '../../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../../utils/organization'
 import {
-  currentMonthStart,
   fetchCommissionPlan,
   fetchCommissionRuleVersions,
   fetchCommissionRulesForVersion,
   findCommissionConflicts,
-  resolveEffectiveVersion,
   resolveEmployeeCommissionRules
 } from '../../../utils/employee-commission-plans'
+import { currentCommissionMonthStart, resolveEffectiveCommissionVersion } from '../../../../shared/utils/employee-commission-engine'
 
 /**
  * POST /api/commissions/:id/assignments
@@ -61,9 +60,9 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Funcionário não encontrado' })
   }
 
-  const referenceDate = currentMonthStart()
+  const referenceDate = currentCommissionMonthStart()
   const versions = await fetchCommissionRuleVersions(supabase, planId)
-  const effectiveVersion = resolveEffectiveVersion(versions, referenceDate)
+  const effectiveVersion = resolveEffectiveCommissionVersion(versions, referenceDate)
   const candidateRules = effectiveVersion ? await fetchCommissionRulesForVersion(supabase, effectiveVersion.id) : []
 
   const existingRules = await resolveEmployeeCommissionRules(supabase, organizationId, employeeId, referenceDate)

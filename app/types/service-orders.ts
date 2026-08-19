@@ -126,11 +126,6 @@ export type ServiceOrderEmployee = {
   id: string
   name: string
   photo_url?: string | null
-  commission_type?: string | null
-  commission_amount?: number | null
-  commission_base?: string | null
-  commission_categories?: string[] | null
-  has_commission?: boolean | null
 }
 
 export type ServiceOrderRaw = {

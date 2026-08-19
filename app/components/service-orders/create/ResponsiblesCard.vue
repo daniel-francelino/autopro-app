@@ -6,8 +6,6 @@ interface SelectOption { label: string, value: string }
 
 export type EmployeeCommissionDisplay = {
   commissionLabel: string
-  rateLabel: string | null
-  baseLabel: string | null
   note: { label: string, color: 'neutral' | 'warning' | 'primary', icon: string } | null
   hasInfo: boolean
   itemBreakdown: CommissionBreakdownLine[]
@@ -112,20 +110,6 @@ function getOptionsForIndex(index: number) {
                   class="cursor-default"
                 />
               </ServiceOrdersCommissionBreakdownPopover>
-              <UBadge
-                v-if="employeeCommissions[employeeId]!.rateLabel"
-                color="success"
-                variant="subtle"
-                leading-icon="i-lucide-badge-percent"
-                :label="employeeCommissions[employeeId]!.rateLabel"
-              />
-              <UBadge
-                v-if="employeeCommissions[employeeId]!.baseLabel"
-                color="neutral"
-                variant="outline"
-                leading-icon="i-lucide-scale"
-                :label="employeeCommissions[employeeId]!.baseLabel"
-              />
               <UBadge
                 v-if="employeeCommissions[employeeId]!.note"
                 :color="employeeCommissions[employeeId]!.note!.color"

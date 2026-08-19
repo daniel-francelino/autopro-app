@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   computeEmployeeOrderCommission,
   toCommissionOrderItemInput,
-  toMonthStart,
+  toCommissionMonthStart,
   type ResolvedCommissionRule
 } from '../../shared/utils/employee-commission-engine'
 import { resolveEmployeeCommissionRulesForEmployees } from './employee-commission-plans'
@@ -20,15 +20,6 @@ type ReleaseServiceOrderCommissionsParams = {
   // at once (e.g. creating a plan with several lines already paid) — there
   // isn't one right answer to link to in that case.
   triggeringInstallmentId?: string | null
-}
-
-type EmployeeWithCommission = {
-  id: string
-  has_commission?: boolean | null
-  commission_type?: string | null
-  commission_amount?: number | string | null
-  commission_base?: string | null
-  commission_categories?: string[] | null
 }
 
 type EmployeeEntitlement = {
@@ -96,21 +87,22 @@ function isMissingCommissionSnapshotColumn(error: { message?: string } | null | 
  * entitled to for this order — independent of how much of the order has
  * actually been paid. Pure calculation, no DB writes.
  *
- * Step 8 cutover (docs/finance/commissions-step8-engine-cutover.md): an
- * employee with a non-empty entry in `rulesByEmployeeId` is resolved
- * EXCLUSIVELY through the new commission-plan model — never falls back to
- * the legacy employees.* columns for this order, even if no item matches
- * any of their rules. Only employees with no resolved rules at all use the
- * legacy calculation, unchanged from before this cutover.
+ * Step 10 (docs/finance/commissions-configuration-architecture.md): resolved
+ * exclusively through the commission-plan model now — an employee with no
+ * entry (or an empty one) in `rulesByEmployeeId` simply earns nothing on
+ * this order. The legacy employees.has_commission/commission_type/
+ * commission_amount/commission_base/commission_categories fallback this
+ * function used during the Step 8 cutover was removed along with those
+ * columns; see docs/finance/commissions-step8-engine-cutover.md §6 for the
+ * fallback this replaces.
  *
- * The new model can attribute different items to different rules (a
+ * The model can attribute different items to different rules (a
  * category-specific rule at one rate, a catch-all at another) — something
  * the legacy model never had to represent, since it only ever had one rate
  * per employee. employee_financial_records still holds one aggregate row
  * per employee per release event (that ledger's pending/paid/received-ratio
  * reconciliation logic, see releaseServiceOrderCommissions below, is
- * unchanged and deliberately NOT re-derived per rule — too risky to touch
- * for this cutover). So the per-rule traceability columns
+ * unrelated and untouched here). So the per-rule traceability columns
  * (commissionRuleId/RuleVersionId/RuleName/AmountSnapshot) are only filled
  * in when every item contributing to this employee's total matched the SAME
  * single rule; left null when more than one distinct rule contributed
@@ -119,12 +111,12 @@ function isMissingCommissionSnapshotColumn(error: { message?: string } | null | 
  */
 function computeEmployeeEntitlements({
   order,
-  employeeMap,
+  activeEmployeeIds,
   rulesByEmployeeId
 }: {
   order: Record<string, unknown>
-  employeeMap: Map<string, EmployeeWithCommission>
-  rulesByEmployeeId?: Map<string, ResolvedCommissionRule[]>
+  activeEmployeeIds: Set<string>
+  rulesByEmployeeId: Map<string, ResolvedCommissionRule[]>
 }): EmployeeEntitlement[] {
   const items = Array.isArray(order.items) ? order.items as Record<string, unknown>[] : []
   const responsibleEmployees = Array.isArray(order.responsible_employees)
@@ -133,7 +125,6 @@ function computeEmployeeEntitlements({
 
   if (responsibleEmployees.length === 0 || items.length === 0) return []
 
-  const subtotal = items.reduce((sum, item) => sum + getItemTotal(item), 0)
   const discountAmount = asNumber(order.discount)
   const taxesAmount = asNumber(order.total_taxes_amount)
 
@@ -141,120 +132,55 @@ function computeEmployeeEntitlements({
 
   for (const responsible of responsibleEmployees) {
     const employeeId = responsible.employee_id
-    const employee = employeeMap.get(employeeId)
-    if (!employee) continue
+    if (!activeEmployeeIds.has(employeeId)) continue
 
-    const rules = rulesByEmployeeId?.get(employeeId) ?? []
+    const rules = rulesByEmployeeId.get(employeeId) ?? []
+    if (rules.length === 0) continue
 
-    if (rules.length > 0) {
-      const commissionOrderItems = items.map(item => toCommissionOrderItemInput({
-        category_id: item.category_id as string | null,
-        quantity: item.quantity as number | string | null,
-        total_price: item.total_price as number | string | null,
-        total_amount: item.total_amount as number | string | null,
-        unit_price: item.unit_price as number | string | null,
-        cost_price: item.cost_price as number | string | null,
-        cost_amount: item.cost_amount as number | string | null
-      }))
+    const commissionOrderItems = items.map(item => toCommissionOrderItemInput({
+      category_id: item.category_id as string | null,
+      quantity: item.quantity as number | string | null,
+      total_price: item.total_price as number | string | null,
+      total_amount: item.total_amount as number | string | null,
+      unit_price: item.unit_price as number | string | null,
+      cost_price: item.cost_price as number | string | null,
+      cost_amount: item.cost_amount as number | string | null
+    }))
 
-      const result = computeEmployeeOrderCommission(rules, commissionOrderItems, {
-        discount: discountAmount,
-        totalTaxesAmount: taxesAmount
-      })
-
-      if (result.total <= 0) continue
-
-      const matchedEntries = result.perItem.filter((entry): entry is NonNullable<typeof entry> => entry !== null)
-      const distinctRuleIds = new Set(matchedEntries.map(entry => entry.rule.id))
-      const distinctPlanIds = new Set(matchedEntries.map(entry => entry.rule.plan_id))
-      const singleRule = distinctRuleIds.size === 1 ? matchedEntries[0]!.rule : null
-
-      let eligibleItemAmount = 0
-      let eligibleItemCost = 0
-      result.perItem.forEach((entry, index) => {
-        if (!entry) return
-        const item = items[index]!
-        eligibleItemAmount += getItemTotal(item)
-        eligibleItemCost += getItemCost(item)
-      })
-
-      entitlements.push({
-        employeeId,
-        totalAmount: result.total,
-        commissionType: singleRule?.commission_type ?? null,
-        commissionPercentage: singleRule?.commission_type === 'percentage' ? singleRule.commission_amount : null,
-        commissionBase: singleRule?.commission_base ?? null,
-        itemAmount: roundCurrency(eligibleItemAmount),
-        itemCost: roundCurrency(eligibleItemCost),
-        commissionPlanId: distinctPlanIds.size === 1 ? [...distinctPlanIds][0]! : null,
-        commissionRuleId: singleRule?.id ?? null,
-        commissionRuleVersionId: singleRule?.version_id ?? null,
-        commissionRuleName: singleRule?.name ?? null,
-        commissionAmountSnapshot: singleRule ? result.total : null
-      })
-
-      continue
-    }
-
-    if (!employee.has_commission) continue
-
-    const commissionType = employee.commission_type
-    const commissionValue = asNumber(employee.commission_amount)
-    const commissionBase = employee.commission_base
-    const commissionCategories = Array.isArray(employee.commission_categories)
-      ? employee.commission_categories
-      : []
-
-    const eligibleItems = items.filter((item) => {
-      if (commissionCategories.length === 0) return true
-
-      const itemCategoryId = item.category_id
-      return !itemCategoryId || commissionCategories.includes(itemCategoryId as string)
+    const result = computeEmployeeOrderCommission(rules, commissionOrderItems, {
+      discount: discountAmount,
+      totalTaxesAmount: taxesAmount
     })
 
-    if (eligibleItems.length === 0) continue
+    if (result.total <= 0) continue
 
-    const eligibleItemAmount = eligibleItems.reduce((sum, item) => sum + getItemTotal(item), 0)
-    const eligibleItemCost = eligibleItems.reduce((sum, item) => sum + getItemCost(item), 0)
-    let employeeCommissionAmount = 0
+    const matchedEntries = result.perItem.filter((entry): entry is NonNullable<typeof entry> => entry !== null)
+    const distinctRuleIds = new Set(matchedEntries.map(entry => entry.rule.id))
+    const distinctPlanIds = new Set(matchedEntries.map(entry => entry.rule.plan_id))
+    const singleRule = distinctRuleIds.size === 1 ? matchedEntries[0]!.rule : null
 
-    if (commissionType === 'percentage') {
-      const eligibleRatio = subtotal > 0 ? eligibleItemAmount / subtotal : 0
-      const eligibleDiscount = discountAmount * eligibleRatio
-      const eligibleTaxes = taxesAmount * eligibleRatio
-
-      for (const item of eligibleItems) {
-        const itemTotal = getItemTotal(item)
-        const fraction = eligibleItemAmount > 0 ? itemTotal / eligibleItemAmount : 1 / eligibleItems.length
-        const itemDiscount = eligibleDiscount * fraction
-        const itemTaxes = eligibleTaxes * fraction
-        let baseAmount = itemTotal - itemDiscount
-
-        if (commissionBase === 'profit') {
-          baseAmount = Math.max(0, baseAmount - getItemCost(item) - itemTaxes)
-        }
-
-        employeeCommissionAmount += roundCurrency((baseAmount * commissionValue) / 100)
-      }
-    } else {
-      employeeCommissionAmount = commissionValue
-    }
-
-    if (employeeCommissionAmount <= 0) continue
+    let eligibleItemAmount = 0
+    let eligibleItemCost = 0
+    result.perItem.forEach((entry, index) => {
+      if (!entry) return
+      const item = items[index]!
+      eligibleItemAmount += getItemTotal(item)
+      eligibleItemCost += getItemCost(item)
+    })
 
     entitlements.push({
       employeeId,
-      totalAmount: roundCurrency(employeeCommissionAmount),
-      commissionType,
-      commissionPercentage: commissionType === 'percentage' ? commissionValue : null,
-      commissionBase,
+      totalAmount: result.total,
+      commissionType: singleRule?.commission_type ?? null,
+      commissionPercentage: singleRule?.commission_type === 'percentage' ? singleRule.commission_amount : null,
+      commissionBase: singleRule?.commission_base ?? null,
       itemAmount: roundCurrency(eligibleItemAmount),
       itemCost: roundCurrency(eligibleItemCost),
-      commissionPlanId: null,
-      commissionRuleId: null,
-      commissionRuleVersionId: null,
-      commissionRuleName: null,
-      commissionAmountSnapshot: null
+      commissionPlanId: distinctPlanIds.size === 1 ? [...distinctPlanIds][0]! : null,
+      commissionRuleId: singleRule?.id ?? null,
+      commissionRuleVersionId: singleRule?.version_id ?? null,
+      commissionRuleName: singleRule?.name ?? null,
+      commissionAmountSnapshot: singleRule ? result.total : null
     })
   }
 
@@ -298,20 +224,20 @@ export async function releaseServiceOrderCommissions({
     throw createError({ statusCode: 404, statusMessage: 'Service order not found' })
   }
 
-  const { data: employees } = await supabase
-    .from('employees')
-    .select('*')
-    .eq('organization_id', organizationId)
-    .is('deleted_at', null)
-
-  const employeeMap = new Map(
-    ((employees || []) as EmployeeWithCommission[]).map(employee => [employee.id, employee])
-  )
-
   const responsibleEmployeeIds = Array.isArray(order.responsible_employees)
     ? (order.responsible_employees as { employee_id?: string | null }[]).map(entry => String(entry.employee_id || ''))
     : []
-  const referenceDate = toMonthStart(String(order.entry_date || new Date().toISOString().split('T')[0]))
+
+  const { data: activeEmployees } = await supabase
+    .from('employees')
+    .select('id')
+    .eq('organization_id', organizationId)
+    .is('deleted_at', null)
+    .in('id', responsibleEmployeeIds)
+
+  const activeEmployeeIds = new Set((activeEmployees || []).map(employee => String(employee.id)))
+
+  const referenceDate = toCommissionMonthStart(String(order.entry_date || new Date().toISOString().split('T')[0]))
   const rulesByEmployeeId = await resolveEmployeeCommissionRulesForEmployees(
     supabase,
     organizationId,
@@ -319,7 +245,7 @@ export async function releaseServiceOrderCommissions({
     referenceDate
   )
 
-  const entitlements = computeEmployeeEntitlements({ order, employeeMap, rulesByEmployeeId })
+  const entitlements = computeEmployeeEntitlements({ order, activeEmployeeIds, rulesByEmployeeId })
   const totalCommission = roundCurrency(entitlements.reduce((sum, entitlement) => sum + entitlement.totalAmount, 0))
 
   await supabase

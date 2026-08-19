@@ -1,4 +1,4 @@
-import { normalizeReportStatus, parseDateEnd, parseDateStart, roundMoney, toNumber, toStringArray } from './report-helpers'
+import { normalizeReportStatus, parseDateEnd, parseDateStart, roundMoney, toNumber } from './report-helpers'
 import { fetchAllOrganizationRows } from './supabase-pagination'
 
 interface EmployeeRecord {
@@ -17,18 +17,8 @@ interface EmployeeRecord {
   address_number?: string | null
   address_complement?: string | null
   zip_code?: string | null
-  has_commission?: boolean | null
-  commission_type?: string | null
-  commission_amount?: number | string | null
-  commission_base?: string | null
-  commission_categories?: unknown
   termination_date?: string | null
   termination_reason?: string | null
-}
-
-interface ProductCategoryRecord {
-  id: string
-  name?: string | null
 }
 
 interface ServiceOrderRecord {
@@ -80,12 +70,6 @@ export interface EmployeeCommissionProfile {
   addressNumber: string | null
   addressComplement: string | null
   zipCode: string | null
-  hasCommission: boolean
-  commissionType: string | null
-  commissionAmount: number | null
-  commissionBase: string | null
-  commissionCategoryIds: string[]
-  commissionCategoryNames: string[]
   terminationDate: string | null
   terminationReason: string | null
 }
@@ -222,31 +206,14 @@ export async function getEmployeeCommissionReport({
     throw new Error('Employee not found')
 
   const employee = employeeRecord as EmployeeRecord
-  const commissionCategoryIds = toStringArray(employee.commission_categories)
 
-  const [categoriesResult, rawRecordsData] = await Promise.all([
-    commissionCategoryIds.length > 0
-      ? supabase
-          .from('product_categories')
-          .select('id, name')
-          .eq('organization_id', organizationId)
-          .in('id', commissionCategoryIds)
-          .is('deleted_at', null)
-      : Promise.resolve({ data: [] }),
-    fetchAllOrganizationRows<EmployeeFinancialRecord>(supabase, {
-      table: 'employee_financial_records',
-      organizationId,
-      eq: { employee_id: normalizedEmployeeId },
-      nullColumns: ['deleted_at'],
-      order: { column: 'reference_date' }
-    })
-  ])
-
-  const categoryMap = new Map<string, string>(
-    ((categoriesResult.data || []) as ProductCategoryRecord[])
-      .map(category => [String(category.id), String(category.name || '').trim()])
-      .filter((entry): entry is [string, string] => Boolean(entry[0] && entry[1]))
-  )
+  const rawRecordsData = await fetchAllOrganizationRows<EmployeeFinancialRecord>(supabase, {
+    table: 'employee_financial_records',
+    organizationId,
+    eq: { employee_id: normalizedEmployeeId },
+    nullColumns: ['deleted_at'],
+    order: { column: 'reference_date' }
+  })
 
   const rawRecords = rawRecordsData
     .filter(record => isCommissionRecord(record.record_type))
@@ -309,7 +276,7 @@ export async function getEmployeeCommissionReport({
       const itemAmount = roundMoney(toNumber(record.item_amount, 0))
       const itemCost = roundMoney(toNumber(record.item_cost, 0))
       const itemProfit = roundMoney(itemAmount - itemCost)
-      const commissionBase = normalizeCommissionBase(record.commission_base || employee.commission_base)
+      const commissionBase = normalizeCommissionBase(record.commission_base)
 
       return {
         id: String(record.id),
@@ -322,12 +289,10 @@ export async function getEmployeeCommissionReport({
         itemAmount,
         itemCost,
         itemProfit,
-        commissionType: normalizeCommissionType(record.commission_type || employee.commission_type),
+        commissionType: normalizeCommissionType(record.commission_type),
         commissionPercentage: record.commission_percentage != null
           ? toNumber(record.commission_percentage, 0)
-          : normalizeCommissionType(record.commission_type || employee.commission_type) === 'percentage'
-            ? toNumber(employee.commission_amount, 0)
-            : null,
+          : null,
         commissionBase,
         baseAmount: roundMoney(commissionBase === 'profit' ? itemProfit : itemAmount),
         orderId: order?.id ? String(order.id) : null,
@@ -362,12 +327,6 @@ export async function getEmployeeCommissionReport({
       addressNumber: employee.address_number ? String(employee.address_number) : null,
       addressComplement: employee.address_complement ? String(employee.address_complement) : null,
       zipCode: employee.zip_code ? String(employee.zip_code) : null,
-      hasCommission: Boolean(employee.has_commission),
-      commissionType: normalizeCommissionType(employee.commission_type),
-      commissionAmount: employee.commission_amount != null ? toNumber(employee.commission_amount, 0) : null,
-      commissionBase: normalizeCommissionBase(employee.commission_base),
-      commissionCategoryIds,
-      commissionCategoryNames: commissionCategoryIds.map(categoryId => categoryMap.get(categoryId)).filter(Boolean) as string[],
       terminationDate: employee.termination_date ? String(employee.termination_date) : null,
       terminationReason: employee.termination_reason ? String(employee.termination_reason) : null
     },

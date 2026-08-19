@@ -2,7 +2,8 @@ import { defineEventHandler, getRouterParam, getQuery, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../../utils/supabase'
 import { requireAuthUser } from '../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../utils/organization'
-import { resolveEmployeeCommissionRules, currentMonthStart, toMonthStart } from '../../../utils/employee-commission-plans'
+import { resolveEmployeeCommissionRules } from '../../../utils/employee-commission-plans'
+import { currentCommissionMonthStart, toCommissionMonthStart } from '../../../../shared/utils/employee-commission-engine'
 
 /**
  * GET /api/employees/:id/commission-rules?referenceDate=YYYY-MM-DD
@@ -33,8 +34,8 @@ export default defineEventHandler(async (event) => {
 
   const query = getQuery(event)
   const referenceDate = typeof query.referenceDate === 'string' && query.referenceDate.trim()
-    ? toMonthStart(query.referenceDate.trim())
-    : currentMonthStart()
+    ? toCommissionMonthStart(query.referenceDate.trim())
+    : currentCommissionMonthStart()
 
   const rules = await resolveEmployeeCommissionRules(supabase, organizationId, employeeId, referenceDate)
 
