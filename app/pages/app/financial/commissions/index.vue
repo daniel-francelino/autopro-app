@@ -140,9 +140,6 @@ async function confirmRemove() {
             >
               {{ planRow(row).name }}
             </NuxtLink>
-            <p v-if="planRow(row).description" class="truncate text-xs text-muted">
-              {{ planRow(row).description }}
-            </p>
           </template>
 
           <template #rules-cell="{ row }">

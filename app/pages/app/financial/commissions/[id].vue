@@ -89,6 +89,38 @@ function retryLoad() {
   return refresh()
 }
 
+// ─── Rename ─────────────────────────────────────────────────────────────────
+const showRenameModal = ref(false)
+const renameForm = reactive({ name: '' })
+const isRenaming = ref(false)
+
+function openRename() {
+  if (!plan.value) return
+  renameForm.name = plan.value.name
+  showRenameModal.value = true
+}
+
+async function saveRename() {
+  if (!plan.value || isRenaming.value) return
+  const name = renameForm.name.trim()
+  if (!name) {
+    toast.add({ title: 'Informe o nome da configuração', color: 'warning' })
+    return
+  }
+  isRenaming.value = true
+  try {
+    await $fetch(`/api/commissions/${planId.value}`, { method: 'PUT', body: { name } })
+    toast.add({ title: 'Nome atualizado', color: 'success' })
+    showRenameModal.value = false
+    await refresh()
+  } catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
+    toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível atualizar o nome', color: 'error' })
+  } finally {
+    isRenaming.value = false
+  }
+}
+
 // ─── Toggle active ──────────────────────────────────────────────────────────
 const isTogglingActive = ref(false)
 async function toggleActive() {
@@ -221,6 +253,15 @@ async function confirmUnassign() {
                   <h1 class="text-lg font-semibold text-highlighted">
                     {{ plan.name }}
                   </h1>
+                  <UTooltip v-if="canUpdate" text="Editar nome">
+                    <UButton
+                      icon="i-lucide-pencil"
+                      color="neutral"
+                      variant="ghost"
+                      size="xs"
+                      @click="openRename"
+                    />
+                  </UTooltip>
                   <UBadge
                     :label="plan.active ? 'Ativo' : 'Inativo'"
                     :color="plan.active ? 'success' : 'neutral'"
@@ -228,9 +269,6 @@ async function confirmUnassign() {
                     size="sm"
                   />
                 </div>
-                <p v-if="plan.description" class="text-sm text-muted">
-                  {{ plan.description }}
-                </p>
               </div>
             </div>
             <UButton
@@ -408,6 +446,44 @@ async function confirmUnassign() {
       </div>
     </template>
   </UDashboardPanel>
+
+  <UModal
+    v-model:open="showRenameModal"
+    title="Editar nome"
+    :ui="{ content: 'max-w-md' }"
+  >
+    <template #body>
+      <UFormField label="Nome" required>
+        <UInput
+          v-model="renameForm.name"
+          class="w-full"
+          placeholder="Ex: Comissão mecânicos — padrão"
+          @keydown.enter="saveRename"
+        />
+      </UFormField>
+    </template>
+
+    <template #footer>
+      <div class="flex justify-end gap-2">
+        <UButton
+          label="Cancelar"
+          icon="i-lucide-x"
+          color="neutral"
+          variant="ghost"
+          :disabled="isRenaming"
+          @click="showRenameModal = false"
+        />
+        <UButton
+          label="Salvar"
+          icon="i-lucide-check"
+          color="neutral"
+          :loading="isRenaming"
+          :disabled="isRenaming"
+          @click="saveRename"
+        />
+      </div>
+    </template>
+  </UModal>
 
   <FinancialCommissionsVersionModal
     v-if="plan"
