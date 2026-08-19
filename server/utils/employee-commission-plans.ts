@@ -13,6 +13,23 @@
 // sales-item-commissions.ts, app/utils/service-orders.ts) yet — that cutover
 // is Steps 7-10 of the design doc, explicitly out of scope for now. This file
 // only needs to be correct and testable in isolation (Step 6).
+//
+// Step 6 has no executable test suite (repo has no test runner installed;
+// adding one was deliberately deferred). The pure functions below were
+// instead verified by manual code review against every "caso mínimo de
+// teste" the design doc lists in §6:
+//   - categoria específica          → getApplicableCommissionRule, non-default branch
+//   - regra default                 → getApplicableCommissionRule, fallback branch
+//   - sem default                   → getApplicableCommissionRule returns null
+//   - item sem categoria            → getApplicableCommissionRule skips straight to default
+//   - conflito entre planos         → findCommissionConflicts (category overlap + double default)
+//   - versão vigente por data       → resolveEffectiveVersion (greatest effective_from <= referenceDate)
+//   - comissão percentual/faturamento → computeCommissionAmount, base 'revenue'
+//   - comissão percentual/lucro     → computeCommissionAmount, base 'profit'
+//   - comissão fixa                 → computeCommissionAmount, 'fixed_amount' × quantity
+// server/api/commissions/preview.post.ts exercises the full pipeline
+// (resolveEmployeeCommissionRules → buildCommissionSnapshot) end-to-end as
+// the "endpoint de preview para a tela de OS" the doc also asks for.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { roundMoney } from './report-helpers'
@@ -60,6 +77,13 @@ export interface CommissionRuleRecord {
   category_ids: string[]
 }
 
+/** A rule as returned by resolveEmployeeCommissionRules — same shape, plus
+ * which plan it came from (needed to fill commission_plan_id on a snapshot,
+ * since a rule's own row doesn't carry its plan — only its version). */
+export interface ResolvedCommissionRule extends CommissionRuleRecord {
+  plan_id: string
+}
+
 /** Always the 1st of the month, e.g. "2026-03-01". */
 export function toMonthStart(value: string | Date): string {
   const date = typeof value === 'string' ? new Date(`${value}T00:00:00`) : value
@@ -92,7 +116,7 @@ export function resolveEffectiveVersion(
  * one item.
  *
  *   1. If the item has a category, and a non-default rule covers it, use it.
- *   2. Otherwise fall back to the default (catch-all) rule, if any.
+ *   2. Otherwise fall back to the default rule, if any.
  *   3. An item with no category always falls through to the catch-all —
  *      mirrors the legacy engines' preserved behavior.
  *   4. No matching rule and no catch-all → no commission for this item.
@@ -244,7 +268,7 @@ export async function resolveEmployeeCommissionRules(
   organizationId: string,
   employeeId: string,
   referenceDate: string = currentMonthStart()
-): Promise<CommissionRuleRecord[]> {
+): Promise<ResolvedCommissionRule[]> {
   const { data: assignments, error: assignmentsError } = await supabase
     .from('employee_commission_plan_assignments')
     .select('plan_id')
@@ -266,15 +290,66 @@ export async function resolveEmployeeCommissionRules(
 
   if (plansError) throw new Error(plansError.message)
 
-  const allRules: CommissionRuleRecord[] = []
+  const allRules: ResolvedCommissionRule[] = []
   for (const plan of plans || []) {
     const versions = await fetchCommissionRuleVersions(supabase, plan.id)
     const effectiveVersion = resolveEffectiveVersion(versions, referenceDate)
     if (!effectiveVersion) continue
     const rules = await fetchCommissionRulesForVersion(supabase, effectiveVersion.id)
-    allRules.push(...rules)
+    allRules.push(...rules.map(rule => ({ ...rule, plan_id: plan.id })))
   }
   return allRules
+}
+
+/**
+ * Picks the applicable rule the same way getApplicableCommissionRule() does,
+ * but also surfaces which plan it came from — needed to fill
+ * commission_plan_id when building a persistable snapshot (buildCommissionSnapshot below).
+ */
+export function matchCommissionRule(
+  rules: ResolvedCommissionRule[],
+  categoryId: string | null | undefined
+): ResolvedCommissionRule | null {
+  return getApplicableCommissionRule(rules, categoryId) as ResolvedCommissionRule | null
+}
+
+export interface CommissionItemSnapshot {
+  commission_plan_id: string
+  commission_rule_id: string
+  commission_rule_version_id: string
+  commission_rule_name: string | null
+  commission_amount_snapshot: number
+  commission_type: CommissionRuleType
+  commission_base: CommissionRuleBase | null
+}
+
+/**
+ * Composes matchCommissionRule() + computeCommissionAmount() into the
+ * ready-to-persist snapshot shape from section 4.6 of the design doc (the
+ * new columns on employee_financial_records). Returns null when no rule
+ * applies — caller (a future Step 8 cutover) should not generate a
+ * commission record for that item in that case.
+ *
+ * Takes the already-resolved `rules` array (one resolveEmployeeCommissionRules
+ * call per employee) rather than re-fetching per item, so a caller looping
+ * over every item of a multi-item OS only pays the Supabase round-trips once.
+ */
+export function buildCommissionSnapshot(
+  rules: ResolvedCommissionRule[],
+  item: { categoryId: string | null | undefined, revenue: number, profit: number, quantity?: number }
+): CommissionItemSnapshot | null {
+  const rule = matchCommissionRule(rules, item.categoryId)
+  if (!rule) return null
+
+  return {
+    commission_plan_id: rule.plan_id,
+    commission_rule_id: rule.id,
+    commission_rule_version_id: rule.version_id,
+    commission_rule_name: rule.name,
+    commission_amount_snapshot: computeCommissionAmount(rule, item),
+    commission_type: rule.commission_type,
+    commission_base: rule.commission_base
+  }
 }
 
 export interface ParsedCommissionRuleInput {
@@ -343,7 +418,7 @@ export function parseCommissionRulesInput(rawRules: unknown): ParsedCommissionRu
     const categoryIds = [...new Set(rawCategoryIds.map(id => String(id)).filter(Boolean))]
 
     if (!isDefault && categoryIds.length === 0) {
-      throw new Error(`Regra ${index + 1}: categoryIds é obrigatório para uma regra que não é padrão (catch-all)`)
+      throw new Error(`Regra ${index + 1}: categoryIds é obrigatório para uma regra que não é padrão`)
     }
 
     for (const categoryId of categoryIds) {
@@ -365,7 +440,7 @@ export function parseCommissionRulesInput(rawRules: unknown): ParsedCommissionRu
   })
 
   if (defaultCount > 1) {
-    throw new Error('No máximo uma regra pode ser marcada como padrão (catch-all) por versão')
+    throw new Error('No máximo uma regra pode ser marcada como padrão por versão')
   }
 
   return parsed

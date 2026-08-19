@@ -80,7 +80,7 @@ export default defineEventHandler(async (event) => {
       const names = (categories || []).map(category => category.name).join(', ')
       message = `Categoria já coberta por outra configuração deste funcionário: ${names || 'categoria em conflito'}.`
     } else if (hasDefaultConflict && !hasCategoryConflict) {
-      message = 'Este funcionário já tem outra configuração com regra padrão (catch-all) ativa.'
+      message = 'Este funcionário já tem outra configuração com regra padrão ativa.'
     }
 
     throw createError({ statusCode: 409, statusMessage: message })

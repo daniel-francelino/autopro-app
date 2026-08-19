@@ -286,7 +286,7 @@ async function confirmUnassign() {
                     />
                     <UBadge
                       v-if="rule.is_default"
-                      label="Padrão (catch-all)"
+                      label="Padrão"
                       color="info"
                       variant="subtle"
                       size="sm"

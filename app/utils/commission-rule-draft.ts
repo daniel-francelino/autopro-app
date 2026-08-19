@@ -50,7 +50,7 @@ export function validateCommissionRuleDrafts(drafts: CommissionRuleDraft[]): str
     }
   }
 
-  if (defaultCount > 1) return 'No máximo uma regra pode ser marcada como padrão (catch-all)'
+  if (defaultCount > 1) return 'No máximo uma regra pode ser marcada como padrão'
   return null
 }
 
