@@ -11,6 +11,11 @@ interface CommissionPlanListItem {
   active: boolean
   updatedAt: string | null
   assignedEmployeeCount: number
+  assignedEmployees: Array<{
+    id: string
+    name: string
+    photoUrl: string | null
+  }>
   currentVersion: {
     id: string
     effectiveFrom: string
@@ -47,6 +52,21 @@ function planRow(row: { original: unknown }): CommissionPlanListItem {
 function formatDate(value: string | null | undefined) {
   if (!value) return '—'
   return new Date(value).toLocaleDateString('pt-BR')
+}
+
+function getInitials(name: string) {
+  const parts = (name || '').trim().split(/\s+/).filter(Boolean)
+  if (!parts.length) return '?'
+  if (parts.length === 1) return (parts[0]?.charAt(0) ?? '?').toUpperCase()
+  return `${parts[0]?.charAt(0) ?? ''}${parts[parts.length - 1]?.charAt(0) ?? ''}`.toUpperCase()
+}
+
+function visibleAssignedEmployees(plan: CommissionPlanListItem) {
+  return (plan.assignedEmployees ?? []).slice(0, 5)
+}
+
+function hiddenAssignedEmployees(plan: CommissionPlanListItem) {
+  return (plan.assignedEmployees ?? []).slice(5)
 }
 
 const columns = [
@@ -164,9 +184,38 @@ async function confirmRemove() {
           </template>
 
           <template #assigned-cell="{ row }">
+            <div
+              v-if="planRow(row).assignedEmployeeCount > 0"
+              class="flex items-center gap-1.5"
+            >
+              <UTooltip
+                v-for="employee in visibleAssignedEmployees(planRow(row))"
+                :key="employee.id"
+                :text="employee.name"
+              >
+                <UAvatar
+                  :src="employee.photoUrl || undefined"
+                  :text="getInitials(employee.name)"
+                  :alt="employee.name"
+                  size="xs"
+                  class="ring-2 ring-default bg-primary/10 text-primary"
+                />
+              </UTooltip>
+
+              <UTooltip
+                v-if="hiddenAssignedEmployees(planRow(row)).length"
+                :text="hiddenAssignedEmployees(planRow(row)).map(employee => employee.name).join(', ')"
+                :ui="{ content: 'h-auto max-w-64 py-1.5', text: 'whitespace-normal' }"
+              >
+                <div class="flex size-6 items-center justify-center rounded-full bg-elevated text-[10px] font-semibold text-muted ring-2 ring-default">
+                  +{{ hiddenAssignedEmployees(planRow(row)).length }}
+                </div>
+              </UTooltip>
+            </div>
             <UBadge
-              :label="`${planRow(row).assignedEmployeeCount} funcionário${planRow(row).assignedEmployeeCount !== 1 ? 's' : ''}`"
-              :color="planRow(row).assignedEmployeeCount > 0 ? 'info' : 'neutral'"
+              v-else
+              label="0 funcionários"
+              color="neutral"
               variant="subtle"
               size="sm"
             />

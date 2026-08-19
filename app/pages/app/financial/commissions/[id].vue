@@ -28,6 +28,7 @@ interface CommissionAssignmentItem {
   id: string
   employeeId: string
   employeeName: string
+  employeePhotoUrl: string | null
   active: boolean
 }
 
@@ -83,6 +84,12 @@ function ruleAmountLabel(rule: CommissionRuleItem) {
 function ruleBaseLabel(rule: CommissionRuleItem) {
   if (rule.commission_type === 'fixed_amount') return 'Por unidade'
   return rule.commission_base === 'profit' ? 'Lucro' : 'Faturamento'
+}
+function getInitials(name: string) {
+  const parts = (name || '').trim().split(/\s+/).filter(Boolean)
+  if (!parts.length) return '?'
+  if (parts.length === 1) return (parts[0]?.charAt(0) ?? '?').toUpperCase()
+  return `${parts[0]?.charAt(0) ?? ''}${parts[parts.length - 1]?.charAt(0) ?? ''}`.toUpperCase()
 }
 
 function retryLoad() {
@@ -426,9 +433,16 @@ async function confirmUnassign() {
               >
                 <NuxtLink
                   :to="`/app/settings/employees/${assignment.employeeId}`"
-                  class="truncate text-sm font-medium text-highlighted hover:underline"
+                  class="flex min-w-0 items-center gap-2 text-sm font-medium text-highlighted hover:underline"
                 >
-                  {{ assignment.employeeName }}
+                  <UAvatar
+                    :src="assignment.employeePhotoUrl || undefined"
+                    :text="getInitials(assignment.employeeName)"
+                    :alt="assignment.employeeName"
+                    size="xs"
+                    class="shrink-0 bg-primary/10 text-primary"
+                  />
+                  <span class="truncate">{{ assignment.employeeName }}</span>
                 </NuxtLink>
                 <UTooltip v-if="canUpdate" text="Remover da comissão">
                   <UButton

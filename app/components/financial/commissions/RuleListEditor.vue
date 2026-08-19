@@ -132,7 +132,7 @@ const hasDefaultRule = computed(() => props.modelValue.some(rule => rule.isDefau
           Categorias desta regra
         </p>
         <p v-if="props.categories.length === 0" class="text-xs text-muted">
-          Nenhuma categoria cadastrada em Produtos &gt; Categorias.
+          Nenhuma categoria cadastrada.
         </p>
         <div v-else class="grid grid-cols-2 gap-2 sm:grid-cols-3">
           <UCheckbox

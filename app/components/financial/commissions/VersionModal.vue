@@ -39,9 +39,12 @@ const effectiveMonth = ref<string | undefined>(currentMonthValue())
 const notes = ref('')
 const rules = ref<CommissionRuleDraft[]>([])
 
+const requestFetch = useRequestFetch()
+const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
+
 const { data: categoriesData } = await useAsyncData(
   'commissions-version-categories',
-  () => $fetch<{ items: Array<{ id: string, name: string }> }>('/api/product-categories'),
+  () => requestFetch<{ items: Array<{ id: string, name: string }> }>('/api/product-categories', { headers: requestHeaders }),
   { default: () => ({ items: [] }) }
 )
 const categories = computed(() => categoriesData.value?.items ?? [])

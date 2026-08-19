@@ -31,9 +31,12 @@ const form = reactive({
 
 const rules = ref<CommissionRuleDraft[]>([createEmptyCommissionRuleDraft()])
 
+const requestFetch = useRequestFetch()
+const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
+
 const { data: categoriesData } = await useAsyncData(
   'commissions-form-categories',
-  () => $fetch<{ items: Array<{ id: string, name: string }> }>('/api/product-categories'),
+  () => requestFetch<{ items: Array<{ id: string, name: string }> }>('/api/product-categories', { headers: requestHeaders }),
   { default: () => ({ items: [] }) }
 )
 const categories = computed(() => categoriesData.value?.items ?? [])

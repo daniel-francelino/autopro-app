@@ -10,6 +10,12 @@ import {
 } from '../../utils/employee-commission-plans'
 import type { CommissionPlanRecord, CommissionRuleVersionRecord } from '../../utils/employee-commission-plans'
 
+interface CommissionEmployeeRecord {
+  id: string
+  name?: string | null
+  photo_url?: string | null
+}
+
 /**
  * GET /api/commissions?search=&activeOnly=true
  * Lists commission plans with a summary: current (effective-today) version,
@@ -55,7 +61,7 @@ export default defineEventHandler(async (event) => {
       .order('effective_from', { ascending: false }),
     supabase
       .from('employee_commission_plan_assignments')
-      .select('plan_id')
+      .select('plan_id, employee_id')
       .in('plan_id', planIds)
       .eq('active', true)
       .is('deleted_at', null)
@@ -75,9 +81,38 @@ export default defineEventHandler(async (event) => {
     versionsByPlan.set(version.plan_id, list)
   }
 
+  const assignments = (assignmentsResult.data || []) as { plan_id: string, employee_id: string }[]
+  const employeeIds = [...new Set(assignments.map(assignment => assignment.employee_id))]
+  const { data: employeesData, error: employeesError } = employeeIds.length > 0
+    ? await supabase
+        .from('employees')
+        .select('id, name, photo_url')
+        .eq('organization_id', organizationId)
+        .is('deleted_at', null)
+        .in('id', employeeIds)
+    : { data: [] as CommissionEmployeeRecord[], error: null }
+
+  if (employeesError) {
+    throw createError({ statusCode: 500, statusMessage: `Failed to load assigned employees: ${employeesError.message}` })
+  }
+
+  const employeeById = new Map<string, CommissionEmployeeRecord>(
+    ((employeesData || []) as CommissionEmployeeRecord[]).map(employee => [employee.id, employee])
+  )
+
   const assignedCountByPlan = new Map<string, number>()
-  for (const row of (assignmentsResult.data || []) as { plan_id: string }[]) {
-    assignedCountByPlan.set(row.plan_id, (assignedCountByPlan.get(row.plan_id) ?? 0) + 1)
+  const assignedEmployeesByPlan = new Map<string, Array<{ id: string, name: string, photoUrl: string | null }>>()
+  for (const assignment of assignments) {
+    assignedCountByPlan.set(assignment.plan_id, (assignedCountByPlan.get(assignment.plan_id) ?? 0) + 1)
+
+    const employee = employeeById.get(assignment.employee_id)
+    const list = assignedEmployeesByPlan.get(assignment.plan_id) ?? []
+    list.push({
+      id: assignment.employee_id,
+      name: employee?.name || 'Funcionário',
+      photoUrl: employee?.photo_url || null
+    })
+    assignedEmployeesByPlan.set(assignment.plan_id, list)
   }
 
   const effectiveVersionByPlan = new Map<string, CommissionRuleVersionRecord | null>()
@@ -100,6 +135,8 @@ export default defineEventHandler(async (event) => {
       active: plan.active,
       updatedAt: plan.updated_at,
       assignedEmployeeCount: assignedCountByPlan.get(plan.id) ?? 0,
+      assignedEmployees: (assignedEmployeesByPlan.get(plan.id) ?? [])
+        .sort((employeeA, employeeB) => employeeA.name.localeCompare(employeeB.name, 'pt-BR')),
       currentVersion: effectiveVersion
         ? {
             id: effectiveVersion.id,

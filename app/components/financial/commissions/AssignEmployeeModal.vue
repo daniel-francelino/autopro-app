@@ -19,9 +19,12 @@ const toast = useToast()
 const isSaving = ref(false)
 const selectedEmployeeId = ref('')
 
+const requestFetch = useRequestFetch()
+const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
+
 const { data: employeesData } = await useAsyncData(
   'commissions-assign-employee-options',
-  () => $fetch<{ items: Array<{ id: string, name?: string | null }> }>('/api/employees'),
+  () => requestFetch<{ items: Array<{ id: string, name?: string | null }> }>('/api/employees', { headers: requestHeaders }),
   { default: () => ({ items: [] }) }
 )
 
