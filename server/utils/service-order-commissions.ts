@@ -1,5 +1,12 @@
 import { createError } from 'h3'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import {
+  computeEmployeeOrderCommission,
+  toCommissionOrderItemInput,
+  toMonthStart,
+  type ResolvedCommissionRule
+} from '../../shared/utils/employee-commission-engine'
+import { resolveEmployeeCommissionRulesForEmployees } from './employee-commission-plans'
 
 type ReleaseServiceOrderCommissionsParams = {
   supabase: SupabaseClient
@@ -32,6 +39,12 @@ type EmployeeEntitlement = {
   commissionBase: string | null
   itemAmount: number
   itemCost: number
+  /** Set only when every item contributing to totalAmount matched the SAME rule (see the doc comment on computeEmployeeEntitlements). Null otherwise — an aggregate across multiple rules/categories can't be attributed to one. */
+  commissionPlanId: string | null
+  commissionRuleId: string | null
+  commissionRuleVersionId: string | null
+  commissionRuleName: string | null
+  commissionAmountSnapshot: number | null
 }
 
 function asNumber(value: unknown) {
@@ -69,7 +82,12 @@ function isMissingCommissionSnapshotColumn(error: { message?: string } | null | 
     'commission_base',
     'item_name',
     'item_amount',
-    'item_cost'
+    'item_cost',
+    'commission_plan_id',
+    'commission_rule_id',
+    'commission_rule_version_id',
+    'commission_rule_name',
+    'commission_amount_snapshot'
   ].some(column => message.includes(`'${column}'`) || message.includes(`"${column}"`))
 }
 
@@ -77,13 +95,36 @@ function isMissingCommissionSnapshotColumn(error: { message?: string } | null | 
  * Computes, per responsible employee, the *total* commission they're
  * entitled to for this order — independent of how much of the order has
  * actually been paid. Pure calculation, no DB writes.
+ *
+ * Step 8 cutover (docs/finance/commissions-step8-engine-cutover.md): an
+ * employee with a non-empty entry in `rulesByEmployeeId` is resolved
+ * EXCLUSIVELY through the new commission-plan model — never falls back to
+ * the legacy employees.* columns for this order, even if no item matches
+ * any of their rules. Only employees with no resolved rules at all use the
+ * legacy calculation, unchanged from before this cutover.
+ *
+ * The new model can attribute different items to different rules (a
+ * category-specific rule at one rate, a catch-all at another) — something
+ * the legacy model never had to represent, since it only ever had one rate
+ * per employee. employee_financial_records still holds one aggregate row
+ * per employee per release event (that ledger's pending/paid/received-ratio
+ * reconciliation logic, see releaseServiceOrderCommissions below, is
+ * unchanged and deliberately NOT re-derived per rule — too risky to touch
+ * for this cutover). So the per-rule traceability columns
+ * (commissionRuleId/RuleVersionId/RuleName/AmountSnapshot) are only filled
+ * in when every item contributing to this employee's total matched the SAME
+ * single rule; left null when more than one distinct rule contributed
+ * (commissionPlanId is still filled in when every contributing rule shares
+ * the same plan, even if the rules themselves differ).
  */
 function computeEmployeeEntitlements({
   order,
-  employeeMap
+  employeeMap,
+  rulesByEmployeeId
 }: {
   order: Record<string, unknown>
   employeeMap: Map<string, EmployeeWithCommission>
+  rulesByEmployeeId?: Map<string, ResolvedCommissionRule[]>
 }): EmployeeEntitlement[] {
   const items = Array.isArray(order.items) ? order.items as Record<string, unknown>[] : []
   const responsibleEmployees = Array.isArray(order.responsible_employees)
@@ -101,8 +142,61 @@ function computeEmployeeEntitlements({
   for (const responsible of responsibleEmployees) {
     const employeeId = responsible.employee_id
     const employee = employeeMap.get(employeeId)
+    if (!employee) continue
 
-    if (!employee || !employee.has_commission) continue
+    const rules = rulesByEmployeeId?.get(employeeId) ?? []
+
+    if (rules.length > 0) {
+      const commissionOrderItems = items.map(item => toCommissionOrderItemInput({
+        category_id: item.category_id as string | null,
+        quantity: item.quantity as number | string | null,
+        total_price: item.total_price as number | string | null,
+        total_amount: item.total_amount as number | string | null,
+        unit_price: item.unit_price as number | string | null,
+        cost_price: item.cost_price as number | string | null,
+        cost_amount: item.cost_amount as number | string | null
+      }))
+
+      const result = computeEmployeeOrderCommission(rules, commissionOrderItems, {
+        discount: discountAmount,
+        totalTaxesAmount: taxesAmount
+      })
+
+      if (result.total <= 0) continue
+
+      const matchedEntries = result.perItem.filter((entry): entry is NonNullable<typeof entry> => entry !== null)
+      const distinctRuleIds = new Set(matchedEntries.map(entry => entry.rule.id))
+      const distinctPlanIds = new Set(matchedEntries.map(entry => entry.rule.plan_id))
+      const singleRule = distinctRuleIds.size === 1 ? matchedEntries[0]!.rule : null
+
+      let eligibleItemAmount = 0
+      let eligibleItemCost = 0
+      result.perItem.forEach((entry, index) => {
+        if (!entry) return
+        const item = items[index]!
+        eligibleItemAmount += getItemTotal(item)
+        eligibleItemCost += getItemCost(item)
+      })
+
+      entitlements.push({
+        employeeId,
+        totalAmount: result.total,
+        commissionType: singleRule?.commission_type ?? null,
+        commissionPercentage: singleRule?.commission_type === 'percentage' ? singleRule.commission_amount : null,
+        commissionBase: singleRule?.commission_base ?? null,
+        itemAmount: roundCurrency(eligibleItemAmount),
+        itemCost: roundCurrency(eligibleItemCost),
+        commissionPlanId: distinctPlanIds.size === 1 ? [...distinctPlanIds][0]! : null,
+        commissionRuleId: singleRule?.id ?? null,
+        commissionRuleVersionId: singleRule?.version_id ?? null,
+        commissionRuleName: singleRule?.name ?? null,
+        commissionAmountSnapshot: singleRule ? result.total : null
+      })
+
+      continue
+    }
+
+    if (!employee.has_commission) continue
 
     const commissionType = employee.commission_type
     const commissionValue = asNumber(employee.commission_amount)
@@ -155,7 +249,12 @@ function computeEmployeeEntitlements({
       commissionPercentage: commissionType === 'percentage' ? commissionValue : null,
       commissionBase,
       itemAmount: roundCurrency(eligibleItemAmount),
-      itemCost: roundCurrency(eligibleItemCost)
+      itemCost: roundCurrency(eligibleItemCost),
+      commissionPlanId: null,
+      commissionRuleId: null,
+      commissionRuleVersionId: null,
+      commissionRuleName: null,
+      commissionAmountSnapshot: null
     })
   }
 
@@ -209,7 +308,18 @@ export async function releaseServiceOrderCommissions({
     ((employees || []) as EmployeeWithCommission[]).map(employee => [employee.id, employee])
   )
 
-  const entitlements = computeEmployeeEntitlements({ order, employeeMap })
+  const responsibleEmployeeIds = Array.isArray(order.responsible_employees)
+    ? (order.responsible_employees as { employee_id?: string | null }[]).map(entry => String(entry.employee_id || ''))
+    : []
+  const referenceDate = toMonthStart(String(order.entry_date || new Date().toISOString().split('T')[0]))
+  const rulesByEmployeeId = await resolveEmployeeCommissionRulesForEmployees(
+    supabase,
+    organizationId,
+    responsibleEmployeeIds,
+    referenceDate
+  )
+
+  const entitlements = computeEmployeeEntitlements({ order, employeeMap, rulesByEmployeeId })
   const totalCommission = roundCurrency(entitlements.reduce((sum, entitlement) => sum + entitlement.totalAmount, 0))
 
   await supabase
@@ -284,7 +394,16 @@ export async function releaseServiceOrderCommissions({
         commission_base: entitlement.commissionBase,
         item_name: `#${order.number}`,
         item_amount: entitlement.itemAmount,
-        item_cost: entitlement.itemCost
+        item_cost: entitlement.itemCost,
+        // New-model traceability (20240101000085) — only set when the whole
+        // entitlement came from one single rule (see computeEmployeeEntitlements'
+        // doc comment); null for legacy-path entitlements and for
+        // multi-rule entitlements that can't be attributed to one rule.
+        commission_plan_id: entitlement.commissionPlanId,
+        commission_rule_id: entitlement.commissionRuleId,
+        commission_rule_version_id: entitlement.commissionRuleVersionId,
+        commission_rule_name: entitlement.commissionRuleName,
+        commission_amount_snapshot: entitlement.commissionAmountSnapshot
       }
 
       let { data: commissionRecord, error: commissionError } = await supabase

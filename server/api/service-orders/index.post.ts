@@ -8,6 +8,7 @@ import {
   type ServiceOrderCommissionEmployee,
   type ServiceOrderCommissionItem
 } from '../../utils/service-order-item-commissions'
+import { resolveEmployeeCommissionRulesForEmployees, toMonthStart } from '../../utils/employee-commission-plans'
 
 /**
  * POST /api/service-orders
@@ -156,12 +157,26 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 500, statusMessage: employeesError.message })
     }
 
+    // Step 8 cutover (docs/finance/commissions-step8-engine-cutover.md): resolve
+    // the new commission-plan model's rules for every responsible employee,
+    // at the order's own entry_date (not "today") — a past-dated OS must
+    // resolve the version that was vigente back then, same as the frontend
+    // preview and the reports engine already do for their own reads.
+    const referenceDate = toMonthStart(String(orderPayload.entry_date || new Date().toISOString().split('T')[0]))
+    const rulesByEmployeeId = await resolveEmployeeCommissionRulesForEmployees(
+      supabase,
+      organizationId,
+      responsiblesForCommission.map(responsible => String(responsible.employee_id || '')),
+      referenceDate
+    )
+
     const commissionSnapshot = computeServiceOrderItemsWithCommissionSnapshots({
       items: itemsForCommission,
       responsibleEmployees: responsiblesForCommission,
       employees: (employeesForCommission ?? []) as ServiceOrderCommissionEmployee[],
       discount: orderPayload.discount,
-      totalTaxesAmount: orderPayload.total_taxes_amount
+      totalTaxesAmount: orderPayload.total_taxes_amount,
+      rulesByEmployeeId
     })
 
     orderPayload.items = commissionSnapshot.items

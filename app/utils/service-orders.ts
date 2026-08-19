@@ -1,4 +1,9 @@
 import type { ServiceOrderCommission, ServiceOrderEmployee, ServiceOrderItem, ServiceOrderRaw } from '~/types/service-orders'
+import {
+  computeEmployeeOrderCommission,
+  toCommissionOrderItemInput,
+  type ResolvedCommissionRule
+} from '../../shared/utils/employee-commission-engine'
 
 // ─── Status maps ──────────────────────────────────────────────────────────────
 
@@ -182,9 +187,11 @@ function getEligibleItemEntries(order: ServiceOrderRaw, employee: ServiceOrderEm
 
 export function computeServiceOrderResponsibleCommission(
   order: ServiceOrderRaw,
-  employee: ServiceOrderEmployee | null | undefined
+  employee: ServiceOrderEmployee | null | undefined,
+  rulesByEmployeeId?: Map<string, ResolvedCommissionRule[]>
 ): ServiceOrderCommissionEstimate {
-  if (!employee?.id || !employee.has_commission) {
+  const rules = employee?.id ? rulesByEmployeeId?.get(employee.id) : undefined
+  if (!employee?.id || (!employee.has_commission && !rules?.length)) {
     return { value: 0, hasMatchingItems: true }
   }
 
@@ -192,14 +199,26 @@ export function computeServiceOrderResponsibleCommission(
     ...order,
     responsible_employees: [{ employee_id: employee.id }]
   } as ServiceOrderRaw
-  const breakdown = computeServiceOrderCommissionBreakdown(singleEmployeeOrder, [employee])
+  const breakdown = computeServiceOrderCommissionBreakdown(singleEmployeeOrder, [employee], rulesByEmployeeId)
 
   return breakdown.byEmployeeId.get(employee.id) ?? { value: 0, hasMatchingItems: true }
 }
 
+/**
+ * Step 8 cutover (docs/finance/commissions-step8-engine-cutover.md §7.1): an
+ * employee with a non-empty entry in `rulesByEmployeeId` is resolved
+ * exclusively through the new commission-plan model — never falls back to
+ * `employee.has_commission`/`commission_type`/etc, even if no item on this
+ * order matches any of their rules. Only employees with no resolved rules
+ * (or callers that don't pass `rulesByEmployeeId` at all, e.g. a component
+ * that hasn't loaded them yet) use the legacy calculation below, unchanged.
+ * Fetching `rulesByEmployeeId` is the caller's job — see
+ * useEmployeeCommissionRules() — so this function stays synchronous.
+ */
 export function computeServiceOrderCommissionBreakdown(
   order: ServiceOrderRaw,
-  employees: ServiceOrderEmployee[]
+  employees: ServiceOrderEmployee[],
+  rulesByEmployeeId?: Map<string, ResolvedCommissionRule[]>
 ): ServiceOrderCommissionBreakdown {
   const byItemIndex = new Map<number, ServiceOrderItemCommissionEntry>()
   const byEmployeeId = new Map<string, ServiceOrderCommissionEstimate>()
@@ -216,6 +235,41 @@ export function computeServiceOrderCommissionBreakdown(
   for (const responsible of responsibleEmployees) {
     const employee = employees.find(item => item.id === responsible.employee_id)
     if (!employee?.id) continue
+
+    const rules = rulesByEmployeeId?.get(employee.id) ?? []
+
+    if (rules.length > 0) {
+      const commissionOrderItems = items.map(item => toCommissionOrderItemInput({
+        category_id: item.category_id ?? null,
+        quantity: item.quantity,
+        total_price: item.total_price ?? null,
+        total_amount: item.total_amount,
+        unit_price: item.unit_price,
+        cost_price: item.cost_price ?? null,
+        cost_amount: item.cost_amount
+      }))
+
+      const result = computeEmployeeOrderCommission(rules, commissionOrderItems, {
+        discount: discountAmount,
+        totalTaxesAmount
+      })
+
+      result.perItem.forEach((matched, index) => {
+        const entry = byItemIndex.get(index)!
+        if (!matched || matched.amount <= 0) return
+        entry.total = roundCurrency(entry.total + matched.amount)
+        entry.commissions.push({
+          employee_id: employee.id,
+          amount: matched.amount,
+          commission_type: matched.rule.commission_type,
+          commission_base: matched.rule.commission_base,
+          commission_percentage: matched.rule.commission_type === 'percentage' ? matched.rule.commission_amount : null
+        })
+      })
+
+      byEmployeeId.set(employee.id, { value: result.total, hasMatchingItems: result.hasMatchingItems })
+      continue
+    }
 
     if (!employee.has_commission) {
       byEmployeeId.set(employee.id, { value: 0, hasMatchingItems: true })

@@ -303,9 +303,22 @@ const orderProxy = computed<ServiceOrder | null>(() => {
   }
 })
 
+// Step 8 cutover (docs/finance/commissions-step8-engine-cutover.md §7.1).
+const { rulesByEmployeeId, ensureRules } = useEmployeeCommissionRules()
+
+watch(
+  () => detail.value,
+  (value) => {
+    if (!value) return
+    const responsibleEmployeeIds = (value.order.responsible_employees ?? []).map(r => r.employee_id)
+    ensureRules(responsibleEmployeeIds, value.order.entry_date || new Date().toISOString().substring(0, 10))
+  },
+  { immediate: true }
+)
+
 const estimatedCommissionAmount = computed(() => {
   if (!detail.value) return 0
-  return computeServiceOrderCommissionBreakdown(detail.value.order, detail.value.employees).total
+  return computeServiceOrderCommissionBreakdown(detail.value.order, detail.value.employees, rulesByEmployeeId.value).total
 })
 
 // ─── NFS-e ────────────────────────────────────────────────────────────────────

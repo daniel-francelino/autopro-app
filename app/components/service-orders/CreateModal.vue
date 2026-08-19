@@ -432,6 +432,20 @@ const totalTaxesAmount = computed(() =>
 )
 
 // ─── Commission calculation ───────────────────────────────────────────────────
+// Step 8 cutover (docs/finance/commissions-step8-engine-cutover.md §7.1):
+// fetch each responsible employee's new-model rules, keyed by the order's
+// own entry_date, and feed them to computeServiceOrderCommissionBreakdown —
+// which uses them when present, falling back to the legacy employees.*
+// fields otherwise.
+const { rulesByEmployeeId, ensureRules } = useEmployeeCommissionRules()
+
+watch(
+  [() => form.responsible_employees, () => form.entry_date],
+  ([responsibleEmployeeIds, entryDate]) => {
+    ensureRules(responsibleEmployeeIds, entryDate || new Date().toISOString().substring(0, 10))
+  },
+  { immediate: true, deep: true }
+)
 
 const commissionOrderInput = computed(
   () =>
@@ -454,7 +468,8 @@ const commissionEmployees = computed<ServiceOrderEmployee[]>(() =>
 const commissionBreakdown = computed(() =>
   computeServiceOrderCommissionBreakdown(
     commissionOrderInput.value,
-    commissionEmployees.value
+    commissionEmployees.value,
+    rulesByEmployeeId.value
   )
 )
 

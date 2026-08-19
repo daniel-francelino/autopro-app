@@ -25,8 +25,20 @@ type ResponsibleInfo = {
   item_breakdown: CommissionBreakdownLine[]
 }
 
+// Step 8 cutover (docs/finance/commissions-step8-engine-cutover.md §7.1).
+const { rulesByEmployeeId, ensureRules } = useEmployeeCommissionRules()
+
+watch(
+  () => [props.order.responsible_employees, props.order.entry_date] as const,
+  ([responsibleEmployees, entryDate]) => {
+    const responsibleEmployeeIds = (responsibleEmployees ?? []).map(r => r.employee_id)
+    ensureRules(responsibleEmployeeIds, entryDate || new Date().toISOString().substring(0, 10))
+  },
+  { immediate: true, deep: true }
+)
+
 const commissionBreakdown = computed(() =>
-  computeServiceOrderCommissionBreakdown(props.order, props.employees)
+  computeServiceOrderCommissionBreakdown(props.order, props.employees, rulesByEmployeeId.value)
 )
 
 const responsiblesInfo = computed<ResponsibleInfo[]>(() => {

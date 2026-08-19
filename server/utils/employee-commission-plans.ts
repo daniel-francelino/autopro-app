@@ -1,5 +1,5 @@
-// Shared types and helpers for the standalone Commission Plan feature —
-// Steps 2, 3 and 6 of docs/finance/commissions-configuration-architecture.md.
+// DB-access layer for the standalone Commission Plan feature — Steps 2, 3, 6
+// and 8 of docs/finance/commissions-configuration-architecture.md.
 //
 // A "commission plan" is created once in Financeiro > Comissões, carries a
 // versioned set of rules (one per product category, plus an optional
@@ -8,34 +8,56 @@
 // identity + versioned values + assignments — but resolves per-category
 // rules instead of a single monthly goal.
 //
-// Nothing in this file is called by the 4 legacy commission engines
-// (server/utils/service-order-item-commissions.ts, service-order-commissions.ts,
-// sales-item-commissions.ts, app/utils/service-orders.ts) yet — that cutover
-// is Steps 7-10 of the design doc, explicitly out of scope for now. This file
-// only needs to be correct and testable in isolation (Step 6).
+// The pure calculation logic (no Supabase) lives in
+// shared/utils/employee-commission-engine.ts, re-exported below, so the
+// frontend live preview (app/utils/service-orders.ts) can use the exact same
+// rule-matching/amount code without pulling in server-only DB access. This
+// file only adds the Supabase-backed fetch/insert wrappers around it.
 //
-// Step 6 has no executable test suite (repo has no test runner installed;
-// adding one was deliberately deferred). The pure functions below were
-// instead verified by manual code review against every "caso mínimo de
-// teste" the design doc lists in §6:
-//   - categoria específica          → getApplicableCommissionRule, non-default branch
-//   - regra default                 → getApplicableCommissionRule, fallback branch
-//   - sem default                   → getApplicableCommissionRule returns null
-//   - item sem categoria            → getApplicableCommissionRule skips straight to default
-//   - conflito entre planos         → findCommissionConflicts (category overlap + double default)
-//   - versão vigente por data       → resolveEffectiveVersion (greatest effective_from <= referenceDate)
-//   - comissão percentual/faturamento → computeCommissionAmount, base 'revenue'
-//   - comissão percentual/lucro     → computeCommissionAmount, base 'profit'
-//   - comissão fixa                 → computeCommissionAmount, 'fixed_amount' × quantity
-// server/api/commissions/preview.post.ts exercises the full pipeline
-// (resolveEmployeeCommissionRules → buildCommissionSnapshot) end-to-end as
-// the "endpoint de preview para a tela de OS" the doc also asks for.
+// As of Step 8 (docs/finance/commissions-step8-engine-cutover.md), all 4
+// legacy commission engines (server/utils/service-order-item-commissions.ts,
+// service-order-commissions.ts, sales-item-commissions.ts,
+// app/utils/service-orders.ts) call resolveEmployeeCommissionRules() below
+// and fall back to the legacy employees.* columns only when an employee has
+// no assigned plan — see each engine's own comments for its fallback point.
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { roundMoney } from './report-helpers'
+import {
+  currentMonthStart,
+  resolveEffectiveVersion,
+  type CommissionRuleType,
+  type CommissionRuleBase,
+  type CommissionRuleVersionRecord,
+  type CommissionRuleRecord,
+  type ResolvedCommissionRule
+} from '../../shared/utils/employee-commission-engine'
 
-export type CommissionRuleType = 'percentage' | 'fixed_amount'
-export type CommissionRuleBase = 'revenue' | 'profit'
+export {
+  roundMoney,
+  toMonthStart,
+  currentMonthStart,
+  resolveEffectiveVersion,
+  getApplicableCommissionRule,
+  matchCommissionRule,
+  computeCommissionAmount,
+  buildCommissionSnapshot,
+  computeEmployeeOrderCommission,
+  getOrderItemQuantity,
+  getOrderItemTotal,
+  getOrderItemCost,
+  toCommissionOrderItemInput
+} from '../../shared/utils/employee-commission-engine'
+export type {
+  CommissionRuleType,
+  CommissionRuleBase,
+  CommissionRuleVersionRecord,
+  CommissionRuleRecord,
+  ResolvedCommissionRule,
+  CommissionItemSnapshot,
+  CommissionOrderItemInput,
+  CommissionOrderItemResult,
+  EmployeeOrderCommissionResult
+} from '../../shared/utils/employee-commission-engine'
 
 export interface CommissionPlanRecord {
   id: string
@@ -53,107 +75,6 @@ export interface CommissionPlanAssignmentRecord {
   employee_id: string
   active: boolean
   created_at?: string
-}
-
-export interface CommissionRuleVersionRecord {
-  id: string
-  plan_id: string
-  effective_from: string
-  notes: string | null
-  created_at?: string
-  created_by?: string | null
-}
-
-export interface CommissionRuleRecord {
-  id: string
-  version_id: string
-  name: string | null
-  commission_type: CommissionRuleType
-  commission_amount: number
-  /** Required for 'percentage' rules; null for 'fixed_amount' — a flat R$ per unit doesn't have a base. */
-  commission_base: CommissionRuleBase | null
-  is_default: boolean
-  sort_order: number
-  category_ids: string[]
-}
-
-/** A rule as returned by resolveEmployeeCommissionRules — same shape, plus
- * which plan it came from (needed to fill commission_plan_id on a snapshot,
- * since a rule's own row doesn't carry its plan — only its version). */
-export interface ResolvedCommissionRule extends CommissionRuleRecord {
-  plan_id: string
-}
-
-/** Always the 1st of the month, e.g. "2026-03-01". */
-export function toMonthStart(value: string | Date): string {
-  const date = typeof value === 'string' ? new Date(`${value}T00:00:00`) : value
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`
-}
-
-export function currentMonthStart(): string {
-  return toMonthStart(new Date())
-}
-
-/**
- * The version effective for a given date is the one with the greatest
- * effective_from <= referenceDate — not necessarily the most recently
- * created row (same resolution rule as bonus_value_versions). Returns null
- * if no version was effective yet by that date.
- */
-export function resolveEffectiveVersion(
-  versions: CommissionRuleVersionRecord[],
-  referenceDate: string
-): CommissionRuleVersionRecord | null {
-  const candidates = versions.filter(version => version.effective_from <= referenceDate)
-  if (candidates.length === 0) return null
-  return candidates.reduce((latest, version) => (version.effective_from > latest.effective_from ? version : latest))
-}
-
-/**
- * Resolution engine core (Step 6): given the full set of rules applicable to
- * an employee right now (across every plan assigned to them, already
- * resolved to each plan's effective version), picks the rule that applies to
- * one item.
- *
- *   1. If the item has a category, and a non-default rule covers it, use it.
- *   2. Otherwise fall back to the default rule, if any.
- *   3. An item with no category always falls through to the catch-all —
- *      mirrors the legacy engines' preserved behavior.
- *   4. No matching rule and no catch-all → no commission for this item.
- */
-export function getApplicableCommissionRule(
-  rules: CommissionRuleRecord[],
-  categoryId: string | null | undefined
-): CommissionRuleRecord | null {
-  if (categoryId) {
-    const specific = rules.find(rule => !rule.is_default && rule.category_ids.includes(String(categoryId)))
-    if (specific) return specific
-  }
-  return rules.find(rule => rule.is_default) ?? null
-}
-
-/**
- * Computes the commission value for one rule match.
- *
- * - 'percentage': rate applied over the item/order's revenue or profit
- *   (caller decides what those mean — full item value, or an already
- *   prorated slice of it), per rule.commission_base.
- * - 'fixed_amount': a flat R$ value PER UNIT matched, independent of the
- *   item's price — commission_amount * quantity. This is the precise
- *   semantics decided for fixed_amount rules (as opposed to the legacy
- *   engines' two conflicting interpretations — prorated-per-order vs.
- *   flat-per-order — see docs/employee-multiple-commission-rules-analysis.md
- *   §2.3): "R$20 per tire sold", not "R$20 per order that has a tire".
- */
-export function computeCommissionAmount(
-  rule: CommissionRuleRecord,
-  amounts: { revenue: number, profit: number, quantity?: number }
-): number {
-  if (rule.commission_type === 'fixed_amount') {
-    return roundMoney(rule.commission_amount * (amounts.quantity ?? 1))
-  }
-  const base = rule.commission_base === 'profit' ? amounts.profit : amounts.revenue
-  return roundMoney((base * rule.commission_amount) / 100)
 }
 
 // ─── Fetch helpers ──────────────────────────────────────────────────────────
@@ -259,9 +180,9 @@ export async function fetchCommissionRulesForPlan(
 /**
  * Every plan currently assigned+active to an employee, together with the
  * rules of each plan's version effective for referenceDate. This is the
- * "motor consolidado" entry point Step 6 asks for — flattening this across
- * plans and calling getApplicableCommissionRule() on the result is how a
- * future OS calculation (Step 8, out of scope here) would resolve one item.
+ * "motor consolidado" entry point Step 6 asks for, and the primary lookup
+ * every Step 8 engine calls before deciding whether to use the new model or
+ * fall back to the legacy employees.* columns (empty result = fall back).
  */
 export async function resolveEmployeeCommissionRules(
   supabase: SupabaseClient,
@@ -302,54 +223,66 @@ export async function resolveEmployeeCommissionRules(
 }
 
 /**
- * Picks the applicable rule the same way getApplicableCommissionRule() does,
- * but also surfaces which plan it came from — needed to fill
- * commission_plan_id when building a persistable snapshot (buildCommissionSnapshot below).
+ * Batched version of resolveEmployeeCommissionRules() for every responsible
+ * employee of one order at once — avoids N sequential round-trips (assignments
+ * → plans → versions → rules, per employee) when an order has several
+ * responsibles. Employees with no assignment/plan get an empty array (the
+ * caller's cue to fall back to the legacy calculation).
  */
-export function matchCommissionRule(
-  rules: ResolvedCommissionRule[],
-  categoryId: string | null | undefined
-): ResolvedCommissionRule | null {
-  return getApplicableCommissionRule(rules, categoryId) as ResolvedCommissionRule | null
-}
+export async function resolveEmployeeCommissionRulesForEmployees(
+  supabase: SupabaseClient,
+  organizationId: string,
+  employeeIds: string[],
+  referenceDate: string = currentMonthStart()
+): Promise<Map<string, ResolvedCommissionRule[]>> {
+  const result = new Map<string, ResolvedCommissionRule[]>()
+  const uniqueEmployeeIds = [...new Set(employeeIds.filter(Boolean))]
+  uniqueEmployeeIds.forEach(id => result.set(id, []))
+  if (uniqueEmployeeIds.length === 0) return result
 
-export interface CommissionItemSnapshot {
-  commission_plan_id: string
-  commission_rule_id: string
-  commission_rule_version_id: string
-  commission_rule_name: string | null
-  commission_amount_snapshot: number
-  commission_type: CommissionRuleType
-  commission_base: CommissionRuleBase | null
-}
+  const { data: assignments, error: assignmentsError } = await supabase
+    .from('employee_commission_plan_assignments')
+    .select('plan_id, employee_id')
+    .in('employee_id', uniqueEmployeeIds)
+    .eq('active', true)
+    .is('deleted_at', null)
 
-/**
- * Composes matchCommissionRule() + computeCommissionAmount() into the
- * ready-to-persist snapshot shape from section 4.6 of the design doc (the
- * new columns on employee_financial_records). Returns null when no rule
- * applies — caller (a future Step 8 cutover) should not generate a
- * commission record for that item in that case.
- *
- * Takes the already-resolved `rules` array (one resolveEmployeeCommissionRules
- * call per employee) rather than re-fetching per item, so a caller looping
- * over every item of a multi-item OS only pays the Supabase round-trips once.
- */
-export function buildCommissionSnapshot(
-  rules: ResolvedCommissionRule[],
-  item: { categoryId: string | null | undefined, revenue: number, profit: number, quantity?: number }
-): CommissionItemSnapshot | null {
-  const rule = matchCommissionRule(rules, item.categoryId)
-  if (!rule) return null
+  if (assignmentsError) throw new Error(assignmentsError.message)
 
-  return {
-    commission_plan_id: rule.plan_id,
-    commission_rule_id: rule.id,
-    commission_rule_version_id: rule.version_id,
-    commission_rule_name: rule.name,
-    commission_amount_snapshot: computeCommissionAmount(rule, item),
-    commission_type: rule.commission_type,
-    commission_base: rule.commission_base
+  const employeeIdsByPlan = new Map<string, string[]>()
+  for (const row of (assignments || []) as { plan_id: string, employee_id: string }[]) {
+    const list = employeeIdsByPlan.get(row.plan_id) ?? []
+    list.push(row.employee_id)
+    employeeIdsByPlan.set(row.plan_id, list)
   }
+
+  const planIds = [...employeeIdsByPlan.keys()]
+  if (planIds.length === 0) return result
+
+  const { data: plans, error: plansError } = await supabase
+    .from('employee_commission_plans')
+    .select('id')
+    .in('id', planIds)
+    .eq('organization_id', organizationId)
+    .eq('active', true)
+    .is('deleted_at', null)
+
+  if (plansError) throw new Error(plansError.message)
+
+  for (const plan of plans || []) {
+    const versions = await fetchCommissionRuleVersions(supabase, plan.id)
+    const effectiveVersion = resolveEffectiveVersion(versions, referenceDate)
+    if (!effectiveVersion) continue
+    const rules = await fetchCommissionRulesForVersion(supabase, effectiveVersion.id)
+    const resolvedRules: ResolvedCommissionRule[] = rules.map(rule => ({ ...rule, plan_id: plan.id }))
+
+    for (const employeeId of employeeIdsByPlan.get(plan.id) ?? []) {
+      const existing = result.get(employeeId) ?? []
+      result.set(employeeId, [...existing, ...resolvedRules])
+    }
+  }
+
+  return result
 }
 
 export interface ParsedCommissionRuleInput {

@@ -1,3 +1,9 @@
+import {
+  computeEmployeeOrderCommission,
+  toCommissionOrderItemInput,
+  type ResolvedCommissionRule
+} from '../../shared/utils/employee-commission-engine'
+
 export type ServiceOrderCommissionEmployee = {
   id: string
   has_commission?: boolean | null
@@ -38,18 +44,36 @@ function getItemCost(item: ServiceOrderCommissionItem) {
   return toNumber(item.cost_price ?? item.cost_amount) * getItemQuantity(item)
 }
 
+/**
+ * Step 8 cutover (docs/finance/commissions-step8-engine-cutover.md): snapshot
+ * per item, called from POST /api/service-orders on both create and edit.
+ * `rulesByEmployeeId` is pre-fetched once per order (not per item) by the
+ * caller via resolveEmployeeCommissionRulesForEmployees() —
+ * this function stays synchronous/pure given that data.
+ *
+ * Per responsible employee: an employee with a non-empty entry in
+ * `rulesByEmployeeId` uses the new commission-plan model exclusively for
+ * this order — never falls back to the legacy employees.* columns, even if
+ * no item on this order matches any of their rules (see
+ * computeEmployeeOrderCommission()'s own doc comment). Only employees with
+ * NO resolved rules at all (no plan assigned covering this order's
+ * reference date) use the legacy calculation below, unchanged from before
+ * this cutover.
+ */
 export function computeServiceOrderItemsWithCommissionSnapshots({
   items,
   responsibleEmployees,
   employees,
   discount,
-  totalTaxesAmount
+  totalTaxesAmount,
+  rulesByEmployeeId
 }: {
   items: ServiceOrderCommissionItem[]
   responsibleEmployees: ServiceOrderResponsibleEmployeeRef[]
   employees: ServiceOrderCommissionEmployee[]
   discount: unknown
   totalTaxesAmount: unknown
+  rulesByEmployeeId?: Map<string, ResolvedCommissionRule[]>
 }) {
   const itemEntries = items.map(item => ({
     ...item,
@@ -63,7 +87,48 @@ export function computeServiceOrderItemsWithCommissionSnapshots({
 
   for (const responsible of responsibleEmployees) {
     const employee = employees.find(item => item.id === responsible.employee_id)
-    if (!employee?.has_commission) continue
+    if (!employee) continue
+
+    const rules = rulesByEmployeeId?.get(employee.id) ?? []
+
+    if (rules.length > 0) {
+      const commissionOrderItems = itemEntries.map(item => toCommissionOrderItemInput({
+        category_id: item.category_id as string | null,
+        quantity: item.quantity as number | string | null,
+        total_price: item.total_price as number | string | null,
+        total_amount: item.total_amount as number | string | null,
+        unit_price: item.unit_price as number | string | null,
+        cost_price: item.cost_price as number | string | null,
+        cost_amount: item.cost_amount as number | string | null
+      }))
+
+      const result = computeEmployeeOrderCommission(rules, commissionOrderItems, {
+        discount: discountAmount,
+        totalTaxesAmount: taxesAmount
+      })
+
+      result.perItem.forEach((matched, index) => {
+        if (!matched || matched.amount <= 0) return
+        const item = itemEntries[index]!
+
+        item.commission_total = roundCurrency(toNumber(item.commission_total) + matched.amount)
+        item.total_commission = item.commission_total
+        item.commissions.push({
+          employee_id: employee.id,
+          amount: matched.amount,
+          commission_type: matched.rule.commission_type,
+          commission_base: matched.rule.commission_base,
+          commission_percentage: matched.rule.commission_type === 'percentage' ? matched.rule.commission_amount : null,
+          commission_plan_id: matched.rule.plan_id,
+          commission_rule_id: matched.rule.id,
+          commission_rule_version_id: matched.rule.version_id
+        })
+      })
+
+      continue
+    }
+
+    if (!employee.has_commission) continue
 
     const commissionType = employee.commission_type ?? null
     const commissionBase = employee.commission_base ?? null
