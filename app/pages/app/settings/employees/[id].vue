@@ -417,12 +417,6 @@ function formatTaxId(value: string | null | undefined, personType: string | null
   return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
 }
 
-function formatCommissionType(value: string | null | undefined) {
-  if (value === 'percentage') return 'Percentual'
-  if (value === 'fixed_amount') return 'Valor fixo'
-  return 'Sem comissão'
-}
-
 function formatCommissionBase(value: string | null | undefined) {
   if (value === 'profit') return 'Lucro'
   if (value === 'revenue') return 'Receita'
@@ -586,8 +580,8 @@ async function exportReport(format: 'csv' | 'pdf') {
                       <UBadge :color="employeeStatus.color" variant="subtle" size="sm">
                         {{ employeeStatus.label }}
                       </UBadge>
-                      <UBadge :color="employee.hasCommission ? 'success' : 'neutral'" variant="subtle" size="sm">
-                        {{ employee.hasCommission ? 'Comissionado' : 'Sem comissão' }}
+                      <UBadge :color="assignedCommissionPlans.length > 0 ? 'success' : 'neutral'" variant="subtle" size="sm">
+                        {{ assignedCommissionPlans.length > 0 ? 'Comissionado' : 'Sem comissão' }}
                       </UBadge>
                     </div>
 
@@ -628,32 +622,6 @@ async function exportReport(format: 'csv' | 'pdf') {
               <div class="grid gap-3 sm:grid-cols-2">
                 <div class="rounded-2xl border border-default/70 bg-default/50 p-4 sm:col-span-2">
                   <div class="flex items-start gap-3">
-                    <UIcon name="i-lucide-badge-percent" class="mt-0.5 size-5 shrink-0 text-warning" />
-                    <div class="space-y-1">
-                      <p class="text-xs uppercase tracking-widest text-muted">
-                        Regra de comissão
-                      </p>
-                      <p class="text-sm font-medium text-highlighted">
-                        {{ formatCommissionType(employee.commissionType) }}
-                        <span v-if="employee.commissionType !== null"> · {{ formatCommissionBase(employee.commissionBase) }}</span>
-                      </p>
-                      <p class="text-sm text-muted">
-                        <template v-if="employee.commissionType === 'percentage'">
-                          {{ employee.commissionAmount ?? 0 }}% configurado para o cadastro.
-                        </template>
-                        <template v-else-if="employee.commissionType === 'fixed_amount'">
-                          {{ formatCurrency(employee.commissionAmount ?? 0) }} por item configurado para o cadastro.
-                        </template>
-                        <template v-else>
-                          O funcionário não possui regra de comissão ativa no cadastro.
-                        </template>
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="rounded-2xl border border-default/70 bg-default/50 p-4 sm:col-span-2">
-                  <div class="flex items-start gap-3">
                     <UIcon name="i-lucide-map-pinned" class="mt-0.5 size-5 shrink-0 text-primary" />
                     <div class="space-y-1">
                       <p class="text-xs uppercase tracking-widest text-muted">
@@ -666,26 +634,6 @@ async function exportReport(format: 'csv' | 'pdf') {
                         {{ buildAddress(employee) }}
                       </p>
                     </div>
-                  </div>
-                </div>
-
-                <div class="rounded-2xl border border-default/70 bg-default/50 p-4 sm:col-span-2">
-                  <p class="text-xs uppercase tracking-widest text-muted">
-                    Categorias elegíveis
-                  </p>
-                  <div class="mt-2 flex flex-wrap gap-2">
-                    <UBadge
-                      v-for="categoryName in employee.commissionCategoryNames"
-                      :key="categoryName"
-                      color="warning"
-                      variant="subtle"
-                      size="sm"
-                    >
-                      {{ categoryName }}
-                    </UBadge>
-                    <span v-if="employee.commissionCategoryNames.length === 0" class="text-sm text-muted">
-                      Todas as categorias contam para a comissão.
-                    </span>
                   </div>
                 </div>
 

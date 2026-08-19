@@ -8,7 +8,7 @@ export type EmployeeCommissionDisplay = {
   commissionLabel: string
   rateLabel: string | null
   baseLabel: string | null
-  note: { label: string, color: 'neutral' | 'warning', icon: string } | null
+  note: { label: string, color: 'neutral' | 'warning' | 'primary', icon: string } | null
   hasInfo: boolean
   itemBreakdown: CommissionBreakdownLine[]
 }
@@ -126,18 +126,13 @@ function getOptionsForIndex(index: number) {
                 leading-icon="i-lucide-scale"
                 :label="employeeCommissions[employeeId]!.baseLabel"
               />
-              <UTooltip
+              <UBadge
                 v-if="employeeCommissions[employeeId]!.note"
-                :text="employeeCommissions[employeeId]!.note!.label"
-              >
-                <UButton
-                  :color="employeeCommissions[employeeId]!.note!.color"
-                  variant="ghost"
-                  :icon="employeeCommissions[employeeId]!.note!.icon"
-                  size="xs"
-                  square
-                />
-              </UTooltip>
+                :color="employeeCommissions[employeeId]!.note!.color"
+                variant="subtle"
+                :leading-icon="employeeCommissions[employeeId]!.note!.icon"
+                :label="employeeCommissions[employeeId]!.note!.label"
+              />
             </div>
           </div>
 

@@ -609,22 +609,32 @@ const employeeCommissionsDisplay = computed<
     const stored = getStoredCommissionForEmployee(employeeId)
     const commissionValue = fresh.value > 0 ? fresh.value : stored
 
+    // Step 9 (docs/finance/commissions-configuration-architecture.md): an
+    // employee with an active new-model plan has no single rate/base — it
+    // varies per rule/category — so those badges are replaced with a note
+    // pointing at Financeiro > Comissões, same as detail/OSResponsiblesCard.vue.
+    const hasNewModelRules = (rulesByEmployeeId.value.get(employeeId)?.length ?? 0) > 0
+
     let rateLabel: string | null = null
-    if (employee?.has_commission && employee.commission_amount != null) {
+    if (!hasNewModelRules && employee?.has_commission && employee.commission_amount != null) {
       rateLabel
         = employee.commission_type === 'percentage'
           ? `${toNumber(employee.commission_amount)}%`
           : formatCurrency(employee.commission_amount)
     }
 
-    const baseLabel = employee
+    const baseLabel = !hasNewModelRules && employee
       ? employee.commission_base === 'profit'
         ? 'Base: lucro'
         : 'Base: faturamento'
       : null
 
     let note: EmployeeCommissionDisplay['note'] = null
-    if (employee && !employee.has_commission) {
+    if (hasNewModelRules) {
+      note = !fresh.hasMatchingItems
+        ? { label: 'Sem itens elegíveis', color: 'warning', icon: 'i-lucide-triangle-alert' }
+        : { label: 'Por regra/categoria', color: 'primary', icon: 'i-lucide-list-checks' }
+    } else if (employee && !employee.has_commission) {
       note = {
         label: 'Sem comissão',
         color: 'neutral',

@@ -21,6 +21,8 @@ type ResponsibleInfo = {
   commission_base: string | null | undefined
   commission_categories: string[]
   has_commission: boolean
+  /** Step 9 (docs/finance/commissions-configuration-architecture.md): this employee has at least one active plan in the new model — their commission varies per rule/category, so no single rate/base badge applies. */
+  has_new_model_rules: boolean
   commission_amount: number | null
   item_breakdown: CommissionBreakdownLine[]
 }
@@ -73,6 +75,7 @@ const responsiblesInfo = computed<ResponsibleInfo[]>(() => {
       commission_base: emp?.commission_base,
       commission_categories: emp?.commission_categories ?? [],
       has_commission: Boolean(emp?.has_commission),
+      has_new_model_rules: (rulesByEmployeeId.value.get(r.employee_id)?.length ?? 0) > 0,
       commission_amount,
       item_breakdown
     }
@@ -87,6 +90,10 @@ const totalCommissionAmount = computed(() =>
 )
 
 function getResponsibleRateLabel(assignee: ResponsibleInfo) {
+  // New model: rate varies per item/category (see "Comissão por item" popover
+  // above) — a single flat rate badge would misrepresent it.
+  if (assignee.has_new_model_rules) return null
+
   if (!assignee.has_commission || assignee.configured_commission_amount == null)
     return null
 
@@ -96,6 +103,7 @@ function getResponsibleRateLabel(assignee: ResponsibleInfo) {
 }
 
 function getResponsibleBaseLabel(assignee: ResponsibleInfo) {
+  if (assignee.has_new_model_rules) return null
   if (!assignee.has_commission) return null
 
   return assignee.commission_base === 'profit'
@@ -104,9 +112,19 @@ function getResponsibleBaseLabel(assignee: ResponsibleInfo) {
 }
 
 function getResponsibleCommissionNote(assignee: ResponsibleInfo) {
+  if (assignee.has_new_model_rules) {
+    return {
+      label: 'Por regra/categoria',
+      tooltip: 'Comissão configurada por regra e categoria em Financeiro > Comissões — o valor varia por item, veja o detalhamento em "Comissão".',
+      color: 'primary' as const,
+      icon: 'i-lucide-list-checks'
+    }
+  }
+
   if (!assignee.has_commission) {
     return {
       label: 'Sem comissão',
+      tooltip: null,
       color: 'neutral' as const,
       icon: 'i-lucide-circle-off'
     }
@@ -186,19 +204,24 @@ function getResponsibleCommissionNote(assignee: ResponsibleInfo) {
                 :label="getResponsibleBaseLabel(assignee)"
               />
               <UTooltip
-                v-if="getResponsibleCommissionNote(assignee)"
-                :text="getResponsibleCommissionNote(assignee)?.label"
+                v-if="getResponsibleCommissionNote(assignee)?.tooltip"
+                :text="getResponsibleCommissionNote(assignee)?.tooltip ?? undefined"
+                :ui="{ content: 'h-auto max-w-64 py-1.5', text: 'whitespace-normal' }"
               >
-                <UButton
-                  :color="
-                    getResponsibleCommissionNote(assignee)?.color ?? 'neutral'
-                  "
-                  variant="ghost"
-                  :icon="getResponsibleCommissionNote(assignee)?.icon"
-                  size="xs"
-                  square
+                <UBadge
+                  :color="getResponsibleCommissionNote(assignee)?.color ?? 'neutral'"
+                  variant="subtle"
+                  :leading-icon="getResponsibleCommissionNote(assignee)?.icon"
+                  :label="getResponsibleCommissionNote(assignee)?.label"
                 />
               </UTooltip>
+              <UBadge
+                v-else-if="getResponsibleCommissionNote(assignee)"
+                :color="getResponsibleCommissionNote(assignee)?.color ?? 'neutral'"
+                variant="subtle"
+                :leading-icon="getResponsibleCommissionNote(assignee)?.icon"
+                :label="getResponsibleCommissionNote(assignee)?.label"
+              />
             </div>
           </div>
         </div>
