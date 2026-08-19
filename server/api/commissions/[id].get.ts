@@ -57,16 +57,20 @@ export default defineEventHandler(async (event) => {
 
   const employeeIds = [...new Set(assignments.map(assignment => assignment.employee_id))]
   const employeeNameById = new Map<string, string>()
+  const employeePhotoUrlById = new Map<string, string | null>()
   if (employeeIds.length > 0) {
     const { data: employees, error: employeesError } = await supabase
       .from('employees')
-      .select('id, name')
+      .select('id, name, photo_url')
       .in('id', employeeIds)
 
     if (employeesError) {
       throw createError({ statusCode: 500, statusMessage: `Failed to load employees: ${employeesError.message}` })
     }
-    for (const employee of employees || []) employeeNameById.set(employee.id, employee.name)
+    for (const employee of employees || []) {
+      employeeNameById.set(employee.id, employee.name)
+      employeePhotoUrlById.set(employee.id, employee.photo_url ?? null)
+    }
   }
 
   const effectiveVersion = resolveEffectiveVersion(versions, currentMonthStart())
@@ -84,6 +88,7 @@ export default defineEventHandler(async (event) => {
     id: assignment.id,
     employeeId: assignment.employee_id,
     employeeName: employeeNameById.get(assignment.employee_id) ?? 'Funcionário',
+    employeePhotoUrl: employeePhotoUrlById.get(assignment.employee_id) ?? null,
     active: assignment.active
   }))
 
