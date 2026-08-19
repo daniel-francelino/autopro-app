@@ -87,7 +87,7 @@ const links = computed<NavigationMenuItem[][]>(() => {
   if (workshop.can(ActionCode.PRODUCTS_READ))
     productsChildren.push(item('Visão geral', 'i-lucide-package', '/app/products'))
 
-  if (workshop.can(ActionCode.PRODUCTS_READ))
+  if (workshop.can(ActionCode.PRODUCT_CATEGORIES_READ))
     productsChildren.push(item('Categorias', 'i-lucide-tags', '/app/products/categories'))
 
   if (workshop.can(ActionCode.INVENTORY_READ))

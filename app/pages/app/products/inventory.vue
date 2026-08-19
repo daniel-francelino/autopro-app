@@ -176,7 +176,7 @@ const { data, status, refresh } = await useAsyncData(
   }
 )
 
-const { data: productsData, refresh: refreshProducts } = await useAsyncData(
+const { data: productsData } = await useAsyncData(
   'parts-products-options',
   () => requestFetch<{ items: ProductOption[] }>('/api/products', {
     headers: requestHeaders,
@@ -185,7 +185,7 @@ const { data: productsData, refresh: refreshProducts } = await useAsyncData(
   { default: () => ({ items: [] }) }
 )
 
-const { data: categoriesData, refresh: refreshCategories } = await useAsyncData(
+const { data: categoriesData } = await useAsyncData(
   'parts-product-categories-options',
   () => requestFetch<{ items: ProductCategory[] }>('/api/product-categories', {
     headers: requestHeaders
@@ -392,7 +392,6 @@ const showDeleteModal = ref(false)
 const showBulkDeleteModal = ref(false)
 const partPendingDeletion = ref<PartItem | null>(null)
 const isBulkDeleting = ref(false)
-const showCategoriesModal = ref(false)
 
 const form = reactive({
   product_id: null as string | null,
@@ -448,13 +447,6 @@ const formCategoryOptions = computed(() =>
     .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
     .map(c => ({ label: c.name, value: c.name }))
 )
-
-async function handleCategoriesUpdated() {
-  await Promise.all([
-    refreshCategories(),
-    refreshProducts()
-  ])
-}
 
 function resetForm() {
   Object.assign(form, {
@@ -816,7 +808,7 @@ const lineColumns = [
               color="neutral"
               variant="outline"
               size="sm"
-              @click="showCategoriesModal = true"
+              to="/app/products/categories"
             />
 
             <UButton
@@ -1048,24 +1040,14 @@ const lineColumns = [
         </div>
 
         <UFormField label="Categoria" class="sm:col-span-2">
-          <div class="flex gap-2">
-            <USelectMenu
-              v-model="form.category"
-              :items="formCategoryOptions"
-              value-key="value"
-              placeholder="Selecionar categoria..."
-              class="flex-1"
-              searchable
-            />
-            <UTooltip text="Gerenciar categorias">
-              <UButton
-                icon="i-lucide-tag"
-                color="neutral"
-                variant="outline"
-                @click="showCategoriesModal = true"
-              />
-            </UTooltip>
-          </div>
+          <USelectMenu
+            v-model="form.category"
+            :items="formCategoryOptions"
+            value-key="value"
+            placeholder="Selecionar categoria..."
+            class="w-full"
+            searchable
+          />
         </UFormField>
 
         <UFormField label="Marca">
@@ -1183,10 +1165,4 @@ const lineColumns = [
       </p>
     </template>
   </AppConfirmModal>
-
-  <ProductsCategoriesModal
-    v-model:open="showCategoriesModal"
-    :categories="categoriesList"
-    @updated="handleCategoriesUpdated"
-  />
 </template>

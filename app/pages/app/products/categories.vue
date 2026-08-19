@@ -17,10 +17,10 @@ const workshop = useWorkshopPermissions()
 const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 
-const canRead = computed(() => workshop.can(ActionCode.PRODUCTS_READ))
-const canCreate = computed(() => workshop.can(ActionCode.PRODUCTS_CREATE))
-const canUpdate = computed(() => workshop.can(ActionCode.PRODUCTS_UPDATE))
-const canDelete = computed(() => workshop.can(ActionCode.PRODUCTS_DELETE))
+const canRead = computed(() => workshop.can(ActionCode.PRODUCT_CATEGORIES_READ))
+const canCreate = computed(() => workshop.can(ActionCode.PRODUCT_CATEGORIES_CREATE))
+const canUpdate = computed(() => workshop.can(ActionCode.PRODUCT_CATEGORIES_UPDATE))
+const canDelete = computed(() => workshop.can(ActionCode.PRODUCT_CATEGORIES_DELETE))
 
 const search = ref('')
 const page = ref(1)
@@ -124,10 +124,6 @@ async function confirmRemove() {
       </div>
 
       <div v-else class="space-y-4 p-4">
-        <p class="text-sm text-muted">
-          Categorias usadas para organizar produtos e definir regras de comissão em Financeiro &gt; Comissões.
-        </p>
-
         <AppDataTable
           v-model:search-term="search"
           v-model:page="page"
