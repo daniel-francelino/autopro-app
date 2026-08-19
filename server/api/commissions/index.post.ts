@@ -7,7 +7,7 @@ import {
   insertCommissionRuleVersion,
   parseCommissionRulesInput
 } from '../../utils/employee-commission-plans'
-import { currentCommissionMonthStart } from '../../../shared/utils/employee-commission-engine'
+import { currentCommissionMonthStart } from '../../../lib/utils/employee-commission-engine'
 
 /**
  * POST /api/commissions

@@ -8,7 +8,7 @@ import {
   fetchCommissionRulesForVersion
 } from '../../../utils/employee-commission-plans'
 import type { CommissionPlanRecord } from '../../../utils/employee-commission-plans'
-import { currentCommissionMonthStart, resolveEffectiveCommissionVersion } from '../../../../shared/utils/employee-commission-engine'
+import { currentCommissionMonthStart, resolveEffectiveCommissionVersion } from '../../../../lib/utils/employee-commission-engine'
 
 interface AssignmentRow {
   id: string

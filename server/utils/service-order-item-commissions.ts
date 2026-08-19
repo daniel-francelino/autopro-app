@@ -2,7 +2,7 @@ import {
   computeEmployeeOrderCommission,
   toCommissionOrderItemInput,
   type ResolvedCommissionRule
-} from '../../shared/utils/employee-commission-engine'
+} from '../../lib/utils/employee-commission-engine'
 
 export type ServiceOrderCommissionEmployee = {
   id: string

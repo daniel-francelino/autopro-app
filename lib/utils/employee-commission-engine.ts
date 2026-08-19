@@ -4,28 +4,41 @@
 // docs/finance/commissions-step8-engine-cutover.md for the Step 8 cutover
 // plan this file implements).
 //
-// Lives in shared/ (not server/utils/) specifically so it can be imported
-// both by server engines (server/utils/service-order-*.ts) and by the
-// frontend live preview (app/utils/service-orders.ts) — Nuxt 4's shared/
-// directory is bundled for both the Nitro server and the Vue app. Nothing
-// here touches Supabase; DB-fetch wrappers stay in
-// server/utils/employee-commission-plans.ts, which imports what it needs
-// from this file but does NOT re-export it — Nuxt auto-imports every export
-// of both shared/utils/*.ts and server/utils/*.ts globally, so re-exporting
-// the same names from both registered two global bindings for one symbol,
-// which broke Nitro's production Rollup build. Every other file imports
-// straight from here.
+// Lives in lib/ (a plain, ordinary folder — NOT Nuxt's shared/ directory)
+// specifically so it can be imported both by server engines
+// (server/utils/service-order-*.ts) and by the frontend live preview
+// (app/utils/service-orders.ts) as a normal bundled dependency. It used to
+// live in shared/utils/, which Nuxt auto-imports globally and bundles
+// through its own "shared" virtual-chunk machinery for both the Nitro
+// server and the Vue app — that machinery is what broke: the production
+// build's prerenderer failed with
+// `RollupError: Could not resolve "../shared/utils/employee-commission-engine.ts"`
+// from a built server chunk. Renaming the colliding auto-imported symbols
+// (see the git history on this file) fixed the "Duplicated imports" warning
+// but not that Rollup error — the prerenderer step itself couldn't resolve
+// the shared chunk at the path Nuxt generated for it, independent of naming.
+// Moving the file out of shared/ entirely sidesteps that machinery: lib/ has
+// no special meaning to Nuxt, so this is just an ordinary TypeScript module,
+// statically bundled by Vite/Rollup wherever it's explicitly imported, same
+// as any other file in the repo.
 //
-// Naming note: toMonthStart/currentMonthStart/resolveEffectiveVersion are
-// prefixed with "Commission" below (unlike the rest of this file's exports)
-// specifically because server/utils/bonuses.ts already exports its own
-// functions with those exact bare names for the unrelated bonus feature —
-// same collision problem as above (global auto-import, not a namespaced
-// import), confirmed by `nuxt prepare`'s "Duplicated imports" warning.
-// roundMoney is not exported at all: nothing outside this file imports it
-// from here (every real caller already has its own from
-// server/utils/report-helpers.ts), so keeping it unexported side-steps that
-// collision instead of renaming it.
+// Nothing here touches Supabase; DB-fetch wrappers stay in
+// server/utils/employee-commission-plans.ts, which imports what it needs
+// from this file but does NOT re-export it — re-exporting would put the
+// same names back in server/utils/*.ts, which Nuxt DOES auto-import
+// globally, recreating the original duplicate-symbol problem for anything
+// that also happens to auto-import the same name (see the "Naming note"
+// below). Every other file imports straight from here.
+//
+// Naming note: toCommissionMonthStart/currentCommissionMonthStart/
+// resolveEffectiveCommissionVersion are prefixed with "Commission" (unlike
+// the rest of this file's exports) because server/utils/bonuses.ts already
+// exports its own functions with those exact bare names for the unrelated
+// bonus feature — server/utils/*.ts is still auto-imported globally by
+// Nuxt, so two files exporting the same bare name is a real collision
+// there even though this file no longer lives in shared/. roundMoney is not
+// exported at all: nothing outside this file needs it from here (every real
+// caller already has its own from server/utils/report-helpers.ts).
 
 export type CommissionRuleType = 'percentage' | 'fixed_amount'
 export type CommissionRuleBase = 'revenue' | 'profit'

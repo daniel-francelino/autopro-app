@@ -3,7 +3,7 @@ import { getSupabaseAdminClient } from '../../../utils/supabase'
 import { requireAuthUser } from '../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../utils/organization'
 import { resolveEmployeeCommissionRules } from '../../../utils/employee-commission-plans'
-import { currentCommissionMonthStart, toCommissionMonthStart } from '../../../../shared/utils/employee-commission-engine'
+import { currentCommissionMonthStart, toCommissionMonthStart } from '../../../../lib/utils/employee-commission-engine'
 
 /**
  * GET /api/employees/:id/commission-rules?referenceDate=YYYY-MM-DD

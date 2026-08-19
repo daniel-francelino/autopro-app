@@ -4,7 +4,7 @@ import { requireAuthUser } from '../../utils/require-auth'
 import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
 import { resolveEmployeeCommissionRules } from '../../utils/employee-commission-plans'
-import { currentCommissionMonthStart, buildCommissionSnapshot } from '../../../shared/utils/employee-commission-engine'
+import { currentCommissionMonthStart, buildCommissionSnapshot } from '../../../lib/utils/employee-commission-engine'
 
 interface PreviewItemInput {
   id?: string

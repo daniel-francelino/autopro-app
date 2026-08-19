@@ -9,7 +9,7 @@
 // rules instead of a single monthly goal.
 //
 // The pure calculation logic (no Supabase) lives in
-// shared/utils/employee-commission-engine.ts, so the frontend live preview
+// lib/utils/employee-commission-engine.ts, so the frontend live preview
 // (app/utils/service-orders.ts) can use the exact same rule-matching/amount
 // code without pulling in server-only DB access. This file only adds the
 // Supabase-backed fetch/insert wrappers around it.
@@ -19,9 +19,9 @@
 // and server/utils/*.ts globally, so re-exporting the same names from both
 // files registered two global bindings for one symbol — harmless in dev,
 // but it broke Nitro's production Rollup build ("Could not resolve
-// .../shared/utils/employee-commission-engine.ts", plus "Duplicated
+// .../lib/utils/employee-commission-engine.ts", plus "Duplicated
 // imports" warnings during `nuxt prepare`). Import straight from
-// shared/utils/employee-commission-engine wherever those pure functions are
+// lib/utils/employee-commission-engine wherever those pure functions are
 // needed instead of through this file.
 //
 // As of Step 8 (docs/finance/commissions-step8-engine-cutover.md), all 4
@@ -40,7 +40,7 @@ import {
   type CommissionRuleVersionRecord,
   type CommissionRuleRecord,
   type ResolvedCommissionRule
-} from '../../shared/utils/employee-commission-engine'
+} from '../../lib/utils/employee-commission-engine'
 
 export interface CommissionPlanRecord {
   id: string

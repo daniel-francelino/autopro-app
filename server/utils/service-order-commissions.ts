@@ -5,7 +5,7 @@ import {
   toCommissionOrderItemInput,
   toCommissionMonthStart,
   type ResolvedCommissionRule
-} from '../../shared/utils/employee-commission-engine'
+} from '../../lib/utils/employee-commission-engine'
 import { resolveEmployeeCommissionRulesForEmployees } from './employee-commission-plans'
 
 type ReleaseServiceOrderCommissionsParams = {

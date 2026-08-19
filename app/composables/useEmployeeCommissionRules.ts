@@ -1,4 +1,4 @@
-import type { ResolvedCommissionRule } from '../../shared/utils/employee-commission-engine'
+import type { ResolvedCommissionRule } from '../../lib/utils/employee-commission-engine'
 
 /**
  * Fetches and caches, per employee (and reference date), the flat list of

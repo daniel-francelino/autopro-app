@@ -8,7 +8,7 @@ import {
   type ServiceOrderCommissionItem
 } from '../../utils/service-order-item-commissions'
 import { resolveEmployeeCommissionRulesForEmployees } from '../../utils/employee-commission-plans'
-import { toCommissionMonthStart } from '../../../shared/utils/employee-commission-engine'
+import { toCommissionMonthStart } from '../../../lib/utils/employee-commission-engine'
 
 /**
  * POST /api/service-orders

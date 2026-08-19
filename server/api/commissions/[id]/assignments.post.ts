@@ -10,7 +10,7 @@ import {
   findCommissionConflicts,
   resolveEmployeeCommissionRules
 } from '../../../utils/employee-commission-plans'
-import { currentCommissionMonthStart, resolveEffectiveCommissionVersion } from '../../../../shared/utils/employee-commission-engine'
+import { currentCommissionMonthStart, resolveEffectiveCommissionVersion } from '../../../../lib/utils/employee-commission-engine'
 
 /**
  * POST /api/commissions/:id/assignments
