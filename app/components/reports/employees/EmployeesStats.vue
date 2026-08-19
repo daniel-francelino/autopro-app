@@ -16,15 +16,15 @@ function formatCurrency(v: number | string) {
 const netSales = computed(() => props.summary?.netSales ?? 0)
 
 const stats = computed(() => [
-  { label: 'Venda bruta', value: formatCurrency(props.summary?.grossSales ?? 0), icon: 'i-lucide-banknote', color: 'text-primary', bg: 'bg-primary/10', description: 'total das OS' },
+  { label: 'Venda bruta', value: formatCurrency(props.summary?.grossSales ?? 0), icon: 'i-lucide-banknote', color: 'text-primary', bg: 'bg-primary/10', description: 'itens vendidos' },
   {
-    label: 'Despesas da OS',
+    label: 'Despesas',
     value: formatCurrency(props.summary?.osExpenses ?? 0),
     icon: 'i-lucide-wallet-cards',
     color: 'text-error',
     bg: 'bg-error/10',
     description: 'custo de peças',
-    tooltip: 'Soma do custo das peças e produtos usados nas OS deste funcionário no período selecionado. Não inclui despesas gerais da oficina (aluguel, contas, etc.).'
+    tooltip: 'Soma do custo das peças e produtos vendidos por este funcionário no período selecionado. Não inclui despesas gerais da oficina (aluguel, contas, etc.).'
   },
   { label: 'Comissões', value: formatCurrency(props.summary?.totalCommissions ?? 0), icon: 'i-lucide-hand-coins', color: 'text-warning', bg: 'bg-warning/10', description: 'do funcionário' },
   {
