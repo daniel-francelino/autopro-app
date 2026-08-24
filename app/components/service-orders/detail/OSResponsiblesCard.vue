@@ -219,21 +219,20 @@ async function recalculate(employeeId: string) {
                   square
                 />
               </UTooltip>
+              <UButton
+                v-if="canUpdate && assignee.has_commission"
+                size="xs"
+                color="neutral"
+                variant="soft"
+                icon="i-lucide-refresh-cw"
+                label="Recalcular"
+                :loading="recalculatingEmployeeId === assignee.employee_id"
+                :disabled="!!recalculatingEmployeeId"
+                square
+                @click="recalculate(assignee.employee_id)"
+              />
             </div>
           </div>
-
-          <UButton
-            v-if="canUpdate && assignee.has_commission"
-            size="xs"
-            color="neutral"
-            variant="soft"
-            icon="i-lucide-refresh-cw"
-            label="Recalcular"
-            :loading="recalculatingEmployeeId === assignee.employee_id"
-            :disabled="!!recalculatingEmployeeId"
-            square
-            @click="recalculate(assignee.employee_id)"
-          />
         </div>
       </div>
 
