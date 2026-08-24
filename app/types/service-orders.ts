@@ -133,6 +133,17 @@ export type ServiceOrderEmployee = {
   has_commission?: boolean | null
 }
 
+export type ServiceOrderCommissionRecalculationLogEntry = {
+  employee_id: string
+  employee_name: string | null
+  reason: string
+  previous_amount: number
+  new_amount: number
+  recalculated_by_email: string | null
+  recalculated_by_name: string | null
+  recalculated_at: string
+}
+
 export type ServiceOrderRaw = {
   id: string
   number: string | null
@@ -147,6 +158,7 @@ export type ServiceOrderRaw = {
   discount: number | null
   commission_amount: number | null
   commission_release_mode?: string | null
+  commission_recalculation_log?: ServiceOrderCommissionRecalculationLogEntry[] | null
   total_taxes_amount?: number | null
   total_cost_amount?: number | null
   payment_method: string | null

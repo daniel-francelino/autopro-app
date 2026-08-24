@@ -7,6 +7,10 @@ type ReleaseServiceOrderCommissionsParams = {
   organizationId: string
   orderId: string
   userEmail?: string | null
+  // Display name of the user performing the call, recorded on the manual
+  // recalculation audit log entry (see employeeId below). Not needed for
+  // the automatic release paths that don't pass employeeId.
+  userName?: string | null
   // The specific installment/receipt that triggered this call, when known
   // (e.g. paying one installment). Recorded on any commission row created
   // by this call so it's traceable which receipt justified it. Left out
@@ -18,8 +22,23 @@ type ReleaseServiceOrderCommissionsParams = {
   // back — used for the manual "recalculate" action scoped to one employee.
   // Everyone else's records are left untouched. Throws if the employee
   // already has a paid commission on this order, since a paid record can
-  // never be adjusted.
+  // never be adjusted. Requires `reason`, and appends an entry to the
+  // order's commission_recalculation_log audit trail on success.
   employeeId?: string | null
+  // Required alongside employeeId — why the user is recalculating. Stored
+  // verbatim in the audit log entry.
+  reason?: string | null
+}
+
+export type CommissionRecalculationLogEntry = {
+  employee_id: string
+  employee_name: string | null
+  reason: string
+  previous_amount: number
+  new_amount: number
+  recalculated_by_email: string | null
+  recalculated_by_name: string | null
+  recalculated_at: string
 }
 
 type EmployeeWithCommission = {
@@ -191,10 +210,17 @@ export async function releaseServiceOrderCommissions({
   organizationId,
   orderId,
   userEmail,
+  userName,
   triggeringInstallmentId,
-  employeeId
+  employeeId,
+  reason
 }: ReleaseServiceOrderCommissionsParams) {
   const warnings: string[] = []
+  const trimmedReason = String(reason || '').trim()
+
+  if (employeeId && !trimmedReason) {
+    throw createError({ statusCode: 400, statusMessage: 'Informe o motivo do recálculo.' })
+  }
 
   const { data: order } = await supabase
     .from('service_orders')
@@ -290,6 +316,7 @@ export async function releaseServiceOrderCommissions({
   }
 
   const createdCommissions: unknown[] = []
+  let recalculationLogEntry: CommissionRecalculationLogEntry | null = null
 
   for (const entitlement of targetEntitlements) {
     const existingForEmployee = recordsByEmployee.get(entitlement.employeeId) || []
@@ -379,12 +406,37 @@ export async function releaseServiceOrderCommissions({
         )
       }
     }
+
+    if (employeeId) {
+      recalculationLogEntry = {
+        employee_id: entitlement.employeeId,
+        employee_name: employeeMap.get(entitlement.employeeId)?.name || null,
+        reason: trimmedReason,
+        previous_amount: existingSum,
+        new_amount: released,
+        recalculated_by_email: userEmail || null,
+        recalculated_by_name: userName || null,
+        recalculated_at: new Date().toISOString()
+      }
+    }
+  }
+
+  if (recalculationLogEntry) {
+    const existingLog = Array.isArray(order.commission_recalculation_log)
+      ? order.commission_recalculation_log as CommissionRecalculationLogEntry[]
+      : []
+
+    await supabase
+      .from('service_orders')
+      .update({ commission_recalculation_log: [...existingLog, recalculationLogEntry] })
+      .eq('id', orderId)
   }
 
   return {
     orderId,
     commissions: createdCommissions,
     totalCommission,
-    warnings
+    warnings,
+    recalculationLogEntry
   }
 }

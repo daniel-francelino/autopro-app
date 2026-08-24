@@ -111,16 +111,47 @@ function getResponsibleCommissionNote(assignee: ResponsibleInfo) {
 // ─── Recalculate ───────────────────────────────────────────────────────────────
 
 const recalculatingEmployeeId = ref<string | null>(null)
+const pendingRecalculate = ref<{ employeeId: string, name: string | null, currentAmount: number } | null>(null)
+const recalculateReason = ref('')
+const recalculateReasonValid = computed(() => recalculateReason.value.trim().length > 0)
 
-async function recalculate(employeeId: string) {
+function requestRecalculate(assignee: ResponsibleInfo) {
+  pendingRecalculate.value = {
+    employeeId: assignee.employee_id,
+    name: assignee.name,
+    currentAmount: assignee.commission_amount ?? 0
+  }
+}
+
+function closeRecalculateModal() {
+  if (recalculatingEmployeeId.value) return
+  pendingRecalculate.value = null
+  recalculateReason.value = ''
+}
+
+async function confirmRecalculate() {
+  if (!pendingRecalculate.value || !recalculateReasonValid.value) return
+  const { employeeId, name } = pendingRecalculate.value
   recalculatingEmployeeId.value = employeeId
 
   try {
-    await $fetch(`/api/service-orders/${props.orderId}/generate-commissions`, {
+    const { data } = await $fetch<{
+      data: { recalculationLogEntry: { previous_amount: number, new_amount: number } | null }
+    }>(`/api/service-orders/${props.orderId}/generate-commissions`, {
       method: 'POST',
-      query: { employeeId }
+      body: { employeeId, reason: recalculateReason.value.trim() }
     })
-    toast.add({ title: 'Comissão recalculada com sucesso', color: 'success' })
+
+    const entry = data.recalculationLogEntry
+    toast.add({
+      title: 'Comissão recalculada com sucesso',
+      description: entry
+        ? `${name ?? 'Funcionário'}: ${formatCurrency(entry.previous_amount)} → ${formatCurrency(entry.new_amount)}`
+        : undefined,
+      color: 'success'
+    })
+    pendingRecalculate.value = null
+    recalculateReason.value = ''
     emit('recalculated')
   } catch (error: unknown) {
     const err = error as { data?: { statusMessage?: string } }
@@ -229,7 +260,7 @@ async function recalculate(employeeId: string) {
                 :loading="recalculatingEmployeeId === assignee.employee_id"
                 :disabled="!!recalculatingEmployeeId"
                 square
-                @click="recalculate(assignee.employee_id)"
+                @click="requestRecalculate(assignee)"
               />
             </div>
           </div>
@@ -249,4 +280,40 @@ async function recalculate(employeeId: string) {
       </div>
     </div>
   </UCard>
+
+  <!-- Recalculate confirmation -->
+  <AppConfirmModal
+    :open="!!pendingRecalculate"
+    title="Recalcular comissão"
+    confirm-label="Recalcular"
+    confirm-color="primary"
+    :loading="!!recalculatingEmployeeId"
+    :confirm-disabled="!recalculateReasonValid"
+    @update:open="(value: boolean) => !value && closeRecalculateModal()"
+    @confirm="confirmRecalculate"
+  >
+    <template #description>
+      <div class="space-y-3">
+        <p class="text-sm text-muted">
+          Isso recalcula a comissão de
+          <strong class="text-highlighted">{{ pendingRecalculate?.name ?? 'este funcionário' }}</strong>
+          com base na configuração de comissão atual dele e nos itens desta OS
+          (valor estimado hoje: {{ formatCurrency(pendingRecalculate?.currentAmount ?? 0) }}).
+        </p>
+        <p class="text-sm text-muted">
+          Só é possível recalcular comissões ainda não pagas. Se este
+          funcionário já tiver alguma comissão paga nesta OS, o recálculo será
+          bloqueado.
+        </p>
+        <UFormField label="Motivo do recálculo" required>
+          <UTextarea
+            v-model="recalculateReason"
+            class="w-full"
+            :rows="2"
+            placeholder="Ex.: percentual de comissão do funcionário foi alterado"
+          />
+        </UFormField>
+      </div>
+    </template>
+  </AppConfirmModal>
 </template>
