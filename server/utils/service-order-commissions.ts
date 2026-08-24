@@ -1,5 +1,6 @@
 import { createError } from 'h3'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { computeServiceOrderItemsWithCommissionSnapshots } from './service-order-item-commissions'
 
 type ReleaseServiceOrderCommissionsParams = {
   supabase: SupabaseClient
@@ -220,9 +221,23 @@ export async function releaseServiceOrderCommissions({
   const entitlements = computeEmployeeEntitlements({ order, employeeMap })
   const totalCommission = roundCurrency(entitlements.reduce((sum, entitlement) => sum + entitlement.totalAmount, 0))
 
+  // Items only ever hold a display snapshot of the per-item commission
+  // breakdown (no financial/paid state lives on them), so it's always safe
+  // to refresh it from the current employee configuration here — keeps the
+  // "Itens" section in sync with whatever triggered this recalculation.
+  const itemsSnapshot = computeServiceOrderItemsWithCommissionSnapshots({
+    items: Array.isArray(order.items) ? order.items as Record<string, unknown>[] : [],
+    responsibleEmployees: Array.isArray(order.responsible_employees)
+      ? order.responsible_employees as { employee_id: string }[]
+      : [],
+    employees: Array.from(employeeMap.values()),
+    discount: order.discount,
+    totalTaxesAmount: order.total_taxes_amount
+  })
+
   await supabase
     .from('service_orders')
-    .update({ commission_amount: totalCommission, updated_by: userEmail || null })
+    .update({ items: itemsSnapshot.items, commission_amount: totalCommission, updated_by: userEmail || null })
     .eq('id', orderId)
 
   const targetEntitlements = employeeId
