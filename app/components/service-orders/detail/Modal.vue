@@ -433,10 +433,13 @@ defineExpose({ refreshNfseCard })
 
         <!-- Responsibles -->
         <ServiceOrdersDetailOSResponsiblesCard
+          :order-id="detail.order.id"
           :order="detail.order"
           :responsible-names="detail.responsibleNames"
           :employees="detail.employees"
           :commissions="detail.commissions"
+          :can-update="canUpdate"
+          @recalculated="loadDetail"
         />
 
         <!-- NFS-e -->

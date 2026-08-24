@@ -7,11 +7,17 @@ import {
 import type { CommissionBreakdownLine } from '../CommissionBreakdownPopover.vue'
 
 const props = defineProps<{
+  orderId: string
   order: ServiceOrderDetailFull['order']
   responsibleNames: ServiceOrderDetailFull['responsibleNames']
   employees: ServiceOrderDetailFull['employees']
   commissions: ServiceOrderDetailFull['commissions']
+  canUpdate?: boolean
 }>()
+
+const emit = defineEmits<{ recalculated: [] }>()
+
+const toast = useToast()
 
 type ResponsibleInfo = {
   employee_id: string
@@ -101,6 +107,32 @@ function getResponsibleCommissionNote(assignee: ResponsibleInfo) {
   }
   return null
 }
+
+// ─── Recalculate ───────────────────────────────────────────────────────────────
+
+const recalculatingEmployeeId = ref<string | null>(null)
+
+async function recalculate(employeeId: string) {
+  recalculatingEmployeeId.value = employeeId
+
+  try {
+    await $fetch(`/api/service-orders/${props.orderId}/generate-commissions`, {
+      method: 'POST',
+      query: { employeeId }
+    })
+    toast.add({ title: 'Comissão recalculada com sucesso', color: 'success' })
+    emit('recalculated')
+  } catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string } }
+    toast.add({
+      title: 'Erro ao recalcular comissão',
+      description: err?.data?.statusMessage || 'Tente novamente.',
+      color: 'error'
+    })
+  } finally {
+    recalculatingEmployeeId.value = null
+  }
+}
 </script>
 
 <template>
@@ -189,6 +221,19 @@ function getResponsibleCommissionNote(assignee: ResponsibleInfo) {
               </UTooltip>
             </div>
           </div>
+
+          <UButton
+            v-if="canUpdate && assignee.has_commission"
+            size="xs"
+            color="neutral"
+            variant="soft"
+            icon="i-lucide-refresh-cw"
+            label="Recalcular"
+            :loading="recalculatingEmployeeId === assignee.employee_id"
+            :disabled="!!recalculatingEmployeeId"
+            square
+            @click="recalculate(assignee.employee_id)"
+          />
         </div>
       </div>
 

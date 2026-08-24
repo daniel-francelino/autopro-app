@@ -13,10 +13,17 @@ type ReleaseServiceOrderCommissionsParams = {
   // at once (e.g. creating a plan with several lines already paid) — there
   // isn't one right answer to link to in that case.
   triggeringInstallmentId?: string | null
+  // When set, only this employee's entitlement is created/topped-up/clawed
+  // back — used for the manual "recalculate" action scoped to one employee.
+  // Everyone else's records are left untouched. Throws if the employee
+  // already has a paid commission on this order, since a paid record can
+  // never be adjusted.
+  employeeId?: string | null
 }
 
 type EmployeeWithCommission = {
   id: string
+  name?: string | null
   has_commission?: boolean | null
   commission_type?: string | null
   commission_amount?: number | string | null
@@ -183,7 +190,8 @@ export async function releaseServiceOrderCommissions({
   organizationId,
   orderId,
   userEmail,
-  triggeringInstallmentId
+  triggeringInstallmentId,
+  employeeId
 }: ReleaseServiceOrderCommissionsParams) {
   const warnings: string[] = []
 
@@ -216,6 +224,17 @@ export async function releaseServiceOrderCommissions({
     .from('service_orders')
     .update({ commission_amount: totalCommission, updated_by: userEmail || null })
     .eq('id', orderId)
+
+  const targetEntitlements = employeeId
+    ? entitlements.filter(entitlement => entitlement.employeeId === employeeId)
+    : entitlements
+
+  if (employeeId && targetEntitlements.length === 0) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Este funcionário não possui comissão configurada para os itens desta OS.'
+    })
+  }
 
   if (entitlements.length === 0) {
     return {
@@ -257,9 +276,18 @@ export async function releaseServiceOrderCommissions({
 
   const createdCommissions: unknown[] = []
 
-  for (const entitlement of entitlements) {
-    const released = roundCurrency(Math.min(entitlement.totalAmount, entitlement.totalAmount * receivedRatio))
+  for (const entitlement of targetEntitlements) {
     const existingForEmployee = recordsByEmployee.get(entitlement.employeeId) || []
+
+    if (employeeId && existingForEmployee.some(record => record.status === 'paid')) {
+      const employeeName = employeeMap.get(entitlement.employeeId)?.name || 'este funcionário'
+      throw createError({
+        statusCode: 400,
+        statusMessage: `Não é possível recalcular: ${employeeName} já possui comissão paga nesta OS.`
+      })
+    }
+
+    const released = roundCurrency(Math.min(entitlement.totalAmount, entitlement.totalAmount * receivedRatio))
     const existingSum = roundCurrency(existingForEmployee.reduce((sum, record) => sum + record.amount, 0))
     const delta = roundCurrency(released - existingSum)
 
