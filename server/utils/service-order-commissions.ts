@@ -7,12 +7,17 @@ import {
   type ResolvedCommissionRule
 } from '../../lib/utils/employee-commission-engine'
 import { resolveEmployeeCommissionRulesForEmployees } from './employee-commission-plans'
+import { computeServiceOrderItemsWithCommissionSnapshots } from './service-order-item-commissions'
 
 type ReleaseServiceOrderCommissionsParams = {
   supabase: SupabaseClient
   organizationId: string
   orderId: string
   userEmail?: string | null
+  // Display name of the user performing the call, recorded on the manual
+  // recalculation audit log entry (see employeeId below). Not needed for
+  // the automatic release paths that don't pass employeeId.
+  userName?: string | null
   // The specific installment/receipt that triggered this call, when known
   // (e.g. paying one installment). Recorded on any commission row created
   // by this call so it's traceable which receipt justified it. Left out
@@ -20,6 +25,27 @@ type ReleaseServiceOrderCommissionsParams = {
   // at once (e.g. creating a plan with several lines already paid) — there
   // isn't one right answer to link to in that case.
   triggeringInstallmentId?: string | null
+  // When set, only this employee's entitlement is created/topped-up/clawed
+  // back — used for the manual "recalculate" action scoped to one employee.
+  // Everyone else's records are left untouched. Throws if the employee
+  // already has a paid commission on this order, since a paid record can
+  // never be adjusted. Requires `reason`, and appends an entry to the
+  // order's commission_recalculation_log audit trail on success.
+  employeeId?: string | null
+  // Required alongside employeeId — why the user is recalculating. Stored
+  // verbatim in the audit log entry.
+  reason?: string | null
+}
+
+export type CommissionRecalculationLogEntry = {
+  employee_id: string
+  employee_name: string | null
+  reason: string
+  previous_amount: number
+  new_amount: number
+  recalculated_by_email: string | null
+  recalculated_by_name: string | null
+  recalculated_at: string
 }
 
 type EmployeeEntitlement = {
@@ -208,9 +234,17 @@ export async function releaseServiceOrderCommissions({
   organizationId,
   orderId,
   userEmail,
-  triggeringInstallmentId
+  userName,
+  triggeringInstallmentId,
+  employeeId,
+  reason
 }: ReleaseServiceOrderCommissionsParams) {
   const warnings: string[] = []
+  const trimmedReason = String(reason || '').trim()
+
+  if (employeeId && !trimmedReason) {
+    throw createError({ statusCode: 400, statusMessage: 'Informe o motivo do recálculo.' })
+  }
 
   const { data: order } = await supabase
     .from('service_orders')
@@ -230,12 +264,15 @@ export async function releaseServiceOrderCommissions({
 
   const { data: activeEmployees } = await supabase
     .from('employees')
-    .select('id')
+    .select('id, name')
     .eq('organization_id', organizationId)
     .is('deleted_at', null)
     .in('id', responsibleEmployeeIds)
 
-  const activeEmployeeIds = new Set((activeEmployees || []).map(employee => String(employee.id)))
+  const employeesById = new Map(
+    (activeEmployees || []).map(employee => [String(employee.id), employee as { id: string, name: string | null }])
+  )
+  const activeEmployeeIds = new Set(employeesById.keys())
 
   const referenceDate = toCommissionMonthStart(String(order.entry_date || new Date().toISOString().split('T')[0]))
   const rulesByEmployeeId = await resolveEmployeeCommissionRulesForEmployees(
@@ -248,10 +285,35 @@ export async function releaseServiceOrderCommissions({
   const entitlements = computeEmployeeEntitlements({ order, activeEmployeeIds, rulesByEmployeeId })
   const totalCommission = roundCurrency(entitlements.reduce((sum, entitlement) => sum + entitlement.totalAmount, 0))
 
+  // Items only ever hold a display snapshot of the per-item commission
+  // breakdown (no financial/paid state lives on them), so it's always safe
+  // to refresh it from the current rules here — keeps the "Itens" section in
+  // sync with whatever triggered this recalculation.
+  const itemsSnapshot = computeServiceOrderItemsWithCommissionSnapshots({
+    items: Array.isArray(order.items) ? order.items as Record<string, unknown>[] : [],
+    responsibleEmployees: Array.isArray(order.responsible_employees)
+      ? order.responsible_employees as { employee_id: string }[]
+      : [],
+    discount: order.discount,
+    totalTaxesAmount: order.total_taxes_amount,
+    rulesByEmployeeId
+  })
+
   await supabase
     .from('service_orders')
-    .update({ commission_amount: totalCommission, updated_by: userEmail || null })
+    .update({ items: itemsSnapshot.items, commission_amount: totalCommission, updated_by: userEmail || null })
     .eq('id', orderId)
+
+  const targetEntitlements = employeeId
+    ? entitlements.filter(entitlement => entitlement.employeeId === employeeId)
+    : entitlements
+
+  if (employeeId && targetEntitlements.length === 0) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Este funcionário não possui comissão configurada para os itens desta OS.'
+    })
+  }
 
   if (entitlements.length === 0) {
     return {
@@ -292,10 +354,20 @@ export async function releaseServiceOrderCommissions({
   }
 
   const createdCommissions: unknown[] = []
+  let recalculationLogEntry: CommissionRecalculationLogEntry | null = null
 
-  for (const entitlement of entitlements) {
-    const released = roundCurrency(Math.min(entitlement.totalAmount, entitlement.totalAmount * receivedRatio))
+  for (const entitlement of targetEntitlements) {
     const existingForEmployee = recordsByEmployee.get(entitlement.employeeId) || []
+
+    if (employeeId && existingForEmployee.some(record => record.status === 'paid')) {
+      const employeeName = employeesById.get(entitlement.employeeId)?.name || 'este funcionário'
+      throw createError({
+        statusCode: 400,
+        statusMessage: `Não é possível recalcular: ${employeeName} já possui comissão paga nesta OS.`
+      })
+    }
+
+    const released = roundCurrency(Math.min(entitlement.totalAmount, entitlement.totalAmount * receivedRatio))
     const existingSum = roundCurrency(existingForEmployee.reduce((sum, record) => sum + record.amount, 0))
     const delta = roundCurrency(released - existingSum)
 
@@ -381,12 +453,37 @@ export async function releaseServiceOrderCommissions({
         )
       }
     }
+
+    if (employeeId) {
+      recalculationLogEntry = {
+        employee_id: entitlement.employeeId,
+        employee_name: employeesById.get(entitlement.employeeId)?.name || null,
+        reason: trimmedReason,
+        previous_amount: existingSum,
+        new_amount: released,
+        recalculated_by_email: userEmail || null,
+        recalculated_by_name: userName || null,
+        recalculated_at: new Date().toISOString()
+      }
+    }
+  }
+
+  if (recalculationLogEntry) {
+    const existingLog = Array.isArray(order.commission_recalculation_log)
+      ? order.commission_recalculation_log as CommissionRecalculationLogEntry[]
+      : []
+
+    await supabase
+      .from('service_orders')
+      .update({ commission_recalculation_log: [...existingLog, recalculationLogEntry] })
+      .eq('id', orderId)
   }
 
   return {
     orderId,
     commissions: createdCommissions,
     totalCommission,
-    warnings
+    warnings,
+    recalculationLogEntry
   }
 }
