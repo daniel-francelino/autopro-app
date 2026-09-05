@@ -2,6 +2,7 @@ import type { ServiceOrderCommission, ServiceOrderEmployee, ServiceOrderItem, Se
 import {
   computeEmployeeOrderCommission,
   toCommissionOrderItemInput,
+  resolveEffectiveCommissionRules,
   type ResolvedCommissionRule
 } from '../../lib/utils/employee-commission-engine'
 
@@ -201,6 +202,11 @@ export function computeServiceOrderResponsibleCommission(
  * the Step 8 cutover was removed along with those columns; see
  * docs/finance/commissions-step8-engine-cutover.md §6 for the fallback this
  * replaces.
+ *
+ * Also resolves any active manual commission override
+ * (docs/finance/commissions-manual-override.md) from `order.commission_manual_adjustments_log`
+ * before computing — an employee with a standing override on this order
+ * sees that rate here too, not just after the next server-side release.
  */
 export function computeServiceOrderCommissionBreakdown(
   order: ServiceOrderRaw,
@@ -212,6 +218,10 @@ export function computeServiceOrderCommissionBreakdown(
   const totalTaxesAmount = toNumber(order.total_taxes_amount)
   const discountAmount = toNumber(order.discount)
   const responsibleEmployees = order.responsible_employees ?? []
+  const effectiveRulesByEmployeeId = resolveEffectiveCommissionRules(
+    rulesByEmployeeId,
+    order.commission_manual_adjustments_log ?? []
+  )
 
   items.forEach((_, index) => {
     byItemIndex.set(index, { total: 0, commissions: [] })
@@ -221,7 +231,7 @@ export function computeServiceOrderCommissionBreakdown(
     const employeeId = responsible.employee_id
     if (!employeeId) continue
 
-    const rules = rulesByEmployeeId.get(employeeId) ?? []
+    const rules = effectiveRulesByEmployeeId.get(employeeId) ?? []
     if (rules.length === 0) {
       byEmployeeId.set(employeeId, { value: 0, hasMatchingItems: true })
       continue

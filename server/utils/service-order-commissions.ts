@@ -4,10 +4,19 @@ import {
   computeEmployeeOrderCommission,
   toCommissionOrderItemInput,
   toCommissionMonthStart,
-  type ResolvedCommissionRule
+  resolveEffectiveCommissionRules,
+  getActiveCommissionOverride,
+  buildOverrideRule,
+  type ResolvedCommissionRule,
+  type CommissionManualAdjustmentLogEntry,
+  type CommissionOverrideAction,
+  type CommissionRuleType,
+  type CommissionRuleBase
 } from '../../lib/utils/employee-commission-engine'
 import { resolveEmployeeCommissionRulesForEmployees } from './employee-commission-plans'
 import { computeServiceOrderItemsWithCommissionSnapshots } from './service-order-item-commissions'
+
+export type { CommissionManualAdjustmentLogEntry }
 
 type ReleaseServiceOrderCommissionsParams = {
   supabase: SupabaseClient
@@ -30,22 +39,24 @@ type ReleaseServiceOrderCommissionsParams = {
   // Everyone else's records are left untouched. Throws if the employee
   // already has a paid commission on this order, since a paid record can
   // never be adjusted. Requires `reason`, and appends an entry to the
-  // order's commission_recalculation_log audit trail on success.
+  // order's commission_manual_adjustments_log audit trail on success.
   employeeId?: string | null
-  // Required alongside employeeId — why the user is recalculating. Stored
-  // verbatim in the audit log entry.
+  // Required alongside employeeId — why the user is recalculating (or
+  // applying/removing an override, see below). Stored verbatim in the audit
+  // log entry.
   reason?: string | null
-}
-
-export type CommissionRecalculationLogEntry = {
-  employee_id: string
-  employee_name: string | null
-  reason: string
-  previous_amount: number
-  new_amount: number
-  recalculated_by_email: string | null
-  recalculated_by_name: string | null
-  recalculated_at: string
+  // Applies or removes a one-off commission rate override for `employeeId`
+  // on this order only (docs/finance/commissions-manual-override.md) —
+  // requires `employeeId` and `reason`. 'apply' also requires
+  // overrideCommissionType/overrideCommissionAmount(/overrideCommissionBase
+  // for percentage); 'remove' throws if this employee has no active
+  // override on this order. Either way, this same call both recomputes the
+  // entitlement under the new rules AND records the change — there's no
+  // separate "just log it" step.
+  overrideAction?: CommissionOverrideAction | null
+  overrideCommissionType?: CommissionRuleType | null
+  overrideCommissionAmount?: number | null
+  overrideCommissionBase?: CommissionRuleBase | null
 }
 
 type EmployeeEntitlement = {
@@ -237,13 +248,37 @@ export async function releaseServiceOrderCommissions({
   userName,
   triggeringInstallmentId,
   employeeId,
-  reason
+  reason,
+  overrideAction,
+  overrideCommissionType,
+  overrideCommissionAmount,
+  overrideCommissionBase
 }: ReleaseServiceOrderCommissionsParams) {
   const warnings: string[] = []
   const trimmedReason = String(reason || '').trim()
 
   if (employeeId && !trimmedReason) {
     throw createError({ statusCode: 400, statusMessage: 'Informe o motivo do recálculo.' })
+  }
+
+  if (overrideAction && !employeeId) {
+    throw createError({ statusCode: 400, statusMessage: 'employeeId é obrigatório para aplicar ou remover uma comissão manual.' })
+  }
+
+  if (overrideAction === 'apply') {
+    if (overrideCommissionType !== 'percentage' && overrideCommissionType !== 'fixed_amount') {
+      throw createError({ statusCode: 400, statusMessage: 'Tipo de comissão inválido.' })
+    }
+    const amount = Number(overrideCommissionAmount)
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw createError({ statusCode: 400, statusMessage: 'O valor da comissão deve ser maior que zero.' })
+    }
+    if (overrideCommissionType === 'percentage' && amount > 100) {
+      throw createError({ statusCode: 400, statusMessage: 'O percentual de comissão não pode ser maior que 100.' })
+    }
+    if (overrideCommissionType === 'percentage' && !overrideCommissionBase) {
+      throw createError({ statusCode: 400, statusMessage: 'Informe a base (faturamento ou lucro) para uma comissão percentual.' })
+    }
   }
 
   const { data: order } = await supabase
@@ -282,7 +317,40 @@ export async function releaseServiceOrderCommissions({
     referenceDate
   )
 
-  const entitlements = computeEmployeeEntitlements({ order, activeEmployeeIds, rulesByEmployeeId })
+  // Manual overrides (docs/finance/commissions-manual-override.md) live only
+  // in this log — there's no separate "current override" column. Every
+  // release call (not just a manual apply/remove) must resolve through it,
+  // so a standing override keeps applying to ordinary payment-triggered
+  // releases too, until it's explicitly removed.
+  const existingLog = Array.isArray(order.commission_manual_adjustments_log)
+    ? order.commission_manual_adjustments_log as CommissionManualAdjustmentLogEntry[]
+    : []
+
+  let effectiveRulesByEmployeeId = resolveEffectiveCommissionRules(rulesByEmployeeId, existingLog)
+
+  if (overrideAction && employeeId) {
+    effectiveRulesByEmployeeId = new Map(effectiveRulesByEmployeeId)
+
+    if (overrideAction === 'apply') {
+      effectiveRulesByEmployeeId.set(employeeId, [buildOverrideRule({
+        employeeId,
+        commissionType: overrideCommissionType!,
+        commissionAmount: Number(overrideCommissionAmount),
+        commissionBase: overrideCommissionType === 'percentage' ? (overrideCommissionBase ?? null) : null
+      })])
+    } else {
+      if (!getActiveCommissionOverride(existingLog, employeeId)) {
+        throw createError({
+          statusCode: 400,
+          statusMessage: 'Este funcionário não tem uma comissão manual ativa nesta OS para remover.'
+        })
+      }
+      // Revert to the standard plan — ignore whatever override was active.
+      effectiveRulesByEmployeeId.set(employeeId, rulesByEmployeeId.get(employeeId) ?? [])
+    }
+  }
+
+  const entitlements = computeEmployeeEntitlements({ order, activeEmployeeIds, rulesByEmployeeId: effectiveRulesByEmployeeId })
   const totalCommission = roundCurrency(entitlements.reduce((sum, entitlement) => sum + entitlement.totalAmount, 0))
 
   // Items only ever hold a display snapshot of the per-item commission
@@ -296,7 +364,7 @@ export async function releaseServiceOrderCommissions({
       : [],
     discount: order.discount,
     totalTaxesAmount: order.total_taxes_amount,
-    rulesByEmployeeId
+    rulesByEmployeeId: effectiveRulesByEmployeeId
   })
 
   await supabase
@@ -354,7 +422,7 @@ export async function releaseServiceOrderCommissions({
   }
 
   const createdCommissions: unknown[] = []
-  let recalculationLogEntry: CommissionRecalculationLogEntry | null = null
+  let recalculationLogEntry: CommissionManualAdjustmentLogEntry | null = null
 
   for (const entitlement of targetEntitlements) {
     const existingForEmployee = recordsByEmployee.get(entitlement.employeeId) || []
@@ -463,19 +531,25 @@ export async function releaseServiceOrderCommissions({
         new_amount: released,
         recalculated_by_email: userEmail || null,
         recalculated_by_name: userName || null,
-        recalculated_at: new Date().toISOString()
+        recalculated_at: new Date().toISOString(),
+        ...(overrideAction
+          ? {
+              override_action: overrideAction,
+              override_commission_type: overrideAction === 'apply' ? overrideCommissionType! : null,
+              override_commission_amount: overrideAction === 'apply' ? Number(overrideCommissionAmount) : null,
+              override_commission_base: overrideAction === 'apply'
+                ? (overrideCommissionType === 'percentage' ? (overrideCommissionBase ?? null) : null)
+                : null
+            }
+          : {})
       }
     }
   }
 
   if (recalculationLogEntry) {
-    const existingLog = Array.isArray(order.commission_recalculation_log)
-      ? order.commission_recalculation_log as CommissionRecalculationLogEntry[]
-      : []
-
     await supabase
       .from('service_orders')
-      .update({ commission_recalculation_log: [...existingLog, recalculationLogEntry] })
+      .update({ commission_manual_adjustments_log: [...existingLog, recalculationLogEntry] })
       .eq('id', orderId)
   }
 
