@@ -16,7 +16,15 @@ function formatCurrency(v: number | string) {
 const netSales = computed(() => props.summary?.netSales ?? 0)
 
 const stats = computed(() => [
-  { label: 'Venda bruta', value: formatCurrency(props.summary?.grossSales ?? 0), icon: 'i-lucide-banknote', color: 'text-primary', bg: 'bg-primary/10', description: 'itens vendidos' },
+  {
+    label: 'Venda bruta',
+    value: formatCurrency(props.summary?.grossSales ?? 0),
+    icon: 'i-lucide-banknote',
+    color: 'text-primary',
+    bg: 'bg-primary/10',
+    description: 'itens vendidos',
+    tooltip: 'Soma do valor dos itens vendidos em que este funcionário tem comissão, no período selecionado — igual ao relatório de Itens Vendidos, olhando item a item em vez da OS inteira.'
+  },
   {
     label: 'Despesas',
     value: formatCurrency(props.summary?.osExpenses ?? 0),
@@ -24,7 +32,7 @@ const stats = computed(() => [
     color: 'text-error',
     bg: 'bg-error/10',
     description: 'custo de peças',
-    tooltip: 'Soma do custo das peças e produtos vendidos por este funcionário no período selecionado. Não inclui despesas gerais da oficina (aluguel, contas, etc.).'
+    tooltip: 'Soma do custo das peças desses mesmos itens (em que este funcionário tem comissão) no período selecionado. Não inclui despesas gerais da oficina (aluguel, contas, etc.).'
   },
   {
     label: 'Venda líquida',
@@ -33,7 +41,7 @@ const stats = computed(() => [
     color: netSales.value >= 0 ? 'text-success' : 'text-error',
     bg: netSales.value >= 0 ? 'bg-success/10' : 'bg-error/10',
     description: 'bruta − despesas',
-    tooltip: 'Venda bruta menos as despesas de peças dos itens em que este funcionário tem comissão. A comissão em si fica na aba "Comissões".'
+    tooltip: 'Venda bruta menos as despesas de peças. Não desconta a comissão deste funcionário — ela fica na aba "Comissões".'
   }
 ])
 </script>
