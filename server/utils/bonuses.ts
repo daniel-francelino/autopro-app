@@ -57,6 +57,18 @@ export interface BonusGenerationRecord {
   created_at?: string
 }
 
+interface ServiceOrderItemCommissionForBonus {
+  employee_id?: string | null
+}
+
+interface ServiceOrderItemForBonus {
+  quantity?: number | string | null
+  total_amount?: number | string | null
+  unit_price?: number | string | null
+  cost_amount?: number | string | null
+  commissions?: ServiceOrderItemCommissionForBonus[] | null
+}
+
 interface ServiceOrderForBonus {
   id?: string | null
   status?: string | null
@@ -65,6 +77,7 @@ interface ServiceOrderForBonus {
   entry_date?: string | null
   total_amount?: number | string | null
   total_cost_amount?: number | string | null
+  items?: ServiceOrderItemForBonus[] | null
 }
 
 export interface BonusCommissionRecord {
@@ -132,6 +145,41 @@ function isOrderEligibleForBonus(order: ServiceOrderForBonus): boolean {
 }
 
 /**
+ * 'revenue_minus_parts' ("Faturamento - peças"), unlike 'profit', is meant
+ * to be precise about *whose* revenue/parts-cost counts: per item, using the
+ * same per-employee attribution as the Sales Items report
+ * (server/api/reports/sales-items.get.ts) — an item counts for this employee
+ * only if they're in its item.commissions[] (the per-item breakdown snapshot
+ * written by service-order-item-commissions.ts), not just because they're
+ * listed as a responsible on the order as a whole. Orders with no per-item
+ * commission breakdown (pre commission-engine-cutover, or edge cases where
+ * items is empty) fall back to counting every item, since there's no
+ * per-item attribution to read.
+ */
+function sumItemsRevenueMinusParts(order: ServiceOrderForBonus, employeeId: string): number {
+  const items = Array.isArray(order?.items) ? order.items : []
+
+  return items.reduce((sum, item) => {
+    const itemResponsibleIds = Array.isArray(item?.commissions)
+      ? Array.from(new Set(
+          item.commissions
+            .map(commission => String(commission?.employee_id || ''))
+            .filter(Boolean)
+        ))
+      : []
+    const isItemResponsible = itemResponsibleIds.length > 0
+      ? itemResponsibleIds.includes(employeeId)
+      : true
+    if (!isItemResponsible) return sum
+
+    const quantity = toNumber(item?.quantity, 1)
+    const revenue = toNumber(item?.total_amount, 0) || (toNumber(item?.unit_price, 0) * quantity)
+    const cost = toNumber(item?.cost_amount, 0) * quantity
+    return sum + (revenue - cost)
+  }, 0)
+}
+
+/**
  * Sums this employee's gross revenue (or net profit) from orders they're
  * responsible for, entered within the given month — the "X" in the bonus
  * progress "X/goal". Operates on an already-fetched orders array so callers
@@ -162,7 +210,13 @@ export function sumAchievedAmount(
       )
       .reduce((recordSum, record) => recordSum + toNumber(record?.amount, 0), 0)
 
-    if (commissionBase === 'profit' || commissionBase === 'revenue_minus_parts') {
+    if (commissionBase === 'revenue_minus_parts') {
+      const items = Array.isArray(order?.items) ? order.items : []
+      if (items.length > 0) return sum + sumItemsRevenueMinusParts(order, employeeId)
+      return sum + (gross - partsCost)
+    }
+
+    if (commissionBase === 'profit') {
       return sum + (gross - partsCost)
     }
 
@@ -182,7 +236,7 @@ export async function fetchOrdersForBonusProgress(
   return fetchAllOrganizationRows<ServiceOrderForBonus>(supabase, {
     table: 'service_orders',
     organizationId,
-    columns: 'id, status, employee_responsible_id, responsible_employees, entry_date, total_amount, total_cost_amount',
+    columns: 'id, status, employee_responsible_id, responsible_employees, entry_date, total_amount, total_cost_amount, items',
     nullColumns: ['deleted_at']
   })
 }

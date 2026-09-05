@@ -42,14 +42,14 @@ const commissionBaseOptions = [
   {
     label: 'Lucro (receita - custos)',
     value: 'profit',
-    description: 'Soma o valor total das OS concluídas ou faturadas, descontando os custos das peças.',
-    formula: 'Faturamento - custos das peças'
+    description: 'Soma o valor total das OS concluídas ou faturadas, descontando o custo total de peças da OS inteira (cálculo simples, por OS).',
+    formula: 'Faturamento da OS - custo de peças da OS'
   },
   {
     label: 'Faturamento menos peças',
     value: 'revenue_minus_parts',
-    description: 'Soma o faturamento líquido de peças das OS concluídas ou faturadas.',
-    formula: 'Faturamento - custos das peças'
+    description: 'Igual ao relatório de itens vendidos: soma item a item apenas os itens em que este funcionário tem comissão, descontando o custo de cada peça.',
+    formula: 'Soma, por item comissionado deste funcionário: valor do item - custo da peça'
   },
   {
     label: 'Lucro líquido do funcionário',
