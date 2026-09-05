@@ -152,6 +152,18 @@ export type ServiceOrderItemCommission = {
   commission_percentage: number | null
 }
 
+/** e.g. "10% • Faturamento" or "Valor fixo • Lucro" — the rule that generated one commission line, for display next to its amount. */
+export function formatCommissionRuleSublabel(commission: {
+  commission_type: string | null
+  commission_base: string | null
+  commission_percentage: number | null
+}) {
+  const baseLabel = commission.commission_base === 'profit' ? 'Lucro' : 'Faturamento'
+  return commission.commission_type === 'percentage'
+    ? `${commission.commission_percentage}% • ${baseLabel}`
+    : `Valor fixo • ${baseLabel}`
+}
+
 export type ServiceOrderItemCommissionEntry = {
   total: number
   commissions: ServiceOrderItemCommission[]

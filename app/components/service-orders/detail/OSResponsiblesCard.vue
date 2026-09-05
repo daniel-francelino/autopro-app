@@ -2,6 +2,7 @@
 import type { ServiceOrderDetailFull } from '~/types/service-orders'
 import {
   computeServiceOrderCommissionBreakdown,
+  formatCommissionRuleSublabel,
   formatCurrency
 } from '~/utils/service-orders'
 import type { CommissionBreakdownLine } from '../CommissionBreakdownPopover.vue'
@@ -50,6 +51,7 @@ const responsiblesInfo = computed<ResponsibleInfo[]>(() => {
       if (!item) continue
       item_breakdown.push({
         label: item.description || item.name || `Item ${itemIndex + 1}`,
+        sublabel: formatCommissionRuleSublabel(c),
         amount: c.amount
       })
     }

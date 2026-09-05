@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
   formatCurrency,
+  formatCommissionRuleSublabel,
   PAYMENT_STATUS_COLOR,
   PAYMENT_STATUS_ICON,
   PAYMENT_STATUS_LABEL,
@@ -488,17 +489,9 @@ const itemCommissionDisplayDetailMap = computed(() => {
         .filter(c => c.amount > 0)
         .map((c) => {
           const emp = getEmployeeById(c.employee_id)
-          const typeSublabel
-            = c.commission_type === 'percentage'
-              ? `${c.commission_percentage}% • ${
-                c.commission_base === 'profit' ? 'Lucro' : 'Faturamento'
-              }`
-              : `Valor fixo • ${
-                c.commission_base === 'profit' ? 'Lucro' : 'Faturamento'
-              }`
           return {
             label: emp?.name ?? 'Funcionário',
-            sublabel: typeSublabel,
+            sublabel: formatCommissionRuleSublabel(c),
             amount: c.amount
           }
         })
@@ -608,9 +601,13 @@ const employeeCommissionsDisplay = computed<
           commission => commission.employee_id === employeeId
         )
         if (!c || c.amount <= 0) return null
-        return { label: normalizedItem.description || normalizedItem.name, amount: c.amount }
+        return {
+          label: normalizedItem.description || normalizedItem.name,
+          sublabel: formatCommissionRuleSublabel(c),
+          amount: c.amount
+        }
       })
-      .filter(Boolean) as { label: string, amount: number }[]
+      .filter(Boolean) as { label: string, sublabel: string, amount: number }[]
 
     result[employeeId] = {
       commissionLabel: formatCurrency(commissionValue),
