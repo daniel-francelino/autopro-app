@@ -359,6 +359,63 @@ async function confirmRemoveOverride() {
     overrideSubmittingEmployeeId.value = null
   }
 }
+
+// ─── Recalculate ───────────────────────────────────────────────────────────────
+
+const recalculatingEmployeeId = ref<string | null>(null)
+const pendingRecalculate = ref<{ employeeId: string, name: string | null, currentAmount: number } | null>(null)
+const recalculateReason = ref('')
+const recalculateReasonValid = computed(() => recalculateReason.value.trim().length > 0)
+
+function requestRecalculate(assignee: ResponsibleInfo) {
+  pendingRecalculate.value = {
+    employeeId: assignee.employee_id,
+    name: assignee.name,
+    currentAmount: assignee.commission_amount ?? 0
+  }
+}
+
+function closeRecalculateModal() {
+  if (recalculatingEmployeeId.value) return
+  pendingRecalculate.value = null
+  recalculateReason.value = ''
+}
+
+async function confirmRecalculate() {
+  if (!pendingRecalculate.value || !recalculateReasonValid.value) return
+  const { employeeId, name } = pendingRecalculate.value
+  recalculatingEmployeeId.value = employeeId
+
+  try {
+    const { data } = await $fetch<{
+      data: { recalculationLogEntry: { previous_amount: number, new_amount: number } | null }
+    }>(`/api/service-orders/${props.orderId}/generate-commissions`, {
+      method: 'POST',
+      body: { employeeId, reason: recalculateReason.value.trim() }
+    })
+
+    const entry = data.recalculationLogEntry
+    toast.add({
+      title: 'Comissão recalculada com sucesso',
+      description: entry
+        ? `${name ?? 'Funcionário'}: ${formatCurrency(entry.previous_amount)} → ${formatCurrency(entry.new_amount)}`
+        : undefined,
+      color: 'success'
+    })
+    pendingRecalculate.value = null
+    recalculateReason.value = ''
+    emit('recalculated')
+  } catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string } }
+    toast.add({
+      title: 'Erro ao recalcular comissão',
+      description: err?.data?.statusMessage || 'Tente novamente.',
+      color: 'error'
+    })
+  } finally {
+    recalculatingEmployeeId.value = null
+  }
+}
 </script>
 
 <template>
