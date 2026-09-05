@@ -19,6 +19,16 @@ const emit = defineEmits<{ recalculated: [] }>()
 
 const toast = useToast()
 
+const requestFetch = useRequestFetch()
+const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
+
+const { data: categoriesData } = await useAsyncData(
+  'product-categories-lookup',
+  () => requestFetch<{ items: Array<{ id: string, name: string }> }>('/api/product-categories', { headers: requestHeaders }),
+  { default: () => ({ items: [] }) }
+)
+const categoryNameById = computed(() => new Map(categoriesData.value?.items.map(c => [c.id, c.name]) ?? []))
+
 type ResponsibleInfo = {
   employee_id: string
   name: string | null
@@ -83,7 +93,6 @@ function getResponsibleCommissionNote(assignee: ResponsibleInfo) {
   if (assignee.has_commission_plan) {
     return {
       label: 'Por regra/categoria',
-      tooltip: 'Comissão configurada por regra e categoria em Financeiro > Comissões — o valor varia por item, veja o detalhamento em "Comissão".',
       color: 'primary' as const,
       icon: 'i-lucide-list-checks'
     }
@@ -91,7 +100,6 @@ function getResponsibleCommissionNote(assignee: ResponsibleInfo) {
 
   return {
     label: 'Sem comissão',
-    tooltip: null,
     color: 'neutral' as const,
     icon: 'i-lucide-circle-off'
   }
@@ -211,10 +219,10 @@ async function confirmRecalculate() {
                   class="cursor-default"
                 />
               </ServiceOrdersCommissionBreakdownPopover>
-              <UTooltip
-                v-if="getResponsibleCommissionNote(assignee).tooltip"
-                :text="getResponsibleCommissionNote(assignee).tooltip ?? undefined"
-                :ui="{ content: 'h-auto max-w-64 py-1.5', text: 'whitespace-normal' }"
+              <ServiceOrdersCommissionRulesPopover
+                v-if="assignee.has_commission_plan"
+                :rules="rulesByEmployeeId.get(assignee.employee_id) ?? []"
+                :category-name-by-id="categoryNameById"
               >
                 <UBadge
                   :color="getResponsibleCommissionNote(assignee).color"
@@ -222,7 +230,7 @@ async function confirmRecalculate() {
                   :leading-icon="getResponsibleCommissionNote(assignee).icon"
                   :label="getResponsibleCommissionNote(assignee).label"
                 />
-              </UTooltip>
+              </ServiceOrdersCommissionRulesPopover>
               <UBadge
                 v-else
                 :color="getResponsibleCommissionNote(assignee).color"

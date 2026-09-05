@@ -336,3 +336,115 @@ export function toCommissionOrderItemInput(item: RawCommissionOrderItem): Commis
     quantity: getOrderItemQuantity(item)
   }
 }
+
+// ─── Manual commission override (docs/finance/commissions-manual-override.md) ──
+// Lets a user apply, for one employee on one specific order, a commission
+// rate/value different from their standard plan (e.g. "15% instead of the
+// usual 9% because they stayed late on this job") — scoped to that order
+// only, with a required reason. No new table/column for "current state": the
+// order's commission_manual_adjustments_log (jsonb, also used by the plain
+// "Recalcular" action) is the only source of truth — the active override for
+// an employee is whatever their LAST log entry with an override_action says,
+// scanning from the end. An 'apply' entry is the active override; a 'remove'
+// entry (or no override-tagged entry at all) means none is active. Reapplying
+// with a different value is just another 'apply' entry — older ones stay in
+// the array for history, never rewritten.
+
+export type CommissionOverrideAction = 'apply' | 'remove'
+
+/**
+ * One entry in service_orders.commission_manual_adjustments_log. Covers two
+ * kinds of event sharing the same shape: a plain recalculation (no
+ * override_* fields) and an override apply/edit/remove (override_action
+ * set). previous_amount/new_amount are always the released total before/
+ * after this entry, regardless of which kind it is.
+ */
+export interface CommissionManualAdjustmentLogEntry {
+  employee_id: string
+  employee_name: string | null
+  reason: string
+  previous_amount: number
+  new_amount: number
+  recalculated_by_email: string | null
+  recalculated_by_name: string | null
+  recalculated_at: string
+  override_action?: CommissionOverrideAction
+  /** null when override_action = 'remove' (there's no rate to describe). */
+  override_commission_type?: CommissionRuleType | null
+  override_commission_amount?: number | null
+  override_commission_base?: CommissionRuleBase | null
+}
+
+export interface CommissionOverrideState {
+  employeeId: string
+  commissionType: CommissionRuleType
+  commissionAmount: number
+  commissionBase: CommissionRuleBase | null
+}
+
+/** The active override for one employee on this order, or null if none. */
+export function getActiveCommissionOverride(
+  log: CommissionManualAdjustmentLogEntry[],
+  employeeId: string
+): CommissionOverrideState | null {
+  for (let i = log.length - 1; i >= 0; i--) {
+    const entry = log[i]!
+    if (entry.employee_id !== employeeId || !entry.override_action) continue
+
+    if (entry.override_action === 'remove') return null
+
+    if (entry.override_commission_type && entry.override_commission_amount != null) {
+      return {
+        employeeId,
+        commissionType: entry.override_commission_type,
+        commissionAmount: entry.override_commission_amount,
+        commissionBase: entry.override_commission_base ?? null
+      }
+    }
+    return null
+  }
+  return null
+}
+
+/**
+ * A one-off synthetic rule representing an employee's OS-level override —
+ * is_default true, no category_ids, so it matches every eligible item
+ * regardless of category (mirrors a plan with just a catch-all rule). Lets
+ * the override flow through computeEmployeeOrderCommission()/
+ * computeCommissionAmount() unchanged, same as any resolved plan rule would.
+ */
+export function buildOverrideRule(override: CommissionOverrideState): ResolvedCommissionRule {
+  return {
+    id: `override:${override.employeeId}`,
+    version_id: 'override',
+    plan_id: 'override',
+    name: 'Comissão manual (OS)',
+    commission_type: override.commissionType,
+    commission_amount: override.commissionAmount,
+    commission_base: override.commissionBase,
+    is_default: true,
+    sort_order: 0,
+    category_ids: []
+  }
+}
+
+/**
+ * The rules to actually use for each employee on this order: their active
+ * override, if any, otherwise their normal resolved plan rules unchanged.
+ * Callers use this in place of the raw rulesByEmployeeId map wherever they
+ * compute commission for an existing order (release, item snapshot sync,
+ * live preview) — never for a brand-new order that has no log yet.
+ */
+export function resolveEffectiveCommissionRules(
+  rulesByEmployeeId: Map<string, ResolvedCommissionRule[]>,
+  log: CommissionManualAdjustmentLogEntry[]
+): Map<string, ResolvedCommissionRule[]> {
+  if (log.length === 0) return rulesByEmployeeId
+
+  const result = new Map(rulesByEmployeeId)
+  for (const employeeId of rulesByEmployeeId.keys()) {
+    const override = getActiveCommissionOverride(log, employeeId)
+    if (override) result.set(employeeId, [buildOverrideRule(override)])
+  }
+  return result
+}
