@@ -44,7 +44,7 @@ function formatRuleCategories(rule: ResolvedCommissionRule) {
         <div class="mb-2.5 flex items-center gap-1.5">
           <UIcon name="i-lucide-list-checks" class="size-3.5 shrink-0 text-primary" />
           <p class="text-xs font-semibold uppercase tracking-wide text-muted">
-            Regras de comissão do funcionário
+            Regras do funcionário
           </p>
         </div>
 
@@ -61,8 +61,8 @@ function formatRuleCategories(rule: ResolvedCommissionRule) {
             :key="rule.id"
             class="border-l-2 border-primary/40 pl-2.5"
           >
-            <p class="text-sm font-medium text-highlighted">
-              {{ rule.name || (rule.is_default ? 'Regra padrão' : 'Regra') }}
+            <p v-if="rule.is_default" class="text-sm font-medium text-highlighted">
+              Regra padrão
             </p>
             <p class="mt-0.5 text-xs text-muted">
               {{ formatRuleRate(rule) }}
@@ -71,12 +71,6 @@ function formatRuleCategories(rule: ResolvedCommissionRule) {
               {{ formatRuleCategories(rule) }}
             </p>
           </div>
-        </div>
-
-        <div class="mt-3 border-t border-default pt-2">
-          <p class="text-xs text-dimmed">
-            Configurado em Financeiro > Comissões.
-          </p>
         </div>
       </div>
     </template>

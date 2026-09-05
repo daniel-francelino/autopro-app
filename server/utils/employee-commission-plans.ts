@@ -161,6 +161,33 @@ export async function fetchCommissionRulesForPlan(
 }
 
 /**
+ * Rules of ONE specific plan, effective for referenceDate — same version
+ * resolution as resolveEmployeeCommissionRules() below, but given the
+ * plan_id directly instead of going through
+ * employee_commission_plan_assignments. Used by the manual commission
+ * override (docs/finance/commissions-manual-override.md): the plan applied
+ * as an override doesn't need to be assigned to the employee it's applied
+ * to. Returns [] if the plan doesn't exist, isn't active, or has no version
+ * effective yet by referenceDate.
+ */
+export async function resolveCommissionPlanRules(
+  supabase: SupabaseClient,
+  organizationId: string,
+  planId: string,
+  referenceDate: string = currentCommissionMonthStart()
+): Promise<ResolvedCommissionRule[]> {
+  const plan = await fetchCommissionPlan(supabase, organizationId, planId)
+  if (!plan || !plan.active) return []
+
+  const versions = await fetchCommissionRuleVersions(supabase, planId)
+  const effectiveVersion = resolveEffectiveCommissionVersion(versions, referenceDate)
+  if (!effectiveVersion) return []
+
+  const rules = await fetchCommissionRulesForVersion(supabase, effectiveVersion.id)
+  return rules.map(rule => ({ ...rule, plan_id: planId }))
+}
+
+/**
  * Every plan currently assigned+active to an employee, together with the
  * rules of each plan's version effective for referenceDate. This is the
  * "motor consolidado" entry point Step 6 asks for, and the primary lookup

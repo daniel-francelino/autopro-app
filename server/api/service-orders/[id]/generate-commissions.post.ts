@@ -16,11 +16,13 @@ import { releaseServiceOrderCommissions } from '../../../utils/service-order-com
  * appended (with who/when) to the order's commission_manual_adjustments_log.
  *
  * An optional `override` alongside `employeeId`/`reason` applies or removes
- * a one-off commission rate for that employee on this order only (docs/
- * finance/commissions-manual-override.md) — e.g. 15% instead of their usual
- * 9%, just for this OS. It reuses the same recalculation path: the override
- * takes effect immediately in this same call (the entitlement is
- * recomputed under it) and is recorded in the same audit log entry.
+ * a manual commission-plan override for that employee on this order only
+ * (docs/finance/commissions-manual-override.md) — e.g. use "Comissão
+ * mecânicos — plantão" instead of their usual "Comissão mecânicos — padrão",
+ * just for this OS. The override plan doesn't need to be assigned to the
+ * employee. It reuses the same recalculation path: the override takes
+ * effect immediately in this same call (the entitlement is recomputed under
+ * the override plan's rules) and is recorded in the same audit log entry.
  */
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
@@ -33,9 +35,7 @@ export default defineEventHandler(async (event) => {
     reason?: unknown
     override?: {
       action?: unknown
-      commissionType?: unknown
-      commissionAmount?: unknown
-      commissionBase?: unknown
+      commissionPlanId?: unknown
     }
   }
   const employeeId = typeof body.employeeId === 'string' && body.employeeId.trim()
@@ -46,14 +46,8 @@ export default defineEventHandler(async (event) => {
   const overrideAction = body.override?.action === 'apply' || body.override?.action === 'remove'
     ? body.override.action
     : null
-  const overrideCommissionType = body.override?.commissionType === 'percentage' || body.override?.commissionType === 'fixed_amount'
-    ? body.override.commissionType
-    : null
-  const overrideCommissionAmount = typeof body.override?.commissionAmount === 'number'
-    ? body.override.commissionAmount
-    : null
-  const overrideCommissionBase = body.override?.commissionBase === 'revenue' || body.override?.commissionBase === 'profit'
-    ? body.override.commissionBase
+  const overrideCommissionPlanId = typeof body.override?.commissionPlanId === 'string' && body.override.commissionPlanId.trim()
+    ? body.override.commissionPlanId.trim()
     : null
 
   if (!orderId) {
@@ -69,9 +63,7 @@ export default defineEventHandler(async (event) => {
     employeeId,
     reason,
     overrideAction,
-    overrideCommissionType,
-    overrideCommissionAmount,
-    overrideCommissionBase
+    overrideCommissionPlanId
   })
 
   return {

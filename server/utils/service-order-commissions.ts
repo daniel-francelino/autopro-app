@@ -6,14 +6,16 @@ import {
   toCommissionMonthStart,
   resolveEffectiveCommissionRules,
   getActiveCommissionOverride,
-  buildOverrideRule,
+  getActiveOverridePlanIds,
   type ResolvedCommissionRule,
   type CommissionManualAdjustmentLogEntry,
-  type CommissionOverrideAction,
-  type CommissionRuleType,
-  type CommissionRuleBase
+  type CommissionOverrideAction
 } from '../../lib/utils/employee-commission-engine'
-import { resolveEmployeeCommissionRulesForEmployees } from './employee-commission-plans'
+import {
+  resolveEmployeeCommissionRulesForEmployees,
+  resolveCommissionPlanRules,
+  fetchCommissionPlan
+} from './employee-commission-plans'
 import { computeServiceOrderItemsWithCommissionSnapshots } from './service-order-item-commissions'
 
 export type { CommissionManualAdjustmentLogEntry }
@@ -45,18 +47,16 @@ type ReleaseServiceOrderCommissionsParams = {
   // applying/removing an override, see below). Stored verbatim in the audit
   // log entry.
   reason?: string | null
-  // Applies or removes a one-off commission rate override for `employeeId`
+  // Applies or removes a manual commission-plan override for `employeeId`
   // on this order only (docs/finance/commissions-manual-override.md) —
   // requires `employeeId` and `reason`. 'apply' also requires
-  // overrideCommissionType/overrideCommissionAmount(/overrideCommissionBase
-  // for percentage); 'remove' throws if this employee has no active
-  // override on this order. Either way, this same call both recomputes the
-  // entitlement under the new rules AND records the change — there's no
-  // separate "just log it" step.
+  // overrideCommissionPlanId (any active plan in the org — doesn't need to
+  // be assigned to this employee); 'remove' throws if this employee has no
+  // active override on this order. Either way, this same call both
+  // recomputes the entitlement under the override plan's rules AND records
+  // the change — there's no separate "just log it" step.
   overrideAction?: CommissionOverrideAction | null
-  overrideCommissionType?: CommissionRuleType | null
-  overrideCommissionAmount?: number | null
-  overrideCommissionBase?: CommissionRuleBase | null
+  overrideCommissionPlanId?: string | null
 }
 
 type EmployeeEntitlement = {
@@ -250,9 +250,7 @@ export async function releaseServiceOrderCommissions({
   employeeId,
   reason,
   overrideAction,
-  overrideCommissionType,
-  overrideCommissionAmount,
-  overrideCommissionBase
+  overrideCommissionPlanId
 }: ReleaseServiceOrderCommissionsParams) {
   const warnings: string[] = []
   const trimmedReason = String(reason || '').trim()
@@ -265,20 +263,16 @@ export async function releaseServiceOrderCommissions({
     throw createError({ statusCode: 400, statusMessage: 'employeeId é obrigatório para aplicar ou remover uma comissão manual.' })
   }
 
+  let overridePlan: { id: string, name: string } | null = null
   if (overrideAction === 'apply') {
-    if (overrideCommissionType !== 'percentage' && overrideCommissionType !== 'fixed_amount') {
-      throw createError({ statusCode: 400, statusMessage: 'Tipo de comissão inválido.' })
+    if (!overrideCommissionPlanId) {
+      throw createError({ statusCode: 400, statusMessage: 'Selecione a configuração de comissão a aplicar.' })
     }
-    const amount = Number(overrideCommissionAmount)
-    if (!Number.isFinite(amount) || amount <= 0) {
-      throw createError({ statusCode: 400, statusMessage: 'O valor da comissão deve ser maior que zero.' })
+    const plan = await fetchCommissionPlan(supabase, organizationId, overrideCommissionPlanId)
+    if (!plan || !plan.active) {
+      throw createError({ statusCode: 400, statusMessage: 'Configuração de comissão inválida ou inativa.' })
     }
-    if (overrideCommissionType === 'percentage' && amount > 100) {
-      throw createError({ statusCode: 400, statusMessage: 'O percentual de comissão não pode ser maior que 100.' })
-    }
-    if (overrideCommissionType === 'percentage' && !overrideCommissionBase) {
-      throw createError({ statusCode: 400, statusMessage: 'Informe a base (faturamento ou lucro) para uma comissão percentual.' })
-    }
+    overridePlan = { id: plan.id, name: plan.name }
   }
 
   const { data: order } = await supabase
@@ -326,28 +320,36 @@ export async function releaseServiceOrderCommissions({
     ? order.commission_manual_adjustments_log as CommissionManualAdjustmentLogEntry[]
     : []
 
-  let effectiveRulesByEmployeeId = resolveEffectiveCommissionRules(rulesByEmployeeId, existingLog)
+  if (overrideAction === 'remove' && employeeId && !getActiveCommissionOverride(existingLog, employeeId)) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Este funcionário não tem uma comissão manual ativa nesta OS para remover.'
+    })
+  }
+
+  // Resolve the rules of every plan referenced by an override that will be
+  // active once this call is applied — every OTHER employee's already-active
+  // override (existingLog) plus the plan being applied right now, if any.
+  const planIdsToResolve = new Set(getActiveOverridePlanIds(existingLog))
+  if (overrideAction === 'apply' && overridePlan) planIdsToResolve.add(overridePlan.id)
+
+  const planRulesByPlanId = new Map<string, ResolvedCommissionRule[]>()
+  await Promise.all([...planIdsToResolve].map(async (planId) => {
+    planRulesByPlanId.set(planId, await resolveCommissionPlanRules(supabase, organizationId, planId, referenceDate))
+  }))
+
+  let effectiveRulesByEmployeeId = resolveEffectiveCommissionRules(rulesByEmployeeId, existingLog, planRulesByPlanId)
 
   if (overrideAction && employeeId) {
     effectiveRulesByEmployeeId = new Map(effectiveRulesByEmployeeId)
 
-    if (overrideAction === 'apply') {
-      effectiveRulesByEmployeeId.set(employeeId, [buildOverrideRule({
-        employeeId,
-        commissionType: overrideCommissionType!,
-        commissionAmount: Number(overrideCommissionAmount),
-        commissionBase: overrideCommissionType === 'percentage' ? (overrideCommissionBase ?? null) : null
-      })])
-    } else {
-      if (!getActiveCommissionOverride(existingLog, employeeId)) {
-        throw createError({
-          statusCode: 400,
-          statusMessage: 'Este funcionário não tem uma comissão manual ativa nesta OS para remover.'
-        })
-      }
-      // Revert to the standard plan — ignore whatever override was active.
-      effectiveRulesByEmployeeId.set(employeeId, rulesByEmployeeId.get(employeeId) ?? [])
-    }
+    effectiveRulesByEmployeeId.set(
+      employeeId,
+      overrideAction === 'apply'
+        ? (planRulesByPlanId.get(overridePlan!.id) ?? [])
+        // 'remove' — revert to the standard plan, ignoring whatever override was active.
+        : (rulesByEmployeeId.get(employeeId) ?? [])
+    )
   }
 
   const entitlements = computeEmployeeEntitlements({ order, activeEmployeeIds, rulesByEmployeeId: effectiveRulesByEmployeeId })
@@ -535,11 +537,8 @@ export async function releaseServiceOrderCommissions({
         ...(overrideAction
           ? {
               override_action: overrideAction,
-              override_commission_type: overrideAction === 'apply' ? overrideCommissionType! : null,
-              override_commission_amount: overrideAction === 'apply' ? Number(overrideCommissionAmount) : null,
-              override_commission_base: overrideAction === 'apply'
-                ? (overrideCommissionType === 'percentage' ? (overrideCommissionBase ?? null) : null)
-                : null
+              override_commission_plan_id: overrideAction === 'apply' ? overridePlan!.id : null,
+              override_commission_plan_name: overrideAction === 'apply' ? overridePlan!.name : null
             }
           : {})
       }

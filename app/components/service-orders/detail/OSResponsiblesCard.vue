@@ -1,11 +1,21 @@
 <script setup lang="ts">
-import type { ServiceOrderDetailFull } from '~/types/service-orders'
+import type { ServiceOrderDetailFull, ServiceOrderCommissionManualAdjustmentLogEntry } from '~/types/service-orders'
 import {
   computeServiceOrderCommissionBreakdown,
   formatCommissionRuleSublabel,
   formatCurrency
 } from '~/utils/service-orders'
+import {
+  getActiveOverridePlanIds,
+  type ResolvedCommissionRule
+} from '../../../../lib/utils/employee-commission-engine'
 import type { CommissionBreakdownLine } from '../CommissionBreakdownPopover.vue'
+
+type CommissionPlanOption = {
+  id: string
+  name: string
+  currentVersion: { ruleCount: number, categoryCount: number } | null
+}
 
 const props = defineProps<{
   orderId: string
@@ -29,6 +39,20 @@ const { data: categoriesData } = await useAsyncData(
 )
 const categoryNameById = computed(() => new Map(categoriesData.value?.items.map(c => [c.id, c.name]) ?? []))
 
+// Options for the "aplicar comissão manual" plan picker — same source as
+// Financeiro > Comissões. Requires commissions.read; if the current user
+// doesn't have it, this just resolves empty (see docs/finance/
+// commissions-manual-override.md §12.5) rather than breaking the card.
+const { data: commissionPlansData } = await useAsyncData(
+  'commission-plans-lookup',
+  () => requestFetch<{ items: CommissionPlanOption[] }>('/api/commissions', {
+    query: { activeOnly: 'true' },
+    headers: requestHeaders
+  }),
+  { default: () => ({ items: [] }) }
+)
+const commissionPlanOptions = computed(() => commissionPlansData.value?.items ?? [])
+
 type ResponsibleInfo = {
   employee_id: string
   name: string | null
@@ -36,9 +60,14 @@ type ResponsibleInfo = {
   has_commission_plan: boolean
   commission_amount: number
   item_breakdown: CommissionBreakdownLine[]
+  /** Rules actually driving this employee's commission on this OS — their override plan's rules when one is active, otherwise their own (docs/finance/commissions-manual-override.md). Feeds the "Regras" popover. */
+  effectiveRules: ResolvedCommissionRule[]
+  /** Active override entry for this employee on this OS, or null. */
+  override: ServiceOrderCommissionManualAdjustmentLogEntry | null
 }
 
 const { rulesByEmployeeId, ensureRules } = useEmployeeCommissionRules()
+const { rulesByPlanId, ensureRules: ensurePlanRules } = usePlanCommissionRules()
 
 watch(
   () => [props.order.responsible_employees, props.order.entry_date] as const,
@@ -49,9 +78,28 @@ watch(
   { immediate: true, deep: true }
 )
 
-const commissionBreakdown = computed(() =>
-  computeServiceOrderCommissionBreakdown(props.order, rulesByEmployeeId.value)
+watch(
+  () => [props.order.commission_manual_adjustments_log, props.order.entry_date] as const,
+  ([log, entryDate]) => {
+    ensurePlanRules(getActiveOverridePlanIds(log ?? []), entryDate || new Date().toISOString().substring(0, 10))
+  },
+  { immediate: true, deep: true }
 )
+
+const commissionBreakdown = computed(() =>
+  computeServiceOrderCommissionBreakdown(props.order, rulesByEmployeeId.value, rulesByPlanId.value)
+)
+
+/** Last log entry with an override_action for this employee — the active override when it's an 'apply', or null (removed, or never had one). */
+function getAssigneeOverride(employeeId: string): ServiceOrderCommissionManualAdjustmentLogEntry | null {
+  const log = props.order.commission_manual_adjustments_log ?? []
+  for (let i = log.length - 1; i >= 0; i--) {
+    const entry = log[i]!
+    if (entry.employee_id !== employeeId || !entry.override_action) continue
+    return entry.override_action === 'apply' ? entry : null
+  }
+  return null
+}
 
 const responsiblesInfo = computed<ResponsibleInfo[]>(() => {
   const items = props.order.items ?? []
@@ -72,12 +120,19 @@ const responsiblesInfo = computed<ResponsibleInfo[]>(() => {
       })
     }
 
+    const override = getAssigneeOverride(r.employee_id)
+    const effectiveRules = override
+      ? rulesByPlanId.value.get(override.override_commission_plan_id ?? '') ?? []
+      : rulesByEmployeeId.value.get(r.employee_id) ?? []
+
     return {
       employee_id: r.employee_id,
       name: r.name,
       has_commission_plan: (rulesByEmployeeId.value.get(r.employee_id)?.length ?? 0) > 0,
       commission_amount,
-      item_breakdown
+      item_breakdown,
+      effectiveRules,
+      override
     }
   })
 })
@@ -161,6 +216,135 @@ async function confirmRecalculate() {
     recalculatingEmployeeId.value = null
   }
 }
+
+// ─── Manual commission override (docs/finance/commissions-manual-override.md) ──
+// Applies/removes an existing commission configuration (not a typed-in
+// rate) for one employee, scoped to this OS — the configuration can have
+// several rules by category, same as a normal assignment would.
+
+const commissionPlanSelectItems = computed(() =>
+  commissionPlanOptions.value.map(plan => ({
+    label: plan.currentVersion
+      ? `${plan.name} (${plan.currentVersion.ruleCount} ${plan.currentVersion.ruleCount === 1 ? 'regra' : 'regras'}, ${plan.currentVersion.categoryCount} ${plan.currentVersion.categoryCount === 1 ? 'categoria' : 'categorias'})`
+      : `${plan.name} (sem versão vigente)`,
+    value: plan.id
+  }))
+)
+
+const overrideSubmittingEmployeeId = ref<string | null>(null)
+
+const pendingOverrideApply = ref<{ employeeId: string, name: string | null, isEdit: boolean } | null>(null)
+const overrideSelectedPlanId = ref<string | null>(null)
+const overrideApplyReason = ref('')
+const overrideApplyValid = computed(() =>
+  overrideApplyReason.value.trim().length > 0 && !!overrideSelectedPlanId.value
+)
+
+function requestApplyOverride(assignee: ResponsibleInfo) {
+  pendingOverrideApply.value = {
+    employeeId: assignee.employee_id,
+    name: assignee.name,
+    isEdit: !!assignee.override
+  }
+  overrideSelectedPlanId.value = assignee.override?.override_commission_plan_id ?? null
+  overrideApplyReason.value = ''
+}
+
+function closeOverrideApplyModal() {
+  if (overrideSubmittingEmployeeId.value) return
+  pendingOverrideApply.value = null
+  overrideSelectedPlanId.value = null
+  overrideApplyReason.value = ''
+}
+
+async function confirmApplyOverride() {
+  if (!pendingOverrideApply.value || !overrideApplyValid.value) return
+  const { employeeId, name } = pendingOverrideApply.value
+  overrideSubmittingEmployeeId.value = employeeId
+
+  try {
+    const { data } = await $fetch<{
+      data: { recalculationLogEntry: { previous_amount: number, new_amount: number } | null }
+    }>(`/api/service-orders/${props.orderId}/generate-commissions`, {
+      method: 'POST',
+      body: {
+        employeeId,
+        reason: overrideApplyReason.value.trim(),
+        override: { action: 'apply', commissionPlanId: overrideSelectedPlanId.value }
+      }
+    })
+
+    const entry = data.recalculationLogEntry
+    toast.add({
+      title: 'Comissão manual aplicada',
+      description: entry
+        ? `${name ?? 'Funcionário'}: ${formatCurrency(entry.previous_amount)} → ${formatCurrency(entry.new_amount)}`
+        : undefined,
+      color: 'success'
+    })
+    closeOverrideApplyModal()
+    emit('recalculated')
+  } catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string } }
+    toast.add({
+      title: 'Erro ao aplicar comissão manual',
+      description: err?.data?.statusMessage || 'Tente novamente.',
+      color: 'error'
+    })
+  } finally {
+    overrideSubmittingEmployeeId.value = null
+  }
+}
+
+const pendingOverrideRemove = ref<{ employeeId: string, name: string | null } | null>(null)
+const overrideRemoveReason = ref('')
+const overrideRemoveReasonValid = computed(() => overrideRemoveReason.value.trim().length > 0)
+
+function requestRemoveOverride(assignee: ResponsibleInfo) {
+  pendingOverrideRemove.value = { employeeId: assignee.employee_id, name: assignee.name }
+  overrideRemoveReason.value = ''
+}
+
+function closeOverrideRemoveModal() {
+  if (overrideSubmittingEmployeeId.value) return
+  pendingOverrideRemove.value = null
+  overrideRemoveReason.value = ''
+}
+
+async function confirmRemoveOverride() {
+  if (!pendingOverrideRemove.value || !overrideRemoveReasonValid.value) return
+  const { employeeId, name } = pendingOverrideRemove.value
+  overrideSubmittingEmployeeId.value = employeeId
+
+  try {
+    const { data } = await $fetch<{
+      data: { recalculationLogEntry: { previous_amount: number, new_amount: number } | null }
+    }>(`/api/service-orders/${props.orderId}/generate-commissions`, {
+      method: 'POST',
+      body: { employeeId, reason: overrideRemoveReason.value.trim(), override: { action: 'remove' } }
+    })
+
+    const entry = data.recalculationLogEntry
+    toast.add({
+      title: 'Comissão manual removida',
+      description: entry
+        ? `${name ?? 'Funcionário'} volta ao plano padrão: ${formatCurrency(entry.previous_amount)} → ${formatCurrency(entry.new_amount)}`
+        : undefined,
+      color: 'success'
+    })
+    closeOverrideRemoveModal()
+    emit('recalculated')
+  } catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string } }
+    toast.add({
+      title: 'Erro ao remover comissão manual',
+      description: err?.data?.statusMessage || 'Tente novamente.',
+      color: 'error'
+    })
+  } finally {
+    overrideSubmittingEmployeeId.value = null
+  }
+}
 </script>
 
 <template>
@@ -221,7 +405,7 @@ async function confirmRecalculate() {
               </ServiceOrdersCommissionBreakdownPopover>
               <ServiceOrdersCommissionRulesPopover
                 v-if="assignee.has_commission_plan"
-                :rules="rulesByEmployeeId.get(assignee.employee_id) ?? []"
+                :rules="assignee.effectiveRules"
                 :category-name-by-id="categoryNameById"
               >
                 <UBadge
@@ -238,6 +422,18 @@ async function confirmRecalculate() {
                 :leading-icon="getResponsibleCommissionNote(assignee).icon"
                 :label="getResponsibleCommissionNote(assignee).label"
               />
+              <UTooltip
+                v-if="assignee.override"
+                :text="`Motivo: ${assignee.override.reason} — aplicado por ${assignee.override.recalculated_by_name ?? assignee.override.recalculated_by_email ?? 'alguém'}`"
+                :ui="{ content: 'h-auto max-w-64 py-1.5', text: 'whitespace-normal' }"
+              >
+                <UBadge
+                  color="warning"
+                  variant="subtle"
+                  leading-icon="i-lucide-sparkles"
+                  :label="`Comissão manual: ${assignee.override.override_commission_plan_name ?? 'configuração removida'}`"
+                />
+              </UTooltip>
               <UButton
                 v-if="canUpdate && assignee.has_commission_plan"
                 size="xs"
@@ -249,6 +445,30 @@ async function confirmRecalculate() {
                 :disabled="!!recalculatingEmployeeId"
                 square
                 @click="requestRecalculate(assignee)"
+              />
+              <UButton
+                v-if="canUpdate && assignee.has_commission_plan"
+                size="xs"
+                color="warning"
+                variant="soft"
+                icon="i-lucide-sparkles"
+                :label="assignee.override ? 'Trocar comissão' : 'Aplicar comissão diferente'"
+                :loading="overrideSubmittingEmployeeId === assignee.employee_id"
+                :disabled="!!overrideSubmittingEmployeeId"
+                square
+                @click="requestApplyOverride(assignee)"
+              />
+              <UButton
+                v-if="canUpdate && assignee.override"
+                size="xs"
+                color="error"
+                variant="soft"
+                icon="i-lucide-rotate-ccw"
+                label="Remover"
+                :loading="overrideSubmittingEmployeeId === assignee.employee_id"
+                :disabled="!!overrideSubmittingEmployeeId"
+                square
+                @click="requestRemoveOverride(assignee)"
               />
             </div>
           </div>
@@ -299,6 +519,81 @@ async function confirmRecalculate() {
             class="w-full"
             :rows="2"
             placeholder="Ex.: percentual de comissão do funcionário foi alterado"
+          />
+        </UFormField>
+      </div>
+    </template>
+  </AppConfirmModal>
+
+  <!-- Apply/change manual commission override -->
+  <AppConfirmModal
+    :open="!!pendingOverrideApply"
+    :title="pendingOverrideApply?.isEdit ? 'Trocar comissão manual' : 'Aplicar comissão diferente'"
+    :confirm-label="pendingOverrideApply?.isEdit ? 'Trocar' : 'Aplicar'"
+    confirm-color="warning"
+    :loading="!!overrideSubmittingEmployeeId"
+    :confirm-disabled="!overrideApplyValid"
+    @update:open="(value: boolean) => !value && closeOverrideApplyModal()"
+    @confirm="confirmApplyOverride"
+  >
+    <template #description>
+      <div class="space-y-3">
+        <p class="text-sm text-muted">
+          Aplica uma configuração de comissão diferente da padrão para
+          <strong class="text-highlighted">{{ pendingOverrideApply?.name ?? 'este funcionário' }}</strong>,
+          só nesta OS — a configuração escolhida pode ter regras diferentes
+          por categoria, e não muda a atribuição padrão dele em
+          Financeiro > Comissões.
+        </p>
+        <UFormField label="Configuração de comissão" required>
+          <USelectMenu
+            v-model="overrideSelectedPlanId"
+            :items="commissionPlanSelectItems"
+            value-key="value"
+            placeholder="Selecione uma configuração"
+            class="w-full"
+          />
+        </UFormField>
+        <p class="text-sm text-muted">
+          Só é possível aplicar/trocar comissões ainda não pagas.
+        </p>
+        <UFormField label="Motivo" required>
+          <UTextarea
+            v-model="overrideApplyReason"
+            class="w-full"
+            :rows="2"
+            placeholder="Ex.: funcionário ficou até tarde neste serviço"
+          />
+        </UFormField>
+      </div>
+    </template>
+  </AppConfirmModal>
+
+  <!-- Remove manual commission override -->
+  <AppConfirmModal
+    :open="!!pendingOverrideRemove"
+    title="Remover comissão manual"
+    confirm-label="Remover"
+    confirm-color="error"
+    :loading="!!overrideSubmittingEmployeeId"
+    :confirm-disabled="!overrideRemoveReasonValid"
+    @update:open="(value: boolean) => !value && closeOverrideRemoveModal()"
+    @confirm="confirmRemoveOverride"
+  >
+    <template #description>
+      <div class="space-y-3">
+        <p class="text-sm text-muted">
+          Remove a comissão manual de
+          <strong class="text-highlighted">{{ pendingOverrideRemove?.name ?? 'este funcionário' }}</strong>
+          nesta OS — a comissão dele volta a usar a configuração padrão
+          atribuída em Financeiro > Comissões.
+        </p>
+        <UFormField label="Motivo" required>
+          <UTextarea
+            v-model="overrideRemoveReason"
+            class="w-full"
+            :rows="2"
+            placeholder="Ex.: OS revisada, comissão manual não se aplica mais"
           />
         </UFormField>
       </div>

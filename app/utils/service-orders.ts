@@ -179,7 +179,8 @@ export type ServiceOrderCommissionBreakdown = {
 export function computeServiceOrderResponsibleCommission(
   order: ServiceOrderRaw,
   employee: ServiceOrderEmployee | null | undefined,
-  rulesByEmployeeId: Map<string, ResolvedCommissionRule[]>
+  rulesByEmployeeId: Map<string, ResolvedCommissionRule[]>,
+  planRulesByPlanId?: Map<string, ResolvedCommissionRule[]>
 ): ServiceOrderCommissionEstimate {
   if (!employee?.id) return { value: 0, hasMatchingItems: true }
 
@@ -187,7 +188,7 @@ export function computeServiceOrderResponsibleCommission(
     ...order,
     responsible_employees: [{ employee_id: employee.id }]
   } as ServiceOrderRaw
-  const breakdown = computeServiceOrderCommissionBreakdown(singleEmployeeOrder, rulesByEmployeeId)
+  const breakdown = computeServiceOrderCommissionBreakdown(singleEmployeeOrder, rulesByEmployeeId, planRulesByPlanId)
 
   return breakdown.byEmployeeId.get(employee.id) ?? { value: 0, hasMatchingItems: true }
 }
@@ -204,13 +205,19 @@ export function computeServiceOrderResponsibleCommission(
  * replaces.
  *
  * Also resolves any active manual commission override
- * (docs/finance/commissions-manual-override.md) from `order.commission_manual_adjustments_log`
- * before computing — an employee with a standing override on this order
- * sees that rate here too, not just after the next server-side release.
+ * (docs/finance/commissions-manual-override.md) from
+ * `order.commission_manual_adjustments_log` before computing — an employee
+ * with a standing override on this order sees that plan's rules here too,
+ * not just after the next server-side release. `planRulesByPlanId` needs an
+ * entry for every id `getActiveOverridePlanIds()` returns for this order's
+ * log (fetched by the caller via usePlanCommissionRules()); omit it (or pass
+ * an empty Map) for an order that can't have an override yet, e.g. a
+ * brand-new OS being created.
  */
 export function computeServiceOrderCommissionBreakdown(
   order: ServiceOrderRaw,
-  rulesByEmployeeId: Map<string, ResolvedCommissionRule[]>
+  rulesByEmployeeId: Map<string, ResolvedCommissionRule[]>,
+  planRulesByPlanId: Map<string, ResolvedCommissionRule[]> = new Map()
 ): ServiceOrderCommissionBreakdown {
   const byItemIndex = new Map<number, ServiceOrderItemCommissionEntry>()
   const byEmployeeId = new Map<string, ServiceOrderCommissionEstimate>()
@@ -220,7 +227,8 @@ export function computeServiceOrderCommissionBreakdown(
   const responsibleEmployees = order.responsible_employees ?? []
   const effectiveRulesByEmployeeId = resolveEffectiveCommissionRules(
     rulesByEmployeeId,
-    order.commission_manual_adjustments_log ?? []
+    order.commission_manual_adjustments_log ?? [],
+    planRulesByPlanId
   )
 
   items.forEach((_, index) => {
