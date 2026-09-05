@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Migration: 20240101000070_add_category_id_to_financial_transactions
 -- Description: Phase 0 of the financial categories FK redesign (see
---              docs/financial-categories-crud.md). Adds the FK column that
+--              docs/finance/financial-categories-crud.md). Adds the FK column that
 --              will replace the free-text `category` column once the
 --              backfill and the application cutover are complete.
 --              `category` (text) is kept and still written by the app during
@@ -31,4 +31,4 @@ CREATE INDEX IF NOT EXISTS idx_financial_transactions_category_id
     WHERE deleted_at IS NULL;
 
 COMMENT ON COLUMN public.financial_transactions.category_id IS
-    'References financial_categories(id). Nullable during the migration window (see docs/financial-categories-crud.md) — becomes NOT NULL once the legacy `category` text column is retired.';
+    'References financial_categories(id). Nullable during the migration window (see docs/finance/financial-categories-crud.md) — becomes NOT NULL once the legacy `category` text column is retired.';

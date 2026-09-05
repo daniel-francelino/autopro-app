@@ -9,7 +9,7 @@ interface ResolveCategoryInput {
 /**
  * Resolves the category to write on a financial_transactions row from
  * either the new category_id or the legacy free-text category — dual-accept
- * during the migration window (docs/financial-categories-crud.md, Phase 2).
+ * during the migration window (docs/finance/financial-categories-crud.md, Phase 2).
  * Returns both the id (for category_id) and the name (still needed to
  * satisfy the legacy `category` column, which stays NOT NULL until Phase 5).
  */
@@ -37,7 +37,7 @@ export async function resolveFinancialCategory(
   const categoryText = String(input.category ?? '').trim()
   if (categoryText) {
     // ilike, not eq: legacy callers (e.g. the pre-cutover FormModal.vue) send
-    // the category name lowercased — see docs/financial-categories-crud.md,
+    // the category name lowercased — see docs/finance/financial-categories-crud.md,
     // section 2.2. Case-insensitive match keeps this endpoint backward
     // compatible with any client still on the old contract.
     const { data, error } = await supabase

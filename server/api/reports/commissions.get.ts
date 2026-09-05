@@ -103,7 +103,7 @@ export default defineEventHandler(async (event) => {
   const filteredRecords = records.filter((record) => {
     const order = record?.service_order_id ? ordersMap.get(String(record.service_order_id)) : null
 
-    // Bonus records (see docs/employee-bonus-feature-design.md) aren't tied
+    // Bonus records (see docs/finance/bonuses-feature-design.md) aren't tied
     // to a service order — filter those by their own reference_date instead
     // of requiring an order with a valid entry_date.
     if (String(record?.record_type || '') === 'bonus') {

@@ -7,7 +7,7 @@ export type CommissionBreakdownLine = {
   amount: number
 }
 
-const props = defineProps<{
+defineProps<{
   total: number
   lines: CommissionBreakdownLine[]
   title?: string

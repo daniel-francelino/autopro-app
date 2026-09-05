@@ -343,7 +343,7 @@ async function generate(employeeId?: string) {
 }
 
 // Generating a past month is unusual — always confirm explicitly first
-// (docs/employee-bonus-feature-design.md §9.2).
+// (docs/finance/bonuses-feature-design.md §9.2).
 const showRetroactiveConfirm = ref(false)
 const pendingGenerateEmployeeId = ref<string | undefined>(undefined)
 

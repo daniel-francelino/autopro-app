@@ -41,7 +41,7 @@ interface GenerateResultItem {
  * current month); pass employeeId to generate just one employee in
  * isolation (retroactive fix, reprocessing) — same dedupe guard either way,
  * so calling both modes for the same (bonus, employee, month) never
- * duplicates (docs/employee-bonus-feature-design.md §5).
+ * duplicates (docs/finance/bonuses-feature-design.md §5).
  */
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)

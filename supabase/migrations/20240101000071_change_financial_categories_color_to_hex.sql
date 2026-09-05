@@ -9,7 +9,7 @@
 --                2. Fixes any row already inserted with the old semantic
 --                   names (is_default rows get their correct per-category
 --                   hex; anything else non-hex falls back to neutral gray).
---              See docs/financial-categories-crud.md, section 3.5.
+--              See docs/finance/financial-categories-crud.md, section 3.5.
 -- =============================================================================
 
 ALTER TABLE public.financial_categories

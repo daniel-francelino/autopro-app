@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Migration: 20240101000068_add_partial_status_to_service_order_installments
 -- Description: Phase 4 of the service-order payment redesign (see
---              docs/service-orders-payment-flow-redesign.md). An installment
+--              docs/service-orders/payment-flow-redesign.md). An installment
 --              can now be settled across more than one receipt — adds
 --              'partial' as a valid status for "some, but not all, of the
 --              expected amount has been received".

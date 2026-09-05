@@ -329,7 +329,7 @@ async function setOrganizationStateFromInvoice(
 // exists once per type). Kept in sync by hand with
 // server/utils/financial-category-defaults.ts (the Nuxt route's copy) since
 // this Deno function can't import a Node module — see
-// docs/financial-categories-crud.md, sections 2.7/3.5/3.6.
+// docs/finance/financial-categories-crud.md, sections 2.7/3.5/3.6.
 const DEFAULT_FINANCIAL_CATEGORIES = [
   { name: 'Vendas', type: 'income', icon: 'i-lucide-shopping-cart', color: '#22c55e' },
   { name: 'Serviços', type: 'income', icon: 'i-lucide-wrench', color: '#3b82f6' },

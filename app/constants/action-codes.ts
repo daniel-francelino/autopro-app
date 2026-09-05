@@ -22,6 +22,11 @@ export enum ActionCode {
   PRODUCTS_UPDATE = 'products.update',
   PRODUCTS_DELETE = 'products.delete',
 
+  PRODUCT_CATEGORIES_CREATE = 'product_categories.create',
+  PRODUCT_CATEGORIES_READ = 'product_categories.read',
+  PRODUCT_CATEGORIES_UPDATE = 'product_categories.update',
+  PRODUCT_CATEGORIES_DELETE = 'product_categories.delete',
+
   INVENTORY_CREATE = 'inventory.create',
   INVENTORY_READ = 'inventory.read',
   INVENTORY_UPDATE = 'inventory.update',
@@ -68,6 +73,11 @@ export enum ActionCode {
   BONUSES_READ = 'bonuses.read',
   BONUSES_UPDATE = 'bonuses.update',
   BONUSES_DELETE = 'bonuses.delete',
+
+  COMMISSIONS_CREATE = 'commissions.create',
+  COMMISSIONS_READ = 'commissions.read',
+  COMMISSIONS_UPDATE = 'commissions.update',
+  COMMISSIONS_DELETE = 'commissions.delete',
 
   REPORTS_VIEW = 'reports.view',
   REPORTS_CUSTOMERS = 'reports.customers',

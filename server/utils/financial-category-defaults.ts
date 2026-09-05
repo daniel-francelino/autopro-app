@@ -15,7 +15,7 @@ export interface DefaultFinancialCategory {
  * to live in app/utils/report-costs.ts for the expense side; the income side
  * (Vendas/Serviços/Outros) has no prior heuristic to copy, so these are a
  * fresh choice, adjustable later from the categories CRUD screen.
- * See docs/financial-categories-crud.md, section 3.5.
+ * See docs/finance/financial-categories-crud.md, section 3.5.
  */
 export const DEFAULT_FINANCIAL_CATEGORIES: DefaultFinancialCategory[] = [
   { name: 'Vendas', type: 'income', icon: 'i-lucide-shopping-cart', color: '#22c55e' },
@@ -75,7 +75,7 @@ export async function ensureDefaultFinancialCategories(
  * Looks up a default category's id by name+type, self-healing by seeding
  * the 9 defaults if the organization is somehow missing them (e.g. created
  * in a gap before the org-creation hook covered this — see
- * docs/financial-categories-crud.md, section 8). Used by payment flows that
+ * docs/finance/financial-categories-crud.md, section 8). Used by payment flows that
  * write to a fixed default category (commission/service-order income) so a
  * missing category never fails the payment itself.
  */

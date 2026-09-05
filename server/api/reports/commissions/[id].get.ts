@@ -148,7 +148,7 @@ export default defineEventHandler(async (event) => {
   const { data: employees } = employeeIds.size > 0
     ? await supabase
         .from('employees')
-        .select('id, name, role, commission_type, commission_amount, commission_base')
+        .select('id, name, role')
         .eq('organization_id', organizationId)
         .in('id', Array.from(employeeIds))
         .is('deleted_at', null)
@@ -185,12 +185,12 @@ export default defineEventHandler(async (event) => {
         costAmount,
         profitAmount: roundMoney(saleAmount - costAmount),
         commissionAmount,
-        commissionType: normalizeCommissionType(matchedCommission?.type || commission.commission_type || currentEmployee?.commission_type),
-        commissionBase: normalizeCommissionBase(matchedCommission?.base || commission.commission_base || currentEmployee?.commission_base),
+        commissionType: normalizeCommissionType(matchedCommission?.type || commission.commission_type),
+        commissionBase: normalizeCommissionBase(matchedCommission?.base || commission.commission_base),
         commissionPercentage: matchedCommission?.percentage != null
           ? toNumber(matchedCommission.percentage, 0)
-          : (normalizeCommissionType(commission.commission_type || currentEmployee?.commission_type) === 'percentage'
-              ? toNumber(commission.commission_percentage ?? currentEmployee?.commission_amount, 0)
+          : (normalizeCommissionType(commission.commission_type) === 'percentage'
+              ? toNumber(commission.commission_percentage, 0)
               : null),
         isCurrentRecord: normalizeText(itemName) === normalizeText(commission.item_name)
           && Math.abs(commissionAmount - toNumber(commission.amount, 0)) < 0.01
@@ -211,10 +211,10 @@ export default defineEventHandler(async (event) => {
       costAmount: fallbackCost,
       profitAmount: roundMoney(fallbackAmount - fallbackCost),
       commissionAmount: roundMoney(toNumber(commission.amount, 0)),
-      commissionType: normalizeCommissionType(commission.commission_type || currentEmployee?.commission_type),
-      commissionBase: normalizeCommissionBase(commission.commission_base || currentEmployee?.commission_base),
-      commissionPercentage: normalizeCommissionType(commission.commission_type || currentEmployee?.commission_type) === 'percentage'
-        ? toNumber(commission.commission_percentage ?? currentEmployee?.commission_amount, 0)
+      commissionType: normalizeCommissionType(commission.commission_type),
+      commissionBase: normalizeCommissionBase(commission.commission_base),
+      commissionPercentage: normalizeCommissionType(commission.commission_type) === 'percentage'
+        ? toNumber(commission.commission_percentage, 0)
         : null,
       isCurrentRecord: true
     }]
@@ -260,9 +260,15 @@ export default defineEventHandler(async (event) => {
           id: commissionEmployeeId,
           name: String(currentEmployee?.name || 'Funcionário'),
           role: currentEmployee?.role || null,
-          commissionType: normalizeCommissionType(commission.commission_type || currentEmployee?.commission_type),
-          commissionBase: normalizeCommissionBase(commission.commission_base || currentEmployee?.commission_base),
-          commissionValue: currentEmployee?.commission_amount != null ? toNumber(currentEmployee.commission_amount, 0) : null
+          commissionType: normalizeCommissionType(commission.commission_type),
+          commissionBase: normalizeCommissionBase(commission.commission_base),
+          // Snapshot of the rule applied to THIS commission, not the
+          // employee's current configuration — a historical record must
+          // keep explaining itself the same way even if the employee's
+          // configuration later changes.
+          commissionValue: commission.commission_amount_snapshot != null
+            ? toNumber(commission.commission_amount_snapshot, 0)
+            : null
         },
         order: {
           id: order ? String(order.id) : null,
@@ -297,11 +303,11 @@ export default defineEventHandler(async (event) => {
             : (normalizeCommissionBase(commission.commission_base) === 'profit'
                 ? roundMoney(toNumber(commission.item_amount, 0) - toNumber(commission.item_cost, 0))
                 : roundMoney(toNumber(commission.item_amount, 0))),
-          commissionType: currentBreakdown?.commissionType || normalizeCommissionType(commission.commission_type || currentEmployee?.commission_type),
-          commissionBase: currentBreakdown?.commissionBase || normalizeCommissionBase(commission.commission_base || currentEmployee?.commission_base),
+          commissionType: currentBreakdown?.commissionType || normalizeCommissionType(commission.commission_type),
+          commissionBase: currentBreakdown?.commissionBase || normalizeCommissionBase(commission.commission_base),
           commissionPercentage: currentBreakdown?.commissionPercentage
-            ?? (normalizeCommissionType(commission.commission_type || currentEmployee?.commission_type) === 'percentage'
-              ? toNumber(commission.commission_percentage ?? currentEmployee?.commission_amount, 0)
+            ?? (normalizeCommissionType(commission.commission_type) === 'percentage'
+              ? toNumber(commission.commission_percentage, 0)
               : null),
           breakdown,
           employeeOrderTotal: roundMoney(relatedCommissions

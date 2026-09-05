@@ -2,7 +2,7 @@ import { createError } from 'h3'
 
 /**
  * A financial_transactions row can't be both an installment and a
- * recurring occurrence at the same time — see docs/financial-recurrence-flow.md
+ * recurring occurrence at the same time — see docs/finance/financial-recurrence-flow.md
  * (Bug 5 for creation, Bug 7 for the same gap on edit). Single choke point so
  * both index.post.ts (create) and [id].put.ts (edit) reject the same way.
  */

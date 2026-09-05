@@ -1,3 +1,5 @@
+import type { CommissionManualAdjustmentLogEntry } from '../../lib/utils/employee-commission-engine'
+
 export type ServiceOrder = {
   id: string
   number: string | null
@@ -126,23 +128,10 @@ export type ServiceOrderEmployee = {
   id: string
   name: string
   photo_url?: string | null
-  commission_type?: string | null
-  commission_amount?: number | null
-  commission_base?: string | null
-  commission_categories?: string[] | null
-  has_commission?: boolean | null
 }
 
-export type ServiceOrderCommissionRecalculationLogEntry = {
-  employee_id: string
-  employee_name: string | null
-  reason: string
-  previous_amount: number
-  new_amount: number
-  recalculated_by_email: string | null
-  recalculated_by_name: string | null
-  recalculated_at: string
-}
+/** Re-exported under the ServiceOrder* naming convention this file uses — canonical shape lives with the pure resolution logic that reads it. */
+export type ServiceOrderCommissionManualAdjustmentLogEntry = CommissionManualAdjustmentLogEntry
 
 export type ServiceOrderRaw = {
   id: string
@@ -158,7 +147,7 @@ export type ServiceOrderRaw = {
   discount: number | null
   commission_amount: number | null
   commission_release_mode?: string | null
-  commission_recalculation_log?: ServiceOrderCommissionRecalculationLogEntry[] | null
+  commission_manual_adjustments_log?: ServiceOrderCommissionManualAdjustmentLogEntry[] | null
   total_taxes_amount?: number | null
   total_cost_amount?: number | null
   payment_method: string | null

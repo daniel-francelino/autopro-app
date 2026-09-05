@@ -14,7 +14,7 @@ const MAX_ADDITIONAL_COUNT = 60
  * rows going forward, so the most recent one already reflects any shared
  * field changes made to the series).
  *
- * There's no cron in this infra — see docs/financial-recurrence-flow.md —
+ * There's no cron in this infra — see docs/finance/financial-recurrence-flow.md —
  * so a series that runs out of pre-generated occurrences (created either at
  * creation time or by a previous call to this endpoint) needs this explicit
  * action to keep going. No cap on how many times a series can be extended,

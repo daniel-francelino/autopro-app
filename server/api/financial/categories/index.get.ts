@@ -7,7 +7,7 @@ import { ensureDefaultFinancialCategories } from '../../../utils/financial-categ
 /**
  * GET /api/financial/categories
  * Returns every category (default + custom) for the organization. Defaults
- * are real rows (is_default=true) — see docs/financial-categories-crud.md.
+ * are real rows (is_default=true) — see docs/finance/financial-categories-crud.md.
  * Pass ?includeUsage=true to also get an exact usage_count per category
  * (used by the categories CRUD screen, skipped by default for callers like
  * FormModal.vue that only need the list for a dropdown).

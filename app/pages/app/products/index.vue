@@ -120,7 +120,7 @@ const { data, status, refresh } = await useAsyncData(
   }
 )
 
-const { data: categoriesData, refresh: refreshCategories } = await useAsyncData(
+const { data: categoriesData } = await useAsyncData(
   'products-categories-options',
   () =>
     requestFetch<{ items: import('~/types/products').ProductCategory[] }>('/api/product-categories', {
@@ -383,10 +383,6 @@ async function confirmBulkDelete() {
   }
 }
 
-// ── Categories modal ──────────────────────────────────────────────────────────
-
-const showCategoriesModal = ref(false)
-
 // ── Import modal ──────────────────────────────────────────────────────────────
 
 const showImportModal = ref(false)
@@ -538,11 +534,11 @@ const lineColumns = [
 
             <UButton
               label="Categorias"
-              icon="i-lucide-tag"
+              icon="i-lucide-tags"
               color="neutral"
               variant="outline"
               size="sm"
-              @click="showCategoriesModal = true"
+              to="/app/products/categories"
             />
 
             <UButton
@@ -709,12 +705,6 @@ const lineColumns = [
       </p>
     </template>
   </AppConfirmModal>
-
-  <ProductsCategoriesModal
-    v-model:open="showCategoriesModal"
-    :categories="categoriesList"
-    @updated="refreshCategories"
-  />
 
   <ProductsImportModal
     v-model:open="showImportModal"

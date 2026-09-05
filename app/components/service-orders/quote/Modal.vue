@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import type { ServiceOrderDetailFull } from '~/types/service-orders'
 import type { OrganizationData } from '~/types/organization'
 

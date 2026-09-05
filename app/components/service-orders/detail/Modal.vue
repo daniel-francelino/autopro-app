@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ServiceOrder, ServiceOrderDetailFull, ServiceOrderRaw } from '~/types/service-orders'
 import { computeServiceOrderCommissionBreakdown } from '~/utils/service-orders'
+import { getActiveOverridePlanIds } from '../../../../lib/utils/employee-commission-engine'
 
 const props = defineProps<{
   open: boolean
@@ -303,9 +304,29 @@ const orderProxy = computed<ServiceOrder | null>(() => {
   }
 })
 
+// Step 8 cutover (docs/finance/commissions-step8-engine-cutover.md §7.1).
+const { rulesByEmployeeId, ensureRules } = useEmployeeCommissionRules()
+// Manual commission override (docs/finance/commissions-manual-override.md) —
+// without this, this card's total could disagree with
+// OSResponsiblesCard.vue's own total (which does account for it) on the
+// same page whenever an override is active.
+const { rulesByPlanId, ensureRules: ensurePlanRules } = usePlanCommissionRules()
+
+watch(
+  () => detail.value,
+  (value) => {
+    if (!value) return
+    const referenceDate = value.order.entry_date || new Date().toISOString().substring(0, 10)
+    const responsibleEmployeeIds = (value.order.responsible_employees ?? []).map(r => r.employee_id)
+    ensureRules(responsibleEmployeeIds, referenceDate)
+    ensurePlanRules(getActiveOverridePlanIds(value.order.commission_manual_adjustments_log ?? []), referenceDate)
+  },
+  { immediate: true }
+)
+
 const estimatedCommissionAmount = computed(() => {
   if (!detail.value) return 0
-  return computeServiceOrderCommissionBreakdown(detail.value.order, detail.value.employees).total
+  return computeServiceOrderCommissionBreakdown(detail.value.order, rulesByEmployeeId.value, rulesByPlanId.value).total
 })
 
 // ─── NFS-e ────────────────────────────────────────────────────────────────────
@@ -436,7 +457,6 @@ defineExpose({ refreshNfseCard })
           :order-id="detail.order.id"
           :order="detail.order"
           :responsible-names="detail.responsibleNames"
-          :employees="detail.employees"
           :commissions="detail.commissions"
           :can-update="canUpdate"
           @recalculated="loadDetail"

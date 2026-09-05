@@ -1,6 +1,6 @@
 /**
  * Curated icon choices for the financial categories icon picker
- * (docs/financial-categories-crud.md, section 3.5). Not a free icon search —
+ * (docs/finance/financial-categories-crud.md, section 3.5). Not a free icon search —
  * the picker only offers this list. Color is free-form hex, picked via
  * CategoryColorPicker.vue, not a closed list — CATEGORY_COLOR_PRESETS below
  * are just quick-pick suggestions inside that picker.

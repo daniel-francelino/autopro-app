@@ -18,12 +18,6 @@ interface EmployeeCommissionProfile {
   addressNumber: string | null
   addressComplement: string | null
   zipCode: string | null
-  hasCommission: boolean
-  commissionType: string | null
-  commissionAmount: number | null
-  commissionBase: string | null
-  commissionCategoryIds: string[]
-  commissionCategoryNames: string[]
   terminationDate: string | null
   terminationReason: string | null
 }
@@ -127,6 +121,24 @@ interface EmployeeBonusItem {
   generated: boolean
 }
 
+interface EmployeeCommissionPlanRule {
+  id: string
+  name: string | null
+  commissionType: 'percentage' | 'fixed_amount'
+  commissionAmount: number
+  commissionBase: 'revenue' | 'profit' | null
+  isDefault: boolean
+  categories: Array<{ id: string, name: string | null }>
+}
+
+interface EmployeeCommissionPlanItem {
+  planId: string
+  planName: string
+  active: boolean
+  effectiveFrom: string | null
+  rules: EmployeeCommissionPlanRule[]
+}
+
 function defaultFrom(): string {
   const now = new Date()
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
@@ -165,7 +177,8 @@ const reportQueryKey = computed(() => `employee-detail-report-${employeeId.value
 const [
   { data, status, error, refresh },
   { data: reportData, status: reportStatus },
-  { data: bonusesData }
+  { data: bonusesData },
+  { data: commissionPlansData }
 ] = await Promise.all([
   useAsyncData(
     () => queryKey.value,
@@ -195,16 +208,25 @@ const [
   ),
   // Bônus atribuídos — não depende do período do relatório (dateFrom/dateTo
   // acima), sempre mostra o progresso do mês corrente
-  // (docs/employee-bonus-feature-design.md §6.3).
+  // (docs/finance/bonuses-feature-design.md §6.3).
   useAsyncData(
     () => `employee-bonuses-${employeeId.value}`,
     () => requestFetch<{ items: EmployeeBonusItem[] }>(`/api/employees/${employeeId.value}/bonuses`, { headers: requestHeaders }),
+    { default: () => ({ items: [] }) }
+  ),
+  // Comissões atribuídas (nova arquitetura — Step 5 de
+  // docs/finance/commissions-configuration-architecture.md). Leitura apenas:
+  // criar/editar/atribuir continua em Financeiro > Comissões.
+  useAsyncData(
+    () => `employee-commission-plans-${employeeId.value}`,
+    () => requestFetch<{ items: EmployeeCommissionPlanItem[] }>(`/api/employees/${employeeId.value}/commission-plans`, { headers: requestHeaders }),
     { default: () => ({ items: [] }) }
   )
 ])
 
 const employee = computed(() => data.value?.data?.employee ?? null)
 const assignedBonuses = computed(() => bonusesData.value?.items ?? [])
+const assignedCommissionPlans = computed(() => commissionPlansData.value?.items ?? [])
 
 const reportSummary = computed(() => reportData.value?.data?.summary ?? null)
 const ordersView = computed(() => reportData.value?.data?.ordersView ?? [])
@@ -389,18 +411,18 @@ function formatTaxId(value: string | null | undefined, personType: string | null
   return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
 }
 
-function formatCommissionType(value: string | null | undefined) {
-  if (value === 'percentage') return 'Percentual'
-  if (value === 'fixed_amount') return 'Valor fixo'
-  return 'Sem comissão'
-}
-
 function formatCommissionBase(value: string | null | undefined) {
   if (value === 'profit') return 'Lucro'
   if (value === 'revenue') return 'Receita'
   if (value === 'revenue_minus_parts') return 'Faturamento - peças'
   if (value === 'employee_net_profit') return 'Lucro líquido do funcionário'
   return '—'
+}
+
+function commissionRuleAmountLabel(rule: EmployeeCommissionPlanRule) {
+  return rule.commissionType === 'percentage'
+    ? `${Number(rule.commissionAmount).toLocaleString('pt-BR')}%`
+    : `${formatCurrency(rule.commissionAmount)} / unidade`
 }
 
 function bonusStatusLabel(item: EmployeeBonusItem): { label: string, color: 'success' | 'warning' | 'neutral' } {
@@ -552,8 +574,8 @@ async function exportReport(format: 'csv' | 'pdf') {
                       <UBadge :color="employeeStatus.color" variant="subtle" size="sm">
                         {{ employeeStatus.label }}
                       </UBadge>
-                      <UBadge :color="employee.hasCommission ? 'success' : 'neutral'" variant="subtle" size="sm">
-                        {{ employee.hasCommission ? 'Comissionado' : 'Sem comissão' }}
+                      <UBadge :color="assignedCommissionPlans.length > 0 ? 'success' : 'neutral'" variant="subtle" size="sm">
+                        {{ assignedCommissionPlans.length > 0 ? 'Comissionado' : 'Sem comissão' }}
                       </UBadge>
                     </div>
 
@@ -594,32 +616,6 @@ async function exportReport(format: 'csv' | 'pdf') {
               <div class="grid gap-3 sm:grid-cols-2">
                 <div class="rounded-2xl border border-default/70 bg-default/50 p-4 sm:col-span-2">
                   <div class="flex items-start gap-3">
-                    <UIcon name="i-lucide-badge-percent" class="mt-0.5 size-5 shrink-0 text-warning" />
-                    <div class="space-y-1">
-                      <p class="text-xs uppercase tracking-widest text-muted">
-                        Regra de comissão
-                      </p>
-                      <p class="text-sm font-medium text-highlighted">
-                        {{ formatCommissionType(employee.commissionType) }}
-                        <span v-if="employee.commissionType !== null"> · {{ formatCommissionBase(employee.commissionBase) }}</span>
-                      </p>
-                      <p class="text-sm text-muted">
-                        <template v-if="employee.commissionType === 'percentage'">
-                          {{ employee.commissionAmount ?? 0 }}% configurado para o cadastro.
-                        </template>
-                        <template v-else-if="employee.commissionType === 'fixed_amount'">
-                          {{ formatCurrency(employee.commissionAmount ?? 0) }} por item configurado para o cadastro.
-                        </template>
-                        <template v-else>
-                          O funcionário não possui regra de comissão ativa no cadastro.
-                        </template>
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="rounded-2xl border border-default/70 bg-default/50 p-4 sm:col-span-2">
-                  <div class="flex items-start gap-3">
                     <UIcon name="i-lucide-map-pinned" class="mt-0.5 size-5 shrink-0 text-primary" />
                     <div class="space-y-1">
                       <p class="text-xs uppercase tracking-widest text-muted">
@@ -632,26 +628,6 @@ async function exportReport(format: 'csv' | 'pdf') {
                         {{ buildAddress(employee) }}
                       </p>
                     </div>
-                  </div>
-                </div>
-
-                <div class="rounded-2xl border border-default/70 bg-default/50 p-4 sm:col-span-2">
-                  <p class="text-xs uppercase tracking-widest text-muted">
-                    Categorias elegíveis
-                  </p>
-                  <div class="mt-2 flex flex-wrap gap-2">
-                    <UBadge
-                      v-for="categoryName in employee.commissionCategoryNames"
-                      :key="categoryName"
-                      color="warning"
-                      variant="subtle"
-                      size="sm"
-                    >
-                      {{ categoryName }}
-                    </UBadge>
-                    <span v-if="employee.commissionCategoryNames.length === 0" class="text-sm text-muted">
-                      Todas as categorias contam para a comissão.
-                    </span>
                   </div>
                 </div>
 
@@ -686,6 +662,54 @@ async function exportReport(format: 'csv' | 'pdf') {
                           <UBadge :color="bonusStatusLabel(bonus).color" variant="subtle" size="sm">
                             {{ bonusStatusLabel(bonus).label }}
                           </UBadge>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="rounded-2xl border border-default/70 bg-default/50 p-4 sm:col-span-2">
+                  <div class="flex items-start gap-3">
+                    <UIcon name="i-lucide-badge-percent" class="mt-0.5 size-5 shrink-0 text-info" />
+                    <div class="min-w-0 flex-1 space-y-2">
+                      <p class="flex items-center justify-between gap-2 text-xs uppercase tracking-widest text-muted">
+                        Comissões atribuídas
+                        <NuxtLink to="/app/financial/commissions" class="normal-case text-primary hover:underline">
+                          Gerenciar em Financeiro
+                        </NuxtLink>
+                      </p>
+                      <p v-if="assignedCommissionPlans.length === 0" class="text-sm text-muted">
+                        Nenhuma comissão atribuída a este funcionário.
+                      </p>
+                      <ul v-else class="space-y-2">
+                        <li
+                          v-for="plan in assignedCommissionPlans"
+                          :key="plan.planId"
+                          class="rounded-xl border border-default/60 bg-elevated/30 px-3 py-2"
+                        >
+                          <NuxtLink
+                            :to="`/app/financial/commissions/${plan.planId}`"
+                            class="truncate text-sm font-medium text-highlighted hover:underline"
+                          >
+                            {{ plan.planName }}
+                          </NuxtLink>
+                          <p v-if="plan.rules.length === 0" class="text-xs text-muted">
+                            Sem regras vigentes.
+                          </p>
+                          <ul v-else class="mt-1 space-y-1">
+                            <li v-for="rule in plan.rules" :key="rule.id" class="flex flex-wrap items-center gap-2 text-xs text-muted">
+                              <span class="font-medium text-highlighted">{{ commissionRuleAmountLabel(rule) }}</span>
+                              <span v-if="rule.commissionType === 'percentage'">· {{ formatCommissionBase(rule.commissionBase) }}</span>
+                              <UBadge
+                                v-if="rule.isDefault"
+                                label="Padrão"
+                                color="info"
+                                variant="subtle"
+                                size="sm"
+                              />
+                              <span v-else-if="rule.categories.length">{{ rule.categories.map(c => c.name).join(', ') }}</span>
+                            </li>
+                          </ul>
                         </li>
                       </ul>
                     </div>

@@ -9,7 +9,7 @@ import { fetchBonus } from '../../../../utils/bonuses'
  * DELETE /api/bonuses/:id/assignments/:employeeId
  * Unassigns an employee from a bonus (active=false + soft delete). Past
  * bonus_generations rows for them are untouched — history doesn't
- * disappear just because the assignment ended (docs/employee-bonus-feature-design.md §9.4).
+ * disappear just because the assignment ended (docs/finance/bonuses-feature-design.md §9.4).
  */
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)

@@ -57,26 +57,6 @@ const employeeLimitColor = computed(() => {
 
 watch([search, includeTerminated], () => refresh())
 
-// ─── Product categories (lazy-loaded for commission sections) ──
-type ProductCategory = { id: string, name: string }
-const productCategories = ref<ProductCategory[]>([])
-const isLoadingCategories = ref(false)
-
-async function loadProductCategories() {
-  if (productCategories.value.length > 0 || isLoadingCategories.value) return
-  isLoadingCategories.value = true
-  try {
-    const res = await $fetch<{ items: ProductCategory[] }>(
-      '/api/product-categories'
-    )
-    productCategories.value = res?.items ?? []
-  } catch {
-    // non-critical
-  } finally {
-    isLoadingCategories.value = false
-  }
-}
-
 // ─── Form ─────────────────────────────────────────────────
 const showModal = ref(false)
 const isEditing = ref(false)
@@ -134,12 +114,6 @@ const emptyForm = () => ({
   has_minimum_guarantee: false,
   minimum_guarantee_amount: '' as string,
   minimum_guarantee_installments: [] as Installment[],
-  // Commission
-  has_commission: false,
-  commission_type: 'percentage' as string,
-  commission_amount: '' as string,
-  commission_base: 'revenue' as string,
-  commission_categories: [] as string[],
   // PIX
   pix_key_type: '' as string,
   pix_key: '',
@@ -200,12 +174,6 @@ function openEdit(emp: Employee) {
     minimum_guarantee_installments: toInstallments(
       emp.minimum_guarantee_installments as unknown[]
     ),
-    has_commission: emp.has_commission ?? false,
-    commission_type: emp.commission_type ?? 'percentage',
-    commission_amount:
-      emp.commission_amount != null ? String(emp.commission_amount) : '',
-    commission_base: emp.commission_base ?? 'revenue',
-    commission_categories: emp.commission_categories ?? [],
     pix_key_type: emp.pix_key_type ?? '',
     pix_key: (() => {
       const raw = String(emp.pix_key ?? '')
@@ -226,7 +194,6 @@ function openEdit(emp: Employee) {
   form.role_id = undefined
   showModal.value = true
 
-  if (emp.has_commission) loadProductCategories()
   loadRoles()
 
   if (typeof emp.id === 'string') {
@@ -245,12 +212,6 @@ function openEdit(emp: Employee) {
   }
 }
 
-watch(
-  () => form.has_commission,
-  (val) => {
-    if (val) loadProductCategories()
-  }
-)
 watch(
   () => form.pix_key_type,
   () => {
@@ -418,16 +379,6 @@ async function save() {
           : null,
       minimum_guarantee_installments: form.has_minimum_guarantee
         ? toPayload(form.minimum_guarantee_installments)
-        : [],
-      has_commission: form.has_commission,
-      commission_type: form.has_commission ? form.commission_type : null,
-      commission_amount:
-        form.has_commission && form.commission_amount !== ''
-          ? parseFloat(String(form.commission_amount))
-          : null,
-      commission_base: form.has_commission ? form.commission_base : null,
-      commission_categories: form.has_commission
-        ? form.commission_categories
         : [],
       pix_key_type: form.pix_key_type || null,
       pix_key: form.pix_key_type
@@ -605,16 +556,6 @@ function getInitials(name: string) {
 const personTypeOptions = [
   { label: 'Pessoa Física (PF)', value: 'pf' },
   { label: 'Pessoa Jurídica (PJ)', value: 'pj' }
-]
-
-const commissionTypeOptions = [
-  { label: 'Percentual (%)', value: 'percentage' },
-  { label: 'Valor fixo (R$)', value: 'fixed_amount' }
-]
-
-const commissionBaseOptions = [
-  { label: 'Valor bruto (receita total)', value: 'revenue' },
-  { label: 'Lucro (receita − custos)', value: 'profit' }
 ]
 
 const pixKeyTypeOptions = [
@@ -1126,100 +1067,32 @@ const columns = [
           </div>
 
           <!-- Comissão -->
-          <div class="rounded-lg border border-default p-4 space-y-4">
-            <UCheckbox
-              v-model="form.has_commission"
-              label="Recebe comissão"
-              color="neutral"
-            />
-
-            <template v-if="form.has_commission">
-              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <UFormField label="Tipo de comissão">
-                  <USelectMenu
-                    v-model="form.commission_type"
-                    :items="commissionTypeOptions"
-                    value-key="value"
-                    class="w-full"
-                  />
-                </UFormField>
-                <UFormField
-                  :label="
-                    form.commission_type === 'percentage'
-                      ? 'Taxa (%)'
-                      : 'Valor fixo (R$)'
-                  "
-                >
-                  <UInput
-                    v-if="form.commission_type === 'percentage'"
-                    v-model="form.commission_amount"
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    class="w-full"
-                    placeholder="0"
-                  />
-                  <UiCurrencyInput
-                    v-else
-                    v-model="form.commission_amount"
-                    class="w-full"
-                  />
-                </UFormField>
-                <UFormField label="Base de cálculo" class="sm:col-span-2">
-                  <USelectMenu
-                    v-model="form.commission_base"
-                    :items="commissionBaseOptions"
-                    value-key="value"
-                    class="w-full"
-                  />
-                </UFormField>
-              </div>
-
-              <!-- Categorias de produto -->
-              <div>
-                <p class="mb-2 text-xs font-medium text-muted">
-                  Categorias que geram comissão
-                  <span class="font-normal">(deixe em branco para todas)</span>
+          <div class="rounded-lg border border-default bg-elevated/40 p-4">
+            <div class="flex items-start gap-3">
+              <UIcon
+                name="i-lucide-badge-percent"
+                class="mt-0.5 size-5 shrink-0 text-primary"
+              />
+              <div class="min-w-0 space-y-2">
+                <p class="text-sm font-medium text-highlighted">
+                  Comissão
                 </p>
-                <div
-                  v-if="isLoadingCategories"
-                  class="flex items-center gap-2 text-xs text-muted"
-                >
-                  <UIcon name="i-lucide-loader-circle" class="animate-spin" />
-                  Carregando categorias...
-                </div>
-                <p
-                  v-else-if="productCategories.length === 0"
-                  class="text-xs text-muted"
-                >
-                  Nenhuma categoria cadastrada.
+                <p class="text-sm text-muted">
+                  A configuração de comissão saiu daqui — agora fica em
+                  <strong class="text-highlighted">Financeiro &gt; Comissões</strong>,
+                  onde é possível criar planos com múltiplas regras por categoria
+                  e atribuir a um ou mais funcionários.
                 </p>
-                <div v-else class="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  <UCheckbox
-                    v-for="cat in productCategories"
-                    :key="cat.id"
-                    :label="cat.name"
-                    :model-value="form.commission_categories.includes(cat.id)"
-                    color="neutral"
-                    @update:model-value="
-                      (v) => {
-                        if (v) {
-                          if (!form.commission_categories.includes(cat.id))
-                            form.commission_categories.push(cat.id);
-                        }
-                        else {
-                          form.commission_categories
-                            = form.commission_categories.filter(
-                              (id: string) => id !== cat.id
-                            );
-                        }
-                      }
-                    "
-                  />
-                </div>
+                <UButton
+                  label="Ir para Comissões"
+                  icon="i-lucide-arrow-right"
+                  size="xs"
+                  color="neutral"
+                  variant="outline"
+                  to="/app/financial/commissions"
+                />
               </div>
-            </template>
+            </div>
           </div>
         </div>
 

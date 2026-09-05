@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
   formatCurrency,
+  formatCommissionRuleSublabel,
   PAYMENT_STATUS_COLOR,
   PAYMENT_STATUS_ICON,
   PAYMENT_STATUS_LABEL,
@@ -11,9 +12,12 @@ import {
   type ServiceOrderItemCommissionEntry,
   computeServiceOrderCommissionBreakdown
 } from '../../utils/service-orders'
+import {
+  getActiveOverridePlanIds,
+  resolveEffectiveCommissionRules
+} from '../../../lib/utils/employee-commission-engine'
 import type {
   ServiceOrderDraftItem,
-  ServiceOrderEmployee,
   ServiceOrderItem,
   ServiceOrderRaw,
   ServiceOrderSelectedTax
@@ -42,11 +46,6 @@ interface SelectOption {
 interface EmployeeItem {
   id: string
   name: string
-  has_commission?: boolean | null
-  commission_type?: string | null
-  commission_amount?: number | string | null
-  commission_base?: string | null
-  commission_categories?: string[] | null
 }
 
 interface MasterProductItem {
@@ -109,6 +108,7 @@ const selectedVehicleLabel = ref<string | null>(null)
 const employeeCatalog = ref<EmployeeItem[]>([])
 const masterProducts = ref<MasterProductItem[]>([])
 const taxesCatalog = ref<TaxItem[]>([])
+const productCategoriesCatalog = ref<Array<{ id: string, name: string }>>([])
 
 const isLoadingOptions = ref(false)
 const isLoadingNextNumber = ref(false)
@@ -248,16 +248,6 @@ function getEmployeeById(employeeId: string) {
   return employeeCatalog.value.find(e => e.id === employeeId) ?? null
 }
 
-function toCommissionEmployee(employee: EmployeeItem): ServiceOrderEmployee {
-  return {
-    ...employee,
-    commission_amount:
-      employee.commission_amount == null
-        ? null
-        : toNumber(employee.commission_amount)
-  }
-}
-
 async function loadMasterProducts(force = false) {
   if (masterProducts.value.length && !force) return
   const res = await $fetch<{ items: MasterProductItem[] }>(
@@ -335,7 +325,7 @@ async function loadOptions() {
   if (optionsLoaded.value || isLoadingOptions.value) return
   isLoadingOptions.value = true
   try {
-    const [employeesRes, masterProductsRes, taxesRes]
+    const [employeesRes, masterProductsRes, taxesRes, productCategoriesRes]
       = await Promise.all([
         $fetch<{ items: EmployeeItem[] }>('/api/employees'),
         $fetch<{ items: MasterProductItem[] }>('/api/master-products', {
@@ -343,11 +333,13 @@ async function loadOptions() {
         }),
         $fetch<{ items: TaxItem[] }>('/api/taxes', {
           query: { page_size: 500, sort_by: 'name', sort_order: 'asc' }
-        })
+        }),
+        $fetch<{ items: Array<{ id: string, name: string }> }>('/api/product-categories')
       ])
     employeeCatalog.value = employeesRes.items ?? []
     masterProducts.value = masterProductsRes.items ?? []
     taxesCatalog.value = taxesRes.items ?? []
+    productCategoriesCatalog.value = productCategoriesRes.items ?? []
     optionsLoaded.value = true
   } catch {
     toast.add({ title: 'Erro ao carregar opções', color: 'error' })
@@ -432,6 +424,28 @@ const totalTaxesAmount = computed(() =>
 )
 
 // ─── Commission calculation ───────────────────────────────────────────────────
+// Step 8 cutover (docs/finance/commissions-step8-engine-cutover.md §7.1):
+// fetch each responsible employee's new-model rules, keyed by the order's
+// own entry_date, and feed them to computeServiceOrderCommissionBreakdown —
+// which uses them when present, falling back to the legacy employees.*
+// fields otherwise.
+const { rulesByEmployeeId, ensureRules } = useEmployeeCommissionRules()
+// Manual commission override (docs/finance/commissions-manual-override.md):
+// editing an order that already has an active override needs its live
+// preview to reflect it too, or the numbers shown while editing would
+// disagree with what actually gets saved (server/api/service-orders
+// resolves the override on save regardless of what this preview shows).
+const { rulesByPlanId, ensureRules: ensurePlanRules } = usePlanCommissionRules()
+
+watch(
+  [() => form.responsible_employees, () => form.entry_date],
+  ([responsibleEmployeeIds, entryDate]) => {
+    const referenceDate = entryDate || new Date().toISOString().substring(0, 10)
+    ensureRules(responsibleEmployeeIds, referenceDate)
+    ensurePlanRules(getActiveOverridePlanIds(props.orderToEdit?.commission_manual_adjustments_log ?? []), referenceDate)
+  },
+  { immediate: true, deep: true }
+)
 
 const commissionOrderInput = computed(
   () =>
@@ -443,20 +457,29 @@ const commissionOrderInput = computed(
       total_amount: totalAmount.value,
       total_cost_amount: totalCost.value,
       total_taxes_amount: totalTaxesAmount.value,
-      discount: discountValue.value
+      discount: discountValue.value,
+      commission_manual_adjustments_log: props.orderToEdit?.commission_manual_adjustments_log ?? []
     }) as ServiceOrderRaw
-)
-
-const commissionEmployees = computed<ServiceOrderEmployee[]>(() =>
-  employeeCatalog.value.map(toCommissionEmployee)
 )
 
 const commissionBreakdown = computed(() =>
   computeServiceOrderCommissionBreakdown(
     commissionOrderInput.value,
-    commissionEmployees.value
+    rulesByEmployeeId.value,
+    rulesByPlanId.value
   )
 )
+
+/** Same patch-over-standard resolution computeServiceOrderCommissionBreakdown() applies internally — recomputed here so the "Regras" popover can show exactly which rules are driving the amount (docs/finance/commissions-manual-override.md). */
+const effectiveRulesByEmployeeId = computed(() =>
+  resolveEffectiveCommissionRules(
+    rulesByEmployeeId.value,
+    commissionOrderInput.value.commission_manual_adjustments_log ?? [],
+    rulesByPlanId.value
+  )
+)
+
+const categoryNameById = computed(() => new Map(productCategoriesCatalog.value.map(c => [c.id, c.name])))
 
 const itemCommissionDetail = computed(() => {
   const detail = new Map<string, ServiceOrderItemCommissionEntry>()
@@ -494,17 +517,9 @@ const itemCommissionDisplayDetailMap = computed(() => {
         .filter(c => c.amount > 0)
         .map((c) => {
           const emp = getEmployeeById(c.employee_id)
-          const typeSublabel
-            = c.commission_type === 'percentage'
-              ? `${c.commission_percentage}% • ${
-                c.commission_base === 'profit' ? 'Lucro' : 'Faturamento'
-              }`
-              : `Valor fixo • ${
-                c.commission_base === 'profit' ? 'Lucro' : 'Faturamento'
-              }`
           return {
             label: emp?.name ?? 'Funcionário',
-            sublabel: typeSublabel,
+            sublabel: formatCommissionRuleSublabel(c),
             amount: c.amount
           }
         })
@@ -539,7 +554,7 @@ function computeResponsibleCommission(
   return (
     commissionBreakdown.value.byEmployeeId.get(employee.id) ?? {
       value: 0,
-      hasMatchingItems: Boolean(employee.has_commission)
+      hasMatchingItems: true
     }
   )
 }
@@ -594,37 +609,18 @@ const employeeCommissionsDisplay = computed<
     const stored = getStoredCommissionForEmployee(employeeId)
     const commissionValue = fresh.value > 0 ? fresh.value : stored
 
-    let rateLabel: string | null = null
-    if (employee?.has_commission && employee.commission_amount != null) {
-      rateLabel
-        = employee.commission_type === 'percentage'
-          ? `${toNumber(employee.commission_amount)}%`
-          : formatCurrency(employee.commission_amount)
-    }
+    // Step 10 (docs/finance/commissions-configuration-architecture.md):
+    // commission is resolved exclusively through the new model now — an
+    // employee has no single rate/base to show (it varies per rule/category),
+    // so rateLabel/baseLabel are gone and the note always reflects whether
+    // this employee has an active plan, same as detail/OSResponsiblesCard.vue.
+    const hasCommissionPlan = (rulesByEmployeeId.value.get(employeeId)?.length ?? 0) > 0
 
-    const baseLabel = employee
-      ? employee.commission_base === 'profit'
-        ? 'Base: lucro'
-        : 'Base: faturamento'
-      : null
-
-    let note: EmployeeCommissionDisplay['note'] = null
-    if (employee && !employee.has_commission) {
-      note = {
-        label: 'Sem comissão',
-        color: 'neutral',
-        icon: 'i-lucide-circle-off'
-      }
-    } else if (
-      employee?.commission_categories?.length
-      && !fresh.hasMatchingItems
-    ) {
-      note = {
-        label: 'Sem itens nas categorias',
-        color: 'warning',
-        icon: 'i-lucide-triangle-alert'
-      }
-    }
+    const note: EmployeeCommissionDisplay['note'] = hasCommissionPlan
+      ? (!fresh.hasMatchingItems
+          ? { label: 'Sem itens elegíveis', color: 'warning', icon: 'i-lucide-triangle-alert' }
+          : { label: 'Por regra/categoria', color: 'primary', icon: 'i-lucide-list-checks' })
+      : { label: 'Sem comissão', color: 'neutral', icon: 'i-lucide-circle-off' }
 
     const itemBreakdown = normalizedItems.value
       .map((normalizedItem) => {
@@ -633,17 +629,20 @@ const employeeCommissionsDisplay = computed<
           commission => commission.employee_id === employeeId
         )
         if (!c || c.amount <= 0) return null
-        return { label: normalizedItem.description || normalizedItem.name, amount: c.amount }
+        return {
+          label: normalizedItem.description || normalizedItem.name,
+          sublabel: formatCommissionRuleSublabel(c),
+          amount: c.amount
+        }
       })
-      .filter(Boolean) as { label: string, amount: number }[]
+      .filter(Boolean) as { label: string, sublabel: string, amount: number }[]
 
     result[employeeId] = {
       commissionLabel: formatCurrency(commissionValue),
-      rateLabel,
-      baseLabel,
       note,
       hasInfo: !!employee || stored > 0,
-      itemBreakdown
+      itemBreakdown,
+      rules: effectiveRulesByEmployeeId.value.get(employeeId) ?? []
     }
   }
   return result
@@ -1125,6 +1124,7 @@ async function submit() {
               :model-value="form.responsible_employees"
               :employee-options="employeeSelectOptions"
               :employee-commissions="employeeCommissionsDisplay"
+              :category-name-by-id="categoryNameById"
               :total-commission-amount="totalCommissionAmount"
               @add="addResponsible"
               @remove="removeResponsible"

@@ -2,6 +2,21 @@
 // (server/api/reports/sales-items.get.ts) and the Employees report
 // (server/api/reports/employees.get.ts) to resolve, for each service order
 // line item, which employee(s) earn commission on it and how much.
+//
+// Step 8 cutover (docs/finance/commissions-step8-engine-cutover.md)
+// deliberately did NOT touch the recompute path here
+// (computeOrderItemCommissionMap / computeEmployeeItemCommissions). Both
+// report call sites already prefer the per-item breakdown stored directly on
+// service_orders.items[].commissions[] when present (hasStoredCommissions),
+// and only fall back to recomputing here for orders that never got that
+// breakdown persisted. Since motor #3
+// (server/utils/service-order-item-commissions.ts) now always writes that
+// breakdown — via the new model or the legacy one, whichever applied — every
+// order created or edited after the cutover has hasStoredCommissions=true,
+// so this recompute path only remains reachable for orders that predate the
+// cutover entirely. Legacy math is the CORRECT reconstruction for that data
+// (it's what actually ran when those commissions were generated), so it's
+// left as-is rather than gaining a new-model branch it would never take.
 
 import { roundMoney, normalizeId } from './report-helpers'
 

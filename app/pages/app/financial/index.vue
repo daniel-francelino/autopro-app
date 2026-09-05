@@ -300,7 +300,7 @@ const _hasActiveFilters = computed(() =>
 // Fetched once from the org's full category list (not just the loaded page)
 // so the filter always shows every category ever used — fixes the bug where
 // this used to be derived from accumulatedItems (only the rows already
-// paginated into the browser). See docs/financial-categories-crud.md.
+// paginated into the browser). See docs/finance/financial-categories-crud.md.
 type CategoryListItem = { id: string, name: string, type: 'income' | 'expense', icon: string, color: string, is_default: boolean }
 const { data: categoriesData } = await useAsyncData(
   'financial-categories-filter-options',
@@ -698,7 +698,7 @@ async function duplicate(entry: Entry) {
 // ── Extend recurrence (add more occurrences to an existing series) ────────────
 // No cron in this infra — series are generated upfront at creation and need
 // this explicit action to keep going once exhausted. See
-// docs/financial-recurrence-flow.md section 6.7.
+// docs/finance/financial-recurrence-flow.md section 6.7.
 
 const extendCountOptions = Array.from({ length: 60 }, (_, i) => ({
   label: `${i + 1}x`,

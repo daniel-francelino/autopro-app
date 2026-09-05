@@ -7,7 +7,7 @@
 --              since its creation (migration 20240101000019), but no code
 --              path has ever soft-deleted it — this migration is the
 --              prerequisite for the "delete an installment with mandatory
---              reason" feature (docs/service-orders-delete-paid-installment.md),
+--              reason" feature (docs/service-orders/delete-paid-installment.md),
 --              which is the first caller to actually use soft delete here.
 -- =============================================================================
 

@@ -1,6 +1,6 @@
 // Shared calculation helpers for the profit report's modes
 // (server/api/reports/profit-cash-flow.get.ts, profit-by-order.get.ts).
-// See docs/profit-report.md for the business rationale behind each mode.
+// See docs/reports/profit-report.md for the business rationale behind each mode.
 
 import type { SupabaseReportRow } from './supabase-pagination'
 import { toNumber, formatDateKey, formatDayLabel, matchesStatusFilters, normalizeReportStatus, getPreviousRangeByMode, calculateVariation, getComparisonModeLabel, formatPeriodLabel } from './report-helpers'

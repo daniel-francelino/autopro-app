@@ -4,7 +4,7 @@
 --              released as payments come in. Today, releaseServiceOrderCommissions()
 --              (server/utils/service-order-commissions.ts) always releases
 --              proportionally to the amount received so far
---              (docs/service-orders-payment-flow-redesign.md, section 5.2/6.2).
+--              (docs/service-orders/payment-flow-redesign.md, section 5.2/6.2).
 --
 --              In practice, some workshops want the full commission released
 --              right away when the payment plan is generated, instead of

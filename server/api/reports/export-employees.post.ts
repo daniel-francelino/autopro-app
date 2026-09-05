@@ -129,8 +129,7 @@ export default defineEventHandler(async (event) => {
     footerRows = [
       { label: 'Total de Linhas', value: String(report.ordersView.length) },
       { label: 'Venda Bruta', value: formatCurrency(report.summary?.grossSales ?? 0) },
-      { label: 'Despesas da OS', value: formatCurrency(report.summary?.osExpenses ?? 0) },
-      { label: 'Comissões', value: formatCurrency(report.summary?.totalCommissions ?? 0) },
+      { label: 'Despesas', value: formatCurrency(report.summary?.osExpenses ?? 0) },
       { label: 'Venda Líquida', value: formatCurrency(report.summary?.netSales ?? 0) }
     ]
   }

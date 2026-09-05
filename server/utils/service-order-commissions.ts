@@ -1,6 +1,24 @@
 import { createError } from 'h3'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import {
+  computeEmployeeOrderCommission,
+  toCommissionOrderItemInput,
+  toCommissionMonthStart,
+  resolveEffectiveCommissionRules,
+  getActiveCommissionOverride,
+  getActiveOverridePlanIds,
+  type ResolvedCommissionRule,
+  type CommissionManualAdjustmentLogEntry,
+  type CommissionOverrideAction
+} from '../../lib/utils/employee-commission-engine'
+import {
+  resolveEmployeeCommissionRulesForEmployees,
+  resolveCommissionPlanRules,
+  fetchCommissionPlan
+} from './employee-commission-plans'
 import { computeServiceOrderItemsWithCommissionSnapshots } from './service-order-item-commissions'
+
+export type { CommissionManualAdjustmentLogEntry }
 
 type ReleaseServiceOrderCommissionsParams = {
   supabase: SupabaseClient
@@ -23,32 +41,22 @@ type ReleaseServiceOrderCommissionsParams = {
   // Everyone else's records are left untouched. Throws if the employee
   // already has a paid commission on this order, since a paid record can
   // never be adjusted. Requires `reason`, and appends an entry to the
-  // order's commission_recalculation_log audit trail on success.
+  // order's commission_manual_adjustments_log audit trail on success.
   employeeId?: string | null
-  // Required alongside employeeId — why the user is recalculating. Stored
-  // verbatim in the audit log entry.
+  // Required alongside employeeId — why the user is recalculating (or
+  // applying/removing an override, see below). Stored verbatim in the audit
+  // log entry.
   reason?: string | null
-}
-
-export type CommissionRecalculationLogEntry = {
-  employee_id: string
-  employee_name: string | null
-  reason: string
-  previous_amount: number
-  new_amount: number
-  recalculated_by_email: string | null
-  recalculated_by_name: string | null
-  recalculated_at: string
-}
-
-type EmployeeWithCommission = {
-  id: string
-  name?: string | null
-  has_commission?: boolean | null
-  commission_type?: string | null
-  commission_amount?: number | string | null
-  commission_base?: string | null
-  commission_categories?: string[] | null
+  // Applies or removes a manual commission-plan override for `employeeId`
+  // on this order only (docs/finance/commissions-manual-override.md) —
+  // requires `employeeId` and `reason`. 'apply' also requires
+  // overrideCommissionPlanId (any active plan in the org — doesn't need to
+  // be assigned to this employee); 'remove' throws if this employee has no
+  // active override on this order. Either way, this same call both
+  // recomputes the entitlement under the override plan's rules AND records
+  // the change — there's no separate "just log it" step.
+  overrideAction?: CommissionOverrideAction | null
+  overrideCommissionPlanId?: string | null
 }
 
 type EmployeeEntitlement = {
@@ -59,6 +67,12 @@ type EmployeeEntitlement = {
   commissionBase: string | null
   itemAmount: number
   itemCost: number
+  /** Set only when every item contributing to totalAmount matched the SAME rule (see the doc comment on computeEmployeeEntitlements). Null otherwise — an aggregate across multiple rules/categories can't be attributed to one. */
+  commissionPlanId: string | null
+  commissionRuleId: string | null
+  commissionRuleVersionId: string | null
+  commissionRuleName: string | null
+  commissionAmountSnapshot: number | null
 }
 
 function asNumber(value: unknown) {
@@ -96,7 +110,12 @@ function isMissingCommissionSnapshotColumn(error: { message?: string } | null | 
     'commission_base',
     'item_name',
     'item_amount',
-    'item_cost'
+    'item_cost',
+    'commission_plan_id',
+    'commission_rule_id',
+    'commission_rule_version_id',
+    'commission_rule_name',
+    'commission_amount_snapshot'
   ].some(column => message.includes(`'${column}'`) || message.includes(`"${column}"`))
 }
 
@@ -104,13 +123,37 @@ function isMissingCommissionSnapshotColumn(error: { message?: string } | null | 
  * Computes, per responsible employee, the *total* commission they're
  * entitled to for this order — independent of how much of the order has
  * actually been paid. Pure calculation, no DB writes.
+ *
+ * Step 10 (docs/finance/commissions-configuration-architecture.md): resolved
+ * exclusively through the commission-plan model now — an employee with no
+ * entry (or an empty one) in `rulesByEmployeeId` simply earns nothing on
+ * this order. The legacy employees.has_commission/commission_type/
+ * commission_amount/commission_base/commission_categories fallback this
+ * function used during the Step 8 cutover was removed along with those
+ * columns; see docs/finance/commissions-step8-engine-cutover.md §6 for the
+ * fallback this replaces.
+ *
+ * The model can attribute different items to different rules (a
+ * category-specific rule at one rate, a catch-all at another) — something
+ * the legacy model never had to represent, since it only ever had one rate
+ * per employee. employee_financial_records still holds one aggregate row
+ * per employee per release event (that ledger's pending/paid/received-ratio
+ * reconciliation logic, see releaseServiceOrderCommissions below, is
+ * unrelated and untouched here). So the per-rule traceability columns
+ * (commissionRuleId/RuleVersionId/RuleName/AmountSnapshot) are only filled
+ * in when every item contributing to this employee's total matched the SAME
+ * single rule; left null when more than one distinct rule contributed
+ * (commissionPlanId is still filled in when every contributing rule shares
+ * the same plan, even if the rules themselves differ).
  */
 function computeEmployeeEntitlements({
   order,
-  employeeMap
+  activeEmployeeIds,
+  rulesByEmployeeId
 }: {
   order: Record<string, unknown>
-  employeeMap: Map<string, EmployeeWithCommission>
+  activeEmployeeIds: Set<string>
+  rulesByEmployeeId: Map<string, ResolvedCommissionRule[]>
 }): EmployeeEntitlement[] {
   const items = Array.isArray(order.items) ? order.items as Record<string, unknown>[] : []
   const responsibleEmployees = Array.isArray(order.responsible_employees)
@@ -119,7 +162,6 @@ function computeEmployeeEntitlements({
 
   if (responsibleEmployees.length === 0 || items.length === 0) return []
 
-  const subtotal = items.reduce((sum, item) => sum + getItemTotal(item), 0)
   const discountAmount = asNumber(order.discount)
   const taxesAmount = asNumber(order.total_taxes_amount)
 
@@ -127,62 +169,55 @@ function computeEmployeeEntitlements({
 
   for (const responsible of responsibleEmployees) {
     const employeeId = responsible.employee_id
-    const employee = employeeMap.get(employeeId)
+    if (!activeEmployeeIds.has(employeeId)) continue
 
-    if (!employee || !employee.has_commission) continue
+    const rules = rulesByEmployeeId.get(employeeId) ?? []
+    if (rules.length === 0) continue
 
-    const commissionType = employee.commission_type
-    const commissionValue = asNumber(employee.commission_amount)
-    const commissionBase = employee.commission_base
-    const commissionCategories = Array.isArray(employee.commission_categories)
-      ? employee.commission_categories
-      : []
+    const commissionOrderItems = items.map(item => toCommissionOrderItemInput({
+      category_id: item.category_id as string | null,
+      quantity: item.quantity as number | string | null,
+      total_price: item.total_price as number | string | null,
+      total_amount: item.total_amount as number | string | null,
+      unit_price: item.unit_price as number | string | null,
+      cost_price: item.cost_price as number | string | null,
+      cost_amount: item.cost_amount as number | string | null
+    }))
 
-    const eligibleItems = items.filter((item) => {
-      if (commissionCategories.length === 0) return true
-
-      const itemCategoryId = item.category_id
-      return !itemCategoryId || commissionCategories.includes(itemCategoryId as string)
+    const result = computeEmployeeOrderCommission(rules, commissionOrderItems, {
+      discount: discountAmount,
+      totalTaxesAmount: taxesAmount
     })
 
-    if (eligibleItems.length === 0) continue
+    if (result.total <= 0) continue
 
-    const eligibleItemAmount = eligibleItems.reduce((sum, item) => sum + getItemTotal(item), 0)
-    const eligibleItemCost = eligibleItems.reduce((sum, item) => sum + getItemCost(item), 0)
-    let employeeCommissionAmount = 0
+    const matchedEntries = result.perItem.filter((entry): entry is NonNullable<typeof entry> => entry !== null)
+    const distinctRuleIds = new Set(matchedEntries.map(entry => entry.rule.id))
+    const distinctPlanIds = new Set(matchedEntries.map(entry => entry.rule.plan_id))
+    const singleRule = distinctRuleIds.size === 1 ? matchedEntries[0]!.rule : null
 
-    if (commissionType === 'percentage') {
-      const eligibleRatio = subtotal > 0 ? eligibleItemAmount / subtotal : 0
-      const eligibleDiscount = discountAmount * eligibleRatio
-      const eligibleTaxes = taxesAmount * eligibleRatio
-
-      for (const item of eligibleItems) {
-        const itemTotal = getItemTotal(item)
-        const fraction = eligibleItemAmount > 0 ? itemTotal / eligibleItemAmount : 1 / eligibleItems.length
-        const itemDiscount = eligibleDiscount * fraction
-        const itemTaxes = eligibleTaxes * fraction
-        let baseAmount = itemTotal - itemDiscount
-
-        if (commissionBase === 'profit') {
-          baseAmount = Math.max(0, baseAmount - getItemCost(item) - itemTaxes)
-        }
-
-        employeeCommissionAmount += roundCurrency((baseAmount * commissionValue) / 100)
-      }
-    } else {
-      employeeCommissionAmount = commissionValue
-    }
-
-    if (employeeCommissionAmount <= 0) continue
+    let eligibleItemAmount = 0
+    let eligibleItemCost = 0
+    result.perItem.forEach((entry, index) => {
+      if (!entry) return
+      const item = items[index]!
+      eligibleItemAmount += getItemTotal(item)
+      eligibleItemCost += getItemCost(item)
+    })
 
     entitlements.push({
       employeeId,
-      totalAmount: roundCurrency(employeeCommissionAmount),
-      commissionType,
-      commissionPercentage: commissionType === 'percentage' ? commissionValue : null,
-      commissionBase,
+      totalAmount: result.total,
+      commissionType: singleRule?.commission_type ?? null,
+      commissionPercentage: singleRule?.commission_type === 'percentage' ? singleRule.commission_amount : null,
+      commissionBase: singleRule?.commission_base ?? null,
       itemAmount: roundCurrency(eligibleItemAmount),
-      itemCost: roundCurrency(eligibleItemCost)
+      itemCost: roundCurrency(eligibleItemCost),
+      commissionPlanId: distinctPlanIds.size === 1 ? [...distinctPlanIds][0]! : null,
+      commissionRuleId: singleRule?.id ?? null,
+      commissionRuleVersionId: singleRule?.version_id ?? null,
+      commissionRuleName: singleRule?.name ?? null,
+      commissionAmountSnapshot: singleRule ? result.total : null
     })
   }
 
@@ -213,13 +248,31 @@ export async function releaseServiceOrderCommissions({
   userName,
   triggeringInstallmentId,
   employeeId,
-  reason
+  reason,
+  overrideAction,
+  overrideCommissionPlanId
 }: ReleaseServiceOrderCommissionsParams) {
   const warnings: string[] = []
   const trimmedReason = String(reason || '').trim()
 
   if (employeeId && !trimmedReason) {
     throw createError({ statusCode: 400, statusMessage: 'Informe o motivo do recálculo.' })
+  }
+
+  if (overrideAction && !employeeId) {
+    throw createError({ statusCode: 400, statusMessage: 'employeeId é obrigatório para aplicar ou remover uma comissão manual.' })
+  }
+
+  let overridePlan: { id: string, name: string } | null = null
+  if (overrideAction === 'apply') {
+    if (!overrideCommissionPlanId) {
+      throw createError({ statusCode: 400, statusMessage: 'Selecione a configuração de comissão a aplicar.' })
+    }
+    const plan = await fetchCommissionPlan(supabase, organizationId, overrideCommissionPlanId)
+    if (!plan || !plan.active) {
+      throw createError({ statusCode: 400, statusMessage: 'Configuração de comissão inválida ou inativa.' })
+    }
+    overridePlan = { id: plan.id, name: plan.name }
   }
 
   const { data: order } = await supabase
@@ -234,31 +287,86 @@ export async function releaseServiceOrderCommissions({
     throw createError({ statusCode: 404, statusMessage: 'Service order not found' })
   }
 
-  const { data: employees } = await supabase
+  const responsibleEmployeeIds = Array.isArray(order.responsible_employees)
+    ? (order.responsible_employees as { employee_id?: string | null }[]).map(entry => String(entry.employee_id || ''))
+    : []
+
+  const { data: activeEmployees } = await supabase
     .from('employees')
-    .select('*')
+    .select('id, name')
     .eq('organization_id', organizationId)
     .is('deleted_at', null)
+    .in('id', responsibleEmployeeIds)
 
-  const employeeMap = new Map(
-    ((employees || []) as EmployeeWithCommission[]).map(employee => [employee.id, employee])
+  const employeesById = new Map(
+    (activeEmployees || []).map(employee => [String(employee.id), employee as { id: string, name: string | null }])
+  )
+  const activeEmployeeIds = new Set(employeesById.keys())
+
+  const referenceDate = toCommissionMonthStart(String(order.entry_date || new Date().toISOString().split('T')[0]))
+  const rulesByEmployeeId = await resolveEmployeeCommissionRulesForEmployees(
+    supabase,
+    organizationId,
+    responsibleEmployeeIds,
+    referenceDate
   )
 
-  const entitlements = computeEmployeeEntitlements({ order, employeeMap })
+  // Manual overrides (docs/finance/commissions-manual-override.md) live only
+  // in this log — there's no separate "current override" column. Every
+  // release call (not just a manual apply/remove) must resolve through it,
+  // so a standing override keeps applying to ordinary payment-triggered
+  // releases too, until it's explicitly removed.
+  const existingLog = Array.isArray(order.commission_manual_adjustments_log)
+    ? order.commission_manual_adjustments_log as CommissionManualAdjustmentLogEntry[]
+    : []
+
+  if (overrideAction === 'remove' && employeeId && !getActiveCommissionOverride(existingLog, employeeId)) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Este funcionário não tem uma comissão manual ativa nesta OS para remover.'
+    })
+  }
+
+  // Resolve the rules of every plan referenced by an override that will be
+  // active once this call is applied — every OTHER employee's already-active
+  // override (existingLog) plus the plan being applied right now, if any.
+  const planIdsToResolve = new Set(getActiveOverridePlanIds(existingLog))
+  if (overrideAction === 'apply' && overridePlan) planIdsToResolve.add(overridePlan.id)
+
+  const planRulesByPlanId = new Map<string, ResolvedCommissionRule[]>()
+  await Promise.all([...planIdsToResolve].map(async (planId) => {
+    planRulesByPlanId.set(planId, await resolveCommissionPlanRules(supabase, organizationId, planId, referenceDate))
+  }))
+
+  let effectiveRulesByEmployeeId = resolveEffectiveCommissionRules(rulesByEmployeeId, existingLog, planRulesByPlanId)
+
+  if (overrideAction && employeeId) {
+    effectiveRulesByEmployeeId = new Map(effectiveRulesByEmployeeId)
+
+    effectiveRulesByEmployeeId.set(
+      employeeId,
+      overrideAction === 'apply'
+        ? (planRulesByPlanId.get(overridePlan!.id) ?? [])
+        // 'remove' — revert to the standard plan, ignoring whatever override was active.
+        : (rulesByEmployeeId.get(employeeId) ?? [])
+    )
+  }
+
+  const entitlements = computeEmployeeEntitlements({ order, activeEmployeeIds, rulesByEmployeeId: effectiveRulesByEmployeeId })
   const totalCommission = roundCurrency(entitlements.reduce((sum, entitlement) => sum + entitlement.totalAmount, 0))
 
   // Items only ever hold a display snapshot of the per-item commission
   // breakdown (no financial/paid state lives on them), so it's always safe
-  // to refresh it from the current employee configuration here — keeps the
-  // "Itens" section in sync with whatever triggered this recalculation.
+  // to refresh it from the current rules here — keeps the "Itens" section in
+  // sync with whatever triggered this recalculation.
   const itemsSnapshot = computeServiceOrderItemsWithCommissionSnapshots({
     items: Array.isArray(order.items) ? order.items as Record<string, unknown>[] : [],
     responsibleEmployees: Array.isArray(order.responsible_employees)
       ? order.responsible_employees as { employee_id: string }[]
       : [],
-    employees: Array.from(employeeMap.values()),
     discount: order.discount,
-    totalTaxesAmount: order.total_taxes_amount
+    totalTaxesAmount: order.total_taxes_amount,
+    rulesByEmployeeId: effectiveRulesByEmployeeId
   })
 
   await supabase
@@ -316,13 +424,13 @@ export async function releaseServiceOrderCommissions({
   }
 
   const createdCommissions: unknown[] = []
-  let recalculationLogEntry: CommissionRecalculationLogEntry | null = null
+  let recalculationLogEntry: CommissionManualAdjustmentLogEntry | null = null
 
   for (const entitlement of targetEntitlements) {
     const existingForEmployee = recordsByEmployee.get(entitlement.employeeId) || []
 
     if (employeeId && existingForEmployee.some(record => record.status === 'paid')) {
-      const employeeName = employeeMap.get(entitlement.employeeId)?.name || 'este funcionário'
+      const employeeName = employeesById.get(entitlement.employeeId)?.name || 'este funcionário'
       throw createError({
         statusCode: 400,
         statusMessage: `Não é possível recalcular: ${employeeName} já possui comissão paga nesta OS.`
@@ -354,7 +462,16 @@ export async function releaseServiceOrderCommissions({
         commission_base: entitlement.commissionBase,
         item_name: `#${order.number}`,
         item_amount: entitlement.itemAmount,
-        item_cost: entitlement.itemCost
+        item_cost: entitlement.itemCost,
+        // New-model traceability (20240101000085) — only set when the whole
+        // entitlement came from one single rule (see computeEmployeeEntitlements'
+        // doc comment); null for legacy-path entitlements and for
+        // multi-rule entitlements that can't be attributed to one rule.
+        commission_plan_id: entitlement.commissionPlanId,
+        commission_rule_id: entitlement.commissionRuleId,
+        commission_rule_version_id: entitlement.commissionRuleVersionId,
+        commission_rule_name: entitlement.commissionRuleName,
+        commission_amount_snapshot: entitlement.commissionAmountSnapshot
       }
 
       let { data: commissionRecord, error: commissionError } = await supabase
@@ -410,25 +527,28 @@ export async function releaseServiceOrderCommissions({
     if (employeeId) {
       recalculationLogEntry = {
         employee_id: entitlement.employeeId,
-        employee_name: employeeMap.get(entitlement.employeeId)?.name || null,
+        employee_name: employeesById.get(entitlement.employeeId)?.name || null,
         reason: trimmedReason,
         previous_amount: existingSum,
         new_amount: released,
         recalculated_by_email: userEmail || null,
         recalculated_by_name: userName || null,
-        recalculated_at: new Date().toISOString()
+        recalculated_at: new Date().toISOString(),
+        ...(overrideAction
+          ? {
+              override_action: overrideAction,
+              override_commission_plan_id: overrideAction === 'apply' ? overridePlan!.id : null,
+              override_commission_plan_name: overrideAction === 'apply' ? overridePlan!.name : null
+            }
+          : {})
       }
     }
   }
 
   if (recalculationLogEntry) {
-    const existingLog = Array.isArray(order.commission_recalculation_log)
-      ? order.commission_recalculation_log as CommissionRecalculationLogEntry[]
-      : []
-
     await supabase
       .from('service_orders')
-      .update({ commission_recalculation_log: [...existingLog, recalculationLogEntry] })
+      .update({ commission_manual_adjustments_log: [...existingLog, recalculationLogEntry] })
       .eq('id', orderId)
   }
 

@@ -3,6 +3,7 @@ export enum ResourceType {
   AUTHORIZATIONS = 'authorizations',
   BANK_ACCOUNTS = 'bank_accounts',
   BONUSES = 'bonuses',
+  COMMISSIONS = 'commissions',
   CONSULTATION = 'consultation',
   CUSTOMERS = 'customers',
   EMPLOYEES = 'employees',
@@ -11,6 +12,7 @@ export enum ResourceType {
   NOTIFICATIONS = 'notifications',
   ORDERS = 'orders',
   PRODUCTS = 'products',
+  PRODUCT_CATEGORIES = 'product_categories',
   PURCHASES = 'purchases',
   REPORTS = 'reports',
   ROLES = 'roles',
@@ -38,10 +40,12 @@ export function useRoleResources() {
     if (key.includes(ResourceType.AUTHORIZATIONS)) return 'i-lucide-badge-check'
     if (key.includes(ResourceType.BANK_ACCOUNTS) || key.includes('bank')) return 'i-lucide-landmark'
     if (key.includes(ResourceType.BONUSES) || key.includes('bonus')) return 'i-lucide-gift'
+    if (key.includes(ResourceType.COMMISSIONS) || key.includes('commission')) return 'i-lucide-badge-percent'
     if (key.includes(ResourceType.CUSTOMERS) || key.includes('client')) return 'i-lucide-users'
     if (key.includes(ResourceType.CONSULTATION)) return 'i-lucide-stethoscope'
     if (key.includes(ResourceType.EMPLOYEES) || key.includes('team')) return 'i-lucide-users-round'
     if (key.includes(ResourceType.FINANCIAL) || key.includes('billing')) return 'i-lucide-badge-dollar-sign'
+    if (key.includes(ResourceType.PRODUCT_CATEGORIES)) return 'i-lucide-tags'
     if (key.includes(ResourceType.INVENTORY) || key.includes(ResourceType.PRODUCTS) || key.includes('part')) return 'i-lucide-package'
     if (key.includes(ResourceType.NOTIFICATIONS)) return 'i-lucide-bell'
     if (key.includes(ResourceType.SERVICE_INVOICE) || key.includes('invoice')) return 'i-lucide-file-text'
@@ -66,11 +70,13 @@ export function useRoleResources() {
     if (key.includes(ResourceType.AUTHORIZATIONS)) return 'Autorizações'
     if (key.includes(ResourceType.BANK_ACCOUNTS) || key.includes('bank')) return 'Contas bancárias'
     if (key.includes(ResourceType.BONUSES) || key.includes('bonus')) return 'Bônus'
+    if (key.includes(ResourceType.COMMISSIONS) || key.includes('commission')) return 'Comissões'
     if (key.includes(ResourceType.CUSTOMERS) || key.includes('client')) return 'Clientes'
     if (key.includes(ResourceType.CONSULTATION)) return 'Consultas'
     if (key.includes(ResourceType.EMPLOYEES) || key.includes('team')) return 'Funcionários'
     if (key.includes(ResourceType.FINANCIAL) || key.includes('billing')) return 'Financeiro'
     if (key.includes(ResourceType.INVENTORY)) return 'Estoque'
+    if (key.includes(ResourceType.PRODUCT_CATEGORIES)) return 'Categorias de produtos'
     if (key.includes(ResourceType.PRODUCTS)) return 'Produtos'
     if (key.includes('part')) return 'Peças'
     if (key.includes(ResourceType.NOTIFICATIONS)) return 'Notificações'

@@ -5,9 +5,16 @@ import { resolveOrganizationId } from '../../utils/organization'
 import { computeNextOsNumber, normalizeOsNumber } from '../../utils/service-order-number'
 import {
   computeServiceOrderItemsWithCommissionSnapshots,
-  type ServiceOrderCommissionEmployee,
   type ServiceOrderCommissionItem
 } from '../../utils/service-order-item-commissions'
+import { resolveEmployeeCommissionRulesForEmployees, resolveCommissionPlanRules } from '../../utils/employee-commission-plans'
+import {
+  toCommissionMonthStart,
+  resolveEffectiveCommissionRules,
+  getActiveOverridePlanIds,
+  type ResolvedCommissionRule,
+  type CommissionManualAdjustmentLogEntry
+} from '../../../lib/utils/employee-commission-engine'
 
 /**
  * POST /api/service-orders
@@ -146,22 +153,40 @@ export default defineEventHandler(async (event) => {
     : []
 
   if (itemsForCommission.length > 0 && responsiblesForCommission.length > 0) {
-    const { data: employeesForCommission, error: employeesError } = await supabase
-      .from('employees')
-      .select('id, has_commission, commission_type, commission_amount, commission_base, commission_categories')
-      .eq('organization_id', organizationId)
-      .is('deleted_at', null)
+    // Resolve the commission-plan model's rules for every responsible
+    // employee, at the order's own entry_date (not "today") — a past-dated
+    // OS must resolve the version that was vigente back then, same as the
+    // frontend preview and the reports engine already do for their own
+    // reads. See docs/finance/commissions-step8-engine-cutover.md.
+    const referenceDate = toCommissionMonthStart(String(orderPayload.entry_date || new Date().toISOString().split('T')[0]))
+    const rulesByEmployeeId = await resolveEmployeeCommissionRulesForEmployees(
+      supabase,
+      organizationId,
+      responsiblesForCommission.map(responsible => String(responsible.employee_id || '')),
+      referenceDate
+    )
 
-    if (employeesError) {
-      throw createError({ statusCode: 500, statusMessage: employeesError.message })
-    }
+    // Editing an order (items, discount, taxes, responsibles...) must not
+    // silently drop a standing manual commission override (docs/finance/
+    // commissions-manual-override.md) — without this, saving any edit to an
+    // order that has one active would recompute items[].commissions[] from
+    // the employee's standard plan only, until the next "Recalcular" or
+    // payment-triggered release papered back over it.
+    const existingLog = Array.isArray(existingOrder?.commission_manual_adjustments_log)
+      ? existingOrder!.commission_manual_adjustments_log as CommissionManualAdjustmentLogEntry[]
+      : []
+    const planRulesByPlanId = new Map<string, ResolvedCommissionRule[]>()
+    await Promise.all(getActiveOverridePlanIds(existingLog).map(async (planId) => {
+      planRulesByPlanId.set(planId, await resolveCommissionPlanRules(supabase, organizationId, planId, referenceDate))
+    }))
+    const effectiveRulesByEmployeeId = resolveEffectiveCommissionRules(rulesByEmployeeId, existingLog, planRulesByPlanId)
 
     const commissionSnapshot = computeServiceOrderItemsWithCommissionSnapshots({
       items: itemsForCommission,
       responsibleEmployees: responsiblesForCommission,
-      employees: (employeesForCommission ?? []) as ServiceOrderCommissionEmployee[],
       discount: orderPayload.discount,
-      totalTaxesAmount: orderPayload.total_taxes_amount
+      totalTaxesAmount: orderPayload.total_taxes_amount,
+      rulesByEmployeeId: effectiveRulesByEmployeeId
     })
 
     orderPayload.items = commissionSnapshot.items
