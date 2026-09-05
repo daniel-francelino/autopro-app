@@ -436,13 +436,29 @@ export function getActiveOverridePlanIds(log: CommissionManualAdjustmentLogEntry
 }
 
 /**
- * The rules to actually use for each employee on this order: the rules of
- * their active override plan, if any (looked up in planRulesByPlanId — see
- * getActiveOverridePlanIds() above for what that map needs to contain),
- * otherwise their normal resolved plan rules unchanged. Callers use this in
- * place of the raw rulesByEmployeeId map wherever they compute commission
- * for an existing order (release, item snapshot sync, live preview) — never
- * for a brand-new order that has no log yet.
+ * The rules to actually use for each employee on this order: a PATCH of
+ * their active override plan's rules (if any — looked up in
+ * planRulesByPlanId, see getActiveOverridePlanIds() above for what that map
+ * needs to contain) over their normal resolved plan rules — not a full
+ * replacement. An override only ever covers some of the categories an
+ * employee's standard plan(s) cover; categories it doesn't mention keep
+ * using the standard rule. E.g. employee's standard plan has 9% on
+ * "cabeçote" and 20% on "motor"; applying an override plan with just 15% on
+ * "cabeçote" makes cabeçote items use 15%, but motor items keep 20% — the
+ * override didn't touch that category, so there's nothing to patch.
+ *
+ * This falls out of getApplicableCommissionRule()'s existing "first
+ * matching rule in the array wins" resolution for free: putting the
+ * override's rules BEFORE the standard rules in the combined list means an
+ * item's category resolves against the override first (specific rule, then
+ * the override's own catch-all if it has one) and only reaches the standard
+ * rules — specific, then its catch-all — when the override has neither. No
+ * change needed in getApplicableCommissionRule()/computeEmployeeOrderCommission()
+ * themselves.
+ *
+ * Callers use this in place of the raw rulesByEmployeeId map wherever they
+ * compute commission for an existing order (release, item snapshot sync,
+ * live preview) — never for a brand-new order that has no log yet.
  */
 export function resolveEffectiveCommissionRules(
   rulesByEmployeeId: Map<string, ResolvedCommissionRule[]>,
@@ -454,7 +470,11 @@ export function resolveEffectiveCommissionRules(
   const result = new Map(rulesByEmployeeId)
   for (const employeeId of rulesByEmployeeId.keys()) {
     const override = getActiveCommissionOverride(log, employeeId)
-    if (override) result.set(employeeId, planRulesByPlanId.get(override.commissionPlanId) ?? [])
+    if (!override) continue
+
+    const overrideRules = planRulesByPlanId.get(override.commissionPlanId) ?? []
+    const standardRules = rulesByEmployeeId.get(employeeId) ?? []
+    result.set(employeeId, [...overrideRules, ...standardRules])
   }
   return result
 }

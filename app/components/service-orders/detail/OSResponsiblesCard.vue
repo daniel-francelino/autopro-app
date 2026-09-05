@@ -7,6 +7,7 @@ import {
 } from '~/utils/service-orders'
 import {
   getActiveOverridePlanIds,
+  resolveEffectiveCommissionRules,
   type ResolvedCommissionRule
 } from '../../../../lib/utils/employee-commission-engine'
 import type { CommissionBreakdownLine } from '../CommissionBreakdownPopover.vue'
@@ -90,6 +91,21 @@ const commissionBreakdown = computed(() =>
   computeServiceOrderCommissionBreakdown(props.order, rulesByEmployeeId.value, rulesByPlanId.value)
 )
 
+/**
+ * Same patch-over-standard resolution computeServiceOrderCommissionBreakdown()
+ * applies internally — recomputed here (cheap, pure, no I/O) just so the
+ * "Regras" popover can show exactly which rules are driving the amount above
+ * it: the override's rules for the categories it covers, the employee's own
+ * rules for everything else (docs/finance/commissions-manual-override.md).
+ */
+const effectiveRulesByEmployeeId = computed(() =>
+  resolveEffectiveCommissionRules(
+    rulesByEmployeeId.value,
+    props.order.commission_manual_adjustments_log ?? [],
+    rulesByPlanId.value
+  )
+)
+
 /** Last log entry with an override_action for this employee — the active override when it's an 'apply', or null (removed, or never had one). */
 function getAssigneeOverride(employeeId: string): ServiceOrderCommissionManualAdjustmentLogEntry | null {
   const log = props.order.commission_manual_adjustments_log ?? []
@@ -121,9 +137,7 @@ const responsiblesInfo = computed<ResponsibleInfo[]>(() => {
     }
 
     const override = getAssigneeOverride(r.employee_id)
-    const effectiveRules = override
-      ? rulesByPlanId.value.get(override.override_commission_plan_id ?? '') ?? []
-      : rulesByEmployeeId.value.get(r.employee_id) ?? []
+    const effectiveRules = effectiveRulesByEmployeeId.value.get(r.employee_id) ?? []
 
     return {
       employee_id: r.employee_id,
@@ -234,7 +248,7 @@ const commissionPlanSelectItems = computed(() =>
 const overrideSubmittingEmployeeId = ref<string | null>(null)
 
 const pendingOverrideApply = ref<{ employeeId: string, name: string | null, isEdit: boolean } | null>(null)
-const overrideSelectedPlanId = ref<string | null>(null)
+const overrideSelectedPlanId = ref<string | undefined>(undefined)
 const overrideApplyReason = ref('')
 const overrideApplyValid = computed(() =>
   overrideApplyReason.value.trim().length > 0 && !!overrideSelectedPlanId.value
@@ -246,14 +260,14 @@ function requestApplyOverride(assignee: ResponsibleInfo) {
     name: assignee.name,
     isEdit: !!assignee.override
   }
-  overrideSelectedPlanId.value = assignee.override?.override_commission_plan_id ?? null
+  overrideSelectedPlanId.value = assignee.override?.override_commission_plan_id ?? undefined
   overrideApplyReason.value = ''
 }
 
 function closeOverrideApplyModal() {
   if (overrideSubmittingEmployeeId.value) return
   pendingOverrideApply.value = null
-  overrideSelectedPlanId.value = null
+  overrideSelectedPlanId.value = undefined
   overrideApplyReason.value = ''
 }
 
@@ -541,9 +555,13 @@ async function confirmRemoveOverride() {
         <p class="text-sm text-muted">
           Aplica uma configuração de comissão diferente da padrão para
           <strong class="text-highlighted">{{ pendingOverrideApply?.name ?? 'este funcionário' }}</strong>,
-          só nesta OS — a configuração escolhida pode ter regras diferentes
-          por categoria, e não muda a atribuição padrão dele em
-          Financeiro > Comissões.
+          só nesta OS — não muda a atribuição padrão dele em Financeiro > Comissões.
+        </p>
+        <p class="text-sm text-muted">
+          Vale só para as categorias que essa configuração cobre. Se ela não
+          cobrir alguma categoria dos itens desta OS, esses itens continuam
+          na comissão padrão do funcionário — a configuração escolhida não
+          substitui tudo, só sobrepõe onde ela tem uma regra.
         </p>
         <UFormField label="Configuração de comissão" required>
           <USelectMenu
