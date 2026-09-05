@@ -394,7 +394,11 @@ export async function getEmployeeReport(
       .reduce((sum, record) => sum + toNumber(record?.amount, 0), 0)
   )
   const otherEmployeesCommissions = roundMoney(otherEmployeesCommissionRecords.reduce((sum, record) => sum + toNumber(record?.amount, 0), 0))
-  const netSales = roundMoney(grossSales - osExpenses - totalCommissions)
+  // Deliberately not subtracting totalCommissions here: this summary mirrors
+  // the Sales Items report convention (gross/expenses/net from the items
+  // this employee is commissioned on), and the "Comissões" figure is shown
+  // on its own tab/export instead of folded into the headline net number.
+  const netSales = roundMoney(grossSales - osExpenses)
 
   const summary: EmployeeReportSummary = {
     grossSales,

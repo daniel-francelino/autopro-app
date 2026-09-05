@@ -26,15 +26,14 @@ const stats = computed(() => [
     description: 'custo de peças',
     tooltip: 'Soma do custo das peças e produtos vendidos por este funcionário no período selecionado. Não inclui despesas gerais da oficina (aluguel, contas, etc.).'
   },
-  { label: 'Comissões', value: formatCurrency(props.summary?.totalCommissions ?? 0), icon: 'i-lucide-hand-coins', color: 'text-warning', bg: 'bg-warning/10', description: 'do funcionário' },
   {
     label: 'Venda líquida',
     value: formatCurrency(netSales.value),
     icon: 'i-lucide-calculator',
     color: netSales.value >= 0 ? 'text-success' : 'text-error',
     bg: netSales.value >= 0 ? 'bg-success/10' : 'bg-error/10',
-    description: 'bruta − despesas − comissões',
-    tooltip: 'Venda bruta menos as despesas de peças e a comissão deste funcionário. Não desconta a comissão de outros funcionários também responsáveis pela mesma OS.'
+    description: 'bruta − despesas',
+    tooltip: 'Venda bruta menos as despesas de peças dos itens em que este funcionário tem comissão. A comissão em si fica na aba "Comissões".'
   }
 ])
 </script>
