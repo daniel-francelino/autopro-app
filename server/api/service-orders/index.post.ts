@@ -7,8 +7,14 @@ import {
   computeServiceOrderItemsWithCommissionSnapshots,
   type ServiceOrderCommissionItem
 } from '../../utils/service-order-item-commissions'
-import { resolveEmployeeCommissionRulesForEmployees } from '../../utils/employee-commission-plans'
-import { toCommissionMonthStart } from '../../../lib/utils/employee-commission-engine'
+import { resolveEmployeeCommissionRulesForEmployees, resolveCommissionPlanRules } from '../../utils/employee-commission-plans'
+import {
+  toCommissionMonthStart,
+  resolveEffectiveCommissionRules,
+  getActiveOverridePlanIds,
+  type ResolvedCommissionRule,
+  type CommissionManualAdjustmentLogEntry
+} from '../../../lib/utils/employee-commission-engine'
 
 /**
  * POST /api/service-orders
@@ -160,12 +166,27 @@ export default defineEventHandler(async (event) => {
       referenceDate
     )
 
+    // Editing an order (items, discount, taxes, responsibles...) must not
+    // silently drop a standing manual commission override (docs/finance/
+    // commissions-manual-override.md) — without this, saving any edit to an
+    // order that has one active would recompute items[].commissions[] from
+    // the employee's standard plan only, until the next "Recalcular" or
+    // payment-triggered release papered back over it.
+    const existingLog = Array.isArray(existingOrder?.commission_manual_adjustments_log)
+      ? existingOrder!.commission_manual_adjustments_log as CommissionManualAdjustmentLogEntry[]
+      : []
+    const planRulesByPlanId = new Map<string, ResolvedCommissionRule[]>()
+    await Promise.all(getActiveOverridePlanIds(existingLog).map(async (planId) => {
+      planRulesByPlanId.set(planId, await resolveCommissionPlanRules(supabase, organizationId, planId, referenceDate))
+    }))
+    const effectiveRulesByEmployeeId = resolveEffectiveCommissionRules(rulesByEmployeeId, existingLog, planRulesByPlanId)
+
     const commissionSnapshot = computeServiceOrderItemsWithCommissionSnapshots({
       items: itemsForCommission,
       responsibleEmployees: responsiblesForCommission,
       discount: orderPayload.discount,
       totalTaxesAmount: orderPayload.total_taxes_amount,
-      rulesByEmployeeId
+      rulesByEmployeeId: effectiveRulesByEmployeeId
     })
 
     orderPayload.items = commissionSnapshot.items

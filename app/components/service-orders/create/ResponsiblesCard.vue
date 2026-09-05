@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { formatCurrency } from '~/utils/service-orders'
+import type { ResolvedCommissionRule } from '../../../../lib/utils/employee-commission-engine'
 import type { CommissionBreakdownLine } from '../CommissionBreakdownPopover.vue'
 
 interface SelectOption { label: string, value: string }
@@ -9,12 +10,14 @@ export type EmployeeCommissionDisplay = {
   note: { label: string, color: 'neutral' | 'warning' | 'primary', icon: string } | null
   hasInfo: boolean
   itemBreakdown: CommissionBreakdownLine[]
+  rules: ResolvedCommissionRule[]
 }
 
 const props = defineProps<{
   modelValue: string[]
   employeeOptions: SelectOption[]
   employeeCommissions: Record<string, EmployeeCommissionDisplay>
+  categoryNameById: Map<string, string>
   totalCommissionAmount: number
 }>()
 
@@ -110,8 +113,20 @@ function getOptionsForIndex(index: number) {
                   class="cursor-default"
                 />
               </ServiceOrdersCommissionBreakdownPopover>
+              <ServiceOrdersCommissionRulesPopover
+                v-if="employeeCommissions[employeeId]!.note && employeeCommissions[employeeId]!.rules.length"
+                :rules="employeeCommissions[employeeId]!.rules"
+                :category-name-by-id="categoryNameById"
+              >
+                <UBadge
+                  :color="employeeCommissions[employeeId]!.note!.color"
+                  variant="subtle"
+                  :leading-icon="employeeCommissions[employeeId]!.note!.icon"
+                  :label="employeeCommissions[employeeId]!.note!.label"
+                />
+              </ServiceOrdersCommissionRulesPopover>
               <UBadge
-                v-if="employeeCommissions[employeeId]!.note"
+                v-else-if="employeeCommissions[employeeId]!.note"
                 :color="employeeCommissions[employeeId]!.note!.color"
                 variant="subtle"
                 :leading-icon="employeeCommissions[employeeId]!.note!.icon"

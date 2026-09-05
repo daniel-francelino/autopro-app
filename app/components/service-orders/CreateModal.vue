@@ -12,6 +12,10 @@ import {
   type ServiceOrderItemCommissionEntry,
   computeServiceOrderCommissionBreakdown
 } from '../../utils/service-orders'
+import {
+  getActiveOverridePlanIds,
+  resolveEffectiveCommissionRules
+} from '../../../lib/utils/employee-commission-engine'
 import type {
   ServiceOrderDraftItem,
   ServiceOrderItem,
@@ -104,6 +108,7 @@ const selectedVehicleLabel = ref<string | null>(null)
 const employeeCatalog = ref<EmployeeItem[]>([])
 const masterProducts = ref<MasterProductItem[]>([])
 const taxesCatalog = ref<TaxItem[]>([])
+const productCategoriesCatalog = ref<Array<{ id: string, name: string }>>([])
 
 const isLoadingOptions = ref(false)
 const isLoadingNextNumber = ref(false)
@@ -320,7 +325,7 @@ async function loadOptions() {
   if (optionsLoaded.value || isLoadingOptions.value) return
   isLoadingOptions.value = true
   try {
-    const [employeesRes, masterProductsRes, taxesRes]
+    const [employeesRes, masterProductsRes, taxesRes, productCategoriesRes]
       = await Promise.all([
         $fetch<{ items: EmployeeItem[] }>('/api/employees'),
         $fetch<{ items: MasterProductItem[] }>('/api/master-products', {
@@ -328,11 +333,13 @@ async function loadOptions() {
         }),
         $fetch<{ items: TaxItem[] }>('/api/taxes', {
           query: { page_size: 500, sort_by: 'name', sort_order: 'asc' }
-        })
+        }),
+        $fetch<{ items: Array<{ id: string, name: string }> }>('/api/product-categories')
       ])
     employeeCatalog.value = employeesRes.items ?? []
     masterProducts.value = masterProductsRes.items ?? []
     taxesCatalog.value = taxesRes.items ?? []
+    productCategoriesCatalog.value = productCategoriesRes.items ?? []
     optionsLoaded.value = true
   } catch {
     toast.add({ title: 'Erro ao carregar opções', color: 'error' })
@@ -423,11 +430,19 @@ const totalTaxesAmount = computed(() =>
 // which uses them when present, falling back to the legacy employees.*
 // fields otherwise.
 const { rulesByEmployeeId, ensureRules } = useEmployeeCommissionRules()
+// Manual commission override (docs/finance/commissions-manual-override.md):
+// editing an order that already has an active override needs its live
+// preview to reflect it too, or the numbers shown while editing would
+// disagree with what actually gets saved (server/api/service-orders
+// resolves the override on save regardless of what this preview shows).
+const { rulesByPlanId, ensureRules: ensurePlanRules } = usePlanCommissionRules()
 
 watch(
   [() => form.responsible_employees, () => form.entry_date],
   ([responsibleEmployeeIds, entryDate]) => {
-    ensureRules(responsibleEmployeeIds, entryDate || new Date().toISOString().substring(0, 10))
+    const referenceDate = entryDate || new Date().toISOString().substring(0, 10)
+    ensureRules(responsibleEmployeeIds, referenceDate)
+    ensurePlanRules(getActiveOverridePlanIds(props.orderToEdit?.commission_manual_adjustments_log ?? []), referenceDate)
   },
   { immediate: true, deep: true }
 )
@@ -442,16 +457,29 @@ const commissionOrderInput = computed(
       total_amount: totalAmount.value,
       total_cost_amount: totalCost.value,
       total_taxes_amount: totalTaxesAmount.value,
-      discount: discountValue.value
+      discount: discountValue.value,
+      commission_manual_adjustments_log: props.orderToEdit?.commission_manual_adjustments_log ?? []
     }) as ServiceOrderRaw
 )
 
 const commissionBreakdown = computed(() =>
   computeServiceOrderCommissionBreakdown(
     commissionOrderInput.value,
-    rulesByEmployeeId.value
+    rulesByEmployeeId.value,
+    rulesByPlanId.value
   )
 )
+
+/** Same patch-over-standard resolution computeServiceOrderCommissionBreakdown() applies internally — recomputed here so the "Regras" popover can show exactly which rules are driving the amount (docs/finance/commissions-manual-override.md). */
+const effectiveRulesByEmployeeId = computed(() =>
+  resolveEffectiveCommissionRules(
+    rulesByEmployeeId.value,
+    commissionOrderInput.value.commission_manual_adjustments_log ?? [],
+    rulesByPlanId.value
+  )
+)
+
+const categoryNameById = computed(() => new Map(productCategoriesCatalog.value.map(c => [c.id, c.name])))
 
 const itemCommissionDetail = computed(() => {
   const detail = new Map<string, ServiceOrderItemCommissionEntry>()
@@ -613,7 +641,8 @@ const employeeCommissionsDisplay = computed<
       commissionLabel: formatCurrency(commissionValue),
       note,
       hasInfo: !!employee || stored > 0,
-      itemBreakdown
+      itemBreakdown,
+      rules: effectiveRulesByEmployeeId.value.get(employeeId) ?? []
     }
   }
   return result
@@ -1095,6 +1124,7 @@ async function submit() {
               :model-value="form.responsible_employees"
               :employee-options="employeeSelectOptions"
               :employee-commissions="employeeCommissionsDisplay"
+              :category-name-by-id="categoryNameById"
               :total-commission-amount="totalCommissionAmount"
               @add="addResponsible"
               @remove="removeResponsible"
