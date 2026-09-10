@@ -126,7 +126,7 @@ const responsiblesInfo = computed<ResponsibleInfo[]>(() => {
     const item_breakdown: CommissionBreakdownLine[] = []
     for (const [itemIndex, entry] of commissionBreakdown.value.byItemIndex) {
       const c = entry.commissions.find(x => x.employee_id === r.employee_id)
-      if (!c || c.amount <= 0) continue
+      if (!c) continue
       const item = items[itemIndex]
       if (!item) continue
       item_breakdown.push({

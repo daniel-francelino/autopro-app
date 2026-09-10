@@ -32,7 +32,6 @@ function getItemCommission(item: OrderItem) {
 
 function getItemCommissionLines(item: OrderItem): CommissionBreakdownLine[] {
   return (item.commissions ?? [])
-    .filter(c => (c.amount ?? 0) > 0)
     .map((c) => {
       const emp = props.employees.find(e => e.id === c.employee_id)
       const typeLabel

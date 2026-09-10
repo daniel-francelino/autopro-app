@@ -260,10 +260,12 @@ export function computeServiceOrderCommissionBreakdown(
       totalTaxesAmount
     })
 
-    result.perItem.forEach((matched, index) => {
+    result.allMatches.forEach((matched, index) => {
       const entry = byItemIndex.get(index)!
-      if (!matched || matched.amount <= 0) return
-      entry.total = roundCurrency(entry.total + matched.amount)
+      if (!matched) return
+      if (matched.amount > 0) {
+        entry.total = roundCurrency(entry.total + matched.amount)
+      }
       entry.commissions.push({
         employee_id: employeeId,
         amount: matched.amount,

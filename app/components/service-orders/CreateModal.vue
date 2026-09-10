@@ -514,7 +514,6 @@ const itemCommissionDisplayDetailMap = computed(() => {
     map.set(normalizedItem.id, {
       total: entry.total,
       lines: entry.commissions
-        .filter(c => c.amount > 0)
         .map((c) => {
           const emp = getEmployeeById(c.employee_id)
           return {
@@ -628,7 +627,7 @@ const employeeCommissionsDisplay = computed<
         const c = detail?.commissions.find(
           commission => commission.employee_id === employeeId
         )
-        if (!c || c.amount <= 0) return null
+        if (!c) return null
         return {
           label: normalizedItem.description || normalizedItem.name,
           sublabel: formatCommissionRuleSublabel(c),

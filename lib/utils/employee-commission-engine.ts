@@ -223,8 +223,10 @@ export interface EmployeeOrderCommissionResult {
   /** False when the employee has no plan/rule that covers anything on this order — mirrors the legacy engines' "no eligible items" signal. */
   hasMatchingItems: boolean
   total: number
-  /** Same length/order as the `items` input; null where no rule matched (no commission for that item). */
+  /** Same length/order as the `items` input; null where no rule matched (no commission for that item). Entries with amount === 0 (e.g. a zero-profit item under a profit-based rule) are also null here — this array feeds totals/entitlement eligibility, which must keep ignoring zero-value matches. */
   perItem: Array<CommissionOrderItemResult | null>
+  /** Same shape as `perItem`, but keeps an entry whenever a rule matched the item's category, even if its computed amount is 0. Use this (not `perItem`) when displaying "which employees/rules apply to this item" — `perItem`'s null would otherwise be indistinguishable from "no employee responsible" when the real reason is just a zero-profit item. */
+  allMatches: Array<CommissionOrderItemResult | null>
 }
 
 function getOrderItemQuantityRaw(quantity: number): number {
@@ -250,16 +252,17 @@ export function computeEmployeeOrderCommission(
   orderContext: { discount: number, totalTaxesAmount: number }
 ): EmployeeOrderCommissionResult {
   const perItem: Array<CommissionOrderItemResult | null> = new Array(items.length).fill(null)
+  const allMatches: Array<CommissionOrderItemResult | null> = new Array(items.length).fill(null)
 
   if (rules.length === 0 || items.length === 0) {
-    return { hasMatchingItems: false, total: 0, perItem }
+    return { hasMatchingItems: false, total: 0, perItem, allMatches }
   }
 
   const matches = items.map(item => matchCommissionRule(rules, item.categoryId))
   const eligibleIndexes = items.map((_, index) => index).filter(index => matches[index] !== null)
 
   if (eligibleIndexes.length === 0) {
-    return { hasMatchingItems: false, total: 0, perItem }
+    return { hasMatchingItems: false, total: 0, perItem, allMatches }
   }
 
   const subtotal = items.reduce((sum, item) => sum + item.total, 0)
@@ -282,13 +285,14 @@ export function computeEmployeeOrderCommission(
     const profit = Math.max(0, revenue - item.cost - itemTaxes)
 
     const amount = computeCommissionAmount(rule, { revenue, profit, quantity })
+    allMatches[index] = { amount, rule }
     if (amount > 0) {
       perItem[index] = { amount, rule }
       total = roundMoney(total + amount)
     }
   }
 
-  return { hasMatchingItems: eligibleSale > 0, total, perItem }
+  return { hasMatchingItems: eligibleSale > 0, total, perItem, allMatches }
 }
 
 // ─── Canonical item field readers ──────────────────────────────────────────
