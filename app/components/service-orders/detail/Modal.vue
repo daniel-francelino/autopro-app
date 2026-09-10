@@ -453,12 +453,14 @@ defineExpose({ refreshNfseCard })
         />
 
         <!-- Responsibles -->
+        <!-- :employees is TEMPORARY — only feeds the add-responsible picker in OSResponsiblesCard.vue, remove when that feature goes away -->
         <ServiceOrdersDetailOSResponsiblesCard
           :order-id="detail.order.id"
           :order="detail.order"
           :responsible-names="detail.responsibleNames"
           :commissions="detail.commissions"
           :can-update="canUpdate"
+          :employees="detail.employees"
           @recalculated="loadDetail"
         />
 
