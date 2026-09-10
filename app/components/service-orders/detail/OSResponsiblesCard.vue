@@ -24,9 +24,6 @@ const props = defineProps<{
   responsibleNames: ServiceOrderDetailFull['responsibleNames']
   commissions: ServiceOrderDetailFull['commissions']
   canUpdate?: boolean
-  // TEMPORARY: only used by the add-responsible picker below — remove this
-  // prop (and its Modal.vue call-site) when that feature goes away.
-  employees?: ServiceOrderDetailFull['employees']
 }>()
 
 const emit = defineEmits<{ recalculated: [] }>()
@@ -362,134 +359,16 @@ async function confirmRemoveOverride() {
     overrideSubmittingEmployeeId.value = null
   }
 }
-
-// ─── TEMPORARY: add/remove responsible (data-cleanup escape hatch) ────────────
-// See server/utils/service-order-responsible-admin.ts for what to delete
-// along with this block (down to the matching end marker below, plus the two
-// confirm modals near the end of the template) once it's no longer needed.
-
-const addableEmployeeOptions = computed(() => {
-  const alreadyResponsibleIds = new Set(props.responsibleNames.map(r => r.employee_id))
-  return (props.employees ?? [])
-    .filter(employee => !alreadyResponsibleIds.has(employee.id))
-    .map(employee => ({ label: employee.name || 'Sem nome', value: employee.id }))
-    .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'))
-})
-
-const respAdminSubmitting = ref(false)
-
-const pendingAddResponsible = ref(false)
-const addResponsibleEmployeeId = ref<string | undefined>(undefined)
-const addResponsibleReason = ref('')
-const addResponsibleValid = computed(() =>
-  !!addResponsibleEmployeeId.value && addResponsibleReason.value.trim().length > 0
-)
-
-function requestAddResponsible() {
-  pendingAddResponsible.value = true
-  addResponsibleEmployeeId.value = undefined
-  addResponsibleReason.value = ''
-}
-
-function closeAddResponsibleModal() {
-  if (respAdminSubmitting.value) return
-  pendingAddResponsible.value = false
-}
-
-async function confirmAddResponsible() {
-  if (!addResponsibleValid.value) return
-  respAdminSubmitting.value = true
-
-  try {
-    await $fetch(`/api/service-orders/${props.orderId}/add-responsible`, {
-      method: 'POST',
-      body: { employeeId: addResponsibleEmployeeId.value, reason: addResponsibleReason.value.trim() }
-    })
-
-    toast.add({ title: 'Responsável adicionado', color: 'success' })
-    pendingAddResponsible.value = false
-    emit('recalculated')
-  } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string } }
-    toast.add({
-      title: 'Erro ao adicionar responsável',
-      description: err?.data?.statusMessage || 'Tente novamente.',
-      color: 'error'
-    })
-  } finally {
-    respAdminSubmitting.value = false
-  }
-}
-
-const pendingRemoveResponsible = ref<{ employeeId: string, name: string | null } | null>(null)
-const removeResponsibleReason = ref('')
-const removeResponsibleReasonValid = computed(() => removeResponsibleReason.value.trim().length > 0)
-
-function requestRemoveResponsible(assignee: ResponsibleInfo) {
-  pendingRemoveResponsible.value = { employeeId: assignee.employee_id, name: assignee.name }
-  removeResponsibleReason.value = ''
-}
-
-function closeRemoveResponsibleModal() {
-  if (respAdminSubmitting.value) return
-  pendingRemoveResponsible.value = null
-  removeResponsibleReason.value = ''
-}
-
-async function confirmRemoveResponsible() {
-  if (!pendingRemoveResponsible.value || !removeResponsibleReasonValid.value) return
-  const { employeeId, name } = pendingRemoveResponsible.value
-  respAdminSubmitting.value = true
-
-  try {
-    await $fetch(`/api/service-orders/${props.orderId}/remove-responsible`, {
-      method: 'POST',
-      body: { employeeId, reason: removeResponsibleReason.value.trim() }
-    })
-
-    toast.add({
-      title: 'Responsável removido',
-      description: `${name ?? 'Funcionário'} não é mais responsável por esta OS.`,
-      color: 'success'
-    })
-    pendingRemoveResponsible.value = null
-    removeResponsibleReason.value = ''
-    emit('recalculated')
-  } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string } }
-    toast.add({
-      title: 'Erro ao remover responsável',
-      description: err?.data?.statusMessage || 'Tente novamente.',
-      color: 'error'
-    })
-  } finally {
-    respAdminSubmitting.value = false
-  }
-}
-// ─── end TEMPORARY: add/remove responsible ─────────────────────────────────────
 </script>
 
 <template>
   <UCard variant="subtle">
     <template #header>
-      <div class="flex items-center justify-between gap-2">
-        <div class="flex items-center gap-2">
-          <UIcon name="i-lucide-user-round-cog" class="size-4 text-primary" />
-          <h3 class="font-semibold text-highlighted">
-            Responsáveis e comissão
-          </h3>
-        </div>
-        <!-- TEMPORARY: add responsible — see script block above -->
-        <UButton
-          v-if="canUpdate"
-          size="xs"
-          color="primary"
-          variant="soft"
-          icon="i-lucide-user-round-plus"
-          label="Adicionar responsável"
-          @click="requestAddResponsible"
-        />
-        <!-- end TEMPORARY -->
+      <div class="flex items-center gap-2">
+        <UIcon name="i-lucide-user-round-cog" class="size-4 text-primary" />
+        <h3 class="font-semibold text-highlighted">
+          Responsáveis e comissão
+        </h3>
       </div>
     </template>
 
@@ -605,20 +484,6 @@ async function confirmRemoveResponsible() {
                 square
                 @click="requestRemoveOverride(assignee)"
               />
-              <!-- TEMPORARY: remove responsible — see script block above -->
-              <UButton
-                v-if="canUpdate"
-                size="xs"
-                color="error"
-                variant="soft"
-                icon="i-lucide-user-round-x"
-                label="Remover responsável"
-                :loading="respAdminSubmitting && pendingRemoveResponsible?.employeeId === assignee.employee_id"
-                :disabled="respAdminSubmitting"
-                square
-                @click="requestRemoveResponsible(assignee)"
-              />
-              <!-- end TEMPORARY -->
             </div>
           </div>
         </div>
@@ -752,77 +617,4 @@ async function confirmRemoveResponsible() {
       </div>
     </template>
   </AppConfirmModal>
-
-  <!-- TEMPORARY: add/remove responsible confirmations — see script block above -->
-  <AppConfirmModal
-    :open="pendingAddResponsible"
-    title="Adicionar responsável"
-    confirm-label="Adicionar"
-    confirm-color="primary"
-    :loading="respAdminSubmitting"
-    :confirm-disabled="!addResponsibleValid"
-    @update:open="(value: boolean) => !value && closeAddResponsibleModal()"
-    @confirm="confirmAddResponsible"
-  >
-    <template #description>
-      <div class="space-y-3">
-        <p class="text-sm text-muted">
-          Adiciona um funcionário aos responsáveis desta OS e calcula a
-          comissão dele com base na configuração atual e nos itens da OS.
-        </p>
-        <UFormField label="Funcionário" required>
-          <USelectMenu
-            v-model="addResponsibleEmployeeId"
-            :items="addableEmployeeOptions"
-            value-key="value"
-            placeholder="Selecione um funcionário"
-            class="w-full"
-          />
-        </UFormField>
-        <UFormField label="Motivo" required>
-          <UTextarea
-            v-model="addResponsibleReason"
-            class="w-full"
-            :rows="2"
-            placeholder="Ex.: funcionário ficou de fora por engano"
-          />
-        </UFormField>
-      </div>
-    </template>
-  </AppConfirmModal>
-
-  <AppConfirmModal
-    :open="!!pendingRemoveResponsible"
-    title="Remover responsável"
-    confirm-label="Remover"
-    confirm-color="error"
-    :loading="respAdminSubmitting"
-    :confirm-disabled="!removeResponsibleReasonValid"
-    @update:open="(value: boolean) => !value && closeRemoveResponsibleModal()"
-    @confirm="confirmRemoveResponsible"
-  >
-    <template #description>
-      <div class="space-y-3">
-        <p class="text-sm text-muted">
-          Remove
-          <strong class="text-highlighted">{{ pendingRemoveResponsible?.name ?? 'este funcionário' }}</strong>
-          dos responsáveis desta OS e zera/consolida a comissão dele aqui.
-        </p>
-        <p class="text-sm text-muted">
-          Só é possível remover responsáveis sem comissão paga nesta OS. Se
-          este funcionário já tiver alguma comissão paga aqui, a remoção será
-          bloqueada.
-        </p>
-        <UFormField label="Motivo da remoção" required>
-          <UTextarea
-            v-model="removeResponsibleReason"
-            class="w-full"
-            :rows="2"
-            placeholder="Ex.: funcionário foi atribuído por engano a esta OS"
-          />
-        </UFormField>
-      </div>
-    </template>
-  </AppConfirmModal>
-  <!-- end TEMPORARY -->
 </template>
