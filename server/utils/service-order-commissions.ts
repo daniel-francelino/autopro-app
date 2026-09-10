@@ -374,18 +374,35 @@ export async function releaseServiceOrderCommissions({
     .update({ items: itemsSnapshot.items, commission_amount: totalCommission, updated_by: userEmail || null })
     .eq('id', orderId)
 
-  const targetEntitlements = employeeId
+  let targetEntitlements = employeeId
     ? entitlements.filter(entitlement => entitlement.employeeId === employeeId)
     : entitlements
 
+  // A manual recalculation scoped to one employee whose current rules no
+  // longer match anything on this OS (plan/category reconfigured or
+  // removed) still needs to run — not to compute a new commission, but so
+  // the claw-back logic below can remove any now-invalid pending record
+  // they already have here, instead of being blocked by an opaque "not
+  // configured" error. The already-paid guard inside the loop below still
+  // applies to this synthesized zero entitlement same as any other.
   if (employeeId && targetEntitlements.length === 0) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Este funcionário não possui comissão configurada para os itens desta OS.'
-    })
+    targetEntitlements = [{
+      employeeId,
+      totalAmount: 0,
+      commissionType: null,
+      commissionPercentage: null,
+      commissionBase: null,
+      itemAmount: 0,
+      itemCost: 0,
+      commissionPlanId: null,
+      commissionRuleId: null,
+      commissionRuleVersionId: null,
+      commissionRuleName: null,
+      commissionAmountSnapshot: null
+    }]
   }
 
-  if (entitlements.length === 0) {
+  if (!employeeId && entitlements.length === 0) {
     return {
       orderId,
       commissions: [],
@@ -426,6 +443,60 @@ export async function releaseServiceOrderCommissions({
   const createdCommissions: unknown[] = []
   let recalculationLogEntry: CommissionManualAdjustmentLogEntry | null = null
 
+  async function insertCommissionRecord(entitlement: EmployeeEntitlement, amount: number) {
+    const basePayload = {
+      organization_id: organizationId,
+      employee_id: entitlement.employeeId,
+      service_order_id: orderId,
+      service_order_installment_id: triggeringInstallmentId || null,
+      record_type: 'commission',
+      amount,
+      status: 'pending',
+      description: `Comissão - #${order.number}`,
+      reference_date: order.entry_date || new Date().toISOString().split('T')[0],
+      created_by: userEmail || null,
+      updated_by: userEmail || null
+    }
+
+    const snapshotPayload = {
+      commission_type: entitlement.commissionType,
+      commission_percentage: entitlement.commissionPercentage,
+      commission_base: entitlement.commissionBase,
+      item_name: `#${order.number}`,
+      item_amount: entitlement.itemAmount,
+      item_cost: entitlement.itemCost,
+      // New-model traceability (20240101000085) — only set when the whole
+      // entitlement came from one single rule (see computeEmployeeEntitlements'
+      // doc comment); null for legacy-path entitlements and for
+      // multi-rule entitlements that can't be attributed to one rule.
+      commission_plan_id: entitlement.commissionPlanId,
+      commission_rule_id: entitlement.commissionRuleId,
+      commission_rule_version_id: entitlement.commissionRuleVersionId,
+      commission_rule_name: entitlement.commissionRuleName,
+      commission_amount_snapshot: entitlement.commissionAmountSnapshot
+    }
+
+    let { data: commissionRecord, error: commissionError } = await supabase
+      .from('employee_financial_records')
+      .insert({ ...basePayload, ...snapshotPayload })
+      .select()
+      .single()
+
+    if (commissionError && isMissingCommissionSnapshotColumn(commissionError)) {
+      ({ data: commissionRecord, error: commissionError } = await supabase
+        .from('employee_financial_records')
+        .insert(basePayload)
+        .select()
+        .single())
+    }
+
+    if (commissionError) {
+      throw createError({ statusCode: 500, statusMessage: commissionError.message })
+    }
+
+    if (commissionRecord) createdCommissions.push(commissionRecord)
+  }
+
   for (const entitlement of targetEntitlements) {
     const existingForEmployee = recordsByEmployee.get(entitlement.employeeId) || []
 
@@ -441,58 +512,26 @@ export async function releaseServiceOrderCommissions({
     const existingSum = roundCurrency(existingForEmployee.reduce((sum, record) => sum + record.amount, 0))
     const delta = roundCurrency(released - existingSum)
 
-    if (delta >= 0.01) {
-      const basePayload = {
-        organization_id: organizationId,
-        employee_id: entitlement.employeeId,
-        service_order_id: orderId,
-        service_order_installment_id: triggeringInstallmentId || null,
-        record_type: 'commission',
-        amount: delta,
-        status: 'pending',
-        description: `Comissão - #${order.number}`,
-        reference_date: order.entry_date || new Date().toISOString().split('T')[0],
-        created_by: userEmail || null,
-        updated_by: userEmail || null
+    if (employeeId) {
+      // Manual recalculation (Recalcular / apply-or-remove override):
+      // consolidate this employee's PENDING records on this order into a
+      // single row reflecting the fresh total, instead of layering another
+      // delta record on top of stale ones every time it's run. Paid records
+      // are never touched (blocked above already). Kept separate from the
+      // automatic payment-triggered path below, which still tops up/claws
+      // back incrementally — each installment paid legitimately justifies
+      // another slice, unlike a manual recalculation correcting the same
+      // total.
+      const pendingRecords = existingForEmployee.filter(record => record.status === 'pending')
+      for (const record of pendingRecords) {
+        await supabase.from('employee_financial_records').delete().eq('id', record.id)
       }
 
-      const snapshotPayload = {
-        commission_type: entitlement.commissionType,
-        commission_percentage: entitlement.commissionPercentage,
-        commission_base: entitlement.commissionBase,
-        item_name: `#${order.number}`,
-        item_amount: entitlement.itemAmount,
-        item_cost: entitlement.itemCost,
-        // New-model traceability (20240101000085) — only set when the whole
-        // entitlement came from one single rule (see computeEmployeeEntitlements'
-        // doc comment); null for legacy-path entitlements and for
-        // multi-rule entitlements that can't be attributed to one rule.
-        commission_plan_id: entitlement.commissionPlanId,
-        commission_rule_id: entitlement.commissionRuleId,
-        commission_rule_version_id: entitlement.commissionRuleVersionId,
-        commission_rule_name: entitlement.commissionRuleName,
-        commission_amount_snapshot: entitlement.commissionAmountSnapshot
+      if (released >= 0.01) {
+        await insertCommissionRecord(entitlement, released)
       }
-
-      let { data: commissionRecord, error: commissionError } = await supabase
-        .from('employee_financial_records')
-        .insert({ ...basePayload, ...snapshotPayload })
-        .select()
-        .single()
-
-      if (commissionError && isMissingCommissionSnapshotColumn(commissionError)) {
-        ({ data: commissionRecord, error: commissionError } = await supabase
-          .from('employee_financial_records')
-          .insert(basePayload)
-          .select()
-          .single())
-      }
-
-      if (commissionError) {
-        throw createError({ statusCode: 500, statusMessage: commissionError.message })
-      }
-
-      if (commissionRecord) createdCommissions.push(commissionRecord)
+    } else if (delta >= 0.01) {
+      await insertCommissionRecord(entitlement, delta)
     } else if (delta <= -0.01) {
       // Receipts were reversed since the last release — claw back from
       // pending records first (most recent first), never from ones already

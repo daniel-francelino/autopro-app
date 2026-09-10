@@ -56,7 +56,7 @@ const unresolvedSelectionCount = computed(() => props.modelValue.length - select
   <UPopover
     v-model:open="popoverOpen"
     :content="{ align: 'start', side: 'bottom', sideOffset: 8 }"
-    :ui="{ content: 'z-[260] w-(--reka-popper-anchor-width) rounded-xl border border-default bg-default p-1 shadow-xl' }"
+    :ui="{ content: 'z-[260] w-(--reka-popper-anchor-width) min-w-56 rounded-xl border border-default bg-default p-1 shadow-xl' }"
   >
     <button
       type="button"

@@ -83,12 +83,14 @@ export function computeServiceOrderItemsWithCommissionSnapshots({
       totalTaxesAmount: taxesAmount
     })
 
-    result.perItem.forEach((matched, index) => {
-      if (!matched || matched.amount <= 0) return
+    result.allMatches.forEach((matched, index) => {
+      if (!matched) return
       const item = itemEntries[index]!
 
-      item.commission_total = roundCurrency(toNumber(item.commission_total) + matched.amount)
-      item.total_commission = item.commission_total
+      if (matched.amount > 0) {
+        item.commission_total = roundCurrency(toNumber(item.commission_total) + matched.amount)
+        item.total_commission = item.commission_total
+      }
       item.commissions.push({
         employee_id: employeeId,
         amount: matched.amount,
