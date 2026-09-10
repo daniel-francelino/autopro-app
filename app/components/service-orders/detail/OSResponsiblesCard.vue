@@ -310,6 +310,59 @@ async function confirmApplyOverride() {
   }
 }
 
+// ─── TEMPORARY: remove responsible (data-cleanup escape hatch) ────────────────
+// See server/utils/service-order-remove-responsible.ts for what to delete
+// along with this block (down to the matching end marker below, plus the
+// confirm modal near the end of the template) once it's no longer needed.
+
+const removingResponsibleEmployeeId = ref<string | null>(null)
+const pendingRemoveResponsible = ref<{ employeeId: string, name: string | null } | null>(null)
+const removeResponsibleReason = ref('')
+const removeResponsibleReasonValid = computed(() => removeResponsibleReason.value.trim().length > 0)
+
+function requestRemoveResponsible(assignee: ResponsibleInfo) {
+  pendingRemoveResponsible.value = { employeeId: assignee.employee_id, name: assignee.name }
+  removeResponsibleReason.value = ''
+}
+
+function closeRemoveResponsibleModal() {
+  if (removingResponsibleEmployeeId.value) return
+  pendingRemoveResponsible.value = null
+  removeResponsibleReason.value = ''
+}
+
+async function confirmRemoveResponsible() {
+  if (!pendingRemoveResponsible.value || !removeResponsibleReasonValid.value) return
+  const { employeeId, name } = pendingRemoveResponsible.value
+  removingResponsibleEmployeeId.value = employeeId
+
+  try {
+    await $fetch(`/api/service-orders/${props.orderId}/remove-responsible`, {
+      method: 'POST',
+      body: { employeeId, reason: removeResponsibleReason.value.trim() }
+    })
+
+    toast.add({
+      title: 'Responsável removido',
+      description: `${name ?? 'Funcionário'} não é mais responsável por esta OS.`,
+      color: 'success'
+    })
+    pendingRemoveResponsible.value = null
+    removeResponsibleReason.value = ''
+    emit('recalculated')
+  } catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string } }
+    toast.add({
+      title: 'Erro ao remover responsável',
+      description: err?.data?.statusMessage || 'Tente novamente.',
+      color: 'error'
+    })
+  } finally {
+    removingResponsibleEmployeeId.value = null
+  }
+}
+// ─── end TEMPORARY: remove responsible ─────────────────────────────────────────
+
 const pendingOverrideRemove = ref<{ employeeId: string, name: string | null } | null>(null)
 const overrideRemoveReason = ref('')
 const overrideRemoveReasonValid = computed(() => overrideRemoveReason.value.trim().length > 0)
@@ -484,6 +537,20 @@ async function confirmRemoveOverride() {
                 square
                 @click="requestRemoveOverride(assignee)"
               />
+              <!-- TEMPORARY: remove responsible (data-cleanup escape hatch) — see script block above -->
+              <UButton
+                v-if="canUpdate"
+                size="xs"
+                color="error"
+                variant="soft"
+                icon="i-lucide-user-round-x"
+                label="Remover responsável"
+                :loading="removingResponsibleEmployeeId === assignee.employee_id"
+                :disabled="!!removingResponsibleEmployeeId"
+                square
+                @click="requestRemoveResponsible(assignee)"
+              />
+              <!-- end TEMPORARY -->
             </div>
           </div>
         </div>
@@ -617,4 +684,41 @@ async function confirmRemoveOverride() {
       </div>
     </template>
   </AppConfirmModal>
+
+  <!-- TEMPORARY: remove responsible confirmation — see script block above -->
+  <AppConfirmModal
+    :open="!!pendingRemoveResponsible"
+    title="Remover responsável"
+    confirm-label="Remover"
+    confirm-color="error"
+    :loading="!!removingResponsibleEmployeeId"
+    :confirm-disabled="!removeResponsibleReasonValid"
+    @update:open="(value: boolean) => !value && closeRemoveResponsibleModal()"
+    @confirm="confirmRemoveResponsible"
+  >
+    <template #description>
+      <div class="space-y-3">
+        <p class="text-sm text-muted">
+          Remove
+          <strong class="text-highlighted">{{ pendingRemoveResponsible?.name ?? 'este funcionário' }}</strong>
+          dos responsáveis desta OS, apaga as comissões dele aqui e recalcula
+          o que for necessário para os demais responsáveis.
+        </p>
+        <p class="text-sm text-muted">
+          Só é possível remover responsáveis sem comissão paga nesta OS. Se
+          este funcionário já tiver alguma comissão paga aqui, a remoção será
+          bloqueada.
+        </p>
+        <UFormField label="Motivo da remoção" required>
+          <UTextarea
+            v-model="removeResponsibleReason"
+            class="w-full"
+            :rows="2"
+            placeholder="Ex.: funcionário foi atribuído por engano a esta OS"
+          />
+        </UFormField>
+      </div>
+    </template>
+  </AppConfirmModal>
+  <!-- end TEMPORARY -->
 </template>
