@@ -374,18 +374,35 @@ export async function releaseServiceOrderCommissions({
     .update({ items: itemsSnapshot.items, commission_amount: totalCommission, updated_by: userEmail || null })
     .eq('id', orderId)
 
-  const targetEntitlements = employeeId
+  let targetEntitlements = employeeId
     ? entitlements.filter(entitlement => entitlement.employeeId === employeeId)
     : entitlements
 
+  // A manual recalculation scoped to one employee whose current rules no
+  // longer match anything on this OS (plan/category reconfigured or
+  // removed) still needs to run — not to compute a new commission, but so
+  // the claw-back logic below can remove any now-invalid pending record
+  // they already have here, instead of being blocked by an opaque "not
+  // configured" error. The already-paid guard inside the loop below still
+  // applies to this synthesized zero entitlement same as any other.
   if (employeeId && targetEntitlements.length === 0) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Este funcionário não possui comissão configurada para os itens desta OS.'
-    })
+    targetEntitlements = [{
+      employeeId,
+      totalAmount: 0,
+      commissionType: null,
+      commissionPercentage: null,
+      commissionBase: null,
+      itemAmount: 0,
+      itemCost: 0,
+      commissionPlanId: null,
+      commissionRuleId: null,
+      commissionRuleVersionId: null,
+      commissionRuleName: null,
+      commissionAmountSnapshot: null
+    }]
   }
 
-  if (entitlements.length === 0) {
+  if (!employeeId && entitlements.length === 0) {
     return {
       orderId,
       commissions: [],
