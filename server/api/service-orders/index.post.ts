@@ -2,7 +2,7 @@ import { defineEventHandler, readBody, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
-import { computeNextOsNumber, normalizeOsNumber } from '../../utils/service-order-number'
+import { normalizeOsNumber } from '../../utils/service-order-number'
 import {
   computeServiceOrderItemsWithCommissionSnapshots,
   type ServiceOrderCommissionItem
@@ -73,13 +73,10 @@ export default defineEventHandler(async (event) => {
 
   if (!isUpdate && !osNumber) {
     // Auto-generate number for new orders
-    const { data: existingOrders } = await supabase
-      .from('service_orders')
-      .select('number')
-      .eq('organization_id', organizationId)
-      .is('deleted_at', null)
+    const { data: generatedNumber } = await supabase
+      .rpc('next_service_order_number', { p_organization_id: organizationId })
 
-    osNumber = computeNextOsNumber(existingOrders || [])
+    osNumber = generatedNumber ?? ''
   }
 
   // Check for duplicate number
@@ -98,13 +95,9 @@ export default defineEventHandler(async (event) => {
     const { data: duplicates } = await duplicateQuery
 
     if (duplicates && duplicates.length > 0) {
-      const { data: allOrders } = await supabase
-        .from('service_orders')
-        .select('number')
-        .eq('organization_id', organizationId)
-        .is('deleted_at', null)
+      const { data: suggested } = await supabase
+        .rpc('next_service_order_number', { p_organization_id: organizationId })
 
-      const suggested = computeNextOsNumber(allOrders || [])
       return {
         duplicateNumber: true,
         currentNumber: osNumber,
