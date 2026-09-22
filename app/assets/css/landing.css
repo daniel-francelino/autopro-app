@@ -2,7 +2,7 @@
   --lp-ink: var(--ui-color-neutral-900);
   --lp-muted: var(--ui-color-neutral-500);
   --lp-blue: var(--ui-color-primary-500);
-  --lp-lime: #dbf887;
+  --lp-lime: var(--ui-color-success-400);
   color: var(--lp-ink);
   background: #fff;
   font-family: 'Public Sans', sans-serif;
@@ -49,7 +49,7 @@
   top: 0;
   z-index: 30;
   background: #fffffff5;
-  border-bottom: 1px solid #e9edf0;
+  border-bottom: 1px solid var(--ui-color-neutral-200);
   backdrop-filter: blur(16px);
 }
 
@@ -104,7 +104,7 @@
 
 .lp-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 18px #15243415;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--ui-color-neutral-900) 8%, transparent);
 }
 
 .lp-button .iconify {
@@ -117,7 +117,7 @@
 }
 
 .lp-button-dark:hover {
-  background: #263e55;
+  background: var(--ui-color-neutral-800);
 }
 
 .lp-button-blue {
@@ -147,7 +147,7 @@
   justify-content: center;
   width: 44px;
   height: 44px;
-  border: 1px solid #dde3e9;
+  border: 1px solid var(--ui-color-neutral-200);
   border-radius: 8px;
   background: white;
 }
@@ -159,7 +159,7 @@
 .lp-mobile-nav {
   overflow: hidden;
   padding: 12px 24px 24px;
-  border-top: 1px solid #e9edf0;
+  border-top: 1px solid var(--ui-color-neutral-200);
 }
 
 .lp-mobile-nav>a:not(.lp-button) {
@@ -191,7 +191,7 @@
 
 .lp-hero {
   overflow: hidden;
-  background: #f7f9fb;
+  background: var(--ui-color-neutral-50);
 }
 
 .lp-hero-grid {
@@ -217,13 +217,13 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #6b9637;
+  background: var(--ui-color-success-600);
   flex-shrink: 0;
 }
 
 .lp-hero-copy>.lp-eyebrow {
-  background: #eaf0e3;
-  border: 1px solid #dce7d1;
+  background: var(--ui-color-success-50);
+  border: 1px solid var(--ui-color-success-100);
   padding: 7px 11px;
   border-radius: 5px;
   font-size: 9px;
@@ -292,7 +292,7 @@
   justify-content: center;
   width: 30px;
   height: 30px;
-  border: 1px solid #cbd3dc;
+  border: 1px solid var(--ui-color-neutral-300);
   border-radius: 50%;
 }
 
@@ -311,7 +311,7 @@
 }
 
 .lp-hero-notes .iconify {
-  color: #668d37;
+  color: var(--ui-color-success-600);
   font-size: 15px;
 }
 
@@ -373,9 +373,9 @@
   gap: 11px;
   background: white;
   padding: 14px 18px;
-  border: 1px solid #edf0f3;
+  border: 1px solid var(--ui-color-neutral-200);
   border-radius: 10px;
-  box-shadow: 0 12px 35px #253e6420;
+  box-shadow: 0 12px 35px color-mix(in srgb, var(--ui-color-neutral-900) 12%, transparent);
   bottom: 16px;
   left: -22px;
   transform: rotate(-3deg);
@@ -408,7 +408,7 @@
   position: absolute;
   bottom: -20px;
   right: 0;
-  color: #617492;
+  color: var(--ui-color-neutral-500);
   font-size: 9px;
 }
 
@@ -418,7 +418,7 @@
   justify-content: space-between;
   align-items: center;
   gap: 20px;
-  border-top: 1px solid #dde4ea;
+  border-top: 1px solid var(--ui-color-neutral-200);
   padding-block: 28px;
 }
 
@@ -444,7 +444,7 @@
 
 .lp-capabilities .iconify {
   font-size: 22px;
-  color: #627183;
+  color: var(--ui-color-neutral-500);
 }
 
 .lp-section {
@@ -486,7 +486,7 @@
   height: 430px;
   border-radius: 14px;
   overflow: hidden;
-  background: #1d2832;
+  background: var(--ui-color-neutral-900);
 }
 
 .lp-workshop-image img {
@@ -500,7 +500,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(0deg, #0d1b2be8, transparent 75%);
+  background: linear-gradient(0deg, color-mix(in srgb, var(--ui-color-neutral-950) 91%, transparent), transparent 75%);
 }
 
 .lp-photo-caption {
@@ -597,7 +597,7 @@
 }
 
 .lp-resources {
-  background: #f5f7f9;
+  background: var(--ui-color-neutral-50);
 }
 
 .lp-centered-heading {
@@ -621,7 +621,7 @@
 .lp-feature-card {
   padding: 28px;
   background: #fff;
-  border: 1px solid #e5e9ef;
+  border: 1px solid var(--ui-color-neutral-200);
   border-radius: 12px;
   transition: border-color .2s;
 }
@@ -639,13 +639,13 @@
 
 .lp-feature-number {
   font-size: 11px;
-  color: #a1aab3;
+  color: var(--ui-color-neutral-400);
   font-variant-numeric: tabular-nums;
 }
 
 .lp-feature-card:nth-child(2n) .lp-icon-box {
-  color: #4b652b;
-  background: #edf5df;
+  color: var(--ui-color-success-700);
+  background: var(--ui-color-success-100);
 }
 
 .lp-feature-tag {
@@ -680,7 +680,7 @@
 }
 
 .lp-start {
-  background: #142b3e;
+  background: var(--ui-color-neutral-900);
   color: white;
 }
 
@@ -727,7 +727,7 @@
 .lp-steps p {
   font-size: 13px;
   line-height: 1.9;
-  color: #b8c7d3;
+  color: var(--ui-color-neutral-300);
   max-width: 310px;
 }
 
@@ -746,11 +746,11 @@
 }
 
 .lp-faq-list details {
-  border-bottom: 1px solid #dde4e9;
+  border-bottom: 1px solid var(--ui-color-neutral-200);
 }
 
 .lp-faq-list details:first-child {
-  border-top: 1px solid #dde4e9;
+  border-top: 1px solid var(--ui-color-neutral-200);
 }
 
 .lp-faq-list summary {
@@ -836,7 +836,7 @@
   z-index: -1;
   width: 540px;
   height: 540px;
-  border: 1px solid #b8d36b;
+  border: 1px solid var(--ui-color-success-300);
   border-radius: 50%;
   right: -210px;
   top: -75px;
@@ -847,7 +847,7 @@
   content: '';
   position: absolute;
   inset: 55px;
-  border: 1px solid #b8d36b;
+  border: 1px solid var(--ui-color-success-300);
   border-radius: 50%;
 }
 
@@ -893,7 +893,7 @@
   justify-content: space-between;
   gap: 25px;
   padding-block: 25px;
-  border-top: 1px solid #e5e9ed;
+  border-top: 1px solid var(--ui-color-neutral-200);
   font-size: 10px;
   color: var(--lp-muted);
 }
@@ -903,7 +903,7 @@
   position: relative;
   width: 100%;
   background: white;
-  border: 1px solid #cdd7e7;
+  border: 1px solid var(--ui-color-neutral-200);
   border-radius: 11px;
   box-shadow: 0 24px 60px #1b396925, 0 2px 7px #1b396908;
   overflow: hidden;
@@ -915,15 +915,15 @@
   align-items: center;
   height: 30px;
   padding-inline: 12px;
-  background: #f5f7fa;
-  border-bottom: 1px solid #e8edf2;
+  background: var(--ui-color-neutral-50);
+  border-bottom: 1px solid var(--ui-color-neutral-200);
 }
 
 .lp-product-browser>span {
   display: block;
   width: 5px;
   height: 5px;
-  background: #cbd4df;
+  background: var(--ui-color-neutral-300);
   border-radius: 50%;
 }
 
@@ -933,13 +933,13 @@
   justify-content: center;
   gap: 4px;
   font-size: 7px;
-  color: #8190a1;
+  color: var(--ui-color-neutral-500);
   flex: 1;
 }
 
 .lp-product-browser>.iconify {
   font-size: 10px;
-  color: #8190a1;
+  color: var(--ui-color-neutral-500);
 }
 
 .lp-product-body {
@@ -952,7 +952,7 @@
   flex-direction: column;
   gap: 12px;
   padding: 17px 9px 14px;
-  background: #142b3e;
+  background: var(--ui-color-neutral-900);
   width: 49px;
   flex-shrink: 0;
 }
@@ -971,12 +971,12 @@
   width: 30px;
   height: 30px;
   border-radius: 6px;
-  color: #a8b9c8;
+  color: var(--ui-color-neutral-400);
   font-size: 15px;
 }
 
 .lp-product-sidebar button.active {
-  color: #142b3e;
+  color: var(--ui-color-neutral-900);
   background: var(--lp-lime);
 }
 
@@ -988,7 +988,7 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: #405469;
+  background: var(--ui-color-neutral-600);
   color: white;
   font-size: 7px;
 }
@@ -997,7 +997,7 @@
   min-width: 0;
   flex: 1;
   padding: 0 18px;
-  background: #fafbfd;
+  background: var(--ui-color-neutral-50);
 }
 
 .lp-product-topline {
@@ -1005,7 +1005,7 @@
   align-items: center;
   justify-content: space-between;
   height: 45px;
-  border-bottom: 1px solid #e6ebf1;
+  border-bottom: 1px solid var(--ui-color-neutral-200);
   font-size: 8px;
 }
 
@@ -1026,7 +1026,7 @@
   justify-content: center;
   width: 22px;
   height: 22px;
-  background: #e1e8f4;
+  background: var(--ui-color-neutral-200);
   font-size: 7px;
   border-radius: 50%;
 }
@@ -1042,7 +1042,7 @@
 .lp-product-title>div>span {
   display: block;
   font-size: 6px;
-  color: #7a899a;
+  color: var(--ui-color-neutral-500);
   letter-spacing: 1px;
   font-weight: 600;
 }
@@ -1056,12 +1056,12 @@
 }
 
 .lp-product-title h2 span {
-  color: #92ae5d;
+  color: var(--ui-color-success-600);
 }
 
 .lp-today {
   font-size: 7px;
-  border: 1px solid #e0e6ed;
+  border: 1px solid var(--ui-color-neutral-200);
   border-radius: 4px;
   padding: 4px 7px;
 }
@@ -1074,14 +1074,14 @@
 
 .lp-preview-stats>div {
   padding: 11px 10px;
-  border: 1px solid #e1e6ec;
+  border: 1px solid var(--ui-color-neutral-200);
   border-radius: 6px;
   background: white;
 }
 
 .lp-preview-stats>div>span {
   font-size: 7px;
-  color: #66768a;
+  color: var(--ui-color-neutral-500);
   display: block;
 }
 
@@ -1098,30 +1098,30 @@
 
 .lp-preview-stats strong .iconify {
   font-size: 14px;
-  color: #92a4c4;
+  color: var(--ui-color-neutral-400);
 }
 
 .lp-preview-stats small {
   display: block;
   font-size: 6px;
-  color: #8190a1;
+  color: var(--ui-color-neutral-500);
 }
 
 .lp-preview-stats .lp-stat-positive {
-  color: #527b34;
+  color: var(--ui-color-success-700);
 }
 
 .lp-preview-switch {
   display: flex;
   gap: 15px;
-  border-bottom: 1px solid #e0e5ec;
+  border-bottom: 1px solid var(--ui-color-neutral-200);
   margin-top: 18px;
 }
 
 .lp-preview-switch button {
   position: relative;
   padding-block: 10px;
-  color: #758196;
+  color: var(--ui-color-neutral-500);
   font-size: 8px;
   white-space: nowrap;
 }
@@ -1159,14 +1159,14 @@
 
 .lp-preview-panel-heading>span {
   font-size: 7px;
-  color: #718092;
+  color: var(--ui-color-neutral-500);
 }
 
 .lp-preview-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  border-bottom: 1px solid #e9edf2;
+  border-bottom: 1px solid var(--ui-color-neutral-200);
   min-height: 44px;
 }
 
@@ -1176,9 +1176,9 @@
   justify-content: center;
   width: 27px;
   height: 27px;
-  background: #edf1f7;
+  background: var(--ui-color-neutral-100);
   border-radius: 6px;
-  color: #607b9b;
+  color: var(--ui-color-neutral-500);
   font-size: 15px;
   flex-shrink: 0;
 }
@@ -1198,7 +1198,7 @@
   display: block;
   font-size: 6px;
   margin-top: 4px;
-  color: #7c8998;
+  color: var(--ui-color-neutral-500);
 }
 
 .lp-badge {
@@ -1214,13 +1214,13 @@
 }
 
 .lp-badge.amber {
-  color: #976512;
-  background: #fff0d3;
+  color: var(--ui-color-warning-700);
+  background: var(--ui-color-warning-100);
 }
 
 .lp-badge.green {
-  color: #487438;
-  background: #eaf4e5;
+  color: var(--ui-color-success-700);
+  background: var(--ui-color-success-100);
 }
 
 .lp-row-value {
@@ -1237,7 +1237,7 @@
   align-items: center;
   padding-block: 14px;
   font-size: 6px;
-  color: #7c8998;
+  color: var(--ui-color-neutral-500);
 }
 
 .lp-preview-bottom>span {
@@ -1257,7 +1257,7 @@
   justify-content: space-around;
   height: 101px;
   padding: 3px 15px 15px;
-  border-bottom: 1px solid #e1e7ee;
+  border-bottom: 1px solid var(--ui-color-neutral-200);
 }
 
 .lp-preview-chart>div {
@@ -1284,7 +1284,7 @@
   position: absolute;
   bottom: -12px;
   font-size: 6px;
-  color: #617389;
+  color: var(--ui-color-neutral-500);
 }
 
 .lp-chart-total {
