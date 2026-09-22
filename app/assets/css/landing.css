@@ -39,6 +39,10 @@
   scroll-margin-top: 100px;
 }
 
+.landing-smooth-scroll {
+  scroll-behavior: smooth;
+}
+
 .lp-container {
   width: min(1280px, calc(100% - 96px));
   margin-inline: auto;
@@ -905,7 +909,7 @@
   background: white;
   border: 1px solid var(--ui-color-neutral-200);
   border-radius: 11px;
-  box-shadow: 0 24px 60px #1b396925, 0 2px 7px #1b396908;
+  box-shadow: 0 24px 60px color-mix(in srgb, var(--ui-color-neutral-900) 15%, transparent), 0 2px 7px color-mix(in srgb, var(--ui-color-neutral-900) 3%, transparent);
   overflow: hidden;
 }
 
