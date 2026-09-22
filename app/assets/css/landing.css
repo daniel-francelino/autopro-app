@@ -1,7 +1,7 @@
 .landing {
-  --lp-ink: #152434;
-  --lp-muted: #5d6b77;
-  --lp-blue: var(--ui-primary);
+  --lp-ink: var(--ui-color-neutral-900);
+  --lp-muted: var(--ui-color-neutral-500);
+  --lp-blue: var(--ui-color-primary-500);
   --lp-lime: #dbf887;
   color: var(--lp-ink);
   background: #fff;
