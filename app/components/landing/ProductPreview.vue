@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { AnimatePresence, Motion, useReducedMotion } from 'motion-v'
+
+const reducedMotion = useReducedMotion()
 const activeView = ref('orders')
 const views = [
   { id: 'orders', label: 'Ordens de serviço', icon: 'i-lucide-clipboard-list' },
@@ -61,39 +64,56 @@ const products = [
           </button>
         </div>
         <div class="lp-preview-panel" aria-live="polite">
-          <template v-if="activeView === 'orders'">
-            <div class="lp-preview-panel-heading">
-              <strong>Ordens de serviço</strong><span>3 atendimentos</span>
-            </div>
-            <div v-for="order in orders" :key="order.car" class="lp-preview-row">
-              <span class="lp-car-icon"><UIcon name="i-lucide-car-front" /></span><div class="lp-row-name">
-                <strong>{{ order.car }}</strong><span>{{ order.service }}</span>
-              </div><span class="lp-badge" :class="order.class">{{ order.status }}</span><strong class="lp-row-value">{{ order.value }}</strong>
-            </div>
-          </template>
-          <template v-else-if="activeView === 'finance'">
-            <div class="lp-preview-panel-heading">
-              <strong>Resumo da semana</strong><span>Entradas recebidas</span>
-            </div>
-            <div class="lp-preview-chart" role="img" aria-label="Exemplo de entradas na semana: segunda 1800, terça 2600, quarta 2100, quinta 3800 e sexta 4850 reais">
-              <div v-for="(bar, index) in [37, 54, 43, 78, 100]" :key="index">
-                <span :style="{ height: `${bar}%` }" /><small>{{ ['SEG', 'TER', 'QUA', 'QUI', 'SEX'][index] }}</small>
-              </div>
-            </div>
-            <div class="lp-chart-total">
-              <span>Recebido na semana</span><strong>R$ 15.150,00</strong>
-            </div>
-          </template>
-          <template v-else>
-            <div class="lp-preview-panel-heading">
-              <strong>Peças e produtos</strong><span>Controle de estoque</span>
-            </div>
-            <div v-for="product in products" :key="product.name" class="lp-preview-row">
-              <span class="lp-car-icon"><UIcon name="i-lucide-package" /></span><div class="lp-row-name">
-                <strong>{{ product.name }}</strong><span>{{ product.category }}</span>
-              </div><span class="lp-badge" :class="product.class">{{ product.state }}</span><strong class="lp-row-value">{{ product.quantity }}</strong>
-            </div>
-          </template>
+          <AnimatePresence :initial="false" mode="wait">
+            <Motion
+              :key="activeView"
+              :initial="reducedMotion ? false : { opacity: 0, y: 8 }"
+              :animate="{ opacity: 1, y: 0 }"
+              :exit="{ opacity: 0, y: reducedMotion ? 0 : -5 }"
+              :transition="{ duration: reducedMotion ? 0 : 0.16, ease: 'easeOut' }"
+            >
+              <template v-if="activeView === 'orders'">
+                <div class="lp-preview-panel-heading">
+                  <strong>Ordens de serviço</strong><span>3 atendimentos</span>
+                </div>
+                <div v-for="order in orders" :key="order.car" class="lp-preview-row">
+                  <span class="lp-car-icon"><UIcon name="i-lucide-car-front" /></span><div class="lp-row-name">
+                    <strong>{{ order.car }}</strong><span>{{ order.service }}</span>
+                  </div><span class="lp-badge" :class="order.class">{{ order.status }}</span><strong class="lp-row-value">{{ order.value }}</strong>
+                </div>
+              </template>
+              <template v-else-if="activeView === 'finance'">
+                <div class="lp-preview-panel-heading">
+                  <strong>Resumo da semana</strong><span>Entradas recebidas</span>
+                </div>
+                <div class="lp-preview-chart" role="img" aria-label="Exemplo de entradas na semana: segunda 1800, terça 2600, quarta 2100, quinta 3800 e sexta 4850 reais">
+                  <div v-for="(bar, index) in [37, 54, 43, 78, 100]" :key="index">
+                    <Motion
+                      as="span"
+                      :style="{ height: `${bar}%`, transformOrigin: 'bottom' }"
+                      :initial="false"
+                      :while-in-view="reducedMotion ? { scaleY: 1 } : { scaleY: [0, 1] }"
+                      :in-view-options="{ once: true }"
+                      :transition="{ duration: reducedMotion ? 0 : 0.45, delay: reducedMotion ? 0 : index * 0.06 }"
+                    /><small>{{ ['SEG', 'TER', 'QUA', 'QUI', 'SEX'][index] }}</small>
+                  </div>
+                </div>
+                <div class="lp-chart-total">
+                  <span>Recebido na semana</span><strong>R$ 15.150,00</strong>
+                </div>
+              </template>
+              <template v-else>
+                <div class="lp-preview-panel-heading">
+                  <strong>Peças e produtos</strong><span>Controle de estoque</span>
+                </div>
+                <div v-for="product in products" :key="product.name" class="lp-preview-row">
+                  <span class="lp-car-icon"><UIcon name="i-lucide-package" /></span><div class="lp-row-name">
+                    <strong>{{ product.name }}</strong><span>{{ product.category }}</span>
+                  </div><span class="lp-badge" :class="product.class">{{ product.state }}</span><strong class="lp-row-value">{{ product.quantity }}</strong>
+                </div>
+              </template>
+            </Motion>
+          </AnimatePresence>
         </div>
         <div class="lp-preview-bottom">
           <span><span class="lp-status-dot" /> Tudo em um só lugar</span><span>Uma gestão mais simples <UIcon name="i-lucide-sparkles" /></span>

@@ -49,6 +49,7 @@
     "date-fns": "^4.1.0",
     "driver.js": "^1.4.0",
     "html-to-image": "^1.11.13",
+    "motion-v": "1.10.3",
     "nuxt": "^4.3.1",
     "nuxt-og-image": "^5.1.13",
     "onesignal-cordova-plugin": "^5.3.4",
