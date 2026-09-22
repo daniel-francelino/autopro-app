@@ -2,7 +2,7 @@
   --lp-ink: var(--ui-color-neutral-900);
   --lp-muted: var(--ui-color-neutral-500);
   --lp-blue: var(--ui-color-primary-500);
-  --lp-lime: var(--ui-color-success-400);
+  --lp-lime: var(--ui-color-secondary-300);
   color: var(--lp-ink);
   background: #fff;
   font-family: 'Public Sans', sans-serif;
@@ -840,7 +840,7 @@
   z-index: -1;
   width: 540px;
   height: 540px;
-  border: 1px solid var(--ui-color-success-300);
+  border: 1px solid var(--ui-color-secondary-200);
   border-radius: 50%;
   right: -210px;
   top: -75px;
@@ -851,7 +851,7 @@
   content: '';
   position: absolute;
   inset: 55px;
-  border: 1px solid var(--ui-color-success-300);
+  border: 1px solid var(--ui-color-secondary-200);
   border-radius: 50%;
 }
 
