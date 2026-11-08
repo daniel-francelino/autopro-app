@@ -75,7 +75,7 @@ export type Plan = {
   priceId: string | null
 }
 
-const PLAN_DEFINITIONS = [
+export const PLAN_DEFINITIONS = [
   {
     key: PlanKey.Starter,
     name: 'Starter',

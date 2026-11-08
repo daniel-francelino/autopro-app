@@ -1,3 +1,26 @@
+import { readdirSync } from 'node:fs'
+
+// Páginas de conteúdo público (content/paginas/*.md), servidas em /<slug>.
+const contentSlugs = readdirSync('content/paginas')
+  .filter(file => file.endsWith('.md'))
+  .map(file => file.replace(/\.md$/, ''))
+const publicPaths = [...contentSlugs.map(slug => `/${slug}`), '/perguntas-frequentes']
+
+// Áreas privadas: bloqueadas em todos os grupos do robots.txt.
+const privatePaths = [
+  '/app',
+  '/admin',
+  '/api',
+  '/login',
+  '/signup',
+  '/forgot-password',
+  '/reset-password',
+  '/onboarding',
+  '/checkout',
+  '/subscription',
+  '/403'
+]
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   modules: [
@@ -90,6 +113,9 @@ export default defineNuxtConfig({
   routeRules: {
     '/': { prerender: true },
     '/pricing': { prerender: true },
+    '/perguntas-frequentes': { prerender: true },
+    '/llms.txt': { prerender: true },
+    ...Object.fromEntries(contentSlugs.map(slug => [`/${slug}`, { prerender: true }])),
     '/app': { prerender: false, robots: false },
     '/app/**': { prerender: false, robots: false },
     '/checkout/**': { prerender: false, robots: false },
@@ -246,23 +272,45 @@ export default defineNuxtConfig({
     }
   },
 
+  // Política para IA: busca e acesso a pedido permitidos nas páginas públicas;
+  // treino permitido só no público; agregadores sem benefício bloqueados.
+  // Ver docs/seo/geo-audit-brasil.md §5.
   robots: {
-    disallow: [
-      '/app',
-      '/admin',
-      '/api',
-      '/login',
-      '/signup',
-      '/forgot-password',
-      '/reset-password',
-      '/onboarding',
-      '/checkout',
-      '/subscription',
-      '/403'
+    groups: [
+      {
+        userAgent: [
+          '*',
+          'Googlebot',
+          'Bingbot',
+          'OAI-SearchBot',
+          'ChatGPT-User',
+          'Claude-SearchBot',
+          'Claude-User',
+          'PerplexityBot',
+          'Perplexity-User',
+          'Applebot'
+        ],
+        disallow: privatePaths
+      },
+      {
+        userAgent: [
+          'GPTBot',
+          'ClaudeBot',
+          'Google-Extended',
+          'Applebot-Extended',
+          'Meta-ExternalAgent'
+        ],
+        disallow: privatePaths
+      },
+      {
+        userAgent: ['Bytespider', 'CCBot'],
+        disallow: ['/']
+      }
     ]
   },
 
   sitemap: {
+    urls: publicPaths,
     exclude: [
       '/app/**',
       '/admin/**',

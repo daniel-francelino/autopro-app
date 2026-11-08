@@ -107,6 +107,15 @@ const navigation = [
   { label: 'Como funciona', to: '#how-it-works' },
   { label: 'Planos', to: '/pricing' }
 ]
+const guideLinks = [
+  { label: 'Sistema para oficina', to: '/sistema-para-oficina-mecanica' },
+  { label: 'Ordem de serviço', to: '/ordem-de-servico-oficina' },
+  { label: 'Comissão de mecânico', to: '/comissao-mecanico' },
+  { label: 'Nota fiscal', to: '/nota-fiscal-oficina' },
+  { label: 'Controle financeiro', to: '/controle-financeiro-oficina' },
+  { label: 'Estoque de peças', to: '/estoque-pecas-oficina' },
+  { label: 'Perguntas frequentes', to: '/perguntas-frequentes' }
+]
 const features = [
   {
     icon: 'i-lucide-users-round',
@@ -490,6 +499,14 @@ function track(label: string, target: string, location: string) {
             to="/login"
             @click="track('Entrar', '/login', 'footer')"
           >Entrar <UIcon name="i-lucide-arrow-up-right" /></NuxtLink>
+        </nav>
+        <nav aria-label="Guias e perguntas">
+          <NuxtLink
+            v-for="item in guideLinks"
+            :key="item.to"
+            :to="item.to"
+            @click="track(item.label, item.to, 'footer')"
+          >{{ item.label }}</NuxtLink>
         </nav>
       </div>
       <div class="lp-footer-bottom">
