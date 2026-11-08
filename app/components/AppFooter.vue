@@ -8,6 +8,7 @@ const links = [
   { label: 'Estoque de peças', to: '/estoque-pecas-oficina' },
   { label: 'Planos', to: '/pricing' },
   { label: 'Perguntas frequentes', to: '/perguntas-frequentes' },
+  { label: 'Suporte', to: 'mailto:suporte@beenk.com.br' },
   { label: 'Entrar', to: '/login' }
 ]
 </script>

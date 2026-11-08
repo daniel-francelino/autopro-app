@@ -4,14 +4,6 @@ seo:
   title: Planos e preços
   description: Conheça os planos do AutoPro para oficinas mecânicas. Do atendimento básico ao controle financeiro completo com emissão de nota fiscal.
 navigation.icon: i-lucide-credit-card
-logos:
-  title: Tecnologia confiável por baixo do capô
-  icons:
-    - i-simple-icons-supabase
-    - i-simple-icons-stripe
-    - i-simple-icons-nuxt
-    - i-simple-icons-vercel
-    - i-simple-icons-github
 faq:
   title: Perguntas frequentes
   description: Dúvidas comuns antes de começar a usar o AutoPro.

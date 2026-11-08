@@ -5,10 +5,6 @@ export const collections = {
     source: '2.pricing.yml',
     type: 'page',
     schema: z.object({
-      logos: z.object({
-        title: z.string().nonempty(),
-        icons: z.array(z.string())
-      }),
       faq: z.object({
         title: z.string().nonempty(),
         description: z.string().nonempty()
