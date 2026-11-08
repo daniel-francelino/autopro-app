@@ -8,11 +8,15 @@ const reducedMotion = useReducedMotion()
 definePageMeta({ layout: false })
 
 const { capture } = usePostHog()
-const config = useRuntimeConfig()
 const mobileMenuOpen = ref(false)
-const siteUrl
-  = config.public.siteUrl?.replace(/\/$/, '') || 'https://autopro.app'
-const title = 'AutoPro | Sua oficina em uma nova marcha'
+const siteUrl = useSiteUrl()
+const { plans } = usePlans()
+const { data: faqContent } = await useAsyncData('faq', () => queryCollection('faq').first())
+const faqs = (faqContent.value?.items ?? []).map(item => ({
+  question: item.label,
+  answer: item.content
+}))
+const title = 'Sistema para oficina mecânica | AutoPro'
 const description
   = 'Organize ordens de serviço, clientes, estoque e financeiro em um só sistema. Menos papelada, mais tempo para fazer sua oficina crescer.'
 
@@ -25,10 +29,13 @@ useSeoMeta({
   ogType: 'website',
   ogUrl: `${siteUrl}/`,
   ogLocale: 'pt_BR',
-  ogImage: `${siteUrl}/homepage/workshop.webp`,
+  ogImage: `${siteUrl}/og/home.jpg`,
+  ogImageWidth: 1200,
+  ogImageHeight: 630,
+  ogImageAlt: 'Oficina mecânica usando o AutoPro para gerenciar ordens de serviço',
   twitterTitle: title,
   twitterDescription: description,
-  twitterImage: `${siteUrl}/homepage/workshop.webp`,
+  twitterImage: `${siteUrl}/og/home.jpg`,
   robots: 'index, follow'
 })
 useHead({
@@ -45,13 +52,50 @@ useHead({
       type: 'application/ld+json',
       innerHTML: JSON.stringify({
         '@context': 'https://schema.org',
-        '@type': 'SoftwareApplication',
-        'name': 'AutoPro',
-        'applicationCategory': 'BusinessApplication',
-        'operatingSystem': 'Web',
-        'inLanguage': 'pt-BR',
-        'description': description,
-        'url': `${siteUrl}/`
+        '@graph': [
+          {
+            '@type': 'Organization',
+            '@id': `${siteUrl}/#org`,
+            'name': 'AutoPro',
+            'url': `${siteUrl}/`,
+            'logo': `${siteUrl}/icons/icon-512x512.png`
+          },
+          {
+            '@type': 'WebSite',
+            '@id': `${siteUrl}/#website`,
+            'url': `${siteUrl}/`,
+            'name': 'AutoPro',
+            'inLanguage': 'pt-BR',
+            'publisher': { '@id': `${siteUrl}/#org` }
+          },
+          {
+            '@type': 'SoftwareApplication',
+            '@id': `${siteUrl}/#app`,
+            'name': 'AutoPro',
+            'applicationCategory': 'BusinessApplication',
+            'operatingSystem': 'Web',
+            'inLanguage': 'pt-BR',
+            description,
+            'url': `${siteUrl}/`,
+            'offers': plans.map(plan => ({
+              '@type': 'Offer',
+              'name': plan.name,
+              'price': String(plan.priceAmount),
+              'priceCurrency': 'BRL',
+              'url': `${siteUrl}/pricing`,
+              'category': 'subscription'
+            })),
+            'publisher': { '@id': `${siteUrl}/#org` }
+          },
+          {
+            '@type': 'FAQPage',
+            'mainEntity': faqs.map(faq => ({
+              '@type': 'Question',
+              'name': faq.question,
+              'acceptedAnswer': { '@type': 'Answer', 'text': faq.answer }
+            }))
+          }
+        ]
       })
     }
   ]
@@ -122,33 +166,6 @@ const steps = [
     title: 'Dê a partida',
     description:
       'Abra sua primeira OS e acompanhe os serviços, os pagamentos e os resultados.'
-  }
-]
-const faqs = [
-  {
-    question: 'Para que tipo de oficina o sistema foi feito?',
-    answer:
-      'Para oficinas mecânicas e negócios de reparação automotiva que precisam conectar atendimento, ordens de serviço, clientes, veículos, estoque e gestão financeira em uma única plataforma.'
-  },
-  {
-    question: 'Preciso instalar algum programa?',
-    answer:
-      'Você pode acessar o sistema pelo navegador, no computador, tablet ou celular, com conexão à internet. Não é necessário instalar um programa no computador para começar.'
-  },
-  {
-    question: 'Posso controlar o acesso dos funcionários?',
-    answer:
-      'Sim. As permissões por função permitem definir o que cada pessoa pode acessar e executar. Assim, a equipe tem as ferramentas para trabalhar e a gestão mantém o controle das informações.'
-  },
-  {
-    question: 'Como funcionam os planos?',
-    answer:
-      'Os planos variam conforme o tamanho da equipe e os recursos necessários. Na página de planos você encontra os preços, os limites de funcionários e os recursos incluídos em cada opção.'
-  },
-  {
-    question: 'O sistema tem emissão de nota fiscal?',
-    answer:
-      'Sim. A emissão de NFS-e está disponível no plano Fiscal, mediante a configuração dos dados fiscais da empresa. Consulte os recursos de cada plano antes de escolher.'
   }
 ]
 
@@ -245,8 +262,8 @@ function track(label: string, target: string, location: string) {
               A gente simplifica a gestão.
             </p>
             <p class="lp-hero-description">
-              Do primeiro atendimento ao financeiro, conecte toda a operação em
-              um só lugar. Menos papelada. Mais espaço para crescer.
+              Sistema para oficina mecânica: do primeiro atendimento ao financeiro, conecte toda a operação em
+              um só lugar, com ordens de serviço, estoque e financeiro. Menos papelada. Mais espaço para crescer.
             </p>
             <div class="lp-hero-actions">
               <NuxtLink

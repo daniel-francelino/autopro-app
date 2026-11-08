@@ -1,5 +1,5 @@
 {
-  "name": "nuxt-ui-template-saas",
+  "name": "autopro-app",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,7 +12,7 @@
     "typecheck": "nuxt typecheck",
     "generate:icons": "node scripts/generate-icons.mjs",
     "migrate:base44": "node scripts/migrate-base44.mjs",
-    "cap:init": "cap init 'Kortex' com.kortex.app --web-dir .output/public",
+    "cap:init": "cap init 'AutoPro' br.com.beenk.autopro --web-dir .output/public",
     "cap:add:android": "cap add android",
     "cap:add:ios": "cap add ios",
     "cap:sync": "nuxt generate && cap sync",
@@ -33,6 +33,8 @@
     "@nuxt/content": "^3.12.0",
     "@nuxt/image": "^2.0.0",
     "@nuxt/ui": "^4.5.1",
+    "@nuxtjs/robots": "^5.7.1",
+    "@nuxtjs/sitemap": "^7.6.2",
     "@standard-schema/spec": "^1.1.0",
     "@supabase/supabase-js": "^2.98.0",
     "@tanstack/table-core": "^8.21.3",

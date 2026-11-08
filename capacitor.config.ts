@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli'
 
 const config: CapacitorConfig = {
-  appId: 'com.kortex.app',
-  appName: 'Kortex',
+  appId: 'br.com.beenk.autopro',
+  appName: 'AutoPro',
   webDir: '.output/public',
   server: {
     androidScheme: 'https'

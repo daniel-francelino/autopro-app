@@ -3,7 +3,6 @@ import { pt_br } from '@nuxt/ui/locale'
 
 const route = useRoute()
 const { state: preferencesState, applyBrandTheme, applyPublicTheme, applyStoredTheme } = useUserPreferences()
-const runtimeConfig = useRuntimeConfig()
 const auth = useAuth()
 const bootstrap = useWorkshopBootstrap()
 
@@ -23,8 +22,8 @@ const showAppLoadingOverlay = computed(() =>
   || (isProtectedRoute.value && !auth.ready.value)
   || (isProtectedRoute.value && auth.isAuthenticated.value && bootstrap.pending.value)
 )
-const siteUrl = runtimeConfig.public.siteUrl?.replace(/\/$/, '') || 'https://autopro.app'
-const defaultOgImage = `${siteUrl}/icons/icon-512x512.png`
+const siteUrl = useSiteUrl()
+const defaultOgImage = `${siteUrl}/og/home.jpg`
 
 watch(
   () => [
@@ -53,20 +52,13 @@ watch(
 useHead({
   meta: [
     { charset: 'utf-8' },
-    { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover' },
+    { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
     { key: 'theme-color', name: 'theme-color', content: color },
     { name: 'apple-mobile-web-app-capable', content: 'yes' },
     { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
     { name: 'apple-mobile-web-app-title', content: 'AutoPro' },
     { name: 'mobile-web-app-capable', content: 'yes' },
     { name: 'format-detection', content: 'telephone=no' }
-  ],
-  link: [
-    { rel: 'icon', type: 'image/svg+xml', href: '/icons/autopro-icon.svg' },
-    { rel: 'alternate icon', type: 'image/png', href: '/icons/icon-192x192.png' },
-    { rel: 'shortcut icon', href: '/favicon.ico' },
-    { rel: 'apple-touch-icon', href: '/icons/apple-touch-icon.png' },
-    { rel: 'mask-icon', href: '/icons/autopro-mono.svg', color: '#8b5cf6' }
   ],
   htmlAttrs: {
     lang: 'pt-BR'
@@ -80,24 +72,12 @@ useSeoMeta({
   author: 'AutoPro',
   ogSiteName: 'AutoPro',
   ogImage: defaultOgImage,
+  ogImageWidth: 1200,
+  ogImageHeight: 630,
+  ogImageAlt: 'AutoPro — sistema de gestão para oficinas mecânicas',
   twitterImage: defaultOgImage,
   twitterCard: 'summary_large_image'
 })
-
-const { data: navigation } = await useAsyncData('navigation', () => queryCollectionNavigation('docs'), {
-  transform: data => (data ?? []).find(item => item.path === '/docs')?.children || []
-})
-const { data: files } = useLazyAsyncData('search', () => queryCollectionSearchSections('docs'), {
-  server: false
-})
-
-const links = [{
-  label: 'Planos',
-  icon: 'i-lucide-credit-card',
-  to: '/pricing'
-}]
-
-provide('navigation', navigation)
 </script>
 
 <template>
@@ -132,15 +112,5 @@ provide('navigation', navigation)
         </p>
       </div>
     </div>
-
-    <ClientOnly>
-      <LazyUContentSearch
-        :files="files"
-        shortcut="meta_k"
-        :navigation="navigation"
-        :links="links"
-        :fuse="{ resultLimit: 42 }"
-      />
-    </ClientOnly>
   </UApp>
 </template>

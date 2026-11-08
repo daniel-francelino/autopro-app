@@ -1,0 +1,21 @@
+items:
+  - label: Para que tipo de oficina o sistema foi feito?
+    content: Para oficinas mecânicas e negócios de reparação automotiva que precisam conectar atendimento, ordens de serviço, clientes, veículos, estoque e gestão financeira em uma única plataforma.
+  - label: Preciso instalar algum programa?
+    content: Não. O AutoPro funciona pelo navegador, no computador, tablet ou celular, com conexão à internet. Você acessa com seu login em qualquer dispositivo.
+  - label: Meu time consegue usar sem treinamento técnico?
+    content: Sim. O sistema foi pensado para o dia a dia da oficina, não para quem entende de tecnologia. A navegação é simples e o fluxo segue a lógica do trabalho real — atendimento, OS, fechamento, pagamento.
+  - label: Posso controlar o acesso dos funcionários?
+    content: Sim. As permissões por função permitem definir o que cada pessoa pode acessar e executar. Assim, a equipe tem as ferramentas para trabalhar e a gestão mantém o controle das informações.
+  - label: Como funcionam os planos?
+    content: Os planos variam conforme o tamanho da equipe e os recursos necessários. Na página de planos você encontra os preços, os limites de funcionários e os recursos incluídos em cada opção. A cobrança é feita no cartão, por assinatura.
+  - label: Posso cancelar quando quiser?
+    content: Sim. Não há fidelidade ou multa de cancelamento. Você gerencia a assinatura diretamente pelo painel do AutoPro e cancela quando quiser.
+  - label: O sistema emite nota fiscal?
+    content: Sim, no plano Fiscal. O AutoPro emite NFS-e (nota fiscal de serviço), com cancelamento e envio por e-mail, mediante a configuração dos dados fiscais da empresa. Os planos Starter e Pro não incluem emissão fiscal.
+  - label: Como funcionam as comissões dos funcionários?
+    content: Você configura regras de comissão por funcionário — percentual sobre faturamento ou lucro, com filtros por categoria de serviço. O sistema calcula automaticamente com base nas OS fechadas e permite o pagamento em lote.
+  - label: Posso usar em mais de uma unidade?
+    content: Cada unidade precisa de uma assinatura própria, com dados e permissões separados por organização.
+  - label: Como funciona o suporte?
+    content: O Starter tem suporte por e-mail, o Pro tem suporte prioritário e o Fiscal tem suporte dedicado e onboarding assistido.

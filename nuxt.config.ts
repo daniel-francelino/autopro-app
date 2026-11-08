@@ -7,6 +7,8 @@ export default defineNuxtConfig({
     '@nuxt/content',
     '@vueuse/nuxt',
     'nuxt-og-image',
+    '@nuxtjs/robots',
+    '@nuxtjs/sitemap',
     '@vite-pwa/nuxt'
   ],
 
@@ -17,14 +19,22 @@ export default defineNuxtConfig({
   app: {
     head: {
       link: [
+        { rel: 'icon', type: 'image/svg+xml', href: '/icons/autopro-icon.svg' },
         { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
         { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/favicon.png' },
-        { rel: 'apple-touch-icon', sizes: '180x180', href: '/icons/apple-touch-icon.png' }
+        { rel: 'apple-touch-icon', sizes: '180x180', href: '/icons/apple-touch-icon.png' },
+        { rel: 'mask-icon', href: '/icons/autopro-mono.svg', color: '#8b5cf6' }
       ]
     }
   },
 
   css: ['driver.js/dist/driver.css', '~/assets/css/main.css'],
+
+  site: {
+    url: process.env.NUXT_PUBLIC_SITE_URL || 'https://autopro.beenk.com.br',
+    name: 'AutoPro',
+    defaultLocale: 'pt-BR'
+  },
 
   colorMode: {
     preference: 'light',
@@ -49,7 +59,9 @@ export default defineNuxtConfig({
       process.env.STRIPE_BILLING_PORTAL_CONFIGURATION_ID,
 
     public: {
-      siteUrl: process.env.NUXT_PUBLIC_SITE_URL ?? '',
+      siteUrl:
+        process.env.NUXT_PUBLIC_SITE_URL
+        || (process.env.NODE_ENV === 'production' ? 'https://autopro.beenk.com.br' : ''),
       oneSignalEnabled:
         process.env.NODE_ENV === 'production'
         && process.env.NUXT_PUBLIC_ONESIGNAL_ENABLED === 'true',
@@ -78,9 +90,17 @@ export default defineNuxtConfig({
   routeRules: {
     '/': { prerender: true },
     '/pricing': { prerender: true },
-    '/app': { prerender: false },
-    '/app/**': { prerender: false },
-    '/checkout/**': { prerender: false },
+    '/app': { prerender: false, robots: false },
+    '/app/**': { prerender: false, robots: false },
+    '/checkout/**': { prerender: false, robots: false },
+    '/admin/**': { robots: false },
+    '/login': { robots: false },
+    '/signup': { robots: false },
+    '/forgot-password': { robots: false },
+    '/reset-password': { robots: false },
+    '/onboarding': { robots: false },
+    '/subscription': { robots: false },
+    '/403': { robots: false },
     '/api/**': { cors: true }
   },
 
@@ -224,5 +244,36 @@ export default defineNuxtConfig({
     devOptions: {
       enabled: false
     }
+  },
+
+  robots: {
+    disallow: [
+      '/app',
+      '/admin',
+      '/api',
+      '/login',
+      '/signup',
+      '/forgot-password',
+      '/reset-password',
+      '/onboarding',
+      '/checkout',
+      '/subscription',
+      '/403'
+    ]
+  },
+
+  sitemap: {
+    exclude: [
+      '/app/**',
+      '/admin/**',
+      '/login',
+      '/signup',
+      '/forgot-password',
+      '/reset-password',
+      '/onboarding',
+      '/checkout/**',
+      '/subscription',
+      '/403'
+    ]
   }
 })

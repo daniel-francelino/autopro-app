@@ -1,57 +1,9 @@
 title: Planos para cada fase da sua oficina
-description: Comece com o essencial e expanda conforme a operação cresce. Sem contrato longo, sem surpresa no boleto.
+description: Comece com o essencial e expanda conforme a operação cresce. Sem contrato longo, sem surpresa na fatura.
 seo:
-  title: Planos e Preços | AutoPro
+  title: Planos e preços
   description: Conheça os planos do AutoPro para oficinas mecânicas. Do atendimento básico ao controle financeiro completo com emissão de nota fiscal.
 navigation.icon: i-lucide-credit-card
-plans:
-  - title: Starter
-    description: Ideal para oficinas que estão começando a organizar sua operação.
-    price:
-      month: R$ 199
-    stripePriceId:
-      month: ''
-    button:
-      label: Começar com Starter
-      color: neutral
-      variant: subtle
-    features:
-      - Até 2 funcionários
-      - Ordens de serviço ilimitadas
-      - Cadastro de clientes e veículos
-      - Gestão financeira
-      - Relatórios essenciais
-      - Sem emissão fiscal
-      - Suporte por email
-  - title: Pro
-    description: Para oficinas que precisam de controle completo e escala.
-    price:
-      month: R$ 399
-    stripePriceId:
-      month: ''
-    highlight: true
-    scale: true
-    button:
-      label: Começar com Pro
-    features:
-      - Tudo do Starter
-      - Até 10 funcionários
-      - Relatórios avançados e análises
-      - Suporte prioritário
-  - title: Fiscal
-    description: Para oficinas que precisam de emissão fiscal integrada e suporte completo.
-    price:
-      month: R$ 599
-    stripePriceId:
-      month: ''
-    button:
-      label: Começar com Fiscal
-    features:
-      - Tudo do Pro
-      - Funcionários ilimitados
-      - Emissão de NFS-e integrada
-      - Onboarding assistido
-      - Suporte dedicado
 logos:
   title: Tecnologia confiável por baixo do capô
   icons:
@@ -63,20 +15,3 @@ logos:
 faq:
   title: Perguntas frequentes
   description: Dúvidas comuns antes de começar a usar o AutoPro.
-  items:
-    - label: Preciso instalar algum programa?
-      content: Não. O AutoPro é 100% via navegador — funciona no computador, tablet e celular sem precisar instalar nada. Você acessa com seu login em qualquer dispositivo.
-    - label: Meu time consegue usar sem treinamento técnico?
-      content: Sim. O sistema foi pensado para o dia a dia da oficina, não para quem entende de tecnologia. A navegação é simples e o fluxo segue a lógica do trabalho real — atendimento, OS, fechamento, pagamento.
-    - label: Posso testar antes de assinar?
-      content: Sim. Você pode criar uma conta e explorar o sistema antes de escolher um plano. Sem precisar cadastrar cartão para começar.
-    - label: Posso cancelar quando quiser?
-      content: Sim. Não há fidelidade ou multa de cancelamento. Você gerencia a assinatura diretamente pelo painel do AutoPro e cancela quando quiser.
-    - label: O sistema emite nota fiscal?
-      content: Sim, no plano Oficina Completa. O AutoPro emite NFS-e e NF-e diretamente pela plataforma, com cancelamento, carta de correção e download de PDF — sem precisar de outro sistema.
-    - label: Como funcionam as comissões dos funcionários?
-      content: Você configura regras de comissão por funcionário — percentual sobre faturamento ou lucro, com filtros por categoria de serviço. O sistema calcula automaticamente com base nas OS fechadas e permite o pagamento em lote.
-    - label: Posso usar em mais de uma unidade?
-      content: Sim. O plano Oficina Completa suporta múltiplas unidades com dados e permissões isoladas por organização. Cada unidade opera de forma independente, mas sob o mesmo acesso administrativo.
-    - label: Como funciona o suporte?
-      content: Todos os planos têm acesso à documentação e ao canal de suporte. O plano Oficina Completa inclui suporte prioritário com tempo de resposta reduzido e acompanhamento de implantação.

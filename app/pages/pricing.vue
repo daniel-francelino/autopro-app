@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import BillingPricingPlans from '~/components/billing/BillingPricingPlans.vue'
 
+const siteUrl = useSiteUrl()
 const { data: cms } = await useAsyncData('pricing', () => queryCollection('pricing').first())
+const { data: faq } = await useAsyncData('faq', () => queryCollection('faq').first())
 const { plans, toCmsPlan } = usePlans()
 
 const title = cms.value?.seo?.title || cms.value?.title
@@ -11,13 +13,23 @@ useSeoMeta({
   title,
   ogTitle: title,
   description,
-  ogDescription: description
+  ogDescription: description,
+  ogUrl: `${siteUrl}/pricing`,
+  ogLocale: 'pt_BR'
+})
+
+useHead({
+  link: [{ rel: 'canonical', href: `${siteUrl}/pricing` }]
 })
 
 defineOgImageComponent('Saas')
 
 const page = computed(() => cms.value
-  ? { ...cms.value, plans: plans.map(toCmsPlan) }
+  ? {
+      ...cms.value,
+      plans: plans.map(toCmsPlan),
+      faq: { ...cms.value.faq, items: faq.value?.items ?? [] }
+    }
   : null
 )
 </script>

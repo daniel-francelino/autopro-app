@@ -130,7 +130,7 @@ useHead({
 })
 
 useSeoMeta({
-  title: () => `${title.value} | AutoPro`,
+  title: () => title.value,
   description: () => description.value
 })
 </script>
