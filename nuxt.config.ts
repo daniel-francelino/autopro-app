@@ -276,10 +276,11 @@ export default defineNuxtConfig({
   // treino permitido só no público; agregadores sem benefício bloqueados.
   // Ver docs/seo/geo-audit-brasil.md §5.
   robots: {
+    // grupo `*` (todos os demais agentes)
+    disallow: privatePaths,
     groups: [
       {
         userAgent: [
-          '*',
           'Googlebot',
           'Bingbot',
           'OAI-SearchBot',
