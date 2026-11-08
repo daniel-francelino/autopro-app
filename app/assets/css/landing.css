@@ -1,7 +1,7 @@
 .landing {
   --lp-ink: var(--ui-color-neutral-900);
   --lp-muted: var(--ui-color-neutral-500);
-  --lp-blue: var(--ui-color-primary-500);
+  --lp-blue: var(--ui-color-primary-600);
   --lp-lime: var(--ui-color-secondary-300);
   color: var(--lp-ink);
   background: #fff;
@@ -643,7 +643,7 @@
 
 .lp-feature-number {
   font-size: 11px;
-  color: var(--ui-color-neutral-400);
+  color: var(--ui-color-neutral-500);
   font-variant-numeric: tabular-nums;
 }
 

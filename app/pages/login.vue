@@ -4,7 +4,6 @@ import type { FormSubmitEvent } from '@nuxt/ui'
 import { useAuth } from '~/composables/useAuth'
 import { useWorkshopBootstrap } from '~/composables/useWorkshopBootstrap'
 import { resolveAuthenticatedDestination } from '~/middleware/auth.global'
-import { PostHogEvent } from '~/types/analytics'
 
 definePageMeta({
   layout: 'auth'
@@ -19,7 +18,6 @@ const toast = useToast()
 const auth = useAuth()
 const bootstrap = useWorkshopBootstrap()
 const router = useRouter()
-const { capture } = usePostHog()
 const rememberedEmail = useCookie<string | null>('remembered-login-email', {
   default: () => null,
   maxAge: 60 * 60 * 24 * 90,
@@ -64,10 +62,6 @@ async function onSubmit(payload?: FormSubmitEvent<Schema>) {
     rememberedEmail.value = payload.data.email
   else
     rememberedEmail.value = null
-
-  capture(PostHogEvent.AuthLoginSubmitted, {
-    remember: payload.data.remember ?? true
-  })
 
   try {
     await auth.login({

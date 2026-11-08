@@ -2,7 +2,6 @@
 import * as z from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
 import { useAuth } from '~/composables/useAuth'
-import { PostHogEvent } from '~/types/analytics'
 
 definePageMeta({
   layout: 'auth'
@@ -16,7 +15,6 @@ useSeoMeta({
 const toast = useToast()
 const auth = useAuth()
 const router = useRouter()
-const { capture } = usePostHog()
 
 const submitting = ref(false)
 
@@ -64,9 +62,6 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
   if (submitting.value) return
 
   submitting.value = true
-  capture(PostHogEvent.AuthSignupSubmitted, {
-    source: 'signup'
-  })
 
   try {
     const response = await auth.signup({

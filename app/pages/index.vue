@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { AnimatePresence, Motion, useReducedMotion } from 'motion-v'
-import { PostHogEvent } from '~/types/analytics'
 import '~/assets/css/landing.css'
 
 const reducedMotion = useReducedMotion()
 
 definePageMeta({ layout: false })
 
-const { capture } = usePostHog()
 const mobileMenuOpen = ref(false)
 const siteUrl = useSiteUrl()
 const { plans } = usePlans()
@@ -178,14 +176,7 @@ const steps = [
   }
 ]
 
-function track(label: string, target: string, location: string) {
-  const event
-    = location === 'hero'
-      ? PostHogEvent.PublicHeroCtaClicked
-      : location === 'page-bottom'
-        ? PostHogEvent.PublicFinalCtaClicked
-        : PostHogEvent.PublicNavigationClicked
-  capture(event, { location, target, target_label: label })
+function closeMobileMenu() {
   mobileMenuOpen.value = false
 }
 </script>
@@ -205,19 +196,19 @@ function track(label: string, target: string, location: string) {
             v-for="item in navigation"
             :key="item.to"
             :to="item.to"
-            @click="track(item.label, item.to, 'header')"
+            @click="closeMobileMenu()"
           >{{ item.label }}</NuxtLink>
         </nav>
         <div class="lp-nav-actions">
           <NuxtLink
             to="/login"
             class="lp-login"
-            @click="track('Entrar', '/login', 'header')"
+            @click="closeMobileMenu()"
           >Entrar <UIcon name="i-lucide-arrow-up-right" /></NuxtLink>
           <NuxtLink
             to="/signup"
             class="lp-button lp-button-dark lp-nav-cta"
-            @click="track('Começar agora', '/signup', 'header')"
+            @click="closeMobileMenu()"
           >Começar agora <UIcon name="i-lucide-arrow-right" /></NuxtLink>
           <button
             class="lp-menu-toggle"
@@ -248,12 +239,12 @@ function track(label: string, target: string, location: string) {
             v-for="item in navigation"
             :key="item.to"
             :to="item.to"
-            @click="track(item.label, item.to, 'header-mobile')"
+            @click="closeMobileMenu()"
           >{{ item.label }} <UIcon name="i-lucide-arrow-up-right" /></NuxtLink>
           <NuxtLink
             to="/signup"
             class="lp-button lp-button-blue"
-            @click="track('Começar agora', '/signup', 'header-mobile')"
+            @click="closeMobileMenu()"
           >Começar agora <UIcon name="i-lucide-arrow-right" /></NuxtLink>
         </Motion>
       </AnimatePresence>
@@ -278,12 +269,12 @@ function track(label: string, target: string, location: string) {
               <NuxtLink
                 to="/signup"
                 class="lp-button lp-button-blue"
-                @click="track('Começar agora', '/signup', 'hero')"
+                @click="closeMobileMenu()"
               >Começar agora <UIcon name="i-lucide-arrow-up-right" /></NuxtLink>
               <a
                 href="#sistema"
                 class="lp-text-link"
-                @click="track('Conhecer o sistema', '#sistema', 'hero')"
+                @click="closeMobileMenu()"
               ><span class="lp-play"><UIcon name="i-lucide-arrow-down" /></span>
                 Conhecer o sistema</a>
             </div>
@@ -360,7 +351,7 @@ function track(label: string, target: string, location: string) {
             <NuxtLink
               to="/signup"
               class="lp-text-link"
-              @click="track('Organizar minha oficina', '/signup', 'operation')"
+              @click="closeMobileMenu()"
             >Organizar minha oficina <UIcon name="i-lucide-arrow-up-right" /></NuxtLink>
           </LandingReveal>
         </div>
@@ -396,7 +387,7 @@ function track(label: string, target: string, location: string) {
             to="/pricing"
             class="lp-text-link lp-resources-link"
             @click="
-              track('Comparar os recursos dos planos', '/pricing', 'features')
+              closeMobileMenu()
             "
           >Encontre os recursos certos para sua oficina
             <UIcon name="i-lucide-arrow-right" /></NuxtLink>
@@ -413,7 +404,7 @@ function track(label: string, target: string, location: string) {
             <NuxtLink
               to="/signup"
               class="lp-button lp-button-lime"
-              @click="track('Vamos começar', '/signup', 'how-it-works')"
+              @click="closeMobileMenu()"
             >Vamos começar <UIcon name="i-lucide-arrow-up-right" /></NuxtLink>
           </LandingReveal>
           <div class="lp-steps">
@@ -447,7 +438,7 @@ function track(label: string, target: string, location: string) {
           <NuxtLink
             to="/pricing"
             class="lp-text-link"
-            @click="track('Conhecer os planos', '/pricing', 'faq')"
+            @click="closeMobileMenu()"
           >Conhecer os planos <UIcon name="i-lucide-arrow-up-right" /></NuxtLink>
         </div>
         <div class="lp-faq-list">
@@ -472,11 +463,11 @@ function track(label: string, target: string, location: string) {
             <NuxtLink
               to="/signup"
               class="lp-button lp-button-dark"
-              @click="track('Começar agora', '/signup', 'page-bottom')"
+              @click="closeMobileMenu()"
             >Começar agora <UIcon name="i-lucide-arrow-up-right" /></NuxtLink><NuxtLink
               to="/pricing"
               class="lp-text-link"
-              @click="track('Ver planos e preços', '/pricing', 'page-bottom')"
+              @click="closeMobileMenu()"
             >Ver planos e preços <UIcon name="i-lucide-arrow-right" /></NuxtLink>
           </div>
         </LandingReveal>
@@ -494,10 +485,10 @@ function track(label: string, target: string, location: string) {
             v-for="item in navigation"
             :key="item.to"
             :to="item.to"
-            @click="track(item.label, item.to, 'footer')"
+            @click="closeMobileMenu()"
           >{{ item.label }}</NuxtLink><NuxtLink
             to="/login"
-            @click="track('Entrar', '/login', 'footer')"
+            @click="closeMobileMenu()"
           >Entrar <UIcon name="i-lucide-arrow-up-right" /></NuxtLink>
         </nav>
         <nav aria-label="Guias e perguntas">
@@ -505,7 +496,7 @@ function track(label: string, target: string, location: string) {
             v-for="item in guideLinks"
             :key="item.to"
             :to="item.to"
-            @click="track(item.label, item.to, 'footer')"
+            @click="closeMobileMenu()"
           >{{ item.label }}</NuxtLink>
         </nav>
       </div>

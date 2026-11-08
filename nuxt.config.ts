@@ -98,12 +98,6 @@ export default defineNuxtConfig({
       oneSignalServiceWorkerScope:
         process.env.NUXT_PUBLIC_ONESIGNAL_SERVICE_WORKER_SCOPE
         ?? '/push/onesignal/',
-      posthogEnabled:
-        process.env.NODE_ENV === 'production'
-        && process.env.NUXT_PUBLIC_POSTHOG_ENABLED === 'true',
-      posthogHost:
-        process.env.NUXT_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com',
-      posthogKey: process.env.NUXT_PUBLIC_POSTHOG_KEY ?? '',
       stripeStarterPriceId: process.env.NUXT_PUBLIC_STRIPE_PRICE_ID_STARTER ?? '',
       stripeProPriceId: process.env.NUXT_PUBLIC_STRIPE_PRICE_ID_PRO ?? '',
       stripeFiscalPriceId: process.env.NUXT_PUBLIC_STRIPE_PRICE_ID_FISCAL ?? ''
@@ -138,6 +132,7 @@ export default defineNuxtConfig({
   compatibilityDate: '2024-07-11',
 
   nitro: {
+    compressPublicAssets: true
     // prerender is disabled in dev — it caused the "Dev server is unavailable" error
     // by making Nitro crawl links during startup before Vite was ready
     // prerender: {

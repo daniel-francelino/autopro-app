@@ -123,3 +123,8 @@ body.keyboard-open .mobile-bottom-nav {
     padding-bottom: calc(var(--mobile-bottom-nav-height, 4.75rem) + var(--safe-area-bottom) + 1rem);
   }
 }
+
+/* Páginas públicas: tom de roxo com contraste AA (>= 4.5:1) sobre branco. */
+html[data-scope='public']:not(.dark) {
+  --ui-primary: var(--ui-color-primary-600);
+}

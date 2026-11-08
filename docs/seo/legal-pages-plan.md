@@ -1,6 +1,6 @@
 # Plano das páginas `/sobre`, `/termos` e `/privacidade` — AutoPro
 
-> Status: **análise + plano** · Criado em 2026-11-08 · Base: leitura do código (Nuxt 4, Supabase, Stripe, OneSignal, PostHog, Focus NFe / Nuvem Fiscal)
+> Status: **análise + plano** · Criado em 2026-11-08 · Base: leitura do código (Nuxt 4, Supabase, Stripe, OneSignal, Focus NFe / Nuvem Fiscal)
 >
 > **Aviso:** isto não é aconselhamento jurídico. Os rascunhos e as conclusões sobre a LGPD precisam de revisão por
 > advogado antes de publicar. O que está aqui é o que o **código prova** e o que **só a empresa pode responder**.
@@ -28,7 +28,7 @@ Sem as três, o rodapé não tem o que linkar (SEO Passo 7) e `Organization` fic
 | Exclusão de conta | `DELETE` apaga o **usuário de autenticação** (`auth.admin.deleteUser`). O código não mostra o que acontece com os dados da oficina (organização, clientes, OS, notas) | `server/api/auth/account.delete.ts` |
 | Nota fiscal | Dados fiscais da empresa (CNPJ, inscrição municipal, regime, município IBGE) enviados à **Focus NFe** (e há código da **Nuvem Fiscal**) | `server/utils/focus-nfe.ts`, `nuvem-fiscal.ts`, README |
 | Notificações push | **OneSignal** (identificador do dispositivo) | `useOneSignal.ts`, `plugins/onesignal.client.ts`, `public/push/` |
-| Analytics | **PostHog**: `autocapture: true`, `capture_pageleave`, e `identify` com **e-mail e nome** do usuário logado. Ligado só em produção com flag `NUXT_PUBLIC_POSTHOG_ENABLED` | `plugins/posthog.client.ts`, `usePostHog.ts` |
+| Analytics | **Nenhum.** O PostHog foi removido do código (plugin, composable, eventos, variáveis e dependência). Não há rastreamento de terceiros no site | `git log` desta mudança |
 | Consentimento | **Não existe** banner nem opt-out | busca por `consent` no app: vazio |
 | Armazenamento no navegador | `localStorage` (tema, UTM), cookies de sessão acima | `useUserPreferences`, auth |
 
@@ -41,14 +41,13 @@ Sem as três, o rodapé não tem o que linkar (SEO Passo 7) e `Organization` fic
 
 ### 2.2 Subprocessadores identificados
 
-Supabase (banco e autenticação), Stripe (cobrança), Focus NFe e/ou Nuvem Fiscal (NFS-e), OneSignal (push), PostHog (se ativo) e a
+Supabase (banco e autenticação), Stripe (cobrança), Focus NFe e/ou Nuvem Fiscal (NFS-e), OneSignal (push) e a
 hospedagem (**Vercel? não confirmado**). A política precisa listar o que de fato estiver em uso na data de publicação.
 
 ## 3. Problemas que a publicação vai expor (decidir **antes** de escrever)
 
-1. **PostHog identifica pessoas (e-mail + nome) com autocapture e sem aviso.** Escrever uma política verdadeira obriga a declarar isso — e
-   sem base legal/consentimento clara é risco de LGPD. O [plano de métricas](../metrics/usage-metrics-plan.md) já prevê substituir o PostHog por telemetria própria **sem cookie nem ID persistente**.
-   *Recomendação:* concluir essa troca (ou desligar o `identify`) antes de publicar `/privacidade`; assim o texto fica curto e verdadeiro.
+1. ~~PostHog identificava pessoas~~ — **resolvido:** o PostHog foi removido. `/privacidade` pode declarar que não há analytics de terceiros. Se a telemetria própria do
+   [plano de métricas](../metrics/usage-metrics-plan.md) for implementada depois (sem cookie nem ID persistente), a política deve ser atualizada junto.
 2. **Exclusão de conta × dados da oficina.** Definir (com contador/advogado) o que é apagado, o que é anonimizado e o que precisa ser **retido por obrigação
    fiscal/legal** (notas emitidas, registros financeiros). Hoje o endpoint só remove o login.
 3. **Cancelamento e reembolso.** O FAQ diz "sem fidelidade ou multa". O código cancela ao fim do período, sem reembolso. `/termos` precisa dizer isso com
@@ -115,12 +114,12 @@ Quem é o controlador e o contato/encarregado · **quais dados** (conta, cobran�
 
 | Fase | Entrega | Quem | Esforço |
 |---|---|---|---|
-| 0 | Responder a tabela do §4 e decidir os itens do §3 (PostHog, exclusão, reembolso, inadimplência) | Empresa | 1–3 dias |
+| 0 | Responder a tabela do §4 e decidir os itens do §3 (exclusão, reembolso, inadimplência) | Empresa | 1–3 dias |
 | 1 | Minuta de `/termos` e `/privacidade` a partir do §5 com os dados reais | Dev + advogado | 2–5 dias (advogado) |
 | 2 | `/sobre` com dados reais e `Organization` completo | Dev | 0,5 dia |
 | 3 | Gabarito `kind: legal`, rodapé, JSON-LD, sitemap, `llms.txt` | Dev | 1 dia |
 | 4 | Checkbox de aceite com registro de versão | Dev | 1 dia |
-| 5 | Troca do PostHog por telemetria própria (plano de métricas) ou desligar `identify` | Dev | conforme o plano |
+| 5 | (Opcional) telemetria própria do plano de métricas, atualizando a política | Dev | conforme o plano |
 
 ## 8. Checklist de aceitação
 

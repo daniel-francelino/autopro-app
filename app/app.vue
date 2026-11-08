@@ -61,7 +61,8 @@ useHead({
     { name: 'format-detection', content: 'telephone=no' }
   ],
   htmlAttrs: {
-    lang: 'pt-BR'
+    'lang': 'pt-BR',
+    'data-scope': isAppRoute.value ? 'app' : 'public'
   }
 })
 

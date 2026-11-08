@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useAuth } from '~/composables/useAuth'
-import { PostHogEvent } from '~/types/analytics'
 
 type PricingPage = {
   title: string
@@ -44,24 +43,16 @@ const items = ref([
 
 const toast = useToast()
 const auth = useAuth()
-const { capture } = usePostHog()
 
 async function startCheckout(priceId: string) {
   await auth.ensureReady()
 
   if (!auth.isAuthenticated.value) {
-    capture(PostHogEvent.PricingLoginRedirected, {
-      price_id: priceId
-    })
     await navigateTo('/login')
     return
   }
 
   try {
-    capture(PostHogEvent.PricingCheckoutStarted, {
-      billing_interval: isYearly.value === '1' ? 'yearly' : 'monthly',
-      price_id: priceId
-    })
     const { url } = await $fetch<{ url: string }>('/api/billing/checkout', {
       method: 'POST',
       body: {
@@ -96,15 +87,6 @@ const plansWithActions = computed(() => {
     }
   })
 })
-
-watch(isYearly, (value, previousValue) => {
-  if (value === previousValue)
-    return
-
-  capture(PostHogEvent.PricingBillingIntervalChanged, {
-    billing_interval: value === '1' ? 'yearly' : 'monthly'
-  })
-})
 </script>
 
 <template>
@@ -116,6 +98,7 @@ watch(isYearly, (value, previousValue) => {
     >
       <template #links>
         <UTabs
+          v-if="items.length > 1"
           v-model="isYearly"
           :items="items"
           color="neutral"
@@ -142,6 +125,7 @@ watch(isYearly, (value, previousValue) => {
         </div>
 
         <UTabs
+          v-if="items.length > 1"
           v-model="isYearly"
           :items="items"
           color="neutral"
