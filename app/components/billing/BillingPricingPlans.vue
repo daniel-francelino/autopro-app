@@ -42,17 +42,20 @@ const items = ref([
 ])
 
 const toast = useToast()
+const { track } = useAnalytics()
 const auth = useAuth()
 
 async function startCheckout(priceId: string) {
   await auth.ensureReady()
 
   if (!auth.isAuthenticated.value) {
+    track('pricing_login_redirected')
     await navigateTo('/login')
     return
   }
 
   try {
+    track('pricing_checkout_started', { attribution: readAttribution() })
     const { url } = await $fetch<{ url: string }>('/api/billing/checkout', {
       method: 'POST',
       body: {

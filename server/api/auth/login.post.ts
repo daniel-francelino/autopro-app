@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { getSupabaseAnonClient } from '../../utils/supabase-anon'
 import { setAuthCookies } from '../../utils/auth-cookies'
 import { setAuthUserCookie, toAuthUser } from '../../utils/auth-user'
+import { trackServerEvent } from '../../utils/analytics/record'
 
 const schema = z.object({
   email: z.string().email(),
@@ -42,6 +43,9 @@ export default eventHandler(async (event) => {
   }, { persistent: parsed.data.remember })
 
   setAuthCookies(event, data.session, { persistent: parsed.data.remember })
+
+  // Telemetria: login concluído (só nome do evento; o usuário vira HMAC no servidor).
+  trackServerEvent(event, 'login_completed', { userId: data.user.id })
 
   return {
     user: toAuthUser(data.user),

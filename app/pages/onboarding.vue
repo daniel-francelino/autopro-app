@@ -7,8 +7,12 @@ const bootstrap = useWorkshopBootstrap()
 const router = useRouter()
 const toast = useToast()
 
+const { track } = useAnalytics()
+
 const loading = ref(false)
 const step = ref<'company' | 'address'>('company')
+
+onMounted(() => track('onboarding_step', { step: 0 }))
 
 const form = reactive({
   name: '',
@@ -61,6 +65,7 @@ function goToAddress() {
     return
   }
   step.value = 'address'
+  track('onboarding_step', { step: 1 })
 }
 
 async function submit() {
@@ -84,6 +89,7 @@ async function submit() {
       }
     })
 
+    track('onboarding_complete', { step: 1 })
     await bootstrap.fetchBootstrap(true)
     toast.add({ title: 'Empresa configurada!', description: 'Bem-vindo ao sistema.', color: 'success' })
     await router.push('/app')

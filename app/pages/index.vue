@@ -176,8 +176,18 @@ const steps = [
   }
 ]
 
-function closeMobileMenu() {
+const { track } = useAnalytics()
+
+function onCta(location: string) {
   mobileMenuOpen.value = false
+  const event = location === 'hero'
+    ? 'cta_hero_click'
+    : location === 'page-bottom'
+      ? 'cta_final_click'
+      : location === 'footer'
+        ? 'cta_footer_click'
+        : 'nav_click'
+  track(event)
 }
 </script>
 
@@ -196,19 +206,19 @@ function closeMobileMenu() {
             v-for="item in navigation"
             :key="item.to"
             :to="item.to"
-            @click="closeMobileMenu()"
+            @click="onCta('header')"
           >{{ item.label }}</NuxtLink>
         </nav>
         <div class="lp-nav-actions">
           <NuxtLink
             to="/login"
             class="lp-login"
-            @click="closeMobileMenu()"
+            @click="onCta('header')"
           >Entrar <UIcon name="i-lucide-arrow-up-right" /></NuxtLink>
           <NuxtLink
             to="/signup"
             class="lp-button lp-button-dark lp-nav-cta"
-            @click="closeMobileMenu()"
+            @click="onCta('header')"
           >Começar agora <UIcon name="i-lucide-arrow-right" /></NuxtLink>
           <button
             class="lp-menu-toggle"
@@ -239,12 +249,12 @@ function closeMobileMenu() {
             v-for="item in navigation"
             :key="item.to"
             :to="item.to"
-            @click="closeMobileMenu()"
+            @click="onCta('header-mobile')"
           >{{ item.label }} <UIcon name="i-lucide-arrow-up-right" /></NuxtLink>
           <NuxtLink
             to="/signup"
             class="lp-button lp-button-blue"
-            @click="closeMobileMenu()"
+            @click="onCta('header-mobile')"
           >Começar agora <UIcon name="i-lucide-arrow-right" /></NuxtLink>
         </Motion>
       </AnimatePresence>
@@ -269,12 +279,12 @@ function closeMobileMenu() {
               <NuxtLink
                 to="/signup"
                 class="lp-button lp-button-blue"
-                @click="closeMobileMenu()"
+                @click="onCta('hero')"
               >Começar agora <UIcon name="i-lucide-arrow-up-right" /></NuxtLink>
               <a
                 href="#sistema"
                 class="lp-text-link"
-                @click="closeMobileMenu()"
+                @click="onCta('hero')"
               ><span class="lp-play"><UIcon name="i-lucide-arrow-down" /></span>
                 Conhecer o sistema</a>
             </div>
@@ -351,7 +361,7 @@ function closeMobileMenu() {
             <NuxtLink
               to="/signup"
               class="lp-text-link"
-              @click="closeMobileMenu()"
+              @click="onCta('operation')"
             >Organizar minha oficina <UIcon name="i-lucide-arrow-up-right" /></NuxtLink>
           </LandingReveal>
         </div>
@@ -387,7 +397,7 @@ function closeMobileMenu() {
             to="/pricing"
             class="lp-text-link lp-resources-link"
             @click="
-              closeMobileMenu()
+              onCta('features')
             "
           >Encontre os recursos certos para sua oficina
             <UIcon name="i-lucide-arrow-right" /></NuxtLink>
@@ -404,7 +414,7 @@ function closeMobileMenu() {
             <NuxtLink
               to="/signup"
               class="lp-button lp-button-lime"
-              @click="closeMobileMenu()"
+              @click="onCta('how-it-works')"
             >Vamos começar <UIcon name="i-lucide-arrow-up-right" /></NuxtLink>
           </LandingReveal>
           <div class="lp-steps">
@@ -438,7 +448,7 @@ function closeMobileMenu() {
           <NuxtLink
             to="/pricing"
             class="lp-text-link"
-            @click="closeMobileMenu()"
+            @click="onCta('faq')"
           >Conhecer os planos <UIcon name="i-lucide-arrow-up-right" /></NuxtLink>
         </div>
         <div class="lp-faq-list">
@@ -463,11 +473,11 @@ function closeMobileMenu() {
             <NuxtLink
               to="/signup"
               class="lp-button lp-button-dark"
-              @click="closeMobileMenu()"
+              @click="onCta('page-bottom')"
             >Começar agora <UIcon name="i-lucide-arrow-up-right" /></NuxtLink><NuxtLink
               to="/pricing"
               class="lp-text-link"
-              @click="closeMobileMenu()"
+              @click="onCta('page-bottom')"
             >Ver planos e preços <UIcon name="i-lucide-arrow-right" /></NuxtLink>
           </div>
         </LandingReveal>
@@ -485,10 +495,10 @@ function closeMobileMenu() {
             v-for="item in navigation"
             :key="item.to"
             :to="item.to"
-            @click="closeMobileMenu()"
+            @click="onCta('footer')"
           >{{ item.label }}</NuxtLink><NuxtLink
             to="/login"
-            @click="closeMobileMenu()"
+            @click="onCta('footer')"
           >Entrar <UIcon name="i-lucide-arrow-up-right" /></NuxtLink>
         </nav>
         <nav aria-label="Guias e perguntas">
@@ -496,7 +506,7 @@ function closeMobileMenu() {
             v-for="item in guideLinks"
             :key="item.to"
             :to="item.to"
-            @click="closeMobileMenu()"
+            @click="onCta('footer')"
           >{{ item.label }}</NuxtLink>
         </nav>
       </div>

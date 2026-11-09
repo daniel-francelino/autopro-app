@@ -4,6 +4,11 @@ import { getSupabaseAdminClient } from '../../utils/supabase'
 import { getStripe, getStripeWebhookSecret } from '../../utils/stripe'
 import { deleteFocusNfeCompanyForOrg } from '../../utils/focus-nfe'
 import { ensureDefaultFinancialCategories } from '../../utils/financial-category-defaults'
+import { trackServerEvent, type ServerEventOptions } from '../../utils/analytics/record'
+import type { AnalyticsEvent } from '../../../lib/analytics/events'
+
+// Telemetria: o webhook não tem sessão, então grava com session_id='server' (sem tráfego/plataforma/país).
+type Track = (name: AnalyticsEvent, options?: ServerEventOptions) => void
 
 type SupabaseClient = ReturnType<typeof getSupabaseAdminClient>
 type SubRow = { id: string, organization_id: string }
@@ -66,12 +71,13 @@ export default defineEventHandler(async (event: H3Event) => {
   }
 
   const supabase = getSupabaseAdminClient()
+  const track: Track = (name, options) => trackServerEvent(event, name, { ...options, noSession: true })
 
   // ── Route events ──────────────────────────────────────────────────────────
   try {
     switch (stripeEvent.type) {
       case 'checkout.session.completed':
-        await handleCheckoutCompleted(stripeEvent.data.object as Stripe.Checkout.Session, supabase, stripe)
+        await handleCheckoutCompleted(stripeEvent.data.object as Stripe.Checkout.Session, supabase, stripe, track)
         break
 
       case 'invoice.payment_succeeded':
@@ -80,7 +86,7 @@ export default defineEventHandler(async (event: H3Event) => {
         break
 
       case 'invoice.payment_failed':
-        await handleInvoiceFailed(stripeEvent.data.object as Stripe.Invoice, supabase)
+        await handleInvoiceFailed(stripeEvent.data.object as Stripe.Invoice, supabase, track)
         break
 
       case 'customer.subscription.updated':
@@ -88,7 +94,7 @@ export default defineEventHandler(async (event: H3Event) => {
         break
 
       case 'customer.subscription.deleted':
-        await handleSubscriptionDeleted(stripeEvent.data.object as Stripe.Subscription, supabase)
+        await handleSubscriptionDeleted(stripeEvent.data.object as Stripe.Subscription, supabase, track)
         break
 
       default:
@@ -115,7 +121,8 @@ export default defineEventHandler(async (event: H3Event) => {
 async function handleCheckoutCompleted(
   session: Stripe.Checkout.Session,
   supabase: ReturnType<typeof getSupabaseAdminClient>,
-  stripe: ReturnType<typeof getStripe>
+  stripe: ReturnType<typeof getStripe>,
+  track: Track
 ) {
   // Support multiple metadata key conventions:
   //   - user_id / user_email (explicit)
@@ -169,6 +176,7 @@ async function handleCheckoutCompleted(
     }
 
     organizationId = org.id
+    track('org_created', { userId: profile.user_id as string, organizationId })
   }
 
   // ── Ensure default financial categories exist for this organization ─────
@@ -319,6 +327,8 @@ async function handleCheckoutCompleted(
         created_by: 'stripe-webhook'
       })
   }
+
+  track('subscription_started', { userId: profile.user_id as string, organizationId })
 }
 
 // =============================================================================
@@ -447,7 +457,8 @@ async function handleInvoicePaid(
  */
 async function handleInvoiceFailed(
   invoice: Stripe.Invoice,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  track: Track
 ) {
   const subscriptionId = getInvoiceSubscriptionId(invoice)
   const customerId = extractCustomerId(invoice.customer)
@@ -459,6 +470,8 @@ async function handleInvoiceFailed(
     .from('subscriptions')
     .update({ status: 'suspended', updated_by: 'stripe-webhook' })
     .eq('id', sub.id)
+
+  track('payment_failed', { userId: null, organizationId: sub.organization_id })
 }
 
 /**
@@ -514,7 +527,8 @@ async function handleSubscriptionUpdated(
  */
 async function handleSubscriptionDeleted(
   subscription: Stripe.Subscription,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  track: Track
 ) {
   const customerId = extractCustomerId(subscription.customer)
   const sub = await resolveSubscriptionRow(supabase, subscription.id, customerId)
@@ -534,6 +548,8 @@ async function handleSubscriptionDeleted(
       .update({ is_active: false, updated_by: 'stripe-webhook' })
       .eq('id', sub.organization_id)
   ])
+
+  track('subscription_cancelled', { userId: null, organizationId: sub.organization_id })
 
   await deleteFocusNfeCompanyForOrg(sub.organization_id)
 }

@@ -264,7 +264,7 @@ export function useAuth() {
   async function signup(payload: { name: string, email: string, password: string }) {
     const response = await $fetch<{ user: AuthUser | null, session: { expiresAt: number | null } | null }>('/api/auth/signup', {
       method: 'POST',
-      body: payload,
+      body: { ...payload, attribution: readAttribution() },
       credentials: 'include'
     })
 

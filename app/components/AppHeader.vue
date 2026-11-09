@@ -1,7 +1,10 @@
 <script setup lang="ts">
+const { track } = useAnalytics()
+
 const items = computed(() => [{
   label: 'Planos',
-  to: '/pricing'
+  to: '/pricing',
+  onSelect: () => track('nav_click')
 }])
 </script>
 
@@ -30,6 +33,7 @@ const items = computed(() => [{
         variant="ghost"
         to="/login"
         class="lg:hidden"
+        @click="track('nav_click')"
       />
 
       <UButton
@@ -38,6 +42,7 @@ const items = computed(() => [{
         variant="outline"
         to="/login"
         class="hidden lg:inline-flex"
+        @click="track('nav_click')"
       />
 
       <UButton
@@ -46,6 +51,7 @@ const items = computed(() => [{
         trailing-icon="i-lucide-arrow-right"
         class="hidden lg:inline-flex"
         to="/signup"
+        @click="track('nav_click')"
       />
     </template>
 
@@ -65,12 +71,14 @@ const items = computed(() => [{
         to="/login"
         block
         class="mb-3"
+        @click="track('nav_click')"
       />
       <UButton
         label="Criar conta"
         color="neutral"
         to="/signup"
         block
+        @click="track('nav_click')"
       />
     </template>
   </UHeader>

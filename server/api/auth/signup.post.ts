@@ -4,6 +4,7 @@ import { getSupabaseAdminClient } from '../../utils/supabase'
 import { setAuthCookies } from '../../utils/auth-cookies'
 import { setAuthUserCookie, toAuthUser } from '../../utils/auth-user'
 import { ensureUserProvisioned } from '../../utils/user-provisioning'
+import { trackServerEvent } from '../../utils/analytics/record'
 
 const schema = z.object({
   name: z.string().min(1),
@@ -50,6 +51,12 @@ export default eventHandler(async (event) => {
       email: data.user.email,
       displayName: parsed.data.name
     })
+  }
+
+  if (data.user) {
+    // Telemetria: cadastro concluído. A atribuição (UTM/origem) vem saneada do corpo, ignorada pelo schema.
+    const attribution = (body as { attribution?: unknown } | null)?.attribution
+    trackServerEvent(event, 'signup_completed', { userId: data.user.id, attribution })
   }
 
   if (data.session) {

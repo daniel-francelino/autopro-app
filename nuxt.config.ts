@@ -75,6 +75,9 @@ export default defineNuxtConfig({
     supabaseAnonKey: process.env.SUPABASE_ANON_KEY,
     supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
 
+    // Telemetria própria (docs/metrics/usage-metrics-plan.md): segredo do HMAC que pseudonimiza o usuário.
+    analyticsHashSecret: process.env.ANALYTICS_HASH_SECRET,
+
     stripeSecretKey: process.env.STRIPE_SECRET_KEY,
     stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
     stripeAllowedPriceIds: process.env.STRIPE_ALLOWED_PRICE_IDS,
@@ -82,6 +85,10 @@ export default defineNuxtConfig({
       process.env.STRIPE_BILLING_PORTAL_CONFIGURATION_ID,
 
     public: {
+      // Telemetria própria: ligada só em produção e quando NUXT_PUBLIC_ANALYTICS_ENABLED=true.
+      analyticsEnabled:
+        process.env.NODE_ENV === 'production'
+        && process.env.NUXT_PUBLIC_ANALYTICS_ENABLED === 'true',
       siteUrl:
         process.env.NUXT_PUBLIC_SITE_URL
         || (process.env.NODE_ENV === 'production' ? 'https://autopro.beenk.com.br' : ''),
