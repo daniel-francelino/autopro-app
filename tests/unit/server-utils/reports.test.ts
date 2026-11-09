@@ -276,7 +276,7 @@ describe('report-export (CSV e base64)', () => {
     expect(csvEscape(10)).toBe('"10"')
   })
   // KF-04: sem proteção contra injeção de fórmula (CSV injection) em planilhas.
-  it.fails.each(['=1+1', '+SUM(A1)', '-2+3', '@cmd'])('csvEscape neutraliza fórmula: %s', (value) => {
+  it.each(['=1+1', '+SUM(A1)', '-2+3', '@cmd'])('csvEscape neutraliza fórmula: %s', (value) => {
     expect(csvEscape(value)).toMatch(/^"'/)
   })
   it('base64 e data local', () => {

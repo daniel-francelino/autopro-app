@@ -313,7 +313,7 @@ describe('license', () => {
     await expect(enforceEmployeeLimit('org-a')).resolves.toBeUndefined()
   })
   // KF-03: sem assinatura ativa, maxEmployees=null e o limite NÃO é aplicado.
-  it.fails('sem assinatura ativa não deveria liberar funcionários ilimitados', async () => {
+  it('sem assinatura ativa não deveria liberar funcionários ilimitados', async () => {
     withPlan(null, 50)
     await expect(enforceEmployeeLimit('org-a')).rejects.toMatchObject({ statusCode: 403 })
   })

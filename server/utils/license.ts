@@ -58,7 +58,10 @@ export async function resolveOrgLicense(organizationId: string): Promise<OrgLice
 
 export async function enforceEmployeeLimit(organizationId: string): Promise<void> {
   const supabase = getSupabaseAdminClient()
-  const { maxEmployees } = await resolveOrgLicense(organizationId)
+  const license = await resolveOrgLicense(organizationId)
+  // Sem assinatura ativa vale o limite do plano mais restrito (mesmo critério de bloqueio dos relatórios).
+  // Plano ativo sem limite definido (ex.: fiscal) continua ilimitado.
+  const maxEmployees = license.planKey === null ? EMPLOYEE_LIMITS.starter ?? null : license.maxEmployees
 
   if (maxEmployees === null) return
 

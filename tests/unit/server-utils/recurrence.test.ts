@@ -51,7 +51,7 @@ describe('expandRecurrence', () => {
     expect(r.every(d => d.getUTCHours() === 9 && d.getUTCMinutes() === 30)).toBe(true)
   })
   // KF-01: ver docs/testing/known-failures.md
-  it.fails('mensal no dia 31 cai no último dia do mês curto (28/02)', () => {
+  it('mensal no dia 31 cai no último dia do mês curto (28/02)', () => {
     const r = expandRecurrence('2026-01-31T10:00:00Z', 'FREQ=MONTHLY;COUNT=3', rangeStart, farEnd)
     expect(iso(r)[0]).toBe('2026-01-31')
     expect(iso(r)[1]).toBe('2026-02-28')

@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
 
   const { data: existing } = await supabase
     .from('financial_transactions')
-    .select('id, status')
+    .select('id, status, type, amount, bank_account_id, due_date, description')
     .eq('id', id!)
     .eq('organization_id', organizationId)
     .is('deleted_at', null)
@@ -25,6 +25,64 @@ export default defineEventHandler(async (event) => {
 
   if (!existing) throw createError({ statusCode: 404, statusMessage: 'Lançamento não encontrado' })
   if (existing.status === 'paid') throw createError({ statusCode: 400, statusMessage: 'Lançamento já está marcado como pago' })
+
+  // Conta bancária: mesmo comportamento do pagamento em lote (saldo + extrato), sem duplicar extrato.
+  let createdStatementId: string | null = null
+  let accountId: string | null = null
+  let previousBalance: number | null = null
+  if (existing.bank_account_id) {
+    const { data: account } = await supabase
+      .from('bank_accounts')
+      .select('id, current_balance')
+      .eq('id', existing.bank_account_id)
+      .eq('organization_id', organizationId)
+      .maybeSingle()
+
+    const { data: existingStatements } = account
+      ? await supabase
+          .from('bank_account_statements')
+          .select('id')
+          .eq('financial_transaction_id', existing.id)
+          .eq('organization_id', organizationId)
+      : { data: null }
+
+    if (account && !(existingStatements && existingStatements.length > 0)) {
+      const amount = Number(existing.amount || 0)
+      previousBalance = Number(account.current_balance || 0)
+      const balanceAfter = Math.round((existing.type === 'income' ? previousBalance + amount : previousBalance - amount) * 100) / 100
+
+      const { data: statement, error: statementError } = await supabase
+        .from('bank_account_statements')
+        .insert({
+          organization_id: organizationId,
+          bank_account_id: account.id,
+          financial_transaction_id: existing.id,
+          transaction_date: existing.due_date || new Date().toISOString().slice(0, 10),
+          description: existing.description || `Lançamento (${existing.id})`,
+          transaction_type: existing.type || 'expense',
+          amount,
+          previous_balance: previousBalance,
+          balance_after: balanceAfter,
+          notes: `Ref. ao lançamento financeiro: ${String(existing.description || '')}`,
+          created_by: authUser.email
+        })
+        .select('id')
+        .single()
+      if (statementError) throw createError({ statusCode: 500, statusMessage: statementError.message })
+      createdStatementId = statement?.id ?? null
+
+      const { error: balanceError } = await supabase
+        .from('bank_accounts')
+        .update({ current_balance: balanceAfter, updated_by: authUser.email })
+        .eq('id', account.id)
+        .eq('organization_id', organizationId)
+      if (balanceError) {
+        if (createdStatementId) await supabase.from('bank_account_statements').delete().eq('id', createdStatementId)
+        throw createError({ statusCode: 500, statusMessage: balanceError.message })
+      }
+      accountId = account.id
+    }
+  }
 
   const { data: item, error } = await supabase
     .from('financial_transactions')
@@ -34,7 +92,14 @@ export default defineEventHandler(async (event) => {
     .select()
     .single()
 
-  if (error) throw createError({ statusCode: 500, statusMessage: error.message })
+  if (error) {
+    // Desfaz saldo/extrato para não deixar a conta movimentada com o lançamento ainda pendente.
+    if (createdStatementId) await supabase.from('bank_account_statements').delete().eq('id', createdStatementId)
+    if (accountId && previousBalance !== null) {
+      await supabase.from('bank_accounts').update({ current_balance: previousBalance }).eq('id', accountId).eq('organization_id', organizationId)
+    }
+    throw createError({ statusCode: 500, statusMessage: error.message })
+  }
 
   recordAudit(event, { before: { status: existing.status }, after: { status: 'paid' } })
 

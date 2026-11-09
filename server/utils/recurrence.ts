@@ -80,8 +80,13 @@ function addDays(date: Date, days: number): Date {
 }
 
 function addMonths(date: Date, months: number): Date {
+  // Ancora no dia original e limita ao último dia do mês de destino (31/01 + 1 mês = 28/02).
   const result = new Date(date)
+  const day = result.getUTCDate()
+  result.setUTCDate(1)
   result.setUTCMonth(result.getUTCMonth() + months)
+  const lastDay = new Date(Date.UTC(result.getUTCFullYear(), result.getUTCMonth() + 1, 0)).getUTCDate()
+  result.setUTCDate(Math.min(day, lastDay))
   return result
 }
 
@@ -107,6 +112,7 @@ export function expandRecurrence(
   // Safety limit
   const absoluteMax = 1000
   let iterations = 0
+  let monthSteps = 0
 
   while (iterations < absoluteMax) {
     iterations++
@@ -161,7 +167,9 @@ export function expandRecurrence(
           current = addDays(current, 7 * parsed.interval)
           break
         case 'MONTHLY':
-          current = addMonths(current, parsed.interval)
+          // Sempre a partir do início do evento, para o dia 31 não "derivar" para 28 depois de fevereiro.
+          monthSteps += parsed.interval
+          current = addMonths(eventStart, monthSteps)
           break
       }
     }

@@ -1,4 +1,5 @@
 import { createError } from 'h3'
+import { revertStatementOnAccount } from './bank-balance'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { softDeleteFinancialTransaction, type FinancialTransactionDeletionSource } from './financial-transaction-deletion'
 import { recalculateServiceOrderPaymentStatus } from './service-order-payment-status'
@@ -87,13 +88,7 @@ export async function reverseServiceOrderReceipt({
     .eq('organization_id', organizationId)
 
   for (const statement of statements || []) {
-    if (statement.bank_account_id) {
-      await supabase
-        .from('bank_accounts')
-        .update({ current_balance: statement.previous_balance, updated_by: userEmail || null })
-        .eq('id', statement.bank_account_id)
-        .eq('organization_id', organizationId)
-    }
+    await revertStatementOnAccount({ supabase, organizationId, statement, userEmail })
     await supabase.from('bank_account_statements').delete().eq('id', statement.id)
   }
 

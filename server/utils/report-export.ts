@@ -3,7 +3,10 @@ import type { PDFFont } from 'pdf-lib'
 
 // ─── File utils ───
 export function csvEscape(value: unknown) {
-  const text = String(value ?? '').replace(/\r?\n/g, ' ')
+  let text = String(value ?? '').replace(/\r?\n/g, ' ')
+  // Injeção de fórmula (CSV injection): textos iniciados por = + - @ viram texto literal no Excel.
+  // Números reais (ex.: -10) não são tocados.
+  if (typeof value === 'string' && /^[=+\-@\t\r]/.test(text)) text = `'${text}`
   return `"${text.replace(/"/g, '""')}"`
 }
 

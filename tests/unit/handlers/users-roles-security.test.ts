@@ -155,7 +155,7 @@ describe('roles', () => {
     expect(r.status).toBe(403)
     expect(fake.tables.role_actions).toHaveLength(0)
   })
-  it.fails('papel de sistema não pode ser excluído', async () => {
+  it('papel de sistema não pode ser excluído', async () => {
     asAdmin()
     const r = await callHandler('server/api/roles/[id].delete.ts', fakeEvent({ method: 'DELETE', cookies, params: { id: 'role-admin-a' } }))
     expect(r.status).toBeGreaterThanOrEqual(400)

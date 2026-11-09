@@ -184,7 +184,7 @@ describe('financial/:id/pay', () => {
     expect((await pay('ft-a')).status).toBe(404)
   })
   // KF-18: marcar como pago não toca no saldo nem no extrato da conta bancária.
-  it.fails('pagar um lançamento com conta bancária movimenta o saldo e gera extrato', async () => {
+  it('pagar um lançamento com conta bancária movimenta o saldo e gera extrato', async () => {
     const t = fake.tables.financial_transactions!.find(x => x.id === 'ft-a')!
     t.bank_account_id = 'acc-a'
     await pay('ft-a')

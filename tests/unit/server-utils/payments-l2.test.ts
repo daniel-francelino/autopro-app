@@ -85,7 +85,7 @@ describe('reverseServiceOrderReceipt', () => {
     fake = createFakeSupabase({
       bank_accounts: [{ id: 'acc1', organization_id: ORG, current_balance: 1100 }],
       bank_account_statements: [
-        { id: 's1', organization_id: ORG, financial_transaction_id: 't1', bank_account_id: 'acc1', previous_balance: 1000, new_balance: 1100 }
+        { id: 's1', organization_id: ORG, financial_transaction_id: 't1', bank_account_id: 'acc1', transaction_type: 'income', amount: 100, previous_balance: 1000, balance_after: 1100 }
       ],
       financial_transactions: [
         { id: 't1', organization_id: ORG, type: 'income', status: 'paid', amount: 100, service_order_id: 'o1', service_order_installment_id: 'i1', deleted_at: null }
@@ -137,7 +137,7 @@ describe('reverseServiceOrderReceipt', () => {
   })
   // KF-02: o estorno restaura o saldo "anterior" gravado no extrato, e não subtrai o valor
   // do recebimento; qualquer movimento posterior na conta é sobrescrito.
-  it.fails('estorna só o valor do recebimento, preservando movimentos posteriores na conta', async () => {
+  it('estorna só o valor do recebimento, preservando movimentos posteriores na conta', async () => {
     fake.tables.bank_accounts![0]!.current_balance = 1400 // +300 de outro lançamento depois do recebimento
     await reverse()
     expect(fake.tables.bank_accounts![0]!.current_balance).toBe(1300)

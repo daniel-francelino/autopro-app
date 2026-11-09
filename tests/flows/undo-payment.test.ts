@@ -59,7 +59,7 @@ describe('F4: desfazer pagamento', () => {
 
   // KF-19: cada extrato restaura o próprio previous_balance; com várias parcelas na mesma conta,
   // vence o último processado e o saldo final fica errado.
-  it.fails('3 parcelas pagas na mesma conta: desfazer devolve o saldo ao valor inicial', async () => {
+  it('3 parcelas pagas na mesma conta: desfazer devolve o saldo ao valor inicial', async () => {
     await pay([{ amount: 100, status: 'paid' }, { amount: 100, status: 'paid' }, { amount: 100, status: 'paid' }])
     expect(balance()).toBe(1300)
 

@@ -1,5 +1,6 @@
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../../../utils/supabase'
+import { revertStatementOnAccount } from '../../../../utils/bank-balance'
 import { requireAuthUser } from '../../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../../utils/organization'
 import { recordAudit } from '../../../../utils/audit/record'
@@ -124,13 +125,7 @@ export default defineEventHandler(async (event) => {
         .eq('organization_id', organizationId)
 
       for (const statement of statements || []) {
-        if (statement.bank_account_id) {
-          await supabase
-            .from('bank_accounts')
-            .update({ current_balance: statement.previous_balance, updated_by: authUser.email })
-            .eq('id', statement.bank_account_id)
-            .eq('organization_id', organizationId)
-        }
+        await revertStatementOnAccount({ supabase, organizationId, statement, userEmail: authUser.email })
         await supabase.from('bank_account_statements').delete().eq('id', statement.id)
       }
 
