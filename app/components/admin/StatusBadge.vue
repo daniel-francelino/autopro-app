@@ -12,7 +12,7 @@ const props = withDefaults(defineProps<{
 }>(), { value: null, prefix: null })
 
 const TABLES: Record<string, Record<string, Meta>> = {
-  subscription: {
+  'subscription': {
     active: { label: 'Ativa', color: 'success', icon: 'i-lucide-circle-check' },
     trialing: { label: 'Em teste', color: 'info', icon: 'i-lucide-hourglass' },
     trial: { label: 'Em teste', color: 'info', icon: 'i-lucide-hourglass' },
@@ -25,7 +25,7 @@ const TABLES: Record<string, Record<string, Meta>> = {
     canceled: { label: 'Cancelada', color: 'neutral', icon: 'i-lucide-circle-x' },
     cancelled: { label: 'Cancelada', color: 'neutral', icon: 'i-lucide-circle-x' }
   },
-  invoice: {
+  'invoice': {
     paid: { label: 'Paga', color: 'success', icon: 'i-lucide-circle-check' },
     open: { label: 'Em aberto', color: 'warning', icon: 'i-lucide-clock' },
     pending: { label: 'Pendente', color: 'warning', icon: 'i-lucide-clock' },
@@ -35,19 +35,19 @@ const TABLES: Record<string, Record<string, Meta>> = {
     void: { label: 'Anulada', color: 'neutral', icon: 'i-lucide-circle-slash' },
     cancelled: { label: 'Cancelada', color: 'neutral', icon: 'i-lucide-circle-x' }
   },
-  webhook: {
+  'webhook': {
     received: { label: 'Recebido', color: 'info', icon: 'i-lucide-inbox' },
     processed: { label: 'Processado', color: 'success', icon: 'i-lucide-circle-check' },
     ignored: { label: 'Ignorado', color: 'neutral', icon: 'i-lucide-circle-minus' },
     failed: { label: 'Falhou', color: 'error', icon: 'i-lucide-circle-x' }
   },
-  feedback: {
+  'feedback': {
     submitted: { label: 'Enviado', color: 'info', icon: 'i-lucide-send' },
     in_review: { label: 'Em análise', color: 'warning', icon: 'i-lucide-search' },
     resolved: { label: 'Resolvido', color: 'success', icon: 'i-lucide-circle-check' },
     closed: { label: 'Fechado', color: 'neutral', icon: 'i-lucide-archive' }
   },
-  priority: {
+  'priority': {
     low: { label: 'Baixa', color: 'neutral', icon: 'i-lucide-arrow-down' },
     medium: { label: 'Média', color: 'info', icon: 'i-lucide-minus' },
     high: { label: 'Alta', color: 'warning', icon: 'i-lucide-arrow-up' },
@@ -59,19 +59,19 @@ const TABLES: Record<string, Record<string, Meta>> = {
     improvement: { label: 'Melhoria', color: 'primary', icon: 'i-lucide-wand-sparkles' },
     praise: { label: 'Elogio', color: 'success', icon: 'i-lucide-heart' }
   },
-  check: {
+  'check': {
     ok: { label: 'OK', color: 'success', icon: 'i-lucide-circle-check' },
     warning: { label: 'Atenção', color: 'warning', icon: 'i-lucide-triangle-alert' },
     error: { label: 'Falha', color: 'error', icon: 'i-lucide-circle-x' },
     not_configured: { label: 'Não configurado', color: 'neutral', icon: 'i-lucide-circle-dashed' }
   },
-  outcome: {
+  'outcome': {
     success: { label: 'Sucesso', color: 'success', icon: 'i-lucide-circle-check' },
     denied: { label: 'Negado', color: 'warning', icon: 'i-lucide-shield-x' },
     invalid: { label: 'Inválido', color: 'neutral', icon: 'i-lucide-circle-alert' },
     error: { label: 'Erro', color: 'error', icon: 'i-lucide-circle-x' }
   },
-  org: {
+  'org': {
     active: { label: 'Ativa', color: 'success', icon: 'i-lucide-circle-check' },
     suspended: { label: 'Suspensa', color: 'warning', icon: 'i-lucide-circle-pause' },
     inactive: { label: 'Inativa', color: 'neutral', icon: 'i-lucide-circle-slash' }

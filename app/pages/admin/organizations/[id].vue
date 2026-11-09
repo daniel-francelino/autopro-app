@@ -30,7 +30,7 @@ type Org = {
   subscription: { status: string, plan_key: string | null, plan_name: string | null, monthly_amount: number | null, start_date: string | null, next_payment_date: string | null, cancellation_date: string | null } | null
 }
 
-const { data: org, error, refresh } = await useAsyncData(`admin-org-${id}`, () =>
+const { data: org, error, status: orgStatus, refresh } = await useAsyncData(`admin-org-${id}`, () =>
   requestFetch<Org>(`/api/admin/organizations/${id}`, { headers: requestHeaders }))
 
 useSeoMeta({ title: computed(() => `${org.value?.name ?? 'Oficina'} — Admin`) })
@@ -109,8 +109,6 @@ const billing = computed(() => loaded.billing as { subscription: Record<string, 
 const activity = computed(() => loaded.activity as { data: Array<Record<string, any>>, total: number } | undefined)
 const usage = computed(() => loaded.usage as { service_orders_by_month: Array<{ month: string, total: number }>, modules: Array<{ label: string, total: number }>, last_action: { created_at: string, action: string } | null } | undefined)
 const fiscal = computed(() => loaded.fiscal as { sync_status: Record<string, any> | null, recent_calls: Array<Record<string, any>> } | undefined)
-
-const outcomeColor: Record<string, 'success' | 'warning' | 'neutral' | 'error'> = { success: 'success', denied: 'warning', invalid: 'neutral', error: 'error' }
 </script>
 
 <template>
@@ -128,12 +126,30 @@ const outcomeColor: Record<string, 'success' | 'warning' | 'neutral' | 'error'> 
     </AppPageHeader>
 
     <div class="p-6 overflow-auto space-y-6">
-      <UAlert
-        v-if="error"
-        color="error"
-        variant="subtle"
+      <template v-if="orgStatus === 'pending' && !org">
+        <div class="grid gap-4 md:grid-cols-3">
+          <AdminSkeleton />
+          <AdminSkeleton />
+          <AdminSkeleton />
+        </div>
+        <AdminSkeleton variant="table" />
+      </template>
+
+      <AdminEmptyState
+        v-else-if="error"
+        icon="i-lucide-building-2"
         title="Oficina não encontrada"
-      />
+        description="O link pode estar errado ou a oficina foi removida."
+      >
+        <UButton
+          to="/admin/organizations"
+          icon="i-lucide-arrow-left"
+          size="sm"
+          color="neutral"
+          variant="outline"
+          label="Voltar para organizações"
+        />
+      </AdminEmptyState>
 
       <template v-else-if="org">
         <UAlert
@@ -199,9 +215,7 @@ const outcomeColor: Record<string, 'success' | 'warning' | 'neutral' | 'error'> 
                 <dt class="inline text-muted">
                   Status:
                 </dt><dd class="inline">
-                  <UBadge size="sm" variant="subtle">
-                    {{ org.subscription.status }}
-                  </UBadge>
+                  <AdminStatusBadge kind="subscription" :value="org.subscription.status" />
                 </dd>
               </div>
               <div>
@@ -233,9 +247,12 @@ const outcomeColor: Record<string, 'success' | 'warning' | 'neutral' | 'error'> 
                 </dd>
               </div>
             </dl>
-            <p v-else class="text-sm text-muted">
-              Sem assinatura.
-            </p>
+            <AdminEmptyState
+              v-else
+              icon="i-lucide-credit-card"
+              title="Sem assinatura"
+              description="Esta oficina nunca assinou um plano."
+            />
           </UPageCard>
 
           <UPageCard variant="subtle" title="Ações do owner">
@@ -248,6 +265,7 @@ const outcomeColor: Record<string, 'success' | 'warning' | 'neutral' | 'error'> 
                 color="warning"
                 variant="soft"
                 icon="i-lucide-pause"
+                size="sm"
                 label="Suspender oficina"
                 @click="openDialog('suspend')"
               />
@@ -256,6 +274,7 @@ const outcomeColor: Record<string, 'success' | 'warning' | 'neutral' | 'error'> 
                 color="success"
                 variant="soft"
                 icon="i-lucide-play"
+                size="sm"
                 label="Reativar oficina"
                 @click="openDialog('reactivate')"
               />
@@ -264,6 +283,7 @@ const outcomeColor: Record<string, 'success' | 'warning' | 'neutral' | 'error'> 
                 color="neutral"
                 variant="outline"
                 icon="i-lucide-clipboard-list"
+                size="sm"
                 label="Ver auditoria"
               />
             </div>
@@ -272,9 +292,12 @@ const outcomeColor: Record<string, 'success' | 'warning' | 'neutral' | 'error'> 
 
         <UTabs v-model="tab" :items="tabs" :content="false" />
 
-        <div v-if="loading" class="text-sm text-muted">
-          Carregando...
-        </div>
+        <AdminSkeleton
+          v-if="loading"
+          variant="table"
+          :rows="4"
+          :cols="5"
+        />
 
         <div v-else-if="tab === 'users'" class="space-y-2">
           <table class="w-full text-sm">
@@ -294,9 +317,7 @@ const outcomeColor: Record<string, 'success' | 'warning' | 'neutral' | 'error'> 
                 <td>{{ user.role_name || '—' }}</td>
                 <td>{{ fmt(user.last_seen_at) }}</td>
                 <td>
-                  <UBadge size="sm" variant="subtle" :color="user.is_active === false ? 'neutral' : 'success'">
-                    {{ user.is_active === false ? 'Inativo' : 'Ativo' }}
-                  </UBadge>
+                  <AdminStatusBadge kind="active" :value="user.is_active !== false" />
                 </td>
                 <td class="text-right">
                   <UButton
@@ -304,6 +325,7 @@ const outcomeColor: Record<string, 'success' | 'warning' | 'neutral' | 'error'> 
                     size="xs"
                     color="neutral"
                     variant="ghost"
+                    icon="i-lucide-user-x"
                     label="Desativar"
                     @click="openUserDialog(user as any, 'deactivate')"
                   />
@@ -312,6 +334,7 @@ const outcomeColor: Record<string, 'success' | 'warning' | 'neutral' | 'error'> 
                     size="xs"
                     color="neutral"
                     variant="ghost"
+                    icon="i-lucide-user-check"
                     label="Reativar"
                     @click="openUserDialog(user as any, 'reactivate')"
                   />
@@ -319,9 +342,12 @@ const outcomeColor: Record<string, 'success' | 'warning' | 'neutral' | 'error'> 
               </tr>
             </tbody>
           </table>
-          <p v-if="!users.length" class="text-sm text-muted">
-            Nenhum usuário.
-          </p>
+          <AdminEmptyState
+            v-if="!users.length"
+            icon="i-lucide-users"
+            title="Nenhum usuário"
+            description="Esta oficina ainda não tem usuários cadastrados."
+          />
         </div>
 
         <div v-else-if="tab === 'billing'" class="space-y-3">
@@ -339,16 +365,21 @@ const outcomeColor: Record<string, 'success' | 'warning' | 'neutral' | 'error'> 
                   {{ inv.invoice_number || inv.id.slice(0, 8) }}
                 </td>
                 <td>{{ money(inv.amount) }}</td>
-                <td>{{ inv.status }}</td>
+                <td>
+                  <AdminStatusBadge kind="invoice" :value="inv.status" />
+                </td>
                 <td>{{ fmt(inv.due_date) }}</td>
                 <td>{{ fmt(inv.payment_date) }}</td>
                 <td>{{ inv.attempt_count ?? '—' }}</td>
               </tr>
             </tbody>
           </table>
-          <p v-if="!(billing?.invoices ?? []).length" class="text-sm text-muted">
-            Nenhuma fatura.
-          </p>
+          <AdminEmptyState
+            v-if="!(billing?.invoices ?? []).length"
+            icon="i-lucide-receipt"
+            title="Nenhuma fatura"
+            description="Quando a Stripe gerar cobranças para esta oficina, elas aparecem aqui."
+          />
         </div>
 
         <div v-else-if="tab === 'activity'" class="space-y-2">
@@ -371,13 +402,17 @@ const outcomeColor: Record<string, 'success' | 'warning' | 'neutral' | 'error'> 
                 <td>{{ row.actor_email || '—' }}</td>
                 <td>{{ row.action }}<span v-if="row.error_message" class="block text-xs text-error">{{ row.error_message }}</span></td>
                 <td>
-                  <UBadge size="sm" variant="subtle" :color="outcomeColor[row.outcome]">
-                    {{ row.status_code }}
-                  </UBadge>
+                  <AdminStatusBadge kind="outcome" :value="row.outcome" :prefix="row.status_code" />
                 </td>
               </tr>
             </tbody>
           </table>
+          <AdminEmptyState
+            v-if="!(activity?.data ?? []).length"
+            icon="i-lucide-activity"
+            title="Sem atividade recente"
+            description="Nenhuma requisição desta oficina nos últimos 31 dias."
+          />
         </div>
 
         <div v-else-if="tab === 'usage'" class="grid gap-4 md:grid-cols-2">
@@ -387,6 +422,12 @@ const outcomeColor: Record<string, 'success' | 'warning' | 'neutral' | 'error'> 
                 <span>{{ m.month }}</span><span class="tabular-nums">{{ m.total }}</span>
               </li>
             </ul>
+            <AdminEmptyState
+              v-if="!(usage?.service_orders_by_month ?? []).length"
+              icon="i-lucide-clipboard-list"
+              title="Nenhuma OS criada"
+              description="A oficina ainda não registrou ordens de serviço."
+            />
           </UPageCard>
           <UPageCard variant="subtle" title="Registros por módulo">
             <ul class="text-sm space-y-1">
@@ -402,9 +443,12 @@ const outcomeColor: Record<string, 'success' | 'warning' | 'neutral' | 'error'> 
 
         <div v-else-if="tab === 'fiscal'" class="space-y-3">
           <UPageCard variant="subtle" title="Integração">
-            <p v-if="!fiscal?.sync_status" class="text-sm text-muted">
-              Empresa não sincronizada com a Focus NFe.
-            </p>
+            <AdminEmptyState
+              v-if="!fiscal?.sync_status"
+              icon="i-lucide-file-x"
+              title="Fiscal não configurado"
+              description="Esta empresa ainda não foi sincronizada com a Focus NFe."
+            />
             <dl v-else class="text-sm space-y-1">
               <div>
                 <dt class="inline text-muted">
@@ -440,9 +484,7 @@ const outcomeColor: Record<string, 'success' | 'warning' | 'neutral' | 'error'> 
                 </td>
                 <td>{{ call.request_method }} {{ call.request_path }}</td>
                 <td>
-                  <UBadge size="sm" variant="subtle" :color="call.is_success ? 'success' : 'error'">
-                    {{ call.response_status ?? '—' }}
-                  </UBadge>
+                  <AdminStatusBadge kind="http" :value="call.response_status" />
                 </td>
                 <td class="text-xs text-error">
                   {{ call.error_message || '' }}
@@ -450,6 +492,12 @@ const outcomeColor: Record<string, 'success' | 'warning' | 'neutral' | 'error'> 
               </tr>
             </tbody>
           </table>
+          <AdminEmptyState
+            v-if="!(fiscal?.recent_calls ?? []).length"
+            icon="i-lucide-plug-zap"
+            title="Nenhuma chamada fiscal"
+            description="As chamadas ao provedor de NFS-e desta oficina aparecem aqui."
+          />
         </div>
       </template>
     </div>
@@ -473,11 +521,13 @@ const outcomeColor: Record<string, 'success' | 'warning' | 'neutral' | 'error'> 
           <UButton
             color="neutral"
             variant="ghost"
+            icon="i-lucide-x"
             label="Cancelar"
             @click="dialog.open = false"
           />
           <UButton
             :color="dialog.action === 'suspend' ? 'warning' : 'success'"
+            :icon="dialog.action === 'suspend' ? 'i-lucide-pause' : 'i-lucide-play'"
             :loading="dialog.busy"
             :disabled="dialog.reason.trim().length < 5"
             :label="dialog.action === 'suspend' ? 'Suspender' : 'Reativar'"
@@ -501,10 +551,12 @@ const outcomeColor: Record<string, 'success' | 'warning' | 'neutral' | 'error'> 
           <UButton
             color="neutral"
             variant="ghost"
+            icon="i-lucide-x"
             label="Cancelar"
             @click="userDialog.open = false"
           />
           <UButton
+            icon="i-lucide-check"
             :loading="userDialog.busy"
             :disabled="userDialog.reason.trim().length < 5"
             label="Confirmar"

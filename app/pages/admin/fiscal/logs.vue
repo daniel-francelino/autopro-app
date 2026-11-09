@@ -42,7 +42,6 @@ function formatDate(val: string | null) {
   if (!val) return '—'
   return new Date(val).toLocaleString('pt-BR')
 }
-
 </script>
 
 <template>
@@ -67,7 +66,7 @@ function formatDate(val: string | null) {
         </template>
 
         <template #response_status-cell="{ row }">
-          <AdminStatusBadge kind="http" :value="row.original.response_status as number | null" />
+          <AdminStatusBadge kind="http" :value="Number(row.original.response_status) || null" />
         </template>
 
         <template #request_url-cell="{ row }">
