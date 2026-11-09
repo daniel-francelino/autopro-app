@@ -18,6 +18,7 @@
     "test:coverage": "vitest run --project unit --coverage",
     "test:e2e": "playwright test",
     "stack:up": "docker compose -f docker-compose.e2e.yml --env-file supabase/e2e/stack.env up -d --wait",
+    "seed:demo": "node scripts/seed/load-demo.mjs",
     "stack:down": "docker compose -f docker-compose.e2e.yml --env-file supabase/e2e/stack.env down -v",
     "test:stack": "node scripts/test-stack.mjs",
     "generate:icons": "node scripts/generate-icons.mjs",
