@@ -3,6 +3,7 @@ import { getSupabaseAdminClient } from '../../../utils/supabase'
 import { requireAuthUser } from '../../../utils/require-auth'
 import { requireOrgPermission } from '../../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../../utils/organization'
+import { recordAudit } from '../../../utils/audit/record'
 import { fetchBonus, currentMonthStart } from '../../../utils/bonuses'
 
 const validCommissionBases = ['revenue', 'profit', 'revenue_minus_parts', 'employee_net_profit']
@@ -62,6 +63,7 @@ export default defineEventHandler(async (event) => {
     .single()
 
   if (!error) {
+    recordAudit(event, { after: data as Record<string, unknown> })
     return { item: data }
   }
 
@@ -85,6 +87,8 @@ export default defineEventHandler(async (event) => {
   if (updateError || !updated) {
     throw createError({ statusCode: 500, statusMessage: `Failed to update bonus value version: ${updateError?.message}` })
   }
+
+  recordAudit(event, { after: updated as Record<string, unknown>, extra: { updated_existing_version: true } })
 
   return { item: updated }
 })

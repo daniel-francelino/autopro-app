@@ -2,6 +2,7 @@ import { defineEventHandler, readBody, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
+import { recordAudit } from '../../utils/audit/record'
 import { resolveFinancialCategory } from '../../utils/resolve-financial-category'
 import { assertNotInstallmentAndRecurring } from '../../utils/financial-mutual-exclusion'
 
@@ -102,6 +103,7 @@ export default defineEventHandler(async (event) => {
       if (childError) throw createError({ statusCode: 500, statusMessage: childError.message })
     }
 
+    recordAudit(event, { resourceId: String(root.id), after: root, extra: { recurrence_count: total } })
     return { ...root, recurrence_count: total }
   }
 
@@ -160,6 +162,7 @@ export default defineEventHandler(async (event) => {
     const { error: childError } = await supabase.from('financial_transactions').insert(remaining)
     if (childError) throw createError({ statusCode: 500, statusMessage: childError.message })
 
+    recordAudit(event, { resourceId: String(parent.id), after: parent, extra: { installment_count: total } })
     return { id: parent.id, installment_count: total }
   }
 
@@ -189,6 +192,8 @@ export default defineEventHandler(async (event) => {
     .single()
 
   if (error) throw createError({ statusCode: 500, statusMessage: error.message })
+
+  recordAudit(event, { after: item })
 
   return item
 })

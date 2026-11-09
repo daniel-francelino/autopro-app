@@ -1,6 +1,7 @@
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
+import { recordAudit } from '../../utils/audit/record'
 
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
@@ -12,7 +13,7 @@ export default defineEventHandler(async (event) => {
   if (!id) throw createError({ statusCode: 400, statusMessage: 'ID obrigatório' })
 
   const { data: existing } = await supabase
-    .from('bank_accounts').select('id').eq('id', id).eq('organization_id', organizationId).is('deleted_at', null).maybeSingle()
+    .from('bank_accounts').select('*').eq('id', id).eq('organization_id', organizationId).is('deleted_at', null).maybeSingle()
 
   if (!existing) throw createError({ statusCode: 404, statusMessage: 'Registro não encontrado' })
 
@@ -53,6 +54,8 @@ export default defineEventHandler(async (event) => {
 
   if (error)
     throw createError({ statusCode: 500, statusMessage: error.message })
+
+  recordAudit(event, { before: existing, after: item })
 
   return { item }
 })

@@ -2,6 +2,7 @@ import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
+import { recordAudit } from '../../utils/audit/record'
 import { softDeleteFinancialTransaction, FINANCIAL_TRANSACTION_DELETION_SOURCES } from '../../utils/financial-transaction-deletion'
 
 /**
@@ -146,6 +147,8 @@ export default defineEventHandler(async (event) => {
   if (deleteError) {
     throw createError({ statusCode: 500, statusMessage: `Failed to delete service order: ${deleteError.message}` })
   }
+
+  recordAudit(event, { before: order as Record<string, unknown>, extra: { deleted: { statements: deletedStatements, transactions: deletedTransactions, commissions: deletedCommissions, installments: deletedInstallments } } })
 
   return {
     data: {

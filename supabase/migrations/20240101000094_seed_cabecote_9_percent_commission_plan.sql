@@ -24,6 +24,12 @@ DECLARE
   v_version_id  uuid;
   v_rule_id     uuid;
 BEGIN
+  -- Seed específico de uma oficina de produção: em qualquer outro banco (dev, CI, banco novo) a organização
+  -- não existe e o seed não se aplica.
+  IF NOT EXISTS (SELECT 1 FROM public.organizations WHERE id = v_org_id) THEN
+    RETURN;
+  END IF;
+
   IF EXISTS (
     SELECT 1 FROM public.employee_commission_plans
     WHERE organization_id = v_org_id

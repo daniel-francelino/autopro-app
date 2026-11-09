@@ -5,6 +5,8 @@ import { setAuditContext } from './context'
 const DEFAULT_IGNORE = ['updated_at', 'updated_by', 'created_at', 'created_by']
 
 type Snapshot = Record<string, unknown>
+/** Aceita qualquer objeto (linhas do banco tipadas ou não). */
+type Snapshotable = object
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
 
@@ -20,8 +22,9 @@ export function diffSnapshots(before: Snapshot, after: Snapshot, ignore: string[
 }
 
 /** Resultado de `recordAudit`, útil em testes. */
-export function buildChanges(input: { before?: Snapshot | null, after?: Snapshot | null, ignore?: string[] }) {
-  const { before, after } = input
+export function buildChanges(input: { before?: Snapshotable | null, after?: Snapshotable | null, ignore?: string[] }) {
+  const before = input.before as Snapshot | null | undefined
+  const after = input.after as Snapshot | null | undefined
   if (before && after) {
     const result = diffSnapshots(before, after, input.ignore)
     return sanitizeAndCap(result, MAX_REQUEST_BYTES).truncated
@@ -45,8 +48,8 @@ export function recordAudit(event: H3Event, input: {
   action?: string
   resourceType?: string
   resourceId?: string
-  before?: Snapshot | null
-  after?: Snapshot | null
+  before?: Snapshotable | null
+  after?: Snapshotable | null
   ignore?: string[]
   /** Contexto livre (ex.: quantos registros uma operação em cascata removeu). */
   extra?: Record<string, unknown>

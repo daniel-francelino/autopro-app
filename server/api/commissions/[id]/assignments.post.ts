@@ -3,6 +3,7 @@ import { getSupabaseAdminClient } from '../../../utils/supabase'
 import { requireAuthUser } from '../../../utils/require-auth'
 import { requireOrgPermission } from '../../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../../utils/organization'
+import { recordAudit } from '../../../utils/audit/record'
 import {
   fetchCommissionPlan,
   fetchCommissionRuleVersions,
@@ -111,6 +112,7 @@ export default defineEventHandler(async (event) => {
     if (error) {
       throw createError({ statusCode: 500, statusMessage: `Failed to reactivate assignment: ${error.message}` })
     }
+    recordAudit(event, { before: { active: existing.active }, after: { active: true }, extra: { employee_id: employeeId, reactivated: true } })
     return { item: data }
   }
 
@@ -128,6 +130,8 @@ export default defineEventHandler(async (event) => {
   if (error) {
     throw createError({ statusCode: 500, statusMessage: `Failed to create assignment: ${error.message}` })
   }
+
+  recordAudit(event, { after: { active: true }, extra: { employee_id: employeeId } })
 
   return { item: data }
 })

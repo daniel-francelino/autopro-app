@@ -3,6 +3,7 @@ import { getSupabaseAdminClient } from '../../../../utils/supabase'
 import { requireAuthUser } from '../../../../utils/require-auth'
 import { requireOrgPermission } from '../../../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../../../utils/organization'
+import { recordAudit } from '../../../../utils/audit/record'
 import { fetchCommissionPlan } from '../../../../utils/employee-commission-plans'
 
 /**
@@ -47,6 +48,8 @@ export default defineEventHandler(async (event) => {
   if (!data) {
     throw createError({ statusCode: 404, statusMessage: 'Atribuição não encontrada' })
   }
+
+  recordAudit(event, { before: { active: true }, after: { active: false }, extra: { employee_id: employeeId } })
 
   return { success: true }
 })

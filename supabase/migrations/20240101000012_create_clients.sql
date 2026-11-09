@@ -61,10 +61,7 @@ CREATE TABLE public.clients (
     REFERENCES public.organizations (id)
     ON DELETE CASCADE,
 
-  CONSTRAINT clients_employee_responsible_id_fkey
-    FOREIGN KEY (employee_responsible_id)
-    REFERENCES public.employees (id)
-    ON DELETE SET NULL,
+  -- clients_employee_responsible_id_fkey é criada na migration 013, depois de public.employees existir.
 
   CONSTRAINT clients_person_type_check
     CHECK (person_type IN ('pf', 'pj'))

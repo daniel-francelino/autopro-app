@@ -3,6 +3,7 @@ import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
+import { recordAudit } from '../../utils/audit/record'
 import { currentMonthStart } from '../../utils/bonuses'
 
 const validCommissionBases = ['revenue', 'profit', 'revenue_minus_parts', 'employee_net_profit']
@@ -83,6 +84,8 @@ export default defineEventHandler(async (event) => {
     await supabase.from('bonuses').delete().eq('id', bonus.id)
     throw createError({ statusCode: 500, statusMessage: `Failed to create bonus value: ${versionError.message}` })
   }
+
+  recordAudit(event, { resourceId: String(bonus.id), after: bonus, extra: { currentValue: version } })
 
   return { item: { ...bonus, currentValue: version } }
 })

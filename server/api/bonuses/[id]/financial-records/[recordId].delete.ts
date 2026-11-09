@@ -3,6 +3,7 @@ import { getSupabaseAdminClient } from '../../../../utils/supabase'
 import { requireAuthUser } from '../../../../utils/require-auth'
 import { requireOrgPermission } from '../../../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../../../utils/organization'
+import { recordAudit } from '../../../../utils/audit/record'
 import { fetchBonus } from '../../../../utils/bonuses'
 import { softDeleteFinancialTransaction, FINANCIAL_TRANSACTION_DELETION_SOURCES } from '../../../../utils/financial-transaction-deletion'
 
@@ -136,6 +137,11 @@ export default defineEventHandler(async (event) => {
     .delete()
     .eq('financial_record_id', recordId)
     .eq('bonus_id', bonusId)
+
+  recordAudit(event, {
+    before: typedRecord as unknown as Record<string, unknown>,
+    extra: { reason, reverted_bank_balance: typedRecord.status === 'paid' && !!typedRecord.financial_transaction_id }
+  })
 
   return { success: true }
 })

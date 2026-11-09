@@ -2,6 +2,7 @@ import { defineEventHandler, readBody, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
+import { recordAudit } from '../../utils/audit/record'
 
 /**
  * POST /api/financial/pay-entries-bulk
@@ -149,6 +150,8 @@ export default defineEventHandler(async (event) => {
       results.push({ ...baseResult, status: 'failed', message: error?.message || String(error) })
     }
   }
+
+  recordAudit(event, { extra: { paidCount, skippedCount, failedCount, extratoSkippedCount, results: results.map((r: Record<string, unknown>) => ({ id: r.entryId ?? null, status: r.status, message: r.message ?? null })) } })
 
   return {
     organization_id: organizationId,

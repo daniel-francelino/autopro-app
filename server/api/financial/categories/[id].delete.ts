@@ -2,6 +2,7 @@ import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../../utils/supabase'
 import { requireAuthUser } from '../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../utils/organization'
+import { recordAudit } from '../../../utils/audit/record'
 
 /**
  * DELETE /api/financial/categories/:id
@@ -17,7 +18,7 @@ export default defineEventHandler(async (event) => {
 
   const { data: existing } = await supabase
     .from('financial_categories')
-    .select('id')
+    .select('*')
     .eq('id', id)
     .eq('organization_id', organizationId)
     .is('deleted_at', null)
@@ -40,6 +41,8 @@ export default defineEventHandler(async (event) => {
     .eq('organization_id', organizationId)
 
   if (error) throw createError({ statusCode: 500, statusMessage: error.message })
+
+  recordAudit(event, { before: existing })
 
   return { success: true }
 })

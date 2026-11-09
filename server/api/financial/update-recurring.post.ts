@@ -2,6 +2,7 @@ import { defineEventHandler, readBody, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
+import { recordAudit } from '../../utils/audit/record'
 import { addMonths, addYears, differenceInCalendarMonths, differenceInCalendarYears, format } from 'date-fns'
 
 /**
@@ -201,6 +202,8 @@ export default defineEventHandler(async (event) => {
       after: summarizeEntry(lancamentoAtualizado)
     })
   }
+
+  recordAudit(event, { extra: { updatedCount, updatedEntries } })
 
   return {
     organization_id: organizationId,

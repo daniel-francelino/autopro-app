@@ -1,6 +1,7 @@
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
+import { recordAudit } from '../../utils/audit/record'
 
 const VALID_REASONS = ['warranty', 'wrong_part', 'manufacturing_defect', 'damaged_product', 'incompatible', 'other']
 const VALID_STATUSES = ['pending', 'completed']
@@ -50,6 +51,8 @@ export default defineEventHandler(async (event) => {
 
   if (error)
     throw createError({ statusCode: 500, statusMessage: error.message })
+
+  recordAudit(event, { after: item })
 
   return { item }
 })

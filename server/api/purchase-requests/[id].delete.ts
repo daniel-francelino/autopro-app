@@ -1,6 +1,7 @@
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
+import { recordAudit } from '../../utils/audit/record'
 
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
@@ -12,7 +13,7 @@ export default defineEventHandler(async (event) => {
 
   const { data: existing, error: findError } = await supabase
     .from('purchase_requests')
-    .select('id')
+    .select('*')
     .eq('id', id)
     .eq('organization_id', organizationId)
     .is('deleted_at', null)
@@ -33,6 +34,8 @@ export default defineEventHandler(async (event) => {
 
   if (error)
     throw createError({ statusCode: 500, statusMessage: error.message })
+
+  recordAudit(event, { before: existing })
 
   return { success: true }
 })

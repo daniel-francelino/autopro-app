@@ -2,6 +2,7 @@ import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../../utils/supabase'
 import { requireAuthUser } from '../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../utils/organization'
+import { recordAudit } from '../../../utils/audit/record'
 import { createIncomeTransaction } from '../../../utils/financial-income'
 import { recalculateServiceOrderPaymentStatus } from '../../../utils/service-order-payment-status'
 import { releaseServiceOrderCommissions } from '../../../utils/service-order-commissions'
@@ -128,6 +129,8 @@ export default defineEventHandler(async (event) => {
     .select('*')
     .eq('id', orderId)
     .single()
+
+  recordAudit(event, { before: order as Record<string, unknown>, after: updatedOrder as Record<string, unknown> | null, extra: { installment_id: installmentRow.id, amount: installmentRow.amount, financial_transaction_id: transaction.id } })
 
   return {
     data: {

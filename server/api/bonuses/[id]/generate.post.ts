@@ -3,6 +3,7 @@ import { getSupabaseAdminClient } from '../../../utils/supabase'
 import { requireAuthUser } from '../../../utils/require-auth'
 import { requireOrgPermission } from '../../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../../utils/organization'
+import { recordAudit } from '../../../utils/audit/record'
 import type { SupabaseClientLike } from '../../../utils/supabase-pagination'
 import {
   fetchBonus,
@@ -190,6 +191,15 @@ export default defineEventHandler(async (event) => {
 
   const generatedCount = results.filter(result => result.status === 'generated').length
   const skippedCount = results.length - generatedCount
+
+  recordAudit(event, {
+    extra: {
+      referenceMonth,
+      generatedCount,
+      skippedCount,
+      results: results.map(r => ({ employeeId: r.employeeId, status: r.status, bonusAmount: r.bonusAmount, financialRecordId: r.financialRecordId }))
+    }
+  })
 
   return {
     data: {

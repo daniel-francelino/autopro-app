@@ -2,6 +2,7 @@ import { defineEventHandler, readBody, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../../utils/supabase'
 import { requireAuthUser } from '../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../utils/organization'
+import { recordAudit } from '../../../utils/audit/record'
 
 /**
  * POST /api/financial/categories
@@ -52,6 +53,8 @@ export default defineEventHandler(async (event) => {
     .single()
 
   if (error) throw createError({ statusCode: 500, statusMessage: error.message })
+
+  recordAudit(event, { after: category })
 
   return category
 })

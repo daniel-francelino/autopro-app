@@ -4,6 +4,7 @@ import { requireAuthUser } from '../../utils/require-auth'
 import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
 import { fetchBonus } from '../../utils/bonuses'
+import { recordAudit } from '../../utils/audit/record'
 
 /**
  * DELETE /api/bonuses/:id
@@ -37,6 +38,8 @@ export default defineEventHandler(async (event) => {
   if (error) {
     throw createError({ statusCode: 500, statusMessage: `Failed to delete bonus: ${error.message}` })
   }
+
+  recordAudit(event, { before: existing })
 
   return { success: true }
 })

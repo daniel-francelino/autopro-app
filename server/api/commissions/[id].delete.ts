@@ -3,6 +3,7 @@ import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
+import { recordAudit } from '../../utils/audit/record'
 import { fetchCommissionPlan } from '../../utils/employee-commission-plans'
 
 /**
@@ -39,6 +40,8 @@ export default defineEventHandler(async (event) => {
   if (error) {
     throw createError({ statusCode: 500, statusMessage: `Failed to delete commission plan: ${error.message}` })
   }
+
+  recordAudit(event, { before: plan })
 
   return { success: true }
 })

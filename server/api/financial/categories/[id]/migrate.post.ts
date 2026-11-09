@@ -2,6 +2,7 @@ import { defineEventHandler, readBody, getRouterParam, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../../../utils/supabase'
 import { requireAuthUser } from '../../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../../utils/organization'
+import { recordAudit } from '../../../../utils/audit/record'
 
 const BATCH_SIZE = 500
 
@@ -83,6 +84,8 @@ export default defineEventHandler(async (event) => {
 
     migrated += ids.length
   }
+
+  recordAudit(event, { extra: { target_category_id: target.id, target_category: target.name, migrated, total } })
 
   return {
     success: true,

@@ -3,6 +3,7 @@ import { getSupabaseAdminClient } from '../../../utils/supabase'
 import { requireAuthUser } from '../../../utils/require-auth'
 import { requireOrgPermission } from '../../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../../utils/organization'
+import { recordAudit } from '../../../utils/audit/record'
 import {
   fetchCommissionPlan,
   insertCommissionRuleVersion,
@@ -81,6 +82,7 @@ export default defineEventHandler(async (event) => {
       { effectiveFrom, notes: body?.notes ?? null, createdBy: authUser.email },
       parsedRules
     )
+    recordAudit(event, { after: version, extra: { rules } })
     return { item: { ...version, rules } }
   } catch (error) {
     throw createError({ statusCode: 500, statusMessage: (error as Error).message })

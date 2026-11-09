@@ -2,6 +2,7 @@ import { defineEventHandler, readBody, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
+import { recordAudit } from '../../utils/audit/record'
 import { resolveDefaultCategoryId } from '../../utils/financial-category-defaults'
 import { softDeleteFinancialTransaction, FINANCIAL_TRANSACTION_DELETION_SOURCES } from '../../utils/financial-transaction-deletion'
 
@@ -210,6 +211,8 @@ export default defineEventHandler(async (event) => {
       results.push({ ...resultBase, status: 'failed', message: error?.message || String(error) })
     }
   }
+
+  recordAudit(event, { extra: { paidCount, skippedCount, failedCount, results: results.map((r: Record<string, unknown>) => ({ id: r.registroId ?? null, status: r.status, message: r.message ?? null })) } })
 
   return {
     organization_id: organizationId,

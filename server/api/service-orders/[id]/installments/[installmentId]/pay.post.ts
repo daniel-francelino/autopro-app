@@ -1,6 +1,7 @@
 import { getSupabaseAdminClient } from '../../../../../utils/supabase'
 import { requireAuthUser } from '../../../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../../../utils/organization'
+import { recordAudit } from '../../../../../utils/audit/record'
 import { recalculateServiceOrderPaymentStatus } from '../../../../../utils/service-order-payment-status'
 import { createIncomeTransaction } from '../../../../../utils/financial-income'
 import { releaseServiceOrderCommissions } from '../../../../../utils/service-order-commissions'
@@ -241,6 +242,12 @@ export default defineEventHandler(async (event) => {
     orderId,
     userEmail: authUser.email,
     triggeringInstallmentId: installmentId
+  })
+
+  recordAudit(event, {
+    resourceId: orderId,
+    before: installment as Record<string, unknown>,
+    extra: { installmentId, warnings: commissionResult.warnings }
   })
 
   return { success: true, warnings: commissionResult.warnings }

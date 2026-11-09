@@ -3,6 +3,7 @@ import { getSupabaseAdminClient } from '../../../../utils/supabase'
 import { requireAuthUser } from '../../../../utils/require-auth'
 import { requireOrgPermission } from '../../../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../../../utils/organization'
+import { recordAudit } from '../../../../utils/audit/record'
 import { fetchBonus, currentMonthStart } from '../../../../utils/bonuses'
 
 interface BonusGenerationRow {
@@ -77,6 +78,8 @@ export default defineEventHandler(async (event) => {
   if (deleteError) {
     throw createError({ statusCode: 500, statusMessage: `Failed to reprocess bonus generation: ${deleteError.message}` })
   }
+
+  recordAudit(event, { before: typedGeneration as unknown as Record<string, unknown> })
 
   return { success: true }
 })

@@ -3,6 +3,7 @@ import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
+import { recordAudit } from '../../utils/audit/record'
 import {
   insertCommissionRuleVersion,
   parseCommissionRulesInput
@@ -83,6 +84,7 @@ export default defineEventHandler(async (event) => {
       { effectiveFrom, notes: body?.notes ?? null, createdBy: authUser.email },
       parsedRules
     )
+    recordAudit(event, { resourceId: String(plan.id), after: plan, extra: { version, rules } })
     return { item: { ...plan, currentVersion: version, currentRules: rules } }
   } catch (error) {
     // Best-effort cleanup — a plan with no valid version is useless.

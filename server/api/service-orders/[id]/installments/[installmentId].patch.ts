@@ -2,6 +2,7 @@ import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../../../utils/supabase'
 import { requireAuthUser } from '../../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../../utils/organization'
+import { recordAudit } from '../../../../utils/audit/record'
 
 /**
  * PATCH /api/service-orders/:id/installments/:installmentId
@@ -69,6 +70,13 @@ export default defineEventHandler(async (event) => {
   if (updateError) {
     throw createError({ statusCode: 500, statusMessage: updateError.message })
   }
+
+  recordAudit(event, {
+    resourceId: orderId,
+    before: installment as Record<string, unknown>,
+    after: updatedInstallment,
+    extra: { installmentId }
+  })
 
   return { data: updatedInstallment }
 })

@@ -2,6 +2,7 @@ import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../../../utils/supabase'
 import { requireAuthUser } from '../../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../../utils/organization'
+import { recordAudit } from '../../../../utils/audit/record'
 import { FINANCIAL_TRANSACTION_DELETION_SOURCES } from '../../../../utils/financial-transaction-deletion'
 import { reverseServiceOrderReceipt } from '../../../../utils/service-order-receipt-reversal'
 
@@ -48,6 +49,8 @@ export default defineEventHandler(async (event) => {
     source: FINANCIAL_TRANSACTION_DELETION_SOURCES.SERVICE_ORDER_RECEIPT_REVERSAL,
     userEmail: authUser.email
   })
+
+  recordAudit(event, { resourceType: 'service_order', resourceId: orderId, before: transaction as Record<string, unknown>, extra: { transactionId, warnings } })
 
   return { success: true, warnings }
 })

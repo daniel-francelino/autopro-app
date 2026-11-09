@@ -2,6 +2,7 @@ import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../../../utils/supabase'
 import { requireAuthUser } from '../../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../../utils/organization'
+import { recordAudit } from '../../../../utils/audit/record'
 import { recalculateServiceOrderPaymentStatus } from '../../../../utils/service-order-payment-status'
 import { releaseServiceOrderCommissions } from '../../../../utils/service-order-commissions'
 import { softDeleteFinancialTransaction, FINANCIAL_TRANSACTION_DELETION_SOURCES } from '../../../../utils/financial-transaction-deletion'
@@ -192,6 +193,12 @@ export default defineEventHandler(async (event) => {
     organizationId,
     orderId,
     userEmail: authUser.email
+  })
+
+  recordAudit(event, {
+    resourceId: orderId,
+    before: installment as Record<string, unknown>,
+    extra: { installmentId, reason, warnings: commissionResult.warnings }
   })
 
   return { success: true, warnings: commissionResult.warnings }

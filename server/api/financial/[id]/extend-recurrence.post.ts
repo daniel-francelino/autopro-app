@@ -3,6 +3,7 @@ import { addMonths, addYears, format } from 'date-fns'
 import { getSupabaseAdminClient } from '../../../utils/supabase'
 import { requireAuthUser } from '../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../utils/organization'
+import { recordAudit } from '../../../utils/audit/record'
 
 const MAX_ADDITIONAL_COUNT = 60
 
@@ -109,6 +110,8 @@ export default defineEventHandler(async (event) => {
     .in('id', existingIds)
     .eq('organization_id', organizationId)
   if (updateError) throw createError({ statusCode: 500, statusMessage: updateError.message })
+
+  recordAudit(event, { extra: { created: total, recurrence_end_date: newRecurrenceEndDate } })
 
   return { success: true, created: total }
 })

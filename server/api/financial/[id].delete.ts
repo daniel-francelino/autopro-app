@@ -2,6 +2,7 @@ import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
+import { recordAudit } from '../../utils/audit/record'
 import { softDeleteFinancialTransaction, FINANCIAL_TRANSACTION_DELETION_SOURCES } from '../../utils/financial-transaction-deletion'
 import { reverseServiceOrderReceipt } from '../../utils/service-order-receipt-reversal'
 
@@ -32,7 +33,7 @@ export default defineEventHandler(async (event) => {
 
   const { data: existing } = await supabase
     .from('financial_transactions')
-    .select('id, type, service_order_id, service_order_installment_id')
+    .select('*')
     .eq('id', id!)
     .eq('organization_id', organizationId)
     .is('deleted_at', null)
@@ -50,6 +51,8 @@ export default defineEventHandler(async (event) => {
       userEmail: authUser.email
     })
 
+    recordAudit(event, { before: existing, extra: { reason, reversed_service_order_receipt: true } })
+
     return { success: true, warnings }
   }
 
@@ -63,6 +66,8 @@ export default defineEventHandler(async (event) => {
   })
 
   if (error) throw createError({ statusCode: 500, statusMessage: error.message })
+
+  recordAudit(event, { before: existing, extra: { reason } })
 
   return { success: true }
 })

@@ -3,6 +3,7 @@ import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
+import { recordAudit } from '../../utils/audit/record'
 import { fetchBonus } from '../../utils/bonuses'
 
 /**
@@ -65,6 +66,8 @@ export default defineEventHandler(async (event) => {
   if (error) {
     throw createError({ statusCode: 500, statusMessage: `Failed to update bonus: ${error.message}` })
   }
+
+  recordAudit(event, { before: existing as unknown as Record<string, unknown>, after: data })
 
   return { item: data }
 })

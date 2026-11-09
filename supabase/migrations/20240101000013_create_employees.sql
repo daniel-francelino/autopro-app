@@ -193,3 +193,10 @@ CREATE POLICY "employees_delete_same_org"
   ON public.employees
   FOR DELETE TO authenticated
   USING (organization_id = public.current_user_organization_id());
+
+-- FK de clients -> employees (movida da migration 012, que rodava antes de employees existir).
+ALTER TABLE public.clients
+  ADD CONSTRAINT clients_employee_responsible_id_fkey
+    FOREIGN KEY (employee_responsible_id)
+    REFERENCES public.employees (id)
+    ON DELETE SET NULL;

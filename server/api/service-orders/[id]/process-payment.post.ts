@@ -2,6 +2,7 @@ import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../../utils/supabase'
 import { requireAuthUser } from '../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../utils/organization'
+import { recordAudit } from '../../../utils/audit/record'
 import { releaseServiceOrderCommissions } from '../../../utils/service-order-commissions'
 import { recalculateServiceOrderPaymentStatus } from '../../../utils/service-order-payment-status'
 import { createIncomeTransaction } from '../../../utils/financial-income'
@@ -122,6 +123,8 @@ export default defineEventHandler(async (event) => {
     warnings.push(...commissionResult.warnings)
 
     const { data: updatedOrder } = await supabase.from('service_orders').select('*').eq('id', orderId).single()
+
+    recordAudit(event, { before: order as Record<string, unknown>, after: updatedOrder as Record<string, unknown> | null, extra: { reconciled_only: true } })
 
     return {
       data: {
@@ -263,6 +266,11 @@ export default defineEventHandler(async (event) => {
     .select('*')
     .eq('id', orderId)
     .single()
+
+  recordAudit(event, {
+    before: order as Record<string, unknown>, after: updatedOrder as Record<string, unknown> | null,
+    extra: { paymentMethod, bankAccountId, installments: installmentsData, paid_installment_ids: paidInstallmentIdsThisCall, totalCommission: commissionResult.totalCommission }
+  })
 
   return {
     data: {
