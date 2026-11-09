@@ -100,6 +100,11 @@ export function createFakeSupabase(seed: Record<string, Row[]> = {}): FakeSupaba
       gte(col: string, val: any) { addFilter(`${col}>=${val}`, r => r[col] >= val); return builder },
       lt(col: string, val: any) { addFilter(`${col}<${val}`, r => r[col] < val); return builder },
       lte(col: string, val: any) { addFilter(`${col}<=${val}`, r => r[col] <= val); return builder },
+      ilike(col: string, pattern: string) {
+        const needle = pattern.replace(/^%|%$/g, '').replace(/\\([%_])/g, '$1').toLowerCase()
+        addFilter(`${col} ilike ${pattern}`, r => String(r[col] ?? '').toLowerCase().includes(needle))
+        return builder
+      },
       or() { return builder },
       order(col: string, opts?: { ascending?: boolean }) { orderBy = { col, asc: opts?.ascending !== false }; return builder },
       limit(n: number) { limitN = n; return builder },

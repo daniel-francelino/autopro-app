@@ -6,6 +6,7 @@ import { deleteFocusNfeCompanyForOrg } from '../../utils/focus-nfe'
 import { ensureDefaultFinancialCategories } from '../../utils/financial-category-defaults'
 import { trackServerEvent, type ServerEventOptions } from '../../utils/analytics/record'
 import type { AnalyticsEvent } from '../../../lib/analytics/events'
+import { setAuditContext } from '../../utils/audit/context'
 
 // Telemetria: o webhook não tem sessão, então grava com session_id='server' (sem tráfego/plataforma/país).
 type Track = (name: AnalyticsEvent, options?: ServerEventOptions) => void
@@ -71,7 +72,17 @@ export default defineEventHandler(async (event: H3Event) => {
   }
 
   const supabase = getSupabaseAdminClient()
-  const track: Track = (name, options) => trackServerEvent(event, name, { ...options, noSession: true })
+  // Auditoria: o webhook não tem usuário; registra o tipo do evento e, quando resolvida, a oficina.
+  setAuditContext(event, {
+    actorType: 'webhook',
+    action: `stripe.${stripeEvent.type}`,
+    resourceType: 'stripe_event',
+    resourceId: stripeEvent.id
+  })
+  const track: Track = (name, options) => {
+    setAuditContext(event, { organizationId: options?.organizationId ?? undefined })
+    trackServerEvent(event, name, { ...options, noSession: true })
+  }
 
   // ── Route events ──────────────────────────────────────────────────────────
   try {

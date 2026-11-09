@@ -3,8 +3,9 @@ import { getAccessTokenFromCookies, getRefreshTokenFromCookies, setAuthCookies }
 import { getAuthUserCookie, setAuthUserCookie, toAuthUser } from './auth-user'
 import { isInvalidAuthError, resolveSessionExpiresAt } from './auth-session'
 import type { H3Event } from 'h3'
+import { setAuditContext } from './audit/context'
 
-export async function requireAuthUser(event: H3Event) {
+async function authenticate(event: H3Event) {
   const supabase = getSupabaseAnonClient()
   const accessToken = getAccessTokenFromCookies(event)
   const refreshToken = getRefreshTokenFromCookies(event)
@@ -79,4 +80,11 @@ export async function requireAuthUser(event: H3Event) {
     statusCode: 401,
     statusMessage: 'Unauthorized'
   })
+}
+
+export async function requireAuthUser(event: H3Event) {
+  const user = await authenticate(event)
+  // Auditoria: todo handler que autentica passa a ter o autor registrado, sem alteração.
+  setAuditContext(event, { userId: user.id, email: user.email })
+  return user
 }

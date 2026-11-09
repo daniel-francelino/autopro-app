@@ -14,7 +14,7 @@ import { fetchCommissionPlan } from '../../../../utils/employee-commission-plans
  */
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
-  await requireOrgPermission(authUser.id, 'commissions.update')
+  await requireOrgPermission(authUser.id, 'commissions.update', event)
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 

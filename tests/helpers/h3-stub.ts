@@ -28,6 +28,8 @@ type E = {
   headers?: Record<string, string>
   method?: string
   setCookies?: Array<{ name: string, value: string }>
+  status?: number
+  responseHeaders?: Record<string, string>
 }
 const identity = <T>(fn: T) => fn
 export const defineEventHandler = identity
@@ -47,7 +49,8 @@ export const getRequestHeader = getHeader
 export const getRequestURL = () => new URL('http://localhost/api/test')
 export const getMethod = (e: E) => e.method ?? 'GET'
 export const setResponseStatus = () => {}
-export const setResponseHeader = () => {}
+export const setResponseHeader = (e: E, name: string, value: string) => { if (e.responseHeaders) e.responseHeaders[name] = value }
+export const getResponseStatus = (e: E) => e.status ?? 200
 export const setHeader = () => {}
 export const sendRedirect = () => {}
 export const getRequestIP = () => '127.0.0.1'

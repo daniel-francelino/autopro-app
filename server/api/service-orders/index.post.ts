@@ -2,6 +2,7 @@ import { defineEventHandler, readBody, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
+import { recordAudit } from '../../utils/audit/record'
 import { normalizeOsNumber } from '../../utils/service-order-number'
 import {
   computeServiceOrderItemsWithCommissionSnapshots,
@@ -210,6 +211,7 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 500, statusMessage: `Failed to update service order: ${error.message}` })
     }
     savedOrder = data as SavedOrderRecord
+    recordAudit(event, { resourceId: orderId, before: existingOrder, after: savedOrder as unknown as Record<string, unknown> })
   } else {
     // Create new order
     orderPayload.created_by = authUser.email
@@ -224,6 +226,7 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 500, statusMessage: `Failed to create service order: ${error.message}` })
     }
     savedOrder = data as SavedOrderRecord
+    recordAudit(event, { resourceId: String(savedOrder.id), after: savedOrder as unknown as Record<string, unknown> })
   }
 
   // Handle appointment creation if provided

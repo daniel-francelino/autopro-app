@@ -9,7 +9,7 @@ import { mapFiscalErrorDetails } from '../../../../utils/fiscal-mappers'
 
 export default defineEventHandler(async (event) => {
   const user = await requireAuthUser(event)
-  await requireOrgPermission(user.id, 'service_invoice.read')
+  await requireOrgPermission(user.id, 'service_invoice.read', event)
 
   const reference = getRouterParam(event, 'reference')
   if (!reference) {

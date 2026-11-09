@@ -17,7 +17,7 @@ import { currentCommissionMonthStart } from '../../../lib/utils/employee-commiss
  */
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
-  await requireOrgPermission(authUser.id, 'commissions.create')
+  await requireOrgPermission(authUser.id, 'commissions.create', event)
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 

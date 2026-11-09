@@ -1,6 +1,7 @@
 import { getSupabaseAdminClient } from '../../../utils/supabase'
 import { requireAuthUser } from '../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../utils/organization'
+import { recordAudit } from '../../../utils/audit/record'
 
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
@@ -31,7 +32,7 @@ export default defineEventHandler(async (event) => {
   // Check if a role_action record already exists
   const { data: existing } = await supabase
     .from('role_actions')
-    .select('id')
+    .select('id, is_granted')
     .eq('role_id', id)
     .eq('action_id', action_id)
     .maybeSingle()
@@ -62,6 +63,16 @@ export default defineEventHandler(async (event) => {
 
   if (error)
     throw createError({ statusCode: 500, statusMessage: error.message })
+
+  // Auditoria: qual permissão mudou e de quê para quê (código da ação, não só o id).
+  const { data: actionRow } = await supabase.from('actions').select('code').eq('id', action_id).maybeSingle()
+  recordAudit(event, {
+    resourceType: 'role',
+    resourceId: id,
+    before: existing ? { is_granted: existing.is_granted } : { is_granted: null },
+    after: { is_granted },
+    extra: { action_id, action_code: actionRow?.code ?? null }
+  })
 
   return { item }
 })

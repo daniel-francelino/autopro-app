@@ -2,6 +2,7 @@ import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../../utils/supabase'
 import { requireAuthUser } from '../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../utils/organization'
+import { recordAudit } from '../../../utils/audit/record'
 import { softDeleteFinancialTransaction, FINANCIAL_TRANSACTION_DELETION_SOURCES } from '../../../utils/financial-transaction-deletion'
 
 /**
@@ -155,6 +156,12 @@ export default defineEventHandler(async (event) => {
     .eq('id', orderId)
     .select()
     .single()
+
+  recordAudit(event, {
+    before: order,
+    after: updatedOrder as Record<string, unknown> | null,
+    extra: { deleted: { statements: deletedStatements, transactions: deletedTransactions, commissions: deletedCommissions } }
+  })
 
   return {
     data: {

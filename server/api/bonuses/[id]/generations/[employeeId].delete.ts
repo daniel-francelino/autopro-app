@@ -26,7 +26,7 @@ interface BonusGenerationRow {
  */
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
-  await requireOrgPermission(authUser.id, 'bonuses.update')
+  await requireOrgPermission(authUser.id, 'bonuses.update', event)
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 

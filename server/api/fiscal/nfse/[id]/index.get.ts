@@ -4,7 +4,7 @@ import { getSupabaseAdminClient } from '../../../../utils/supabase'
 
 export default defineEventHandler(async (event) => {
   const user = await requireAuthUser(event)
-  await requireOrgPermission(user.id, 'service_invoice.read')
+  await requireOrgPermission(user.id, 'service_invoice.read', event)
   const id = getRouterParam(event, 'id')
   if (!id) {
     throw createError({ statusCode: 400, message: 'ID é obrigatório' })

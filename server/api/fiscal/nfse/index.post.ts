@@ -12,7 +12,7 @@ import type { NfseInput, NfseResult } from '../../../types/fiscal'
 
 export default defineEventHandler(async (event) => {
   const user = await requireAuthUser(event)
-  await requireOrgPermission(user.id, 'service_invoice.create')
+  await requireOrgPermission(user.id, 'service_invoice.create', event)
 
   const body: NfseInput = await readBody(event)
   if (!body || typeof body !== 'object') {

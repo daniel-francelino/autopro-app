@@ -15,6 +15,7 @@ useSeoMeta({
 })
 
 const toast = useToast()
+const showApiError = useApiErrorToast()
 const auth = useAuth()
 const bootstrap = useWorkshopBootstrap()
 const router = useRouter()
@@ -80,13 +81,7 @@ async function onSubmit(payload?: FormSubmitEvent<Schema>) {
 
     await router.push(resolveAuthenticatedDestination(bootstrap))
   } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
-    const message = err?.data?.statusMessage || err?.statusMessage || 'Não foi possível entrar'
-    toast.add({
-      title: 'Erro',
-      description: message,
-      color: 'error'
-    })
+    showApiError(error, 'Erro', 'Não foi possível entrar')
   } finally {
     submitting.value = false
   }

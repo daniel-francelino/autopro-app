@@ -28,7 +28,7 @@ const SUMMARY_COLUMNS = [
 
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
-  await requireOrgPermission(authUser.id, 'service_invoice.read')
+  await requireOrgPermission(authUser.id, 'service_invoice.read', event)
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
   const query = getQuery(event)

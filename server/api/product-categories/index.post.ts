@@ -5,7 +5,7 @@ import { resolveOrganizationId } from '../../utils/organization'
 
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
-  await requireOrgPermission(authUser.id, 'product_categories.create')
+  await requireOrgPermission(authUser.id, 'product_categories.create', event)
   const supabase = getSupabaseAdminClient()
 
   const organizationId = await resolveOrganizationId(event, authUser.id)

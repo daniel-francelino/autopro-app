@@ -1,6 +1,8 @@
 import { createError } from 'h3'
 import { getSupabaseAdminClient } from './supabase'
 import { resolveOrgLicense } from './license'
+import { setAuditContext } from './audit/context'
+import type { H3Event } from 'h3'
 
 // Mirrors ACTION_PLAN_REQUIREMENTS in app/composables/usePlans.ts — keep in sync.
 const ACTION_PLAN_REQUIREMENTS: Record<string, string> = {
@@ -34,8 +36,9 @@ function hasPlanAccess(current: string | null, required: string): boolean {
  *
  * @param userId  - auth user ID (from requireAuthUser)
  * @param actionCode - e.g. 'service_invoice.create'
+ * @param event - opcional; quando vier, grava organização e papel no contexto de auditoria
  */
-export async function requireOrgPermission(userId: string, actionCode: string): Promise<void> {
+export async function requireOrgPermission(userId: string, actionCode: string, event?: H3Event): Promise<void> {
   const supabase = getSupabaseAdminClient()
 
   const { data: profile, error: profileError } = await supabase
@@ -57,6 +60,8 @@ export async function requireOrgPermission(userId: string, actionCode: string): 
     throw createError({ statusCode: 403, statusMessage: 'Usuário não vinculado a uma organização.' })
   }
 
+  setAuditContext(event, { organizationId })
+
   // ── 1. Plan gate (org-level, no bypass) ──────────────────────────────────
   const requiredPlan = ACTION_PLAN_REQUIREMENTS[actionCode]
   if (requiredPlan) {
@@ -73,7 +78,10 @@ export async function requireOrgPermission(userId: string, actionCode: string): 
   // ── 2. Role gate (admins/owners bypass) ──────────────────────────────────
   const isOwner = profile.is_owner === true
 
-  if (isOwner) return
+  if (isOwner) {
+    setAuditContext(event, { role: 'owner' })
+    return
+  }
 
   const roleId = profile.role_id as string | null
   if (!roleId) {
@@ -86,6 +94,8 @@ export async function requireOrgPermission(userId: string, actionCode: string): 
     .select('name, is_system_role')
     .eq('id', roleId)
     .maybeSingle()
+
+  setAuditContext(event, { role: (role?.name as string | undefined) ?? undefined })
 
   const isAdmin = role?.name === 'admin' && role?.is_system_role === true
   if (isAdmin) return

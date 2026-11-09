@@ -11,7 +11,7 @@ import type { WebhookTrigger } from '../../../../types/fiscal'
 
 export default defineEventHandler(async (event) => {
   const user = await requireAuthUser(event)
-  await requireOrgPermission(user.id, 'service_invoice.update')
+  await requireOrgPermission(user.id, 'service_invoice.update', event)
 
   const reference = getRouterParam(event, 'reference')
   if (!reference) {

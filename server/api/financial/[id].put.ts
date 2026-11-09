@@ -2,6 +2,7 @@ import { defineEventHandler, readBody, getRouterParam, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
+import { recordAudit } from '../../utils/audit/record'
 import { resolveFinancialCategory } from '../../utils/resolve-financial-category'
 import { assertNotInstallmentAndRecurring } from '../../utils/financial-mutual-exclusion'
 
@@ -19,7 +20,7 @@ export default defineEventHandler(async (event) => {
 
   const { data: existing } = await supabase
     .from('financial_transactions')
-    .select('id, type, is_installment, recurrence')
+    .select('*')
     .eq('id', id!)
     .eq('organization_id', organizationId)
     .is('deleted_at', null)
@@ -59,6 +60,12 @@ export default defineEventHandler(async (event) => {
     .single()
 
   if (error) throw createError({ statusCode: 500, statusMessage: error.message })
+
+  recordAudit(event, {
+    before: existing,
+    after: item,
+    ignore: ['updated_at', 'updated_by', 'created_at', 'created_by', 'category_ref']
+  })
 
   return item
 })

@@ -17,7 +17,7 @@ interface EmployeeNameRecord {
  */
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
-  await requireOrgPermission(authUser.id, 'bonuses.read')
+  await requireOrgPermission(authUser.id, 'bonuses.read', event)
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 

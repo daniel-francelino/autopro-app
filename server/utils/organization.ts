@@ -1,5 +1,6 @@
 import type { H3Event } from 'h3'
 import { getSupabaseAdminClient } from './supabase'
+import { setAuditContext } from './audit/context'
 import { isEmployeeAccessRevoked, syncEmployeeLinkedUserAccess } from './employee-access'
 
 /**
@@ -51,6 +52,8 @@ export async function resolveOrganizationId(event: H3Event, userId: string) {
   if (!profile?.organization_id) {
     throw createError({ statusCode: 400, statusMessage: 'Usuário não vinculado a uma organização' })
   }
+
+  setAuditContext(event, { organizationId: profile.organization_id as string, employeeId: (profile.employee_id as string | null) ?? null })
 
   return profile.organization_id as string
 }

@@ -3,6 +3,7 @@ import type { H3Event } from 'h3'
 import { requireAuthUser } from './require-auth'
 import { getSupabaseAdminClient } from './supabase'
 import type { AuthUser } from './auth-user'
+import { setAuditContext } from './audit/context'
 
 /**
  * Requires the authenticated user to have `is_owner = true` in their
@@ -25,6 +26,8 @@ export async function requireOwner(event: H3Event): Promise<AuthUser> {
   if (!profile?.is_owner) {
     throw createError({ statusCode: 403, message: 'Acesso negado' })
   }
+
+  setAuditContext(event, { actorType: 'owner', role: 'owner' })
 
   return user
 }
