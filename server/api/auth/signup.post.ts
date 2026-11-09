@@ -53,7 +53,9 @@ export default eventHandler(async (event) => {
     })
   }
 
-  if (data.user) {
+  // Com confirmação de e-mail ligada, um e-mail já cadastrado devolve um usuário "falso" sem identities:
+  // não é cadastro novo e não pode contar.
+  if (data.user && data.user.identities?.length !== 0) {
     // Telemetria: cadastro concluído. A atribuição (UTM/origem) vem saneada do corpo, ignorada pelo schema.
     const attribution = (body as { attribution?: unknown } | null)?.attribution
     trackServerEvent(event, 'signup_completed', { userId: data.user.id, attribution })

@@ -39,12 +39,22 @@ export interface RequestContext {
 
 let warnedMissingSecret = false
 
+/**
+ * Segredo do HMAC. O runtimeConfig só é sobrescrito em execução por `NUXT_ANALYTICS_HASH_SECRET`;
+ * `ANALYTICS_HASH_SECRET` entra no build. Lê também o env em execução para não depender de onde o
+ * segredo foi definido (senão a telemetria se desliga em silêncio).
+ */
+function readSecret(event?: H3Event | null): string {
+  const config = event ? useRuntimeConfig(event) : useRuntimeConfig()
+  return String(config.analyticsHashSecret || process.env.ANALYTICS_HASH_SECRET || '')
+}
+
 /** Telemetria desligada → o coletor responde ok e descarta. */
 export function analyticsEnabled(event: H3Event): boolean {
   const config = useRuntimeConfig(event)
   const enabled = Boolean((config.public as Record<string, unknown>).analyticsEnabled)
   if (!enabled) return false
-  if (!config.analyticsHashSecret) {
+  if (!readSecret(event)) {
     if (!warnedMissingSecret) {
       warnedMissingSecret = true
       console.warn('[analytics] ANALYTICS_HASH_SECRET ausente: telemetria desativada.')
@@ -55,7 +65,7 @@ export function analyticsEnabled(event: H3Event): boolean {
 }
 
 export function analyticsSecret(event: H3Event): string {
-  return String(useRuntimeConfig(event).analyticsHashSecret || '')
+  return readSecret(event)
 }
 
 /** País só como ISO-3166 de 2 letras (header do CDN). O IP e o User-Agent nunca são gravados. */
@@ -135,7 +145,7 @@ export async function recordServerEvent(
   try {
     if (event && !analyticsEnabled(event)) return
     const config = event ? null : useRuntimeConfig()
-    const secret = event ? analyticsSecret(event) : String(config?.analyticsHashSecret || '')
+    const secret = readSecret(event)
     if (!secret) return
     if (!event && !(config?.public as Record<string, unknown> | undefined)?.analyticsEnabled) return
 
