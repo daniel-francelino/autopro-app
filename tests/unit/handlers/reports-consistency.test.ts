@@ -263,3 +263,86 @@ describe('Pontas soltas conhecidas de relatório (KF-34 a KF-35)', () => {
     expect(profitReport.currentData.revenue).toBe(2100 + 800 + 300 + 400) // inclui D(cancelada), E(orçamento), F(andamento)
   })
 })
+
+// ─── Cenários R33, R34, R35 e C41 de docs/testing/financial-core-test-analysis.md ───
+
+describe('R33: golden dataset — março/2026 conferido à mão (protege contra regressão silenciosa)', () => {
+  // Não "atualize o número para o teste passar": se um destes mudar, descubra QUAL relatório mudou e por quê.
+  it('competência: visão geral, lucro pelas OS (concluídas) e dashboard', async () => {
+    const { overview } = await get('overview')
+    expect(overview).toMatchObject({ grossRevenue: 2100, totalOrders: 3, totalCosts: 210, netProfit: 1890, averageTicket: 700 })
+    const { profitReport } = await get('profit-by-order', { orderStatus: ['completed', 'invoiced', 'delivered'] })
+    expect(profitReport.currentData).toMatchObject({ revenue: 2100, partsCost: 400, commissionCost: 160, profit: 1540, orderCount: 3 })
+  })
+  it('caixa: fluxo de caixa pago', async () => {
+    const { profitReport } = await get('profit-cash-flow', { status: 'paid' })
+    expect(profitReport.currentData).toMatchObject({ revenue: 1300, costs: 210, profit: 1090 })
+  })
+  it('posição em aberto: devedores', async () => {
+    const { debtorsReport } = await get('debtors', { orderStatusFilters: ['completed'] })
+    expect(debtorsReport.totals).toMatchObject({ total: 900, overdue: 0, current: 900 })
+  })
+  it('comissões: pago 100, pendente 30, bônus fora do total', async () => {
+    const { summary } = await get('commissions', { recordType: 'commission' })
+    expect(summary).toMatchObject({ paid: 100, pending: 30 })
+  })
+})
+
+describe('C41: comissão paga entra uma vez só em cada relatório (invariante I9)', () => {
+  const payCommission = () => fake.tables.financial_transactions!.push({
+    id: 'tc', ...base, type: 'expense', status: 'paid', amount: 100, due_date: '2026-03-10',
+    category_id: 'cat-sal', employee_financial_record_id: 'r1'
+  })
+
+  it('visão geral (caixa): o pagamento da comissão aumenta o custo exatamente pelo valor pago', async () => {
+    const before = (await get('overview')).overview
+    payCommission()
+    const after = (await get('overview')).overview
+    expect(after.totalCosts - before.totalCosts).toBe(100)
+    expect(after.grossRevenue).toBe(before.grossRevenue)
+  })
+  it('lucro pelas OS (competência): o direito da comissão não muda quando ela é paga', async () => {
+    const before = (await get('profit-by-order', { orderStatus: ['completed'] })).profitReport.currentData
+    payCommission()
+    const after = (await get('profit-by-order', { orderStatus: ['completed'] })).profitReport.currentData
+    expect(after.commissionCost).toBe(before.commissionCost)
+    expect(after.profit).toBe(before.profit)
+  })
+  it('custos × lucro: não soma o direito das OS às despesas (a comissão paga já está nas despesas)', async () => {
+    payCommission()
+    const r = await callHandler(R('costs-profit'), fakeEvent({ cookies, query: { ...range, includeRawData: 'true' } }))
+    expect(r.status).toBe(200)
+    const data = JSON.stringify((r.body as { data: unknown }).data)
+    // despesas pagas/pendentes não canceladas do mês: 150 + 80 + 60 + 100 (comissão) = 390
+    expect(data).toContain('"totalCosts":390')
+  })
+})
+
+describe('R34: custo da OS no lucro', () => {
+  it('lucro por OS = total − custo (total_cost_amount) − comissão (direito), e a soma das OS fecha com o período', async () => {
+    const { profitReport } = await get('profit-by-order', { orderStatus: ['completed'] })
+    const byNumber = Object.fromEntries(profitReport.topProfitableOrders.map((o: any) => [o.number, o]))
+    expect(byNumber['1']).toMatchObject({ revenue: 1000, cost: 400, profit: 600 })
+    expect(byNumber['2']).toMatchObject({ revenue: 600, cost: 160, profit: 440 })
+    const sum = profitReport.topProfitableOrders.reduce((s: number, o: any) => s + o.profit, 0)
+    expect(sum).toBe(profitReport.currentData.profit)
+  })
+  it('custo maior que a venda dá lucro negativo (não é zerado nem escondido)', async () => {
+    fake.tables.service_orders!.push(order('N', { number: '50', status: 'completed', entry_date: '2026-03-14', total_amount: 100, total_cost_amount: 250 }))
+    const { profitReport } = await get('profit-by-order', { orderStatus: ['completed'] })
+    expect(profitReport.topProfitableOrders.find((o: any) => o.number === '50').profit).toBe(-150)
+  })
+})
+
+describe('R35: compras (KF-43 — decisão de produto)', () => {
+  // Hoje a compra paga só muda payment_status. Não gera lançamento financeiro, então não entra em
+  // custos/caixa (overview, profit-cash-flow, costs-profit). Este teste documenta o comportamento atual.
+  it('KF-43 (caracterização): compra paga aparece no relatório de compras, mas não nas despesas pagas', async () => {
+    fake.tables.purchases = [{ id: 'pu1', ...base, supplier_id: null, purchase_date: '2026-03-10', total_amount: 700, payment_status: 'paid', payment_date: '2026-03-10', bank_account_id: 'acc-a' }]
+    fake.tables.suppliers = []
+    const purchases = JSON.stringify((await callHandler(R('purchases'), fakeEvent({ cookies, query: range }))).body)
+    expect(purchases).toContain('700')
+    const { overview } = await get('overview')
+    expect(overview.totalCosts).toBe(210) // 700 da compra NÃO está nas despesas
+  })
+})
