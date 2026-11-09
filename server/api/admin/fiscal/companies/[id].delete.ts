@@ -3,13 +3,13 @@ import {
   getFocusNfeApiBaseUrl,
   getFocusNfeBasicAuthHeader,
   monitoredFocusNfeFetch
-} from '../../../utils/focus-nfe'
-import { mapCompanyResult, mapFiscalErrorDetails } from '../../../utils/fiscal-mappers'
-import type { FocusNfeEmpresaResponse } from '../../../types/focus-nfe'
-import type { CompanyResult } from '../../../types/fiscal'
+} from '../../../../utils/focus-nfe'
+import { mapCompanyResult, mapFiscalErrorDetails } from '../../../../utils/fiscal-mappers'
+import type { FocusNfeEmpresaResponse } from '../../../../types/focus-nfe'
+import type { CompanyResult } from '../../../../types/fiscal'
 
 export default defineEventHandler(async (event) => {
-  const user = await requireAuthUser(event)
+  const user = await requireOwner(event)
   if (!user) {
     throw createError({ statusCode: 403, message: 'Acesso negado' })
   }
@@ -24,11 +24,11 @@ export default defineEventHandler(async (event) => {
 
   const { response, responseBodyRaw } = await monitoredFocusNfeFetch({
     authUserEmail: user.email!,
-    functionName: 'getFocusNfeEmpresa',
+    functionName: 'deleteFocusNfeEmpresa',
     url: `${apiBaseUrl}/v2/empresas/${encodeURIComponent(id)}`,
     captureResponseBody: 'always',
     init: {
-      method: 'GET',
+      method: 'DELETE',
       headers: {
         'Authorization': authHeader,
         'Content-Type': 'application/json'
@@ -40,7 +40,7 @@ export default defineEventHandler(async (event) => {
     const raw = responseBodyRaw ? JSON.parse(responseBodyRaw) : null
     throw createError({
       statusCode: response.status,
-      data: { error: 'Erro ao consultar empresa na Focus NFe', details: mapFiscalErrorDetails(raw) }
+      data: { error: 'Erro ao excluir empresa na Focus NFe', details: mapFiscalErrorDetails(raw) }
     })
   }
 

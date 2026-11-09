@@ -2,46 +2,37 @@ import { defineEventHandler } from 'h3'
 import { requireOwner } from '../../utils/require-owner'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 
+const DAY_MS = 86_400_000
+
 /**
  * GET /api/admin/stats
  * Global system stats for the admin dashboard.
  * Restricted to users with is_owner = true.
+ * Só contagens (`head: true`): nada de baixar todas as linhas para contar em JS.
  */
 export default defineEventHandler(async (event) => {
   await requireOwner(event)
 
   const supabase = getSupabaseAdminClient()
+  const since = new Date(Date.now() - 30 * DAY_MS).toISOString()
+  const count = { count: 'exact', head: true } as const
 
-  const [
-    orgsResult,
-    usersResult,
-    subscriptionsResult,
-    serviceOrdersResult
-  ] = await Promise.all([
-    supabase.from('organizations').select('id, created_at', { count: 'exact', head: false }).is('deleted_at', null),
-    supabase.from('user_profiles').select('id', { count: 'exact', head: false }).is('deleted_at', null),
-    supabase.from('subscriptions').select('id, status', { count: 'exact', head: false }),
-    supabase.from('service_orders').select('id', { count: 'exact', head: false }).is('deleted_at', null)
+  const [orgs, users, subscriptions, activeSubscriptions, serviceOrders, recentOrgs] = await Promise.all([
+    supabase.from('organizations').select('id', count).is('deleted_at', null),
+    supabase.from('user_profiles').select('id', count).is('deleted_at', null),
+    supabase.from('subscriptions').select('id', count),
+    // O CHECK de `subscriptions.status` só aceita active/cancelled/suspended/trial ("trialing" nunca existiu).
+    supabase.from('subscriptions').select('id', count).in('status', ['active', 'trial']),
+    supabase.from('service_orders').select('id', count).is('deleted_at', null),
+    supabase.from('organizations').select('id', count).is('deleted_at', null).gte('created_at', since)
   ])
 
-  const activeSubscriptions = (subscriptionsResult.data || []).filter(
-    (s: any) => s.status === 'active' || s.status === 'trialing'
-  ).length
-
-  // Recent orgs (last 30 days)
-  const thirtyDaysAgo = new Date()
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-
-  const recentOrgs = (orgsResult.data || []).filter(
-    (o: any) => o.created_at && new Date(o.created_at) >= thirtyDaysAgo
-  ).length
-
   return {
-    total_organizations: orgsResult.count ?? (orgsResult.data || []).length,
-    total_users: usersResult.count ?? (usersResult.data || []).length,
-    total_subscriptions: subscriptionsResult.count ?? (subscriptionsResult.data || []).length,
-    active_subscriptions: activeSubscriptions,
-    total_service_orders: serviceOrdersResult.count ?? (serviceOrdersResult.data || []).length,
-    new_organizations_last_30_days: recentOrgs
+    total_organizations: orgs.count ?? 0,
+    total_users: users.count ?? 0,
+    total_subscriptions: subscriptions.count ?? 0,
+    active_subscriptions: activeSubscriptions.count ?? 0,
+    total_service_orders: serviceOrders.count ?? 0,
+    new_organizations_last_30_days: recentOrgs.count ?? 0
   }
 })

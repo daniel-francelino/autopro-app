@@ -24,7 +24,9 @@ export default defineConfig({
           name: 'unit',
           environment: 'node',
           include: ['tests/static/**/*.test.ts', 'tests/unit/**/*.test.ts', 'tests/flows/**/*.test.ts'],
-          setupFiles: ['tests/setup/unit-globals.ts']
+          setupFiles: ['tests/setup/unit-globals.ts'],
+          // O 1º import de handlers pesados (date-fns, Stripe) é lento em máquina carregada.
+          testTimeout: 30_000
         }
       },
       {

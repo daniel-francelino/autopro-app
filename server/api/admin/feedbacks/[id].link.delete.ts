@@ -1,8 +1,8 @@
 import { getSupabaseAdminClient } from '../../../utils/supabase'
-import { requireAuthUser } from '../../../utils/require-auth'
+import { requireOwner } from '../../../utils/require-owner'
 
 export default eventHandler(async (event) => {
-  await requireAuthUser(event)
+  await requireOwner(event)
   const id = getRouterParam(event, 'id')
 
   if (!id) {

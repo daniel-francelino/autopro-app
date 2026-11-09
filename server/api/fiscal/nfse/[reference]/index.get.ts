@@ -1,4 +1,5 @@
 import { defineEventHandler, getRouterParam, createError } from 'h3'
+import { assertNfseBelongsToOrg } from '../../../../utils/nfse-ownership'
 import { requireOrgPermission } from '../../../../utils/require-org-permission'
 import {
   getFocusNfeApiBaseUrl,
@@ -19,6 +20,8 @@ export default defineEventHandler(async (event) => {
   if (!reference) {
     throw createError({ statusCode: 400, message: 'reference é obrigatório' })
   }
+
+  await assertNfseBelongsToOrg(event, user.id, reference)
 
   // Try local DB first — skip API if the status is stable (not processing)
   const supabase = getSupabaseAdminClient()

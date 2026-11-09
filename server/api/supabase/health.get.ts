@@ -9,14 +9,9 @@ export default eventHandler(async () => {
   })
 
   if (error) {
-    throw createError({
-      statusCode: 502,
-      statusMessage: 'Failed to reach Supabase',
-      data: {
-        code: error.code,
-        message: error.message
-      }
-    })
+    // Rota pública: não expõe código nem mensagem internos do Supabase.
+    console.error('[health] Supabase indisponível:', error.code, error.message)
+    throw createError({ statusCode: 502, statusMessage: 'Failed to reach Supabase' })
   }
 
   return { ok: true }

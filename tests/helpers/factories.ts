@@ -26,22 +26,37 @@ export async function createOrg(overrides: Record<string, unknown> = {}) {
 }
 
 export async function createSubscription(organizationId: string, planKey: 'starter' | 'pro' | 'fiscal') {
-  const { error } = await adminDb().from('subscriptions').insert({ organization_id: organizationId, plan_key: planKey, status: 'active' })
+  const { error } = await adminDb().from('subscriptions').insert({ organization_id: organizationId, user_email: `${randomUUID().slice(0, 8)}@teste.local`, plan_key: planKey, status: 'active' })
   if (error) throw new Error(`createSubscription: ${error.message}`)
 }
 
 export async function createBankAccount(organizationId: string, balance = 0) {
   const { data, error } = await adminDb()
     .from('bank_accounts')
-    .insert({ organization_id: organizationId, name: `Conta ${randomUUID().slice(0, 6)}`, current_balance: balance })
+    .insert({ organization_id: organizationId, account_name: `Conta ${randomUUID().slice(0, 6)}`, account_type: 'checking', initial_balance: balance, current_balance: balance })
     .select()
     .single()
   if (error) throw new Error(`createBankAccount: ${error.message}`)
   return data as { id: string }
 }
 
+export async function createClient(organizationId: string) {
+  const { data, error } = await adminDb()
+    .from('clients')
+    .insert({ organization_id: organizationId, name: `Cliente ${randomUUID().slice(0, 6)}`, person_type: 'pf', tax_id: fakeCpf(), phone: '11999990000' })
+    .select()
+    .single()
+  if (error) throw new Error(`createClient: ${error.message}`)
+  return data as { id: string }
+}
+
 export async function createServiceOrder(organizationId: string, number: string, overrides: Record<string, unknown> = {}) {
-  return adminDb().from('service_orders').insert({ organization_id: organizationId, number, status: 'open', ...overrides }).select().single()
+  const clientId = (overrides.client_id as string | undefined) ?? (await createClient(organizationId)).id
+  return adminDb()
+    .from('service_orders')
+    .insert({ organization_id: organizationId, number, client_id: clientId, entry_date: '2026-01-01', status: 'open', ...overrides })
+    .select()
+    .single()
 }
 
 /** Apaga tudo que as factories criam. Chamar no afterAll. */

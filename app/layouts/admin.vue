@@ -26,12 +26,6 @@ const links = computed<NavigationMenuItem[][]>(() => [[
   item('Auditoria', 'i-lucide-clipboard-list', '/admin/audit'),
   item('Fiscal empresas', 'i-lucide-file-stack', '/admin/fiscal/companies'),
   item('Fiscal logs', 'i-lucide-scroll-text', '/admin/fiscal/logs')
-], [
-  {
-    label: 'Ajuda',
-    icon: 'i-lucide-info',
-    to: '/docs'
-  }
 ]])
 
 const groups = computed(() => [
@@ -65,7 +59,7 @@ watch(
     >
       <template #header="{ collapsed }">
         <NuxtLink
-          to="/admin/dashboard"
+          to="/admin"
           class="flex items-center gap-2 rounded-md px-2 py-2 hover:bg-elevated"
         >
           <AppLogo size="sm" />

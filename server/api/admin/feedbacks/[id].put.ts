@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { getSupabaseAdminClient } from '../../../utils/supabase'
-import { requireAuthUser } from '../../../utils/require-auth'
+import { requireOwner } from '../../../utils/require-owner'
 
 const bodySchema = z.object({
   status: z.enum(['submitted', 'in_review', 'resolved', 'closed']).optional(),
@@ -8,7 +8,7 @@ const bodySchema = z.object({
 }).refine(d => d.status || d.priority, { message: 'Informe status ou prioridade' })
 
 export default eventHandler(async (event) => {
-  await requireAuthUser(event)
+  await requireOwner(event)
   const id = getRouterParam(event, 'id')
 
   if (!id) {

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { getSupabaseAdminClient } from '../../../utils/supabase'
-import { requireAuthUser } from '../../../utils/require-auth'
+import { requireOwner } from '../../../utils/require-owner'
 
 const querySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -12,7 +12,7 @@ const querySchema = z.object({
 })
 
 export default eventHandler(async (event) => {
-  await requireAuthUser(event)
+  await requireOwner(event)
   const query = getQuery(event)
   const params = querySchema.parse(query)
 

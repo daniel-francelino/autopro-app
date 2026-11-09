@@ -3,14 +3,14 @@ import {
   getFocusNfeApiBaseUrl,
   getFocusNfeBasicAuthHeader,
   monitoredFocusNfeFetch
-} from '../../../utils/focus-nfe'
-import { sanitizeCpfCnpj } from '../../../utils/nuvem-fiscal'
-import { mapCompanyResult, mapFiscalErrorDetails } from '../../../utils/fiscal-mappers'
-import type { FocusNfeEmpresaResponse } from '../../../types/focus-nfe'
-import type { CompanyResult } from '../../../types/fiscal'
+} from '../../../../utils/focus-nfe'
+import { sanitizeCpfCnpj } from '../../../../utils/nuvem-fiscal'
+import { mapCompanyResult, mapFiscalErrorDetails } from '../../../../utils/fiscal-mappers'
+import type { FocusNfeEmpresaResponse } from '../../../../types/focus-nfe'
+import type { CompanyResult } from '../../../../types/fiscal'
 
 export default defineEventHandler(async (event) => {
-  const user = await requireAuthUser(event)
+  const user = await requireOwner(event)
   if (!user) {
     throw createError({ statusCode: 403, message: 'Acesso negado' })
   }

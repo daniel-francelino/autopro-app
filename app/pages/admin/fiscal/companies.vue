@@ -1,7 +1,7 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'admin',
-  middleware: ['workshop-admin']
+  middleware: ['owner-only']
 })
 useSeoMeta({ title: 'Fiscal — Empresas Focus NFe' })
 
@@ -21,7 +21,7 @@ const { data, status, refresh } = await useAsyncData(
   'admin-focusnfe-companies',
   () =>
     requestFetch<{ success: boolean, data: any[], total?: number }>(
-      '/api/fiscal/company',
+      '/api/admin/fiscal/companies',
       {
         headers: requestHeaders,
         query: {
@@ -187,13 +187,13 @@ async function submitForm() {
     if (form.value.phone) payload.phone = form.value.phone
 
     if (editingCompany.value) {
-      await $fetch(`/api/fiscal/company/${editingCompany.value.id}`, {
+      await $fetch(`/api/admin/fiscal/companies/${editingCompany.value.id}`, {
         method: 'PUT',
         body: payload
       })
       toast.add({ title: 'Empresa atualizada com sucesso', color: 'success' })
     } else {
-      await $fetch('/api/fiscal/company', {
+      await $fetch('/api/admin/fiscal/companies', {
         method: 'POST',
         body: payload
       })
@@ -233,7 +233,7 @@ async function confirmDelete() {
   if (!deletingCompany.value) return
   deleteLoading.value = true
   try {
-    await $fetch(`/api/fiscal/company/${deletingCompany.value.id}`, {
+    await $fetch(`/api/admin/fiscal/companies/${deletingCompany.value.id}`, {
       method: 'DELETE'
     })
     toast.add({ title: 'Empresa excluída com sucesso', color: 'success' })

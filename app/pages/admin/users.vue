@@ -1,7 +1,7 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'admin',
-  middleware: ['workshop-admin']
+  middleware: ['owner-only']
 })
 useSeoMeta({ title: 'Usuários — Admin' })
 

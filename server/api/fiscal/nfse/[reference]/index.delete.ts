@@ -1,5 +1,7 @@
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
-import { requireOwner } from '../../../../utils/require-owner'
+import { requireAuthUser } from '../../../../utils/require-auth'
+import { requireOrgPermission } from '../../../../utils/require-org-permission'
+import { assertNfseBelongsToOrg } from '../../../../utils/nfse-ownership'
 import {
   getFocusNfeApiBaseUrl,
   getFocusNfeBasicAuthHeader,
@@ -11,12 +13,15 @@ import type { FocusNfeNfseCancelResponse } from '../../../../types/focus-nfe'
 import type { NfseCancelResult } from '../../../../types/fiscal'
 
 export default defineEventHandler(async (event) => {
-  const user = await requireOwner(event)
+  const user = await requireAuthUser(event)
+  await requireOrgPermission(user.id, 'service_invoice.delete', event)
 
   const reference = getRouterParam(event, 'reference')
   if (!reference) {
     throw createError({ statusCode: 400, message: 'reference é obrigatório' })
   }
+
+  await assertNfseBelongsToOrg(event, user.id, reference)
 
   const body: { justification?: string } = await readBody(event).catch(() => ({}))
   const justification = body?.justification?.trim()

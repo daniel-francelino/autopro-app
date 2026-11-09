@@ -1,4 +1,5 @@
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
+import { assertNfseBelongsToOrg } from '../../../../utils/nfse-ownership'
 import { requireOrgPermission } from '../../../../utils/require-org-permission'
 import {
   getFocusNfeApiBaseUrl,
@@ -15,6 +16,8 @@ export default defineEventHandler(async (event) => {
   if (!reference) {
     throw createError({ statusCode: 400, message: 'reference é obrigatório' })
   }
+
+  await assertNfseBelongsToOrg(event, user.id, reference)
 
   const body: { emails?: string[] } = await readBody(event)
   if (!Array.isArray(body?.emails) || body.emails.length === 0) {

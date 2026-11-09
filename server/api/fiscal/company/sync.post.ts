@@ -1,5 +1,7 @@
 import { defineEventHandler, readBody, createError } from 'h3'
 import { requireAuthUser } from '../../../utils/require-auth'
+import { requireOrgPermission } from '../../../utils/require-org-permission'
+import { resolveOrganizationId } from '../../../utils/organization'
 import {
   getFocusNfeApiBaseUrl,
   getFocusNfeBasicAuthHeader,
@@ -13,13 +15,12 @@ import type { CompanyInput, CompanyResult } from '../../../types/fiscal'
 
 export default defineEventHandler(async (event) => {
   const user = await requireAuthUser(event)
+  await requireOrgPermission(user.id, 'fiscal.manage', event)
+  // A oficina vem SEMPRE da sessão; um `organization_id` no corpo é ignorado (gravava fiscal_sync_status de outra oficina).
+  const organization_id = await resolveOrganizationId(event, user.id)
 
   const body: CompanyInput & { organization_id?: string } = await readBody(event)
-  const { organization_id, ...companyInput } = body || {}
-
-  if (!organization_id) {
-    throw createError({ statusCode: 400, message: 'organization_id é obrigatório' })
-  }
+  const { organization_id: _ignored, ...companyInput } = body || {}
 
   const taxId = sanitizeCpfCnpj(companyInput.business_id ?? companyInput.individual_id)
   if (!taxId) {

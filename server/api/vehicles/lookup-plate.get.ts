@@ -1,3 +1,6 @@
+import { requireAuthUser } from '../../utils/require-auth'
+import { resolveOrganizationId } from '../../utils/organization'
+
 // Plate lookup using wdapi2.com.br (or configurable env var)
 // Set WDAPI_TOKEN in your .env to enable plate lookup
 // Optionally override the endpoint with PLATE_API_URL (must accept /{plate}/{token})
@@ -37,6 +40,10 @@ function mapFuel(raw: string | undefined): string | undefined {
 }
 
 export default defineEventHandler(async (event) => {
+  // Consome a cota paga da API de placas: exige login e oficina (antes era público).
+  const authUser = await requireAuthUser(event)
+  await resolveOrganizationId(event, authUser.id)
+
   const { plate } = getQuery(event) as { plate?: string }
 
   if (!plate || plate.replace(/[^A-Z0-9]/gi, '').length < 7) {

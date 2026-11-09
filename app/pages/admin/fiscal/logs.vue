@@ -1,7 +1,7 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'admin',
-  middleware: ['workshop-admin']
+  middleware: ['owner-only']
 })
 useSeoMeta({ title: 'Fiscal — Logs' })
 
@@ -18,7 +18,7 @@ const { data, status, refresh } = await useAsyncData('admin-fiscal-logs', () =>
     success: boolean
     data: any[]
     meta: { total: number, page: number, pageSize: number }
-  }>('/api/fiscal/config/logs', {
+  }>('/api/admin/fiscal/logs', {
     headers: requestHeaders,
     query: { page: page.value, pageSize }
   })
