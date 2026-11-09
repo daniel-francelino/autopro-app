@@ -2,9 +2,13 @@
 import type { DropdownMenuItem } from '@nuxt/ui'
 import { useAuth } from '~/composables/useAuth'
 
-defineProps<{
+const props = defineProps<{
   collapsed?: boolean
+  /** `admin`: painel da plataforma. Sem atalhos da oficina (perfil, empresa, assinatura, configurações, documentação). */
+  variant?: 'app' | 'admin'
 }>()
+
+const isAdmin = computed(() => props.variant === 'admin')
 
 const toast = useToast()
 const auth = useAuth()
@@ -56,11 +60,7 @@ const user = computed(() => {
   }
 })
 
-const items = computed<DropdownMenuItem[][]>(() => ([[{
-  type: 'label',
-  label: user.value.name,
-  avatar: user.value.avatar
-}], [{
+const workshopLinks: DropdownMenuItem[] = [{
   label: 'Perfil',
   icon: 'i-lucide-user',
   to: '/app/settings/'
@@ -76,7 +76,13 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
   label: 'Configurações',
   icon: 'i-lucide-settings',
   to: '/app/settings'
-}], [{
+}]
+
+const items = computed<DropdownMenuItem[][]>(() => ([[{
+  type: 'label',
+  label: user.value.name,
+  avatar: user.value.avatar
+}], ...(isAdmin.value ? [] : [workshopLinks]), [{
   label: 'Tema',
   icon: 'i-lucide-palette',
   children: [{
@@ -140,11 +146,13 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
       setColorMode('dark')
     }
   }]
-}], [{
-  label: 'Documentação',
-  icon: 'i-lucide-book-open',
-  to: '/docs'
-}, {
+}], [...(isAdmin.value
+  ? []
+  : [{
+      label: 'Documentação',
+      icon: 'i-lucide-book-open',
+      to: '/docs'
+    }]), {
   label: 'Sair',
   icon: 'i-lucide-log-out',
   async onSelect(e) {

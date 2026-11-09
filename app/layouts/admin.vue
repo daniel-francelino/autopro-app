@@ -130,7 +130,7 @@ watch(
       </template>
 
       <template #footer="{ collapsed }">
-        <UserMenu :collapsed="collapsed" />
+        <UserMenu :collapsed="collapsed" variant="admin" />
       </template>
     </UDashboardSidebar>
 
