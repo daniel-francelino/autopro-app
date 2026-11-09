@@ -50,6 +50,15 @@ DO $$
 DECLARE
   unmigrated_count integer;
 BEGIN
+  -- Renumerada de ...093 para ...099 (duas migrations ...093 impediam `supabase start`).
+  -- Bancos que já removeram as colunas não têm mais o que checar.
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'employees' AND column_name = 'has_commission'
+  ) THEN
+    RETURN;
+  END IF;
+
   SELECT count(*) INTO unmigrated_count
   FROM public.employees e
   WHERE e.has_commission = true
@@ -67,8 +76,8 @@ BEGIN
 END $$;
 
 ALTER TABLE public.employees
-  DROP COLUMN has_commission,
-  DROP COLUMN commission_type,
-  DROP COLUMN commission_amount,
-  DROP COLUMN commission_base,
-  DROP COLUMN commission_categories;
+  DROP COLUMN IF EXISTS has_commission,
+  DROP COLUMN IF EXISTS commission_type,
+  DROP COLUMN IF EXISTS commission_amount,
+  DROP COLUMN IF EXISTS commission_base,
+  DROP COLUMN IF EXISTS commission_categories;

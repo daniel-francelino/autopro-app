@@ -175,8 +175,8 @@ describe('L0: migrations', () => {
     expect(added).toEqual([])
   })
 
-  // KF-10 — falha conhecida, registrada como it.fails até a renumeração.
-  it.fails('timestamps estritamente crescentes e únicos', () => {
+  // KF-10 (corrigido em 2026-11-09: a segunda ...093 virou ...099).
+  it('timestamps estritamente crescentes e únicos', () => {
     const stamps = files.map(f => f.split('_')[0]!)
     expect(new Set(stamps).size).toBe(stamps.length)
   })
