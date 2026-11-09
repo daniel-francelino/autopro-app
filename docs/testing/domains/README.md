@@ -2,7 +2,7 @@
 
 > Um arquivo por pasta de `server/api`. Cada um traz o inventário automático de rotas (guard e teste dedicado), os riscos e os cenários a criar com prioridade.
 > Ordem sugerida de execução: **service-orders → financial → reports → commissions → bank-accounts**, depois os demais por quantidade de P0.
-> Regenerar o inventário (rotas/guards/testes): `python scripts/gen-test-domains.py` — a análise textual fica no próprio script (dicionário `D`).
+> Inventário de rotas, guards e testes feito em 2026-11-09; atualize à mão conforme os testes forem criados.
 
 | Domínio | Rotas | Com teste dedicado | Escritas sem permissão | Cenários | P0 |
 |---|---:|---:|---:|---:|---:|
