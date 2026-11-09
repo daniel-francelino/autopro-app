@@ -72,7 +72,8 @@ describe.skipIf(!enabled)('migration 097 (Postgres real)', () => {
       expect(psqlFails(`SELECT * FROM public.audit_logs_default`, role)).toMatch(/permission denied/)
       expect(psqlFails(row('22222222-2222-4222-8222-222222222222'), role)).toMatch(/permission denied/)
     }
-  })
+  // 9 chamadas a `docker exec psql`: no Docker Desktop do Windows cada uma leva alguns segundos.
+  }, 120_000)
 
   it('anon/authenticated não executam as funções de manutenção', () => {
     for (const role of ['anon', 'authenticated']) {
