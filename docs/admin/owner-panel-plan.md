@@ -441,7 +441,7 @@ depende da Fase 1 do plano de métricas (atribuição de IA). A Fase 0 **não de
 | 4 | `/admin/feedbacks`: lista com autor e oficina, filtros, detalhe com anexos/vínculos, status, prioridade e resposta | `app/pages/admin/feedbacks.vue`, `server/api/admin/feedbacks/*` |
 | 4 | `/admin/billing`: MRR (total e por plano), novas × canceladas e churn (12 meses), faturas que pedem ação, eventos do Stripe | `server/api/admin/billing/*`, `server/utils/billing-metrics.ts` |
 | 4 | Webhook do Stripe **idempotente** (`stripe_webhook_events`): reentrega de evento processado vira no-op; falha é reprocessada | migration `...102`, `server/utils/stripe-webhook-events.ts` |
-| 5 | `/admin/geo`: bateria fixa de 20 perguntas, registro por motor/busca, taxas semanais, por motor; o texto da pergunta vem do servidor | migration `...103`, `lib/geo/questions.ts`, `server/api/admin/geo/*` |
+| 5 | `/admin/geo`: bateria fixa de 20 perguntas, registro por motor/busca, taxas semanais, por motor; o texto da pergunta vem do servidor (**reformulada em 2026-11-09, ver §13**) | migration `...103`, `lib/geo/questions.ts`, `server/api/admin/geo/*` |
 | 5 | `/admin/system`: Supabase, Stripe, segredo do webhook, Focus NFe (taxa de sucesso 24 h), OneSignal, placas, partição padrão do `audit_logs`; versão; rotas que mais falham; owners com alerta de owner único | `server/api/admin/system.get.ts`, `server/utils/system-checks.ts` |
 | 0c | SQLs de revisão retroativa e guia | `scripts/retroactive-review.sql`, [retroactive-review.md](retroactive-review.md) |
 
@@ -450,8 +450,37 @@ depende da Fase 1 do plano de métricas (atribuição de IA). A Fase 0 **não de
 idempotência do Stripe, `UNIQUE` e `CHECK` do GEO, tabelas novas ilegíveis para `anon`).
 
 **Limites conhecidos**
-- Telas validadas por lint e pelos handlers que elas chamam; **não foram abertas no navegador** (sem E2E autenticado, KF-00).
+- Telas validadas por lint, compilação dos templates e pelos handlers que elas chamam; **não foram abertas no navegador logado** (sem E2E autenticado, KF-00). A conferência visual do §13 depende do preview.
 - MRR usa `subscriptions.monthly_amount`; assinaturas ativas sem valor aparecem em aviso e subestimam o número (o webhook pode não preencher o campo).
 - "Último acesso" do usuário vem do `audit_logs` (31 dias); sem a migration 097 o campo fica vazio.
 - Focus NFe no `/admin/system` não faz chamada externa: usa o resultado das últimas 24 h de `fiscal_integration_logs`.
 - A suspensão acrescenta um embed ao `select` de `resolveOrganizationId`/`requireOrgPermission` (sem query extra); o front não tem tela dedicada para "oficina suspensa": o usuário vê o 403 com a mensagem.
+
+## 13. Ajustes de interface do painel (2026-11-09)
+
+Feitos após a primeira revisão visual do preview.
+
+| Pedido | O que foi feito | Onde |
+|---|---|---|
+| Expandir/recolher a sidebar no cabeçalho da página, como em `/app` | Todas as telas usam `AppPageHeader` (botão de colapso + sino). O botão saiu do cabeçalho da sidebar, que ficou só com o logo. `AppPageHeader` ganhou o slot `leading` (usado pelo "voltar" da ficha da oficina) | `app/components/AppPageHeader.vue`, `app/layouts/admin.vue`, `app/pages/admin/**` |
+| Espaçamento absurdo na sidebar | Causa: `mt-auto` no único grupo de links empurrava o menu para o rodapé. Removido | `app/layouts/admin.vue` |
+| Layout quebrado em Métricas | A página não tinha `UDashboardPanel`, então não rolava dentro do layout. Agora tem painel, cabeçalho e os controles (período, contas internas, atualizar) no header | `app/pages/admin/metrics.vue` |
+| Skeleton nos carregamentos | `AdminSkeleton` (`kpis`, `table`, `card`, `list`) em Sistema, Cobrança, Ficha da oficina, Métricas, Feedbacks, Auditoria e SEO/GEO. As tabelas já tinham skeleton em `AppDataTable` | `app/components/admin/Skeleton.vue` |
+| Status sem ícone, cor errada ou em inglês | `AdminStatusBadge` define ícone, cor e rótulo em português por tipo (assinatura, fatura, webhook, feedback, prioridade, tipo, checagem, resultado, ativo, habilitado, org, HTTP) e substituiu os badges soltos | `app/components/admin/StatusBadge.vue` |
+| Botões grandes / sem ícone | Botões de ação em `sm`/`xs` e com ícone (suspender, reativar, desativar, salvar, cancelar, enviar, nova empresa, PDF, abrir) | `app/pages/admin/**` |
+| Melhorar os estados vazios | `AdminEmptyState` (ícone, título, explicação e, quando útil, atalho) em Sistema, Cobrança, Feedbacks, Ficha da oficina e Métricas; textos novos nas tabelas | `app/components/admin/EmptyState.vue` |
+| SEO e GEO estático | `/admin/geo` passa a abrir com **diagnóstico técnico automático** do site (título, meta description, canonical, `og:image`, idioma, H1, JSON-LD, FAQPage, `robots.txt`, sitemap, `llms.txt`, robôs de IA bloqueados), sem nada para preencher. A bateria de 20 perguntas aparece como roteiro fixo. A medição manual (formulário e taxas) virou um bloco opcional, fechado por padrão | `app/pages/admin/geo.vue`, `server/api/admin/geo/site-check.get.ts`, `server/utils/site-check.ts` |
+
+**Testes:** `tests/unit/server-utils/site-check.test.ts` (12) e a matriz owner (`guard-matrix`) cobrem a rota nova automaticamente (401 sem sessão).
+
+**Mudança em relação ao §5.6:** a tela deixou de depender de registros manuais para ter conteúdo; `geo_probe_runs` continua existindo, mas é só o histórico opcional de medição nas IAs.
+
+## 14. O que ainda falta
+
+- **Conferência visual** das telas do §13 no preview (Métricas, ficha da oficina, SEO e GEO) e um E2E autenticado de owner (KF-00).
+- **Fase 0b (resto):** 109 rotas de escrita sem `requireOrgPermission`; precisa de decisão de produto e inventário dos papéis em produção (§11).
+- **Fase 0c:** executar `scripts/retroactive-review.sql` em produção e arquivar o resultado.
+- **CORS** aberto em `/api/**`; **rate limit** em `lookup-plate`; `organizations/complete-onboarding` sem checagem de papel.
+- **`check-api-guards` no `lint`:** a catraca de `tests/static` já cumpre o papel no `pnpm test`.
+- **Fiscal (`/admin/fiscal/*`) e Organizações:** ainda têm `any` herdado (erros de lint anteriores a este plano).
+- **`site-check`:** só lê a página inicial. Verificar as demais páginas públicas (status HTTP e meta de cada uma do sitemap) seria a próxima evolução.
