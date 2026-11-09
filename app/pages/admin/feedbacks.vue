@@ -6,8 +6,17 @@ definePageMeta({
 useSeoMeta({ title: 'Feedbacks — Admin' })
 
 type Feedback = {
-  id: string, type: string, title: string, description: string | null, status: string, priority: string, created_at: string
-  author_name: string | null, author_email: string | null, organization_id: string | null, organization_name: string | null
+  id: string
+  type: string
+  title: string
+  description: string | null
+  status: string
+  priority: string
+  created_at: string
+  author_name: string | null
+  author_email: string | null
+  organization_id: string | null
+  organization_name: string | null
   feedback_attachments?: Array<{ id: string, file_name: string, file_url: string }>
   feedback_responses?: Array<{ id: string, content: string, is_admin: boolean, created_at: string }> | Array<{ count: number }>
   feedback_entity_links?: Array<{ id: string, entity_type: string, entity_id: string | null, external_url: string | null }>
@@ -41,7 +50,10 @@ const { data, status, refresh } = await useAsyncData('admin-feedbacks', () =>
     }
   }))
 
-watch(filters, () => { page.value = 1; refresh() }, { deep: true })
+watch(filters, () => {
+  page.value = 1
+  refresh()
+}, { deep: true })
 watch(page, () => refresh())
 
 const items = computed(() => data.value?.data ?? [])

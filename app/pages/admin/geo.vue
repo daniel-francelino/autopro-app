@@ -10,8 +10,16 @@ useSeoMeta({ title: 'SEO e GEO — Admin' })
 type Rates = { total: number, mention_rate: number | null, link_rate: number | null, recommendation_rate: number | null, price_accuracy: number | null, fiscal_accuracy: number | null }
 type Summary = { overall: Rates, series: Array<Rates & { week: string, mode: 'search' | 'no_search' }>, by_engine: Array<Rates & { engine: string }> }
 type Run = {
-  question_id: number, engine: GeoEngine, search_enabled: boolean, brand_mentioned: boolean, brand_linked: boolean, recommended: boolean
-  price_correct: boolean | null, fiscal_correct: boolean | null, competitors: string[] | null, notes: string | null
+  question_id: number
+  engine: GeoEngine
+  search_enabled: boolean
+  brand_mentioned: boolean
+  brand_linked: boolean
+  recommended: boolean
+  price_correct: boolean | null
+  fiscal_correct: boolean | null
+  competitors: string[] | null
+  notes: string | null
 }
 
 const toast = useToast()

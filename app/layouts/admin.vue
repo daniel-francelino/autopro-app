@@ -62,18 +62,30 @@ watch(
       :ui="{ footer: 'lg:border-t lg:border-default' }"
     >
       <template #header="{ collapsed }">
-        <NuxtLink
-          to="/admin"
-          class="flex items-center gap-2 rounded-md px-2 py-2 hover:bg-elevated"
+        <div
+          class="flex w-full items-center gap-1"
+          :class="collapsed ? 'flex-col' : 'justify-between'"
         >
-          <AppLogo size="sm" />
-          <span
-            v-if="!collapsed"
-            class="text-xs font-medium text-muted truncate"
+          <NuxtLink
+            to="/admin"
+            class="flex min-w-0 items-center gap-2 rounded-md px-2 py-2 hover:bg-elevated"
           >
-            Admin
-          </span>
-        </NuxtLink>
+            <AppLogo size="sm" />
+            <span
+              v-if="!collapsed"
+              class="text-xs font-medium text-muted truncate"
+            >
+              Admin
+            </span>
+          </NuxtLink>
+
+          <!-- As páginas do admin usam UDashboardNavbar (sem o botão do AppPageHeader): sem isto a barra colapsada não expande. -->
+          <UDashboardSidebarCollapse
+            class="hidden lg:inline-flex"
+            color="neutral"
+            variant="ghost"
+          />
+        </div>
       </template>
 
       <template #default="{ collapsed }">
@@ -101,7 +113,7 @@ watch(
 
     <UDashboardSearch :groups="groups" />
 
-    <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+    <div class="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
       <slot />
     </div>
 

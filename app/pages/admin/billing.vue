@@ -6,7 +6,10 @@ definePageMeta({
 useSeoMeta({ title: 'Cobrança — Admin' })
 
 type Summary = {
-  mrr: number, active_subscriptions: number, trial_subscriptions: number, missing_amount: number
+  mrr: number
+  active_subscriptions: number
+  trial_subscriptions: number
+  missing_amount: number
   by_plan: Array<{ plan: string, subscriptions: number, mrr: number }>
   current_month: { month: string, new: number, cancelled: number, active_at_start: number, churn_rate: number | null } | null
   series: Array<{ month: string, new: number, cancelled: number, active_at_start: number, churn_rate: number | null }>

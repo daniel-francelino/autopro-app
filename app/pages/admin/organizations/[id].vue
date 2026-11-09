@@ -1,4 +1,5 @@
 <script setup lang="ts">
+/* eslint-disable @typescript-eslint/no-explicit-any */
 definePageMeta({
   layout: 'admin',
   middleware: ['owner-only']
@@ -12,9 +13,20 @@ const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 
 type Org = {
-  id: string, name: string, tax_id: string | null, email: string | null, phone: string | null, city: string | null, state: string | null
-  is_active: boolean | null, is_internal: boolean | null, onboarding_completed: boolean | null, created_at: string
-  suspended_at: string | null, suspended_reason: string | null, suspended_by: string | null
+  id: string
+  name: string
+  tax_id: string | null
+  email: string | null
+  phone: string | null
+  city: string | null
+  state: string | null
+  is_active: boolean | null
+  is_internal: boolean | null
+  onboarding_completed: boolean | null
+  created_at: string
+  suspended_at: string | null
+  suspended_reason: string | null
+  suspended_by: string | null
   subscription: { status: string, plan_key: string | null, plan_name: string | null, monthly_amount: number | null, start_date: string | null, next_payment_date: string | null, cancellation_date: string | null } | null
 }
 
