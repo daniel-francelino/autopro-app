@@ -142,12 +142,18 @@ async function reload() {
   fresh.value = false
 }
 
-const summary = computed(() => (tab.value === 'summary' ? response.value?.data as Summary : null))
-const acquisition = computed(() => (tab.value === 'acquisition' ? response.value?.data as Acquisition : null))
-const engagement = computed(() => (tab.value === 'engagement' ? response.value?.data as Engagement : null))
-const funnel = computed(() => (tab.value === 'activation' ? response.value?.data as Funnel : null))
-const accounts = computed(() => (tab.value === 'accounts' ? response.value?.data as Accounts : null))
-const quality = computed(() => (tab.value === 'quality' ? response.value?.data as Quality : null))
+// Ao trocar de aba, `response` ainda guarda os dados da aba anterior até a nova chegar:
+// só entrega os dados quando a resposta é da aba atual (senão a aba nova lê campos inexistentes).
+function dataFor<T>(name: Tab): T | null {
+  const current = response.value
+  return tab.value === name && current?.tab === name && current.data ? current.data as T : null
+}
+const summary = computed(() => dataFor<Summary>('summary'))
+const acquisition = computed(() => dataFor<Acquisition>('acquisition'))
+const engagement = computed(() => dataFor<Engagement>('engagement'))
+const funnel = computed(() => dataFor<Funnel>('activation'))
+const accounts = computed(() => dataFor<Accounts>('accounts'))
+const quality = computed(() => dataFor<Quality>('quality'))
 
 // ── formatação ──────────────────────────────────────────────────────────────
 const number = (value: number) => Number(value ?? 0).toLocaleString('pt-BR')
@@ -366,7 +372,7 @@ const generatedAt = computed(() => (response.value ? new Date(response.value.gen
       :description="errorMessage"
     />
 
-    <div v-else-if="loading && !response" class="py-16 text-center text-muted">
+    <div v-else-if="loading && response?.tab !== tab" class="py-16 text-center text-muted">
       Carregando métricas…
     </div>
 
