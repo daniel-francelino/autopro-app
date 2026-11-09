@@ -2,6 +2,7 @@ import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../../../utils/supabase'
 import { requireAuthUser } from '../../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../../utils/organization'
+import { recordAudit } from '../../../../utils/audit/record'
 import { resolveDefaultCategoryId } from '../../../../utils/financial-category-defaults'
 import { softDeleteFinancialTransaction, FINANCIAL_TRANSACTION_DELETION_SOURCES } from '../../../../utils/financial-transaction-deletion'
 
@@ -152,6 +153,14 @@ export default defineEventHandler(async (event) => {
       .single()
 
     if (updateError) throw new Error(updateError.message)
+
+    recordAudit(event, {
+      resourceType: 'employee_financial_record',
+      resourceId: id,
+      before: { status: existing.status, amount, service_order_id: existing.service_order_id ?? null },
+      after: { status: 'paid', amount, service_order_id: existing.service_order_id ?? null },
+      extra: { financial_transaction_id: transactionId, bank_account_id: bankAccount.id, balance: { from: previousBalance, to: nextBalance } }
+    })
 
     return { success: true, data: item }
   } catch (error: unknown) {

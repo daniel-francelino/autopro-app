@@ -3,6 +3,7 @@ import { getSupabaseAdminClient } from '../../../utils/supabase'
 import { requireAuthUser } from '../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../utils/organization'
 import { releaseServiceOrderCommissions } from '../../../utils/service-order-commissions'
+import { recordAudit } from '../../../utils/audit/record'
 
 /**
  * POST /api/service-orders/:id/generate-commissions
@@ -54,6 +55,21 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'orderId is required' })
   }
 
+  // Antes/depois por funcionário: é o recálculo que, rodado sem critério, já zerou comissões (KF-36).
+  const commissionsByEmployee = async () => {
+    const { data } = await supabase
+      .from('employee_financial_records')
+      .select('employee_id, amount, status')
+      .eq('organization_id', organizationId)
+      .eq('service_order_id', orderId)
+      .eq('record_type', 'commission')
+      .is('deleted_at', null)
+    const out: Record<string, { amount: number, status: string }[]> = {}
+    for (const row of data ?? []) (out[String(row.employee_id)] ||= []).push({ amount: Number(row.amount), status: String(row.status) })
+    return out
+  }
+  const before = await commissionsByEmployee()
+
   const result = await releaseServiceOrderCommissions({
     supabase,
     organizationId,
@@ -64,6 +80,18 @@ export default defineEventHandler(async (event) => {
     reason,
     overrideAction,
     overrideCommissionPlanId
+  })
+
+  recordAudit(event, {
+    resourceType: 'service_order',
+    resourceId: orderId,
+    before,
+    after: await commissionsByEmployee(),
+    extra: {
+      employeeId,
+      reason,
+      override: overrideAction ? { action: overrideAction, commissionPlanId: overrideCommissionPlanId } : null
+    }
   })
 
   return {

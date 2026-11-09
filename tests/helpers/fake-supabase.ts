@@ -78,7 +78,8 @@ export function createFakeSupabase(seed: Record<string, Row[]> = {}): FakeSupaba
       }
       const count = wantCount ? rows.length : null
       if (limitN !== null) rows = rows.slice(0, limitN)
-      return { data: head ? null : rows, error: null, count }
+      // Um banco real devolve cópias: quem lê uma linha antes de um update não pode vê-la mudar depois.
+      return { data: head ? null : rows.map(r => ({ ...r })), error: null, count }
     }
 
     const builder: any = {

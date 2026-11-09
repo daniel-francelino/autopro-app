@@ -92,7 +92,7 @@ watch(
       :collapsible="!isMobile"
       :resizable="!isMobile"
       class="bg-elevated/25"
-      :ui="{ footer: 'lg:border-t lg:border-default' }"
+      :ui="{ body: 'gap-2', footer: 'lg:border-t lg:border-default' }"
     >
       <template #header="{ collapsed }">
         <NuxtLink
@@ -122,7 +122,6 @@ watch(
           :key="index"
           :collapsed="collapsed"
           :items="group"
-          :class="index > 0 ? 'mt-3' : 'mt-2'"
           orientation="vertical"
           tooltip
           popover

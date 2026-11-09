@@ -488,3 +488,67 @@ describe('P41: commission_release_mode="full" é uma via de mão única (por des
     expect(commissions()).toBe(100)
   })
 })
+
+describe('Auditoria (Camada 2): antes/depois nas rotas de comissão e no cancelamento', () => {
+  /** Chama o handler com um contexto de auditoria e devolve o que o plugin anexaria à linha. */
+  async function audited(file: string, params: Record<string, string>, body: unknown = {}, method = 'POST') {
+    const event = fakeEvent({ method, cookies, params, body }) as ReturnType<typeof fakeEvent> & { context: { audit: Record<string, any> } }
+    event.context = { audit: { requestId: 'req-1', startedAt: 0 } }
+    const res = await callHandler(file, event)
+    return { res, audit: event.context.audit }
+  }
+
+  it('pagar comissão: guarda status antes/depois, transação, conta e saldo', async () => {
+    const { res, audit } = await audited(H.commPay, { id: 'cm1' }, { paymentDate: '2026-03-20' })
+    expect(res.status).toBe(200)
+    expect(audit.resourceType).toBe('employee_financial_record')
+    expect(audit.resourceId).toBe('cm1')
+    expect(audit.changes.changed_fields).toContain('status')
+    expect(audit.changes.diff.status).toEqual({ from: 'pending', to: 'paid' })
+    expect(audit.changes.extra).toMatchObject({ bank_account_id: 'acc-a', balance: { from: 1000, to: 900 } })
+  })
+  it('pagar comissão que falha (já paga) não deixa antes/depois', async () => {
+    const { res, audit } = await audited(H.commPay, { id: 'cm-paid' })
+    expect(res.status).toBe(400)
+    expect(audit.changes).toBeUndefined()
+  })
+  it('excluir comissão: guarda o registro excluído (valor, funcionário, OS)', async () => {
+    const { res, audit } = await audited('server/api/reports/commissions/[id].delete.ts', { id: 'cm1' }, {}, 'DELETE')
+    expect(res.status).toBe(200)
+    expect(audit.resourceId).toBe('cm1')
+    expect(audit.changes.before).toMatchObject({ id: 'cm1', amount: 100, employee_id: 'e1', service_order_id: 'o1' })
+  })
+  it('generate-commissions: guarda a comissão por funcionário antes e depois do recálculo', async () => {
+    fake.tables.employee_financial_records = fake.tables.employee_financial_records!.filter(r => r.service_order_id !== 'o1')
+    fake.tables.employee_financial_records!.push({ id: 'old', ...org('org-a'), employee_id: 'e1', record_type: 'commission', amount: 5, status: 'pending', service_order_id: 'o1' })
+    fake.tables.service_order_installments!.push({ id: 'i1', ...org('org-a'), service_order_id: 'o1', kind: 'installment', installment_number: 1, amount: 1000, status: 'paid' })
+    const { res, audit } = await audited(H.generate, { id: 'o1' }, {})
+    expect(res.status).toBe(200)
+    expect(audit.resourceType).toBe('service_order')
+    expect(audit.resourceId).toBe('o1')
+    expect(audit.changes.diff.e1.from).toEqual([{ amount: 5, status: 'pending' }])
+    // o recálculo complementa (R$ 5 já existentes + R$ 95), e o total do funcionário fecha o direito de R$ 100
+    expect(audit.changes.diff.e1.to).toEqual([{ amount: 5, status: 'pending' }, { amount: 95, status: 'pending' }])
+  })
+  it('cancelar OS: guarda o status antes/depois e o que foi recolhido', async () => {
+    const { res, audit } = await audited(H.cancel, { id: 'o1' })
+    expect(res.status).toBe(200)
+    expect(audit.changes.diff.status).toEqual({ from: 'completed', to: 'cancelled' })
+    expect(audit.changes.extra.deleted.commissions).toBeGreaterThan(0)
+  })
+})
+
+describe('KF-44: excluir comissão já paga (reports/commissions/:id DELETE)', () => {
+  // A rota apaga o registro sem olhar o status: a despesa "Salários" e o saldo continuam, e a comissão some do relatório.
+  it.fails('KF-44: comissão já paga não pode ser excluída (I3)', async () => {
+    const res = await post('server/api/reports/commissions/[id].delete.ts', { id: 'cm-paid' }, {}, 'DELETE')
+    expect(res.status).toBe(409)
+    expect(rec('cm-paid')).toBeTruthy()
+  })
+  it('comissão pendente pode ser excluída; de outra organização → 404', async () => {
+    expect((await post('server/api/reports/commissions/[id].delete.ts', { id: 'cm1' }, {}, 'DELETE')).status).toBe(200)
+    expect(rec('cm1')).toBeUndefined()
+    expect((await post('server/api/reports/commissions/[id].delete.ts', { id: 'cm-b' }, {}, 'DELETE')).status).toBe(404)
+    expect(rec('cm-b')).toBeTruthy()
+  })
+})
