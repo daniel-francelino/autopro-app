@@ -20,6 +20,10 @@ Os cinco planos abaixo dependem uns dos outros. Ordem recomendada (revisada em 2
 
 - [Plano do painel do owner (estado atual, segurança e telas)](admin/owner-panel-plan.md)
 
+## Testes
+
+- [Plano de testes automatizados (unidade, endpoints, fluxos e E2E)](testing/test-plan.md)
+
 ## Métricas
 
 - [Plano de métricas de uso do sistema](metrics/usage-metrics-plan.md)

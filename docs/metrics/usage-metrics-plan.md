@@ -1,6 +1,21 @@
 # Plano de implementação — Métricas de uso do sistema (analytics próprio)
 
-> Status: **plano (nada implementado ainda)** · Criado em 2026-11-08 · Revisado em 2026-11-08 (verificado no código)
+> Status: **Fases 1–4 implementadas** (2026-11-09) · Fase 5 parcial (retenção e `is_internal` prontos; resumo semanal e
+> "último acesso" na ficha ainda não) · Criado em 2026-11-08
+>
+> **Para ligar em produção:** (1) aplicar `supabase/migrations/20240101000098_create_analytics_events.sql`;
+> (2) definir `ANALYTICS_HASH_SECRET` (ou `NUXT_ANALYTICS_HASH_SECRET`) — **nunca trocar depois**;
+> (3) definir `NUXT_PUBLIC_ANALYTICS_ENABLED=true` **também no build** (as páginas pré-renderizadas guardam o valor do build);
+> (4) se não houver `pg_cron`, agendar `SELECT public.analytics_purge();` diariamente; (5) opcional: `organizations.is_internal = true`
+> nas contas de teste/demo. Painel em `/admin/metrics` (só owner). Sem a migration o painel mostra o aviso e a coleta só registra
+> um warning no log — o usuário nunca vê erro.
+>
+> **Fora do escopo desta entrega:** a Edge Function `supabase/functions/stripe-webhook` não grava eventos (só o webhook Nitro
+> `server/api/stripe/webhook.post.ts`); país só vem de `x-vercel-ip-country`/`cf-ipcountry` (sem `geoip-country`).
+>
+> **Testes feitos:** funções SQL num Postgres real (PGlite) com dados sintéticos e permissões; coletor e cliente num Chrome real
+> (sessão, atribuição UTM, robôs, rate limit, cabeçalhos); ações do servidor com usuário logado simulado (2xx grava, 4xx não,
+> cache de token, cookie `sb-user` forjado ignorado); painel com todas as abas renderizado com a saída real das funções SQL.
 > Decisão: **sem PostHog**. Telemetria própria, gravada no Supabase, no mesmo modelo do painel `/moderation/metrics` da
 > **Kult** (`../kult`). Este documento mapeia o que a Kult faz, o que portar como está e o que muda por o AutoPro ser um SaaS
 > **B2B** (a unidade que importa é a **oficina**, não a pessoa).
