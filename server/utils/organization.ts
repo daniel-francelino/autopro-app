@@ -3,6 +3,13 @@ import { getSupabaseAdminClient } from './supabase'
 import { setAuditContext } from './audit/context'
 import { isEmployeeAccessRevoked, syncEmployeeLinkedUserAccess } from './employee-access'
 
+/** `true` quando o owner da plataforma suspendeu a oficina (organizations.suspended_at). */
+export function isOrganizationSuspended(profile: { organizations?: unknown } | null | undefined): boolean {
+  const org = profile?.organizations as { suspended_at?: string | null } | { suspended_at?: string | null }[] | null | undefined
+  const row = Array.isArray(org) ? org[0] : org
+  return Boolean(row?.suspended_at)
+}
+
 /**
  * Resolves the organization_id for the authenticated user.
  * Queries user_profiles to find the linked organization.
@@ -12,7 +19,7 @@ export async function resolveOrganizationId(event: H3Event, userId: string) {
 
   const { data: profile, error } = await supabase
     .from('user_profiles')
-    .select('organization_id, employee_id, is_active')
+    .select('organization_id, employee_id, is_active, organizations(suspended_at)')
     .eq('user_id', userId)
     .maybeSingle()
 
@@ -22,6 +29,10 @@ export async function resolveOrganizationId(event: H3Event, userId: string) {
 
   if (profile?.is_active === false) {
     throw createError({ statusCode: 403, statusMessage: 'Usuário sem acesso ativo à organização' })
+  }
+
+  if (isOrganizationSuspended(profile)) {
+    throw createError({ statusCode: 403, statusMessage: 'Oficina suspensa. Entre em contato com o suporte.' })
   }
 
   if (profile?.employee_id && profile.organization_id) {

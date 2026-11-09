@@ -7,6 +7,7 @@ import { ensureDefaultFinancialCategories } from '../../utils/financial-category
 import { trackServerEvent, type ServerEventOptions } from '../../utils/analytics/record'
 import type { AnalyticsEvent } from '../../../lib/analytics/events'
 import { setAuditContext } from '../../utils/audit/context'
+import { claimStripeEvent, finishStripeEvent } from '../../utils/stripe-webhook-events'
 
 // Telemetria: o webhook não tem sessão, então grava com session_id='server' (sem tráfego/plataforma/país).
 type Track = (name: AnalyticsEvent, options?: ServerEventOptions) => void
@@ -84,7 +85,14 @@ export default defineEventHandler(async (event: H3Event) => {
     trackServerEvent(event, name, { ...options, noSession: true })
   }
 
+  // Idempotência: reentrega de um evento já processado não repete os efeitos (cobrança, e-mails, métricas).
+  const claim = await claimStripeEvent(supabase, stripeEvent, stripeEvent)
+  if (claim.kind === 'duplicate') {
+    return { received: true, duplicate: true }
+  }
+
   // ── Route events ──────────────────────────────────────────────────────────
+  let handled = true
   try {
     switch (stripeEvent.type) {
       case 'checkout.session.completed':
@@ -110,11 +118,20 @@ export default defineEventHandler(async (event: H3Event) => {
 
       default:
         // Ignore unhandled event types
+        handled = false
         break
     }
   } catch (err) {
     console.error(`[stripe/webhook] Error processing event ${stripeEvent.type}:`, err)
+    if (claim.tracked) await finishStripeEvent(supabase, stripeEvent.id, { status: 'failed', errorMessage: (err as Error)?.message })
     throw createError({ statusCode: 500, statusMessage: 'Webhook processing failed' })
+  }
+
+  if (claim.tracked) {
+    await finishStripeEvent(supabase, stripeEvent.id, {
+      status: handled ? 'processed' : 'ignored',
+      organizationId: event.context.audit?.organizationId ?? null
+    })
   }
 
   return { received: true }

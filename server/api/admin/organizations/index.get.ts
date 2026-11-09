@@ -25,7 +25,7 @@ export default defineEventHandler(async (event) => {
 
   let dbQuery = supabase
     .from('organizations')
-    .select('id, name, tax_id, email, phone, created_at, is_active', { count: 'exact' })
+    .select('id, name, tax_id, email, phone, created_at, is_active, suspended_at', { count: 'exact' })
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .range(offset, offset + pageSize - 1)

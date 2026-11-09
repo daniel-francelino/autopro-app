@@ -24,6 +24,10 @@ const links = computed<NavigationMenuItem[][]>(() => [[
   item('Usuários', 'i-lucide-users', '/admin/users'),
   item('Métricas de uso', 'i-lucide-chart-line', '/admin/metrics'),
   item('Auditoria', 'i-lucide-clipboard-list', '/admin/audit'),
+  item('Cobrança', 'i-lucide-credit-card', '/admin/billing'),
+  item('Feedbacks', 'i-lucide-message-square', '/admin/feedbacks'),
+  item('SEO e GEO', 'i-lucide-sparkles', '/admin/geo'),
+  item('Sistema', 'i-lucide-server', '/admin/system'),
   item('Fiscal empresas', 'i-lucide-file-stack', '/admin/fiscal/companies'),
   item('Fiscal logs', 'i-lucide-scroll-text', '/admin/fiscal/logs')
 ]])

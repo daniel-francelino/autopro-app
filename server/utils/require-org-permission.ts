@@ -2,6 +2,7 @@ import { createError } from 'h3'
 import { getSupabaseAdminClient } from './supabase'
 import { resolveOrgLicense } from './license'
 import { setAuditContext } from './audit/context'
+import { isOrganizationSuspended } from './organization'
 import type { H3Event } from 'h3'
 
 // Mirrors ACTION_PLAN_REQUIREMENTS in app/composables/usePlans.ts — keep in sync.
@@ -43,7 +44,7 @@ export async function requireOrgPermission(userId: string, actionCode: string, e
 
   const { data: profile, error: profileError } = await supabase
     .from('user_profiles')
-    .select('organization_id, role_id, is_owner, is_active')
+    .select('organization_id, role_id, is_owner, is_active, organizations(suspended_at)')
     .eq('user_id', userId)
     .maybeSingle()
 
@@ -58,6 +59,10 @@ export async function requireOrgPermission(userId: string, actionCode: string, e
   const organizationId = profile.organization_id as string | null
   if (!organizationId) {
     throw createError({ statusCode: 403, statusMessage: 'Usuário não vinculado a uma organização.' })
+  }
+
+  if (isOrganizationSuspended(profile)) {
+    throw createError({ statusCode: 403, statusMessage: 'Oficina suspensa. Entre em contato com o suporte.' })
   }
 
   setAuditContext(event, { organizationId })

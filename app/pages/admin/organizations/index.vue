@@ -47,7 +47,8 @@ const columns = [
   { accessorKey: 'email', header: 'E-mail', enableSorting: false },
   { accessorKey: 'user_count', header: 'Usuários', enableSorting: false },
   { accessorKey: 'is_active', header: 'Status', enableSorting: false },
-  { accessorKey: 'created_at', header: 'Criado em', enableSorting: false }
+  { accessorKey: 'created_at', header: 'Criado em', enableSorting: false },
+  { accessorKey: 'detail', header: '', enableSorting: false }
 ]
 
 function formatDate(val: string | null) {
@@ -93,6 +94,26 @@ function formatDate(val: string | null) {
           >
             {{ row.original.is_active ? "Ativa" : "Inativa" }}
           </UBadge>
+          <UBadge
+            v-if="row.original.suspended_at"
+            color="warning"
+            variant="subtle"
+            size="sm"
+            class="ml-1"
+          >
+            Suspensa
+          </UBadge>
+        </template>
+
+        <template #detail-cell="{ row }">
+          <UButton
+            :to="`/admin/organizations/${row.original.id}`"
+            icon="i-lucide-eye"
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            aria-label="Abrir ficha da oficina"
+          />
         </template>
 
         <template #created_at-cell="{ row }">

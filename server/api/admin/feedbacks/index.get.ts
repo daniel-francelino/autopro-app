@@ -38,8 +38,32 @@ export default eventHandler(async (event) => {
     throw createError({ statusCode: 500, statusMessage: 'Falha ao buscar feedbacks', data: error.message })
   }
 
+  // Autor e oficina (feedbacks só guarda user_id).
+  const rows = (data ?? []) as Array<Record<string, unknown>>
+  const userIds = [...new Set(rows.map(r => r.user_id).filter((v): v is string => typeof v === 'string'))]
+  const authors = new Map<string, { display_name: string | null, email: string | null, organization_id: string | null }>()
+  const orgNames = new Map<string, string>()
+  if (userIds.length) {
+    const { data: profiles } = await supabase.from('user_profiles').select('user_id, display_name, email, organization_id').in('user_id', userIds)
+    for (const p of profiles ?? []) authors.set(p.user_id as string, p as never)
+    const orgIds = [...new Set([...authors.values()].map(a => a.organization_id).filter((v): v is string => !!v))]
+    if (orgIds.length) {
+      const { data: orgs } = await supabase.from('organizations').select('id, name').in('id', orgIds)
+      for (const o of orgs ?? []) orgNames.set(o.id as string, o.name as string)
+    }
+  }
+
   return {
-    data: data ?? [],
+    data: rows.map((row) => {
+      const author = typeof row.user_id === 'string' ? authors.get(row.user_id) : undefined
+      return {
+        ...row,
+        author_name: author?.display_name ?? null,
+        author_email: author?.email ?? null,
+        organization_id: author?.organization_id ?? null,
+        organization_name: author?.organization_id ? orgNames.get(author.organization_id) ?? null : null
+      }
+    }),
     total: count ?? 0,
     page: params.page,
     pageSize: params.pageSize

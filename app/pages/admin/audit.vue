@@ -63,6 +63,7 @@ const filters = reactive({
   actorEmail: '',
   action: '',
   requestId: '',
+  organizationId: String(useRoute().query.organizationId ?? ''),
   outcome: [] as string[]
 })
 const page = ref(1)
@@ -72,7 +73,7 @@ const shortcuts: Array<{ label: string, apply: () => void }> = [
   { label: 'Falhas de hoje', apply: () => Object.assign(filters, { period: 24 * HOUR, outcome: ['denied', 'invalid', 'error'], action: '' }) },
   { label: 'Tentativas negadas', apply: () => Object.assign(filters, { period: 7 * 24 * HOUR, outcome: ['denied'], action: '' }) },
   { label: 'Erros 5xx (24 h)', apply: () => Object.assign(filters, { period: 24 * HOUR, outcome: ['error'], action: '' }) },
-  { label: 'Limpar', apply: () => Object.assign(filters, { period: 24 * HOUR, outcome: [], action: '', actorEmail: '', requestId: '' }) }
+  { label: 'Limpar', apply: () => Object.assign(filters, { period: 24 * HOUR, outcome: [], action: '', actorEmail: '', requestId: '', organizationId: '' }) }
 ]
 
 const { data, status, error, refresh } = await useAsyncData('admin-audit-logs', () => {
@@ -85,6 +86,7 @@ const { data, status, error, refresh } = await useAsyncData('admin-audit-logs', 
       actorEmail: filters.actorEmail || undefined,
       action: filters.action || undefined,
       requestId: filters.requestId || undefined,
+      organizationId: filters.organizationId || undefined,
       outcome: filters.outcome.length ? filters.outcome.join(',') : undefined,
       page: page.value,
       pageSize
