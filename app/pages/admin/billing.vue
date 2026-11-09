@@ -45,7 +45,12 @@ const chartSeries = computed(() => [
     <UDashboardNavbar title="Cobrança" />
 
     <div class="p-6 overflow-auto space-y-6">
-      <UAlert v-if="error" color="error" variant="subtle" title="Não foi possível carregar a cobrança" />
+      <UAlert
+        v-if="error"
+        color="error"
+        variant="subtle"
+        title="Não foi possível carregar a cobrança"
+      />
 
       <template v-else-if="summary">
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -66,10 +71,22 @@ const chartSeries = computed(() => [
         <div class="grid gap-4 lg:grid-cols-2">
           <UPageCard variant="subtle" title="MRR por plano">
             <table class="w-full text-sm">
-              <thead class="text-left text-muted"><tr><th class="py-1">Plano</th><th>Assinaturas</th><th class="text-right">MRR</th></tr></thead>
+              <thead class="text-left text-muted">
+                <tr>
+                  <th class="py-1">
+                    Plano
+                  </th><th>Assinaturas</th><th class="text-right">
+                    MRR
+                  </th>
+                </tr>
+              </thead>
               <tbody>
                 <tr v-for="p in summary.by_plan" :key="p.plan" class="border-t border-default">
-                  <td class="py-2">{{ p.plan }}</td><td>{{ p.subscriptions }}</td><td class="text-right tabular-nums">{{ money(p.mrr) }}</td>
+                  <td class="py-2">
+                    {{ p.plan }}
+                  </td><td>{{ p.subscriptions }}</td><td class="text-right tabular-nums">
+                    {{ money(p.mrr) }}
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -82,23 +99,47 @@ const chartSeries = computed(() => [
 
         <UPageCard variant="subtle" title="Faturas que pedem ação">
           <table class="w-full text-sm">
-            <thead class="text-left text-muted"><tr><th class="py-1">Fatura</th><th>Cliente</th><th>Valor</th><th>Status</th><th>Vencimento</th><th>Tentativas</th><th /></tr></thead>
+            <thead class="text-left text-muted">
+              <tr>
+                <th class="py-1">
+                  Fatura
+                </th><th>Cliente</th><th>Valor</th><th>Status</th><th>Vencimento</th><th>Tentativas</th><th />
+              </tr>
+            </thead>
             <tbody>
               <tr v-for="inv in summary.invoices_needing_action" :key="inv.id" class="border-t border-default">
-                <td class="py-2">{{ inv.invoice_number || inv.id.slice(0, 8) }}</td>
+                <td class="py-2">
+                  {{ inv.invoice_number || inv.id.slice(0, 8) }}
+                </td>
                 <td>
                   <NuxtLink v-if="inv.organization_id" :to="`/admin/organizations/${inv.organization_id}`" class="underline">{{ inv.user_email || 'Oficina' }}</NuxtLink>
                   <span v-else>{{ inv.user_email || '—' }}</span>
                 </td>
-                <td class="tabular-nums">{{ money(inv.amount) }}</td>
-                <td><UBadge size="sm" variant="subtle" color="warning">{{ inv.status }}</UBadge></td>
+                <td class="tabular-nums">
+                  {{ money(inv.amount) }}
+                </td>
+                <td>
+                  <UBadge size="sm" variant="subtle" color="warning">
+                    {{ inv.status }}
+                  </UBadge>
+                </td>
                 <td>{{ fmt(inv.due_date) }}</td>
                 <td>{{ inv.attempt_count ?? '—' }}</td>
-                <td><a v-if="inv.hosted_invoice_url" :href="inv.hosted_invoice_url" target="_blank" rel="noopener" class="underline">abrir</a></td>
+                <td>
+                  <a
+                    v-if="inv.hosted_invoice_url"
+                    :href="inv.hosted_invoice_url"
+                    target="_blank"
+                    rel="noopener"
+                    class="underline"
+                  >abrir</a>
+                </td>
               </tr>
             </tbody>
           </table>
-          <p v-if="!summary.invoices_needing_action.length" class="text-sm text-muted">Nenhuma fatura pendente ou com falha.</p>
+          <p v-if="!summary.invoices_needing_action.length" class="text-sm text-muted">
+            Nenhuma fatura pendente ou com falha.
+          </p>
         </UPageCard>
       </template>
 
@@ -110,15 +151,34 @@ const chartSeries = computed(() => [
           value-key="value"
           label-key="label"
         />
-        <UAlert v-if="webhookError" color="warning" variant="subtle" :title="(webhookError as { statusMessage?: string }).statusMessage || 'Eventos indisponíveis'" />
+        <UAlert
+          v-if="webhookError"
+          color="warning"
+          variant="subtle"
+          :title="(webhookError as { statusMessage?: string }).statusMessage || 'Eventos indisponíveis'"
+        />
         <table v-else class="w-full text-sm">
-          <thead class="text-left text-muted"><tr><th class="py-1">Recebido</th><th>Evento</th><th>Status</th><th>Erro</th></tr></thead>
+          <thead class="text-left text-muted">
+            <tr>
+              <th class="py-1">
+                Recebido
+              </th><th>Evento</th><th>Status</th><th>Erro</th>
+            </tr>
+          </thead>
           <tbody>
             <tr v-for="ev in webhooks?.data ?? []" :key="ev.id" class="border-t border-default">
-              <td class="py-2 whitespace-nowrap">{{ fmt(ev.received_at) }}</td>
+              <td class="py-2 whitespace-nowrap">
+                {{ fmt(ev.received_at) }}
+              </td>
               <td>{{ ev.type }}<span class="block text-xs text-muted">{{ ev.id }}</span></td>
-              <td><UBadge size="sm" variant="subtle" :color="statusColor[ev.status]">{{ ev.status }}</UBadge></td>
-              <td class="text-xs text-error">{{ ev.error_message || '' }}</td>
+              <td>
+                <UBadge size="sm" variant="subtle" :color="statusColor[ev.status]">
+                  {{ ev.status }}
+                </UBadge>
+              </td>
+              <td class="text-xs text-error">
+                {{ ev.error_message || '' }}
+              </td>
             </tr>
           </tbody>
         </table>

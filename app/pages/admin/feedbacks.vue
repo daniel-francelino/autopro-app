@@ -114,9 +114,24 @@ const responses = computed(() => (detail.value?.feedback_responses ?? []) as Arr
 
     <div class="p-6 overflow-auto space-y-4">
       <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <USelect v-model="filters.type" :items="TYPES" value-key="value" label-key="label" />
-        <USelect v-model="filters.status" :items="STATUSES" value-key="value" label-key="label" />
-        <USelect v-model="filters.priority" :items="PRIORITIES" value-key="value" label-key="label" />
+        <USelect
+          v-model="filters.type"
+          :items="TYPES"
+          value-key="value"
+          label-key="label"
+        />
+        <USelect
+          v-model="filters.status"
+          :items="STATUSES"
+          value-key="value"
+          label-key="label"
+        />
+        <USelect
+          v-model="filters.priority"
+          :items="PRIORITIES"
+          value-key="value"
+          label-key="label"
+        />
         <UInput v-model.trim="filters.search" icon="i-lucide-search" placeholder="Buscar no título ou texto" />
       </div>
 
@@ -141,58 +156,125 @@ const responses = computed(() => (detail.value?.feedback_responses ?? []) as Arr
           <span v-else class="text-muted">—</span>
         </template>
         <template #priority-cell="{ row }">
-          <UBadge size="sm" variant="subtle" :color="priorityColor[String(row.original.priority)]">{{ row.original.priority }}</UBadge>
+          <UBadge size="sm" variant="subtle" :color="priorityColor[String(row.original.priority)]">
+            {{ row.original.priority }}
+          </UBadge>
         </template>
         <template #detail-cell="{ row }">
-          <UButton icon="i-lucide-eye" size="xs" color="neutral" variant="ghost" aria-label="Abrir" @click="openDetail(String(row.original.id))" />
+          <UButton
+            icon="i-lucide-eye"
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            aria-label="Abrir"
+            @click="openDetail(String(row.original.id))"
+          />
         </template>
       </AppDataTable>
     </div>
 
     <USlideover v-model:open="open" title="Feedback" :ui="{ content: 'max-w-2xl' }">
       <template #body>
-        <div v-if="!detail" class="text-sm text-muted">Carregando...</div>
+        <div v-if="!detail" class="text-sm text-muted">
+          Carregando...
+        </div>
         <div v-else class="space-y-4">
           <div>
-            <h3 class="font-semibold">{{ detail.title }}</h3>
+            <h3 class="font-semibold">
+              {{ detail.title }}
+            </h3>
             <p class="text-xs text-muted">
               {{ detail.author_name || detail.author_email || 'Autor desconhecido' }}
-              <template v-if="detail.organization_name"> · <NuxtLink :to="`/admin/organizations/${detail.organization_id}`" class="underline">{{ detail.organization_name }}</NuxtLink></template>
+              <template v-if="detail.organization_name">
+                · <NuxtLink :to="`/admin/organizations/${detail.organization_id}`" class="underline">{{ detail.organization_name }}</NuxtLink>
+              </template>
               · {{ fmt(detail.created_at) }}
             </p>
-            <p class="mt-2 text-sm whitespace-pre-wrap">{{ detail.description }}</p>
+            <p class="mt-2 text-sm whitespace-pre-wrap">
+              {{ detail.description }}
+            </p>
           </div>
 
           <div class="grid grid-cols-2 gap-3">
-            <USelect :model-value="detail.status" :items="STATUS_ONLY" value-key="value" label-key="label" :disabled="busy" @update:model-value="update({ status: String($event) })" />
-            <USelect :model-value="detail.priority" :items="PRIORITY_ONLY" value-key="value" label-key="label" :disabled="busy" @update:model-value="update({ priority: String($event) })" />
+            <USelect
+              :model-value="detail.status"
+              :items="STATUS_ONLY"
+              value-key="value"
+              label-key="label"
+              :disabled="busy"
+              @update:model-value="update({ status: String($event) })"
+            />
+            <USelect
+              :model-value="detail.priority"
+              :items="PRIORITY_ONLY"
+              value-key="value"
+              label-key="label"
+              :disabled="busy"
+              @update:model-value="update({ priority: String($event) })"
+            />
           </div>
 
           <div v-if="detail.feedback_attachments?.length">
-            <p class="text-sm font-medium mb-1">Anexos</p>
+            <p class="text-sm font-medium mb-1">
+              Anexos
+            </p>
             <ul class="text-sm space-y-1">
-              <li v-for="file in detail.feedback_attachments" :key="file.id"><a :href="file.file_url" target="_blank" rel="noopener" class="underline">{{ file.file_name }}</a></li>
+              <li v-for="file in detail.feedback_attachments" :key="file.id">
+                <a
+                  :href="file.file_url"
+                  target="_blank"
+                  rel="noopener"
+                  class="underline"
+                >{{ file.file_name }}</a>
+              </li>
             </ul>
           </div>
 
           <div v-if="detail.feedback_entity_links?.length">
-            <p class="text-sm font-medium mb-1">Vínculos</p>
+            <p class="text-sm font-medium mb-1">
+              Vínculos
+            </p>
             <ul class="text-sm space-y-1">
-              <li v-for="link in detail.feedback_entity_links" :key="link.id">{{ link.entity_type }} {{ link.entity_id || '' }} <a v-if="link.external_url" :href="link.external_url" target="_blank" rel="noopener" class="underline">abrir</a></li>
+              <li v-for="link in detail.feedback_entity_links" :key="link.id">
+                {{ link.entity_type }} {{ link.entity_id || '' }} <a
+                  v-if="link.external_url"
+                  :href="link.external_url"
+                  target="_blank"
+                  rel="noopener"
+                  class="underline"
+                >abrir</a>
+              </li>
             </ul>
           </div>
 
           <div>
-            <p class="text-sm font-medium mb-1">Respostas</p>
+            <p class="text-sm font-medium mb-1">
+              Respostas
+            </p>
             <ul class="space-y-2">
               <li v-for="r in responses" :key="r.id" class="rounded bg-elevated p-2 text-sm">
                 <span class="text-xs text-muted">{{ r.is_admin ? 'Plataforma' : 'Usuário' }} · {{ fmt(r.created_at) }}</span>
-                <p class="whitespace-pre-wrap">{{ r.content }}</p>
+                <p class="whitespace-pre-wrap">
+                  {{ r.content }}
+                </p>
               </li>
             </ul>
-            <p v-if="!responses.length" class="text-sm text-muted">Sem respostas.</p>
-            <UTextarea v-model="reply" class="w-full mt-2" :rows="3" placeholder="Responder ao usuário" />
-            <UButton class="mt-2" :loading="busy" :disabled="!reply.trim()" label="Enviar resposta" @click="sendReply" />
+            <p v-if="!responses.length" class="text-sm text-muted">
+              Sem respostas.
+            </p>
+            <UTextarea
+              v-model="reply"
+              class="w-full mt-2"
+              :rows="3"
+              placeholder="Responder ao usuário"
+            />
+            <UButton
+              class="mt-2"
+              :loading="busy"
+              :disabled="!reply.trim()"
+              label="Enviar resposta"
+              @click="sendReply"
+            />
           </div>
         </div>
       </template>

@@ -98,11 +98,22 @@ const yesNo = (value: boolean | null) => (value === null ? '—' : value ? 'sim'
         description="Citação e recomendação nas respostas das IAs, registradas à mão toda semana com a bateria fixa de 20 perguntas. Uma citação de página não é recomendação do produto. Tráfego vindo de IA e robôs está em Métricas > Aquisição."
       >
         <template #actions>
-          <UButton to="/admin/metrics" size="xs" color="neutral" variant="outline" label="Abrir métricas" />
+          <UButton
+            to="/admin/metrics"
+            size="xs"
+            color="neutral"
+            variant="outline"
+            label="Abrir métricas"
+          />
         </template>
       </UAlert>
 
-      <UAlert v-if="summaryError" color="warning" variant="subtle" :title="(summaryError as { statusMessage?: string }).statusMessage || 'Bateria indisponível'" />
+      <UAlert
+        v-if="summaryError"
+        color="warning"
+        variant="subtle"
+        :title="(summaryError as { statusMessage?: string }).statusMessage || 'Bateria indisponível'"
+      />
 
       <div v-else-if="summary" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <AdminMetricsKpi label="Menção" :value="pct(summary.overall.mention_rate)" :hint="`${summary.overall.total} registros (12 semanas)`" />
@@ -115,8 +126,19 @@ const yesNo = (value: boolean | null) => (value === null ? '—' : value ? 'sim'
       <UPageCard variant="subtle" title="Registrar resposta">
         <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
           <UInput v-model="form.run_date" type="date" />
-          <USelect v-model="form.question_id" :items="questionItems" value-key="value" label-key="label" class="lg:col-span-2" />
-          <USelect v-model="form.engine" :items="engineItems" value-key="value" label-key="label" />
+          <USelect
+            v-model="form.question_id"
+            :items="questionItems"
+            value-key="value"
+            label-key="label"
+            class="lg:col-span-2"
+          />
+          <USelect
+            v-model="form.engine"
+            :items="engineItems"
+            value-key="value"
+            label-key="label"
+          />
         </div>
         <div class="flex flex-wrap gap-4 mt-3 text-sm">
           <USwitch v-model="form.search_enabled" label="Busca ativa" />
@@ -125,36 +147,76 @@ const yesNo = (value: boolean | null) => (value === null ? '—' : value ? 'sim'
           <USwitch v-model="form.recommended" label="Recomendou" />
         </div>
         <div class="grid gap-3 md:grid-cols-2 lg:grid-cols-4 mt-3">
-          <USelect v-model="form.price_correct" :items="tri" value-key="value" label-key="label" />
-          <USelect v-model="form.fiscal_correct" :items="tri" value-key="value" label-key="label" />
+          <USelect
+            v-model="form.price_correct"
+            :items="tri"
+            value-key="value"
+            label-key="label"
+          />
+          <USelect
+            v-model="form.fiscal_correct"
+            :items="tri"
+            value-key="value"
+            label-key="label"
+          />
           <UInput v-model="form.competitors" placeholder="Concorrentes citados (vírgula)" class="lg:col-span-2" />
         </div>
-        <UTextarea v-model="form.notes" :rows="2" placeholder="Observações / URLs citadas" class="w-full mt-3" />
-        <p class="text-xs text-muted mt-2">Pergunta: {{ questionText(Number(form.question_id)) }}</p>
-        <UButton class="mt-3" :loading="saving" label="Salvar e ir para a próxima pergunta" @click="save" />
+        <UTextarea
+          v-model="form.notes"
+          :rows="2"
+          placeholder="Observações / URLs citadas"
+          class="w-full mt-3"
+        />
+        <p class="text-xs text-muted mt-2">
+          Pergunta: {{ questionText(Number(form.question_id)) }}
+        </p>
+        <UButton
+          class="mt-3"
+          :loading="saving"
+          label="Salvar e ir para a próxima pergunta"
+          @click="save"
+        />
       </UPageCard>
 
       <UPageCard v-if="summary" variant="subtle" title="Semana a semana">
         <table class="w-full text-sm">
-          <thead class="text-left text-muted"><tr><th class="py-1">Semana</th><th>Modo</th><th>Registros</th><th>Menção</th><th>Link</th><th>Recomendação</th><th>Preço</th><th>Fiscal</th></tr></thead>
+          <thead class="text-left text-muted">
+            <tr>
+              <th class="py-1">
+                Semana
+              </th><th>Modo</th><th>Registros</th><th>Menção</th><th>Link</th><th>Recomendação</th><th>Preço</th><th>Fiscal</th>
+            </tr>
+          </thead>
           <tbody>
             <tr v-for="row in summary.series" :key="`${row.week}${row.mode}`" class="border-t border-default tabular-nums">
-              <td class="py-2">{{ row.week }}</td>
+              <td class="py-2">
+                {{ row.week }}
+              </td>
               <td>{{ row.mode === 'search' ? 'com busca' : 'sem busca' }}</td>
               <td>{{ row.total }}</td><td>{{ pct(row.mention_rate) }}</td><td>{{ pct(row.link_rate) }}</td>
               <td>{{ pct(row.recommendation_rate) }}</td><td>{{ pct(row.price_accuracy) }}</td><td>{{ pct(row.fiscal_accuracy) }}</td>
             </tr>
           </tbody>
         </table>
-        <p v-if="!summary.series.length" class="text-sm text-muted">Nenhum registro ainda. Rode a bateria e cadastre acima.</p>
+        <p v-if="!summary.series.length" class="text-sm text-muted">
+          Nenhum registro ainda. Rode a bateria e cadastre acima.
+        </p>
       </UPageCard>
 
       <UPageCard v-if="summary?.by_engine.length" variant="subtle" title="Por motor">
         <table class="w-full text-sm">
-          <thead class="text-left text-muted"><tr><th class="py-1">Motor</th><th>Registros</th><th>Menção</th><th>Link</th><th>Recomendação</th></tr></thead>
+          <thead class="text-left text-muted">
+            <tr>
+              <th class="py-1">
+                Motor
+              </th><th>Registros</th><th>Menção</th><th>Link</th><th>Recomendação</th>
+            </tr>
+          </thead>
           <tbody>
             <tr v-for="row in summary.by_engine" :key="row.engine" class="border-t border-default tabular-nums">
-              <td class="py-2">{{ GEO_ENGINE_LABEL[row.engine as GeoEngine] ?? row.engine }}</td>
+              <td class="py-2">
+                {{ GEO_ENGINE_LABEL[row.engine as GeoEngine] ?? row.engine }}
+              </td>
               <td>{{ row.total }}</td><td>{{ pct(row.mention_rate) }}</td><td>{{ pct(row.link_rate) }}</td><td>{{ pct(row.recommendation_rate) }}</td>
             </tr>
           </tbody>
@@ -163,10 +225,18 @@ const yesNo = (value: boolean | null) => (value === null ? '—' : value ? 'sim'
 
       <UPageCard v-if="lastRuns?.data.length" variant="subtle" :title="`Última rodada (${lastRuns.date})`">
         <table class="w-full text-sm">
-          <thead class="text-left text-muted"><tr><th class="py-1">#</th><th>Motor</th><th>Busca</th><th>Menção</th><th>Link</th><th>Recomendou</th><th>Preço</th><th>Fiscal</th></tr></thead>
+          <thead class="text-left text-muted">
+            <tr>
+              <th class="py-1">
+                #
+              </th><th>Motor</th><th>Busca</th><th>Menção</th><th>Link</th><th>Recomendou</th><th>Preço</th><th>Fiscal</th>
+            </tr>
+          </thead>
           <tbody>
             <tr v-for="r in lastRuns.data" :key="`${r.question_id}${r.engine}${r.search_enabled}`" class="border-t border-default">
-              <td class="py-2" :title="questionText(r.question_id)">{{ r.question_id }}</td>
+              <td class="py-2" :title="questionText(r.question_id)">
+                {{ r.question_id }}
+              </td>
               <td>{{ GEO_ENGINE_LABEL[r.engine] }}</td><td>{{ r.search_enabled ? 'sim' : 'não' }}</td>
               <td>{{ yesNo(r.brand_mentioned) }}</td><td>{{ yesNo(r.brand_linked) }}</td><td>{{ yesNo(r.recommended) }}</td>
               <td>{{ yesNo(r.price_correct) }}</td><td>{{ yesNo(r.fiscal_correct) }}</td>
