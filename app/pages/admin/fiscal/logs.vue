@@ -43,17 +43,11 @@ function formatDate(val: string | null) {
   return new Date(val).toLocaleString('pt-BR')
 }
 
-function statusColor(code: number | null) {
-  if (!code) return 'neutral'
-  if (code >= 500) return 'error'
-  if (code >= 400) return 'warning'
-  return 'success'
-}
 </script>
 
 <template>
   <UDashboardPanel>
-    <UDashboardNavbar title="Logs de Integração Fiscal" />
+    <AppPageHeader title="Logs de Integração Fiscal" />
     <div class="p-6 space-y-8 overflow-auto">
       <AppDataTable
         v-model:page="page"
@@ -63,8 +57,8 @@ function statusColor(code: number | null) {
         :page-size="pageSize"
         :total="total"
         empty-icon="i-lucide-scroll-text"
-        empty-title="Nenhum log encontrado"
-        empty-description="Os logs de integração fiscal aparecerão aqui."
+        empty-title="Nenhum log fiscal"
+        empty-description="Cada chamada ao provedor de NFS-e fica registrada aqui. Ainda não houve nenhuma."
       >
         <template #created_at-cell="{ row }">
           <span class="font-mono text-xs">{{
@@ -73,13 +67,7 @@ function statusColor(code: number | null) {
         </template>
 
         <template #response_status-cell="{ row }">
-          <UBadge
-            :color="statusColor(Number(row.original.response_status) || null)"
-            variant="subtle"
-            size="sm"
-          >
-            {{ row.original.response_status ?? "—" }}
-          </UBadge>
+          <AdminStatusBadge kind="http" :value="row.original.response_status as number | null" />
         </template>
 
         <template #request_url-cell="{ row }">

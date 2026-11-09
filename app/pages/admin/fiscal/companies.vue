@@ -296,7 +296,7 @@ function certificateColor(val: string | null) {
 
 <template>
   <UDashboardPanel>
-    <UDashboardNavbar title="Empresas Focus NFe" />
+    <AppPageHeader title="Empresas Focus NFe" />
     <div class="p-6 space-y-8 overflow-auto">
       <AppDataTable
         v-model:search-term="searchCnpj"
@@ -310,10 +310,14 @@ function certificateColor(val: string | null) {
         search-placeholder="Buscar por CNPJ..."
         empty-icon="i-lucide-building"
         empty-title="Nenhuma empresa encontrada"
-        empty-description="Nenhuma empresa Focus NFe foi cadastrada ainda."
+        empty-description="Cadastre a primeira empresa para habilitar a emissão de NFS-e."
       >
         <template #toolbar-right>
-          <UButton icon="i-lucide-plus" @click="openCreate">
+          <UButton
+            icon="i-lucide-plus"
+            size="sm"
+            @click="openCreate"
+          >
             Nova empresa
           </UButton>
         </template>
@@ -325,13 +329,7 @@ function certificateColor(val: string | null) {
         </template>
 
         <template #nfse_enabled-cell="{ row }">
-          <UBadge
-            :color="row.original.nfse_enabled ? 'success' : 'neutral'"
-            variant="subtle"
-            size="sm"
-          >
-            {{ row.original.nfse_enabled ? "Habilitado" : "Desabilitado" }}
-          </UBadge>
+          <AdminStatusBadge kind="enabled" :value="Boolean(row.original.nfse_enabled)" />
         </template>
 
         <template #certificate_valid_until-cell="{ row }">
@@ -340,6 +338,7 @@ function certificateColor(val: string | null) {
             :color="
               certificateColor(String(row.original.certificate_valid_until))
             "
+            icon="i-lucide-shield-check"
             variant="subtle"
             size="sm"
           >
@@ -356,6 +355,7 @@ function certificateColor(val: string | null) {
               variant="ghost"
               size="xs"
               icon="i-lucide-pencil"
+              aria-label="Editar empresa"
               @click="openEdit(row.original)"
             />
             <UButton
@@ -363,6 +363,7 @@ function certificateColor(val: string | null) {
               size="xs"
               color="error"
               icon="i-lucide-trash-2"
+              aria-label="Excluir empresa"
               @click="openDelete(row.original)"
             />
           </div>
@@ -504,7 +505,11 @@ function certificateColor(val: string | null) {
         <UButton variant="ghost" @click="showFormModal = false">
           Cancelar
         </UButton>
-        <UButton :loading="formLoading" @click="submitForm">
+        <UButton
+          icon="i-lucide-save"
+          :loading="formLoading"
+          @click="submitForm"
+        >
           {{ editingCompany ? "Salvar alterações" : "Criar empresa" }}
         </UButton>
       </div>
@@ -525,7 +530,12 @@ function certificateColor(val: string | null) {
         <UButton variant="ghost" @click="showDeleteModal = false">
           Cancelar
         </UButton>
-        <UButton color="error" :loading="deleteLoading" @click="confirmDelete">
+        <UButton
+          color="error"
+          icon="i-lucide-trash-2"
+          :loading="deleteLoading"
+          @click="confirmDelete"
+        >
           Excluir
         </UButton>
       </div>

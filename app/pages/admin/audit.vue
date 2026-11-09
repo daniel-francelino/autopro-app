@@ -43,14 +43,6 @@ type AuditDetail = AuditRow & {
 const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 
-const OUTCOME_LABEL: Record<string, string> = { success: 'Sucesso', denied: 'Negado', invalid: 'Inválido', error: 'Erro' }
-const OUTCOME_COLOR: Record<string, 'success' | 'warning' | 'neutral' | 'error'> = {
-  success: 'success',
-  denied: 'warning',
-  invalid: 'neutral',
-  error: 'error'
-}
-
 const HOUR = 3_600_000
 const periods = [
   { label: 'Últimas 24 h', value: 24 * HOUR },
@@ -150,7 +142,7 @@ const tabs = [
 
 <template>
   <UDashboardPanel>
-    <UDashboardNavbar title="Auditoria" />
+    <AppPageHeader title="Auditoria" />
 
     <div class="p-6 overflow-auto space-y-4">
       <div class="flex flex-wrap gap-2">
@@ -193,6 +185,7 @@ const tabs = [
         v-if="error"
         color="error"
         variant="subtle"
+        icon="i-lucide-circle-x"
         title="Não foi possível carregar o log"
         :description="(error as { statusMessage?: string })?.statusMessage || 'Tente novamente.'"
       />
@@ -205,8 +198,8 @@ const tabs = [
         :page-size="pageSize"
         :total="total"
         empty-icon="i-lucide-scroll-text"
-        empty-title="Nenhum registro"
-        empty-description="Nenhuma requisição no período e filtros escolhidos."
+        empty-title="Nenhum registro no período"
+        empty-description="Nenhuma requisição corresponde aos filtros. Aumente o período ou limpe os filtros."
       >
         <template #created_at-cell="{ row }">
           <span class="whitespace-nowrap text-sm">{{ formatDateTime(String(row.original.created_at)) }}</span>
@@ -235,13 +228,7 @@ const tabs = [
         </template>
 
         <template #outcome-cell="{ row }">
-          <UBadge
-            :color="OUTCOME_COLOR[String(row.original.outcome)]"
-            variant="subtle"
-            size="sm"
-          >
-            {{ row.original.status_code }} · {{ OUTCOME_LABEL[String(row.original.outcome)] }}
-          </UBadge>
+          <AdminStatusBadge kind="outcome" :value="String(row.original.outcome)" :prefix="row.original.status_code as number" />
         </template>
 
         <template #duration_ms-cell="{ row }">
@@ -251,6 +238,7 @@ const tabs = [
         <template #detail-cell="{ row }">
           <UButton
             icon="i-lucide-eye"
+            label="Detalhe"
             size="xs"
             color="neutral"
             variant="ghost"
@@ -269,14 +257,16 @@ const tabs = [
       <template #body>
         <div
           v-if="detailLoading"
-          class="text-sm text-muted"
+          class="space-y-4"
         >
-          Carregando...
+          <AdminSkeleton />
+          <AdminSkeleton variant="list" :rows="3" />
         </div>
         <UAlert
           v-else-if="detailError"
           color="error"
           variant="subtle"
+          icon="i-lucide-circle-x"
           :title="detailError"
         />
         <div
@@ -285,12 +275,7 @@ const tabs = [
         >
           <div class="space-y-1 text-sm">
             <div class="flex items-center gap-2">
-              <UBadge
-                :color="OUTCOME_COLOR[detail.outcome]"
-                variant="subtle"
-              >
-                {{ detail.status_code }} · {{ OUTCOME_LABEL[detail.outcome] }}
-              </UBadge>
+              <AdminStatusBadge kind="outcome" :value="detail.outcome" :prefix="detail.status_code" />
               <span class="font-medium">{{ detail.action }}</span>
             </div>
             <div>{{ detail.http_method }} {{ detail.http_path }}</div>

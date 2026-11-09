@@ -20,11 +20,11 @@ type WebhookEvent = { id: string, type: string, received_at: string, processed_a
 const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 
-const { data: summary, error } = await useAsyncData('admin-billing-summary', () =>
+const { data: summary, error, status: summaryStatus } = await useAsyncData('admin-billing-summary', () =>
   requestFetch<Summary>('/api/admin/billing/summary', { headers: requestHeaders }))
 
 const webhookStatus = ref('')
-const { data: webhooks, error: webhookError, refresh: refreshWebhooks } = await useAsyncData('admin-billing-webhooks', () =>
+const { data: webhooks, error: webhookError, status: webhooksStatus, refresh: refreshWebhooks } = await useAsyncData('admin-billing-webhooks', () =>
   requestFetch<{ data: WebhookEvent[], total: number }>('/api/admin/billing/webhooks', {
     headers: requestHeaders,
     query: { status: webhookStatus.value || undefined }
@@ -34,7 +34,6 @@ watch(webhookStatus, () => refreshWebhooks())
 const money = (value: number | null | undefined) =>
   value === null || value === undefined ? '—' : Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const fmt = (value: string | null) => (value ? new Date(value).toLocaleString('pt-BR') : '—')
-const statusColor: Record<string, 'neutral' | 'success' | 'warning' | 'error'> = { received: 'neutral', processed: 'success', ignored: 'neutral', failed: 'error' }
 
 const categories = computed(() => (summary.value?.series ?? []).map(s => s.month))
 const chartSeries = computed(() => [
@@ -45,13 +44,23 @@ const chartSeries = computed(() => [
 
 <template>
   <UDashboardPanel>
-    <UDashboardNavbar title="Cobrança" />
+    <AppPageHeader title="Cobrança" />
 
     <div class="p-6 overflow-auto space-y-6">
+      <template v-if="summaryStatus === 'pending' && !summary">
+        <AdminSkeleton variant="kpis" />
+        <div class="grid gap-4 lg:grid-cols-2">
+          <AdminSkeleton variant="table" :rows="3" :cols="3" />
+          <AdminSkeleton />
+        </div>
+        <AdminSkeleton variant="table" />
+      </template>
+
       <UAlert
-        v-if="error"
+        v-else-if="error"
         color="error"
         variant="subtle"
+        icon="i-lucide-circle-x"
         title="Não foi possível carregar a cobrança"
       />
 
@@ -122,9 +131,7 @@ const chartSeries = computed(() => [
                   {{ money(inv.amount) }}
                 </td>
                 <td>
-                  <UBadge size="sm" variant="subtle" color="warning">
-                    {{ inv.status }}
-                  </UBadge>
+                  <AdminStatusBadge kind="invoice" :value="inv.status" />
                 </td>
                 <td>{{ fmt(inv.due_date) }}</td>
                 <td>{{ inv.attempt_count ?? '—' }}</td>
@@ -135,14 +142,17 @@ const chartSeries = computed(() => [
                     target="_blank"
                     rel="noopener"
                     class="underline"
-                  >abrir</a>
+                  >abrir <UIcon name="i-lucide-external-link" class="size-3 align-[-1px]" /></a>
                 </td>
               </tr>
             </tbody>
           </table>
-          <p v-if="!summary.invoices_needing_action.length" class="text-sm text-muted">
-            Nenhuma fatura pendente ou com falha.
-          </p>
+          <AdminEmptyState
+            v-if="!summary.invoices_needing_action.length"
+            icon="i-lucide-receipt"
+            title="Nenhuma fatura pedindo ação"
+            description="Faturas pendentes ou com falha de pagamento aparecem aqui."
+          />
         </UPageCard>
       </template>
 
@@ -154,13 +164,15 @@ const chartSeries = computed(() => [
           value-key="value"
           label-key="label"
         />
+        <AdminSkeleton v-if="webhooksStatus === 'pending' && !webhooks" variant="list" :rows="4" />
         <UAlert
-          v-if="webhookError"
+          v-else-if="webhookError"
           color="warning"
           variant="subtle"
+          icon="i-lucide-triangle-alert"
           :title="(webhookError as { statusMessage?: string }).statusMessage || 'Eventos indisponíveis'"
         />
-        <table v-else class="w-full text-sm">
+        <table v-else-if="webhooks?.data.length" class="w-full text-sm">
           <thead class="text-left text-muted">
             <tr>
               <th class="py-1">
@@ -175,9 +187,7 @@ const chartSeries = computed(() => [
               </td>
               <td>{{ ev.type }}<span class="block text-xs text-muted">{{ ev.id }}</span></td>
               <td>
-                <UBadge size="sm" variant="subtle" :color="statusColor[ev.status]">
-                  {{ ev.status }}
-                </UBadge>
+                <AdminStatusBadge kind="webhook" :value="ev.status" />
               </td>
               <td class="text-xs text-error">
                 {{ ev.error_message || '' }}
@@ -185,6 +195,21 @@ const chartSeries = computed(() => [
             </tr>
           </tbody>
         </table>
+        <AdminEmptyState
+          v-else
+          icon="i-lucide-webhook"
+          title="Nenhum evento do Stripe"
+          description="Os eventos recebidos do Stripe aparecem aqui. Se esperava algum, confira a integração em Sistema."
+        >
+          <UButton
+            to="/admin/system"
+            icon="i-lucide-server"
+            size="xs"
+            color="neutral"
+            variant="outline"
+            label="Ver integrações"
+          />
+        </AdminEmptyState>
       </UPageCard>
     </div>
   </UDashboardPanel>

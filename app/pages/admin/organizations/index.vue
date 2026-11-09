@@ -59,7 +59,7 @@ function formatDate(val: string | null) {
 
 <template>
   <UDashboardPanel>
-    <UDashboardNavbar title="Organizações" />
+    <AppPageHeader title="Organizações" />
 
     <div class="p-6 space-y-8 overflow-auto">
       <AppDataTable
@@ -74,7 +74,7 @@ function formatDate(val: string | null) {
         search-placeholder="Buscar por nome, fantasia ou CNPJ..."
         empty-icon="i-lucide-building-2"
         empty-title="Nenhuma organização encontrada"
-        empty-description="Nenhuma organização corresponde à sua busca."
+        empty-description="Nenhuma oficina corresponde à busca. Tente o nome, o nome fantasia ou o CNPJ."
       >
         <template #tax_id-cell="{ row }">
           <span class="font-mono text-sm">{{
@@ -87,28 +87,17 @@ function formatDate(val: string | null) {
         </template>
 
         <template #is_active-cell="{ row }">
-          <UBadge
-            :color="row.original.is_active ? 'success' : 'neutral'"
-            variant="subtle"
-            size="sm"
-          >
-            {{ row.original.is_active ? "Ativa" : "Inativa" }}
-          </UBadge>
-          <UBadge
-            v-if="row.original.suspended_at"
-            color="warning"
-            variant="subtle"
-            size="sm"
-            class="ml-1"
-          >
-            Suspensa
-          </UBadge>
+          <AdminStatusBadge
+            :kind="row.original.suspended_at ? 'org' : 'active'"
+            :value="row.original.suspended_at ? 'suspended' : Boolean(row.original.is_active)"
+          />
         </template>
 
         <template #detail-cell="{ row }">
           <UButton
             :to="`/admin/organizations/${row.original.id}`"
             icon="i-lucide-eye"
+            label="Abrir"
             size="xs"
             color="neutral"
             variant="ghost"

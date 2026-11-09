@@ -115,7 +115,7 @@ const outcomeColor: Record<string, 'success' | 'warning' | 'neutral' | 'error'> 
 
 <template>
   <UDashboardPanel>
-    <UDashboardNavbar :title="org?.name ?? 'Oficina'">
+    <AppPageHeader :title="org?.name ?? 'Oficina'">
       <template #leading>
         <UButton
           to="/admin/organizations"
@@ -125,7 +125,7 @@ const outcomeColor: Record<string, 'success' | 'warning' | 'neutral' | 'error'> 
           aria-label="Voltar"
         />
       </template>
-    </UDashboardNavbar>
+    </AppPageHeader>
 
     <div class="p-6 overflow-auto space-y-6">
       <UAlert

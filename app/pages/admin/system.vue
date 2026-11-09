@@ -25,14 +25,12 @@ const { data, status, error, refresh } = await useAsyncData('admin-system', () =
 const range = ref<'errors_24h' | 'errors_7d'>('errors_24h')
 const failing = computed(() => data.value?.[range.value] ?? [])
 
-const color: Record<Check['status'], 'success' | 'warning' | 'error' | 'neutral'> = { ok: 'success', warning: 'warning', error: 'error', not_configured: 'neutral' }
-const label: Record<Check['status'], string> = { ok: 'OK', warning: 'Atenção', error: 'Falha', not_configured: 'Não configurado' }
 const fmt = (value: string) => new Date(value).toLocaleString('pt-BR')
 </script>
 
 <template>
   <UDashboardPanel>
-    <UDashboardNavbar title="Sistema">
+    <AppPageHeader title="Sistema">
       <template #right>
         <UButton
           icon="i-lucide-refresh-cw"
@@ -44,14 +42,24 @@ const fmt = (value: string) => new Date(value).toLocaleString('pt-BR')
           @click="refresh()"
         />
       </template>
-    </UDashboardNavbar>
+    </AppPageHeader>
 
     <div class="p-6 overflow-auto space-y-6">
+      <template v-if="status === 'pending' && !data">
+        <AdminSkeleton variant="table" :rows="6" :cols="2" />
+        <div class="grid gap-4 lg:grid-cols-2">
+          <AdminSkeleton />
+          <AdminSkeleton />
+        </div>
+      </template>
+
       <UAlert
-        v-if="error"
+        v-else-if="error"
         color="error"
         variant="subtle"
+        icon="i-lucide-circle-x"
         title="Não foi possível carregar o status do sistema"
+        description="Tente verificar de novo em alguns instantes."
       />
 
       <template v-else-if="data">
@@ -76,9 +84,7 @@ const fmt = (value: string) => new Date(value).toLocaleString('pt-BR')
               </div>
               <div class="flex items-center gap-2">
                 <span v-if="check.duration_ms !== null" class="text-xs text-muted tabular-nums">{{ check.duration_ms }} ms</span>
-                <UBadge size="sm" variant="subtle" :color="color[check.status]">
-                  {{ label[check.status] }}
-                </UBadge>
+                <AdminStatusBadge kind="check" :value="check.status" />
               </div>
             </li>
           </ul>
@@ -124,9 +130,12 @@ const fmt = (value: string) => new Date(value).toLocaleString('pt-BR')
                 {{ owner.display_name || '—' }} <span class="text-muted">{{ owner.email }}</span>
               </li>
             </ul>
-            <p v-if="!data.owners.length" class="text-sm text-muted">
-              Nenhum owner.
-            </p>
+            <AdminEmptyState
+              v-if="!data.owners.length"
+              icon="i-lucide-user-round-x"
+              title="Nenhum owner cadastrado"
+              description="Sem owner, ninguém acessa este painel. Conceda o acesso pelo SQL abaixo."
+            />
             <p class="text-xs text-muted mt-2">
               Conceder: <code>UPDATE user_profiles SET is_owner = true WHERE email = '...'</code>
             </p>
@@ -155,9 +164,7 @@ const fmt = (value: string) => new Date(value).toLocaleString('pt-BR')
                   {{ row.http_method }} {{ row.route_pattern }}
                 </td>
                 <td>
-                  <UBadge size="sm" variant="subtle" :color="row.status_code >= 500 ? 'error' : 'neutral'">
-                    {{ row.status_code }}
-                  </UBadge>
+                  <AdminStatusBadge kind="http" :value="row.status_code" />
                 </td>
                 <td class="tabular-nums">
                   {{ row.total }}
@@ -168,9 +175,12 @@ const fmt = (value: string) => new Date(value).toLocaleString('pt-BR')
               </tr>
             </tbody>
           </table>
-          <p v-if="!failing.length" class="text-sm text-muted">
-            Nenhuma falha no período.
-          </p>
+          <AdminEmptyState
+            v-if="!failing.length"
+            icon="i-lucide-shield-check"
+            title="Nenhuma falha no período"
+            description="Nenhuma rota respondeu com erro (4xx/5xx) neste intervalo."
+          />
           <p class="text-xs text-muted mt-2">
             5xx = bug do sistema; 4xx = validação ou permissão (erro de uso). Detalhes em <NuxtLink to="/admin/audit" class="underline">Auditoria</NuxtLink>.
           </p>

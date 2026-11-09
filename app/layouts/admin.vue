@@ -35,7 +35,7 @@ const links = computed<NavigationMenuItem[][]>(() => [[
 const groups = computed(() => [
   {
     id: 'admin-links',
-    label: 'Administracao',
+    label: 'Administração',
     items: links.value.flat()
   }
 ])
@@ -62,30 +62,20 @@ watch(
       :ui="{ footer: 'lg:border-t lg:border-default' }"
     >
       <template #header="{ collapsed }">
-        <div
-          class="flex w-full items-center gap-1"
-          :class="collapsed ? 'flex-col' : 'justify-between'"
+        <NuxtLink
+          to="/admin"
+          class="flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 hover:bg-elevated"
+          :class="collapsed ? 'justify-center' : ''"
+          aria-label="Painel admin"
         >
-          <NuxtLink
-            to="/admin"
-            class="flex min-w-0 items-center gap-2 rounded-md px-2 py-2 hover:bg-elevated"
+          <AppLogo size="sm" />
+          <span
+            v-if="!collapsed"
+            class="truncate text-xs font-medium text-muted"
           >
-            <AppLogo size="sm" />
-            <span
-              v-if="!collapsed"
-              class="text-xs font-medium text-muted truncate"
-            >
-              Admin
-            </span>
-          </NuxtLink>
-
-          <!-- As páginas do admin usam UDashboardNavbar (sem o botão do AppPageHeader): sem isto a barra colapsada não expande. -->
-          <UDashboardSidebarCollapse
-            class="hidden lg:inline-flex"
-            color="neutral"
-            variant="ghost"
-          />
-        </div>
+            Admin
+          </span>
+        </NuxtLink>
       </template>
 
       <template #default="{ collapsed }">
@@ -102,7 +92,6 @@ watch(
           orientation="vertical"
           tooltip
           popover
-          :class="index === links.length - 1 ? 'mt-auto' : ''"
         />
       </template>
 

@@ -58,7 +58,7 @@ function formatDate(val: string | null) {
 
 <template>
   <UDashboardPanel>
-    <UDashboardNavbar title="Usuários" />
+    <AppPageHeader title="Usuários" />
 
     <div class="p-6 overflow-auto">
       <AppDataTable
@@ -73,16 +73,10 @@ function formatDate(val: string | null) {
         search-placeholder="Buscar por nome ou e-mail..."
         empty-icon="i-lucide-users"
         empty-title="Nenhum usuário encontrado"
-        empty-description="Nenhum usuário corresponde à sua busca."
+        empty-description="Nenhum usuário corresponde à busca. Tente outro nome ou e-mail."
       >
         <template #is_active-cell="{ row }">
-          <UBadge
-            :color="row.original.is_active ? 'success' : 'neutral'"
-            variant="subtle"
-            size="sm"
-          >
-            {{ row.original.is_active ? 'Ativo' : 'Inativo' }}
-          </UBadge>
+          <AdminStatusBadge kind="active" :value="Boolean(row.original.is_active)" />
         </template>
 
         <template #is_owner-cell="{ row }">

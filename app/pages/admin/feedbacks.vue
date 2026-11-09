@@ -69,7 +69,6 @@ const columns = [
   { accessorKey: 'detail', header: '', enableSorting: false }
 ]
 const fmt = (value: string) => new Date(value).toLocaleString('pt-BR')
-const priorityColor: Record<string, 'neutral' | 'info' | 'warning' | 'error'> = { low: 'neutral', medium: 'info', high: 'warning', critical: 'error' }
 
 // Detalhe
 const open = ref(false)
@@ -122,7 +121,7 @@ const responses = computed(() => (detail.value?.feedback_responses ?? []) as Arr
 
 <template>
   <UDashboardPanel>
-    <UDashboardNavbar title="Feedbacks" />
+    <AppPageHeader title="Feedbacks" />
 
     <div class="p-6 overflow-auto space-y-4">
       <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -154,9 +153,9 @@ const responses = computed(() => (detail.value?.feedback_responses ?? []) as Arr
         :loading="status === 'pending'"
         :page-size="pageSize"
         :total="total"
-        empty-icon="i-lucide-message-square"
-        empty-title="Nenhum feedback"
-        empty-description="Nada corresponde aos filtros."
+        empty-icon="i-lucide-message-square-dashed"
+        empty-title="Nenhum feedback encontrado"
+        empty-description="Ainda não há feedbacks ou nenhum corresponde aos filtros. Limpe os filtros para ver todos."
       >
         <template #created_at-cell="{ row }">
           <span class="whitespace-nowrap text-sm">{{ fmt(String(row.original.created_at)) }}</span>
@@ -167,18 +166,23 @@ const responses = computed(() => (detail.value?.feedback_responses ?? []) as Arr
           </NuxtLink>
           <span v-else class="text-muted">—</span>
         </template>
+        <template #type-cell="{ row }">
+          <AdminStatusBadge kind="feedback-type" :value="String(row.original.type)" />
+        </template>
+        <template #status-cell="{ row }">
+          <AdminStatusBadge kind="feedback" :value="String(row.original.status)" />
+        </template>
         <template #priority-cell="{ row }">
-          <UBadge size="sm" variant="subtle" :color="priorityColor[String(row.original.priority)]">
-            {{ row.original.priority }}
-          </UBadge>
+          <AdminStatusBadge kind="priority" :value="String(row.original.priority)" />
         </template>
         <template #detail-cell="{ row }">
           <UButton
             icon="i-lucide-eye"
+            label="Abrir"
             size="xs"
             color="neutral"
             variant="ghost"
-            aria-label="Abrir"
+            aria-label="Abrir feedback"
             @click="openDetail(String(row.original.id))"
           />
         </template>
@@ -187,8 +191,9 @@ const responses = computed(() => (detail.value?.feedback_responses ?? []) as Arr
 
     <USlideover v-model:open="open" title="Feedback" :ui="{ content: 'max-w-2xl' }">
       <template #body>
-        <div v-if="!detail" class="text-sm text-muted">
-          Carregando...
+        <div v-if="!detail" class="space-y-4">
+          <AdminSkeleton />
+          <AdminSkeleton variant="list" :rows="2" />
         </div>
         <div v-else class="space-y-4">
           <div>
@@ -271,9 +276,12 @@ const responses = computed(() => (detail.value?.feedback_responses ?? []) as Arr
                 </p>
               </li>
             </ul>
-            <p v-if="!responses.length" class="text-sm text-muted">
-              Sem respostas.
-            </p>
+            <AdminEmptyState
+              v-if="!responses.length"
+              icon="i-lucide-messages-square"
+              title="Sem respostas ainda"
+              description="Escreva abaixo para responder ao usuário."
+            />
             <UTextarea
               v-model="reply"
               class="w-full mt-2"
@@ -282,6 +290,8 @@ const responses = computed(() => (detail.value?.feedback_responses ?? []) as Arr
             />
             <UButton
               class="mt-2"
+              icon="i-lucide-send"
+              size="sm"
               :loading="busy"
               :disabled="!reply.trim()"
               label="Enviar resposta"

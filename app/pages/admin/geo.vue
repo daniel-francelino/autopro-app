@@ -95,7 +95,7 @@ const yesNo = (value: boolean | null) => (value === null ? '—' : value ? 'sim'
 
 <template>
   <UDashboardPanel>
-    <UDashboardNavbar title="SEO e GEO" />
+    <AppPageHeader title="SEO e GEO" />
 
     <div class="p-6 overflow-auto space-y-6">
       <UAlert

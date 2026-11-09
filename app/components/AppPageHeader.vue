@@ -11,6 +11,7 @@ withDefaults(defineProps<{
   <UDashboardNavbar :title="title">
     <template #leading>
       <AppSidebarCollapse />
+      <slot name="leading" />
     </template>
 
     <template v-if="showNotifications || !!$slots.right" #right>

@@ -93,20 +93,6 @@ const subsColumns = [
   { accessorKey: 'created_at', header: 'Início', enableSorting: false }
 ]
 
-const SUB_STATUS_COLORS: Record<string, 'success' | 'warning' | 'error' | 'neutral'> = {
-  active: 'success',
-  trial: 'warning',
-  suspended: 'error',
-  cancelled: 'neutral'
-}
-
-const SUB_STATUS_LABELS: Record<string, string> = {
-  active: 'Ativa',
-  trial: 'Trial',
-  suspended: 'Suspensa',
-  cancelled: 'Cancelada'
-}
-
 // ─── Invoices chart ─────────────────────────────────────────────────────────────
 const { data: invChartData, status: invChartStatus } = await useAsyncData(
   'admin-invoices-chart',
@@ -155,21 +141,6 @@ const invColumns = [
   { id: 'pdf', header: '', enableSorting: false }
 ]
 
-const INV_STATUS_COLORS: Record<string, 'success' | 'warning' | 'error' | 'neutral'> = {
-  paid: 'success',
-  pending: 'warning',
-  failed: 'error',
-  cancelled: 'neutral'
-}
-
-const INV_STATUS_LABELS: Record<string, string> = {
-  open: 'Aberta',
-  paid: 'Paga',
-  pending: 'Pendente',
-  failed: 'Falhou',
-  cancelled: 'Cancelada'
-}
-
 // ─── Shared helpers ──────────────────────────────────────────────────────────────
 function formatCurrency(val: unknown) {
   if (val == null) return '—'
@@ -184,7 +155,7 @@ function formatDate(val: string | null) {
 
 <template>
   <UDashboardPanel>
-    <UDashboardNavbar title="Admin Dashboard" />
+    <AppPageHeader title="Admin Dashboard" />
 
     <div class="p-6 space-y-8 overflow-auto">
       <!-- Stats cards -->
@@ -256,13 +227,7 @@ function formatDate(val: string | null) {
               empty-description="As assinaturas das organizações aparecerão aqui."
             >
               <template #status-cell="{ row }">
-                <UBadge
-                  :color="SUB_STATUS_COLORS[String(row.original.status)] ?? 'neutral'"
-                  variant="subtle"
-                  size="sm"
-                >
-                  {{ SUB_STATUS_LABELS[String(row.original.status)] ?? row.original.status }}
-                </UBadge>
+                <AdminStatusBadge kind="subscription" :value="String(row.original.status)" />
               </template>
 
               <template #monthly_amount-cell="{ row }">
@@ -318,13 +283,7 @@ function formatDate(val: string | null) {
               empty-description="As faturas das organizações aparecerão aqui."
             >
               <template #status-cell="{ row }">
-                <UBadge
-                  :color="INV_STATUS_COLORS[String(row.original.status)] ?? 'neutral'"
-                  variant="subtle"
-                  size="sm"
-                >
-                  {{ INV_STATUS_LABELS[String(row.original.status)] ?? row.original.status }}
-                </UBadge>
+                <AdminStatusBadge kind="invoice" :value="String(row.original.status)" />
               </template>
 
               <template #amount-cell="{ row }">
@@ -345,6 +304,7 @@ function formatDate(val: string | null) {
                   variant="ghost"
                   size="xs"
                   icon="i-lucide-file-down"
+                  label="PDF"
                   :to="String(row.original.pdf_url)"
                   target="_blank"
                 />
