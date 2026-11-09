@@ -176,7 +176,7 @@ async function handleCheckoutCompleted(
     }
 
     organizationId = org.id
-    track('org_created', { userId: profile.user_id as string, organizationId })
+    track('org_created', { userId: profile.user_id as string, organizationId: org.id })
   }
 
   // ── Ensure default financial categories exist for this organization ─────
