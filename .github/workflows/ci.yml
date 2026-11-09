@@ -1,16 +1,17 @@
 name: ci
 
-on: push
+on:
+  push:
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * *' # noturno (09:00 BRT): E2E completo
 
 jobs:
-  ci:
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        node: [22]
-
+  # L0 + L1 + L2 + L3-lite: sem Docker, segundos.
+  static:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -21,7 +22,7 @@ jobs:
       - name: Install node
         uses: actions/setup-node@v6
         with:
-          node-version: ${{ matrix.node }}
+          node-version: 22
           cache: pnpm
 
       - name: Install dependencies
@@ -32,3 +33,76 @@ jobs:
 
       - name: Typecheck
         run: pnpm run typecheck
+
+      - name: Tests (unit, static, handlers)
+        run: pnpm run test
+
+  # L3 + L4 contra Supabase local. Só roda quando o projeto tiver supabase/config.toml
+  # (primeira tarefa da Fase 0 do plano: `supabase init`). Ver docs/testing/known-failures.md KF-00.
+  api:
+    if: github.event_name != 'schedule' && hashFiles('supabase/config.toml') != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Start Supabase (aplica as migrations)
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Supabase up
+        run: supabase start
+
+      - name: API tests
+        run: |
+          eval "$(supabase status -o env | sed 's/^/export /')"
+          export TEST_SUPABASE_URL="$API_URL"
+          export TEST_SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
+          export TEST_SUPABASE_ANON_KEY="$ANON_KEY"
+          REQUIRE_API_TESTS=1 pnpm run test:api
+
+  # L5: PR para main e noturno. As rotas públicas/redirecionamentos rodam sem banco.
+  e2e:
+    if: github.event_name == 'schedule' || github.base_ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Playwright
+        run: pnpm run test:e2e
+
+      - name: Upload report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/

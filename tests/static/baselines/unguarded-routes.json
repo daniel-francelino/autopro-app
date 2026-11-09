@@ -1,0 +1,6 @@
+[
+  "server/api/consulta/index.get.ts",
+  "server/api/fiscal/zip_code/index.get.ts",
+  "server/api/reports/export-file.post.ts",
+  "server/api/vehicles/lookup-plate.get.ts"
+]
