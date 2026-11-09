@@ -18,27 +18,60 @@ function item(label: string, icon: string, to: string): NavigationMenuItem {
   }
 }
 
-const links = computed<NavigationMenuItem[][]>(() => [[
-  item('Dashboard', 'i-lucide-layout-dashboard', '/admin'),
-  item('Organizações', 'i-lucide-building-2', '/admin/organizations'),
-  item('Usuários', 'i-lucide-users', '/admin/users'),
-  item('Métricas de uso', 'i-lucide-chart-line', '/admin/metrics'),
-  item('Auditoria', 'i-lucide-clipboard-list', '/admin/audit'),
-  item('Cobrança', 'i-lucide-credit-card', '/admin/billing'),
-  item('Feedbacks', 'i-lucide-message-square', '/admin/feedbacks'),
-  item('SEO e GEO', 'i-lucide-sparkles', '/admin/geo'),
-  item('Sistema', 'i-lucide-server', '/admin/system'),
-  item('Fiscal empresas', 'i-lucide-file-stack', '/admin/fiscal/companies'),
-  item('Fiscal logs', 'i-lucide-scroll-text', '/admin/fiscal/logs')
-]])
-
-const groups = computed(() => [
+// Seções do menu: o rótulo dá contexto e também agrupa os resultados da busca (Ctrl+K).
+const sections = computed(() => [
   {
-    id: 'admin-links',
-    label: 'Administração',
-    items: links.value.flat()
+    id: 'admin-overview',
+    label: 'Visão geral',
+    items: [
+      item('Dashboard', 'i-lucide-layout-dashboard', '/admin'),
+      item('Métricas de uso', 'i-lucide-chart-line', '/admin/metrics')
+    ]
+  },
+  {
+    id: 'admin-customers',
+    label: 'Clientes',
+    items: [
+      item('Organizações', 'i-lucide-building-2', '/admin/organizations'),
+      item('Usuários', 'i-lucide-users', '/admin/users'),
+      item('Cobrança', 'i-lucide-credit-card', '/admin/billing')
+    ]
+  },
+  {
+    id: 'admin-growth',
+    label: 'Aquisição e retorno',
+    items: [
+      item('Feedbacks', 'i-lucide-message-square', '/admin/feedbacks'),
+      item('SEO e GEO', 'i-lucide-sparkles', '/admin/geo')
+    ]
+  },
+  {
+    id: 'admin-platform',
+    label: 'Plataforma',
+    items: [
+      item('Auditoria', 'i-lucide-clipboard-list', '/admin/audit'),
+      item('Sistema', 'i-lucide-server', '/admin/system')
+    ]
+  },
+  {
+    id: 'admin-fiscal',
+    label: 'Fiscal',
+    items: [
+      item('Fiscal empresas', 'i-lucide-file-stack', '/admin/fiscal/companies'),
+      item('Fiscal logs', 'i-lucide-scroll-text', '/admin/fiscal/logs')
+    ]
   }
 ])
+
+// Uma lista por seção, com o rótulo como primeiro item (some com o menu recolhido).
+const links = computed<NavigationMenuItem[][]>(() =>
+  sections.value.map(section => [
+    { label: section.label, type: 'label' } as NavigationMenuItem,
+    ...section.items
+  ])
+)
+
+const groups = computed(() => sections.value.map(({ id, label, items }) => ({ id, label, items })))
 
 watch(
   isMobile,
@@ -89,6 +122,7 @@ watch(
           :key="index"
           :collapsed="collapsed"
           :items="group"
+          :class="index > 0 ? 'mt-3' : 'mt-2'"
           orientation="vertical"
           tooltip
           popover
