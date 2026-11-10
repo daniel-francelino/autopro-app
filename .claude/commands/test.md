@@ -31,3 +31,10 @@ Every stated pass has command output or another direct observation; untested ris
 
 ## Output
 Test matrix; tests created/changed; commands executed; pass/fail/skipped; coverage limitations; regressions; next step `/review` or `/debug`.
+
+## Caveman-inspired optimization (local, selective)
+
+- Load only relevant policy skills: `.claude/skills/context-policy/SKILL.md`, `.claude/skills/verification-policy/SKILL.md`, `.claude/skills/output-contracts/SKILL.md`. Do not preload all policies.
+- Apply the on-demand shared skill(s) when relevant: verify-and-stop. Do not preload all skills.
+- Preserve original evidence and required risk gates. Prefer concise tool outputs and targeted reads; when the official Caveman runtime is installed, let it handle supported compression and recovery. Never assume it is installed or active.
+- Avoid redundant delegation or repository-wide scans. Stop when acceptance and required checks pass.

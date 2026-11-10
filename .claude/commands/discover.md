@@ -43,3 +43,10 @@ Discovery summary; current-state workflow; affected files/modules; observed rule
 
 ## Restrictions
 Read-only. Do not edit code, tests, docs, or Git state.
+
+## Caveman-inspired optimization (local, selective)
+
+- Load only relevant policy skills: `.claude/skills/execution-policy/SKILL.md`, `.claude/skills/context-policy/SKILL.md`, `.claude/skills/output-contracts/SKILL.md`. Do not preload all policies.
+- Apply the on-demand shared skill(s) when relevant: investigate-first. Do not preload all skills.
+- Preserve original evidence and required risk gates. Prefer concise tool outputs and targeted reads; when the official Caveman runtime is installed, let it handle supported compression and recovery. Never assume it is installed or active.
+- Avoid redundant delegation or repository-wide scans. Stop when acceptance and required checks pass.
