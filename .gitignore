@@ -34,3 +34,6 @@ test-results-money/
 playwright-report/
 coverage/
 
+#
+/graphify-out
+

@@ -28,7 +28,10 @@
     "cap:add:ios": "cap add ios",
     "cap:sync": "nuxt generate && cap sync",
     "cap:open:android": "cap open android",
-    "cap:open:ios": "cap open ios"
+    "cap:open:ios": "cap open ios",
+    "graphify:generate": "graphify extract . --code-only",
+    "graphify:update": "graphify update ."
+
   },
   "dependencies": {
     "@capacitor/app": "^8.0.1",
