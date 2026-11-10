@@ -26,9 +26,11 @@ logs
 # VSC
 .history
 /old_project
-.claude/
+
 # Testes
 test-results/
+test-results-bde/
+test-results-money/
 playwright-report/
 coverage/
 
