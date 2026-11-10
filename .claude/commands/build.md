@@ -36,9 +36,9 @@ Acceptance criteria for the selected task are satisfied or blockers are document
 ## Output
 Files changed; behavior; tests/checks and results; unresolved issues; risks; next task; recommendation `/test` or `/review`.
 
-## Caveman-inspired optimization (local, selective)
+## Execution optimization (on demand)
 
-- Load only relevant policy skills: `.claude/skills/execution-policy/SKILL.md`, `.claude/skills/delegation-policy/SKILL.md`, `.claude/skills/context-policy/SKILL.md`, `.claude/skills/verification-policy/SKILL.md`, `.claude/skills/output-contracts/SKILL.md`. Do not preload all policies.
-- Apply the on-demand shared skill(s) when relevant: lean-build, surgical-patch (only for proven defects), verify-and-stop. Do not preload all skills.
-- Preserve original evidence and required risk gates. Prefer concise tool outputs and targeted reads; when the official Caveman runtime is installed, let it handle supported compression and recovery. Never assume it is installed or active.
+- Apply `.claude/skills/delegation-policy/SKILL.md` only when coordinating specialists, and `.claude/skills/output-contracts/SKILL.md` only when producing handoffs or structured findings. Do not preload them.
+- Use only the applicable official Caveman skill(s): lean-build, surgical-patch (only for proven defects), verify-and-stop. Do not preload all skills.
+- Preserve original evidence and required risk gates. Prefer concise tool outputs and targeted reads; do not duplicate compression or routing logic. Caveman runtime integration is managed separately.
 - Avoid redundant delegation or repository-wide scans. Stop when acceptance and required checks pass.

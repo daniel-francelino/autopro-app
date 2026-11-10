@@ -1,11 +1,10 @@
-
 # Project Engineering Instructions
 
 ## Mission
 
-Build and maintain reliable, secure, performant, and maintainable software.
+Build and maintain reliable, secure, performant, and maintainable software while minimizing unnecessary resource consumption.
 
-Prioritize:
+Prioritize, in order:
 
 1. Business correctness.
 2. Data integrity and security.
@@ -13,13 +12,141 @@ Prioritize:
 4. Simplicity and maintainability.
 5. Appropriate test coverage.
 6. Performance based on evidence.
-7. Efficient token usage.
+7. Efficient token and resource usage.
 
 Follow the project's existing architecture, conventions, and business rules.
 
-Do not assume any specific framework, database, or technology stack.
+Do not assume a specific framework, database, or technology stack.
 
-## 1. Agent Team
+**Core principle:** Achieve the required outcome with the smallest effective combination of context, agents, tools, changes, and validation.
+
+---
+
+## 1. Caveman Engineering Principles
+
+Apply these principles to every task, regardless of which agent or command is used.
+
+### 1.1 Investigate First
+
+- Understand the problem before modifying code.
+- Distinguish observed facts from assumptions.
+- Search for relevant implementations before proposing new ones.
+- Identify the root cause of bugs before applying fixes.
+- Prefer evidence over speculation.
+- Avoid investigating unrelated areas.
+- Stop investigating once sufficient evidence supports the next action.
+
+Use the `investigate-first` skill when deeper investigation is necessary.
+
+### 1.2 Lean Build
+
+- Implement only what the task requires.
+- Prefer existing components, utilities, and conventions.
+- Avoid unnecessary abstractions and premature generalization.
+- Do not introduce dependencies without justification.
+- Avoid speculative features.
+- Keep implementations focused, readable, and maintainable.
+- Do not expand the scope without authorization.
+
+Use `lean-build` for implementation tasks.
+
+### 1.3 Surgical Patch
+
+When fixing bugs:
+
+- Identify the responsible layer.
+- Modify the smallest reasonable surface.
+- Preserve unrelated behavior.
+- Avoid unrelated cleanup or refactoring.
+- Add focused regression protection when appropriate.
+- Verify the original problem is resolved.
+
+Use `surgical-patch` for confirmed defects.
+
+### 1.4 Safe Refactoring
+
+- Preserve observable behavior unless changes are explicitly requested.
+- Identify existing contracts and invariants.
+- Prefer incremental changes.
+- Avoid broad rewrites without justification.
+- Validate affected behavior.
+
+Use `safe-refactor` when refactoring existing implementations.
+
+### 1.5 Progressive Context Loading
+
+Context is a limited resource.
+
+- Search before reading.
+- Read relevant functions before entire files.
+- Load skills only when relevant.
+- Prefer targeted searches over repository-wide exploration.
+- Avoid repeatedly reading unchanged files.
+- Reuse existing project documentation.
+- Reference existing reports instead of reproducing them.
+- Do not load all agent instructions or skills automatically.
+- Retrieve additional context only when necessary.
+
+Never reduce context at the expense of correctness, security, or essential business rules.
+
+### 1.6 Smart Delegation
+
+- Use the minimum number of specialists necessary.
+- Delegate only when specialization provides meaningful value.
+- Avoid multiple agents investigating the same problem unnecessarily.
+- Prefer direct execution for simple tasks.
+- Use concise, structured handoffs.
+- Do not forward entire conversations without justification.
+- Parallelize only independent tasks when supported.
+- Do not invoke every agent automatically.
+
+Delegation must reduce complexity, not create additional overhead.
+
+### 1.7 Efficient Tool Usage
+
+- Prefer targeted commands and bounded output.
+- Avoid repeatedly executing equivalent commands.
+- Reuse existing scripts and utilities.
+- Run focused tests before broader test suites.
+- Avoid unnecessary screenshots, traces, and verbose logs.
+- Preserve complete diagnostic evidence when required.
+- Do not hide critical errors to reduce output.
+- Avoid generating temporary files or documentation without purpose.
+
+When the official Caveman runtime is available, allow it to handle supported context compression and recovery.
+
+Do not recreate proxy, compression, telemetry, or model-routing functionality already provided by the official runtime.
+
+Never assume the runtime is installed or active without verification.
+
+### 1.8 Verify and Stop
+
+- Define what successful completion means.
+- Perform the minimum sufficient validation for the task's risk.
+- Verify observable behavior.
+- Preserve required security and business checks.
+- Do not weaken tests to make them pass.
+- Do not repeatedly run tests without a reason.
+- Stop when acceptance criteria are satisfied and required validation succeeds.
+- Do not introduce unrelated improvements after completion.
+
+Use `verify-and-stop` when validating completed work.
+
+### 1.9 Communication Efficiency
+
+- Be concise without sacrificing clarity.
+- Lead with findings, decisions, or completed results.
+- Avoid repeating information already established.
+- Prefer references to existing files over long duplicated explanations.
+- Preserve exact code, commands, paths, errors, numbers, and warnings.
+- Clearly distinguish completed work from recommendations.
+- Explain important risks and blockers.
+
+Do not use artificially shortened language when it reduces understanding.
+
+---
+
+## 2. Agent Team
 
 Specialized agents are defined in `.claude/agents/`.
 
@@ -27,7 +154,7 @@ Specialized agents are defined in `.claude/agents/`.
 |---|---|
 | `product-owner` | Product strategy, backlog, prioritization, requirements, and roadmap |
 | `product-researcher` | Market research, competitors, innovation, and product discovery |
-| `tech-lead` | Planning, risk assessment, agent coordination, and delivery |
+| `tech-lead` | Planning, risk assessment, coordination, and delivery |
 | `business-analyst` | Business requirements, workflows, and operational rules |
 | `software-architect` | Architecture, abstractions, and refactoring design |
 | `developer` | Feature implementation, bug fixes, and refactoring |
@@ -40,39 +167,42 @@ Specialized agents are defined in `.claude/agents/`.
 | `data-integrity-auditor` | Data consistency, transactions, and invariants |
 | `reporting-analyst` | Reports, dashboards, aggregations, and KPI correctness |
 | `performance-engineer` | Bottlenecks, resource usage, and scalability |
+| `geo-specialist` | Geospatial analysis and location-dependent functionality |
+| `marketing-strategist` | Marketing strategy, acquisition, and positioning |
+| `seo-specialist` | Search visibility, indexing, and technical SEO |
+| `customer-success-specialist` | Customer experience, retention, and support workflows |
 
-Use only agents that actually exist and are available.
+Use only agents that exist and are available.
 
-Do not simulate agent execution.
+Do not simulate agent execution or claim delegation occurred when it did not.
 
-Do not invoke every agent automatically.
+The main Claude Code session coordinates delegation. Do not assume subagents can create additional subagents.
 
-## 2. Agent Coordination
+---
+
+## 3. Agent Coordination
 
 ### Product Leadership
 
-The `product-owner` is responsible for:
+The `product-owner` owns:
 
-- Product priorities.
-- Product backlog.
-- Product requirements.
-- User stories.
+- Product priorities and backlog.
+- Requirements and user stories.
 - Acceptance criteria.
-- Product roadmap.
+- Roadmap proposals.
 - Business value assessment.
-- Product scope management.
+- Scope management.
 
-The `product-researcher` supports the Product Owner by:
+The `product-researcher` supports product discovery through:
 
-- Researching competitors.
-- Investigating market trends.
-- Identifying user problems.
-- Discovering product opportunities.
-- Evaluating emerging technologies.
-- Proposing innovative improvements.
-- Producing evidence-based research.
+- Competitor research.
+- Market trends.
+- User problems.
+- Existing solutions.
+- Product opportunities.
+- Evidence-based recommendations.
 
-The Product Researcher recommends opportunities.
+The Product Researcher discovers and recommends opportunities.
 
 The Product Owner evaluates and prioritizes them.
 
@@ -90,17 +220,15 @@ Use `tech-lead` for:
 - Coordinated implementation and review.
 - Complex delivery planning.
 
-The Tech Lead selects the minimum necessary specialists.
-
 For simple, localized tasks, prefer direct execution or a single specialist.
 
 Do not invoke `tech-lead` merely to delegate a trivial change.
 
-### Delegation Rules
+### Delegation Contract
 
-When delegation is supported, provide:
+When delegating, provide:
 
-- Clear objective.
+- Objective.
 - Relevant scope.
 - Confirmed requirements.
 - Existing documentation references.
@@ -108,85 +236,15 @@ When delegation is supported, provide:
 - Expected deliverable.
 - Acceptance criteria.
 
-Do not forward the entire conversation unnecessarily.
+Do not forward unnecessary context.
 
-Do not claim an agent was executed unless delegation actually succeeded.
+Use the project's delegation policy only when coordination requires it.
 
-## 3. Product Discovery Workflow
+---
 
-Use this workflow for:
+## 4. Task Complexity and Execution
 
-- New product ideas.
-- Competitive research.
-- Market opportunities.
-- Feature discovery.
-- Product differentiation.
-- Strategic improvements.
-- Product roadmap exploration.
-
-### Step 1 — Research
-
-`product-researcher` investigates:
-
-- Relevant competitors.
-- Market trends.
-- User problems.
-- Existing solutions.
-- Product gaps.
-- Innovation opportunities.
-
-Research must use reliable evidence.
-
-Never invent competitor capabilities, market data, or customer feedback.
-
-### Step 2 — Product Evaluation
-
-`product-owner` evaluates:
-
-- Business value.
-- User impact.
-- Strategic alignment.
-- Evidence confidence.
-- Implementation effort.
-- Dependencies.
-- Risks.
-- Potential priority.
-
-The Product Owner determines whether an opportunity should become a backlog proposal.
-
-### Step 3 — Business Validation
-
-Use `business-analyst` when:
-
-- Business rules require clarification.
-- Operational workflows are affected.
-- Financial processes are involved.
-- Cross-module behavior must be evaluated.
-
-### Step 4 — Approval
-
-Significant product decisions require stakeholder approval.
-
-Research recommendations are not automatically approved requirements.
-
-Do not implement speculative features without authorization.
-
-### Step 5 — Engineering Handoff
-
-Once the scope is approved, `tech-lead` coordinates implementation when appropriate.
-
-The handoff should include:
-
-- Business objective.
-- Problem statement.
-- Target users.
-- Confirmed requirements.
-- Acceptance criteria.
-- Dependencies.
-- Risks.
-- Relevant documentation.
-
-## 4. Task Complexity
+Choose the execution workflow according to complexity and risk.
 
 ### Simple
 
@@ -199,9 +257,10 @@ Examples:
 
 Workflow:
 
-1. Implement or analyze.
-2. Run focused validation when applicable.
-3. Summarize results.
+1. Investigate only what is necessary.
+2. Implement or analyze.
+3. Run focused validation when applicable.
+4. Report the result.
 
 Use additional agents only when risk justifies them.
 
@@ -217,9 +276,10 @@ Examples:
 Workflow:
 
 1. Clarify requirements.
-2. Implement.
-3. Run relevant tests.
-4. Request independent code review when appropriate.
+2. Inspect relevant implementations.
+3. Implement incrementally.
+4. Run relevant tests.
+5. Request independent review when appropriate.
 
 ### Complex
 
@@ -232,14 +292,16 @@ Examples:
 
 Workflow:
 
-1. `tech-lead` coordinates.
+1. `tech-lead` coordinates when necessary.
 2. Relevant analysts establish requirements.
-3. `software-architect` reviews design when necessary.
+3. `software-architect` reviews significant design decisions.
 4. `test-designer` defines critical scenarios.
 5. `developer` implements.
 6. `test-engineer` adds regression protection.
-7. `code-reviewer` reviews the implementation.
+7. `code-reviewer` reviews important changes.
 8. `test-reviewer` reviews tests when justified.
+
+Only invoke specialists relevant to the task.
 
 ### Critical
 
@@ -260,29 +322,112 @@ Require:
 - Independent review.
 - Appropriate validation evidence.
 
+Do not skip mandatory checks to save tokens.
+
 Do not automatically invoke every agent.
 
-## 5. Product Backlog and Roadmap
+---
 
-The `product-owner` owns product backlog recommendations and roadmap proposals.
+## 5. Development Commands
 
-Use:
+Project commands are defined in `.claude/commands/`.
+
+| Command | Purpose |
+|---|---|
+| `/discover` | Investigate requirements, context, and existing behavior |
+| `/spec` | Define requirements and acceptance criteria |
+| `/plan` | Create an implementation plan |
+| `/build` | Implement approved work |
+| `/test` | Design, execute, and evaluate tests |
+| `/review` | Independently review changes |
+| `/audit` | Perform risk-based specialist audits |
+| `/debug` | Investigate and resolve defects |
+| `/ship` | Evaluate release readiness |
+
+Use the smallest workflow that satisfies the task.
+
+Do not require the complete development lifecycle for trivial changes.
+
+Commands should reuse existing evidence and artifacts instead of repeating investigations.
+
+Do not automatically commit, push, or deploy.
+
+---
+
+## 6. Product Discovery Workflow
+
+Use product discovery for:
+
+- New product ideas.
+- Competitive research.
+- Market opportunities.
+- Feature discovery.
+- Product differentiation.
+- Strategic improvements.
+- Roadmap exploration.
+
+### Research
+
+The `product-researcher` investigates relevant competitors, market trends, user problems, existing solutions, gaps, and opportunities.
+
+Research must use reliable evidence.
+
+Never invent competitor capabilities, market data, or customer feedback.
+
+### Evaluation
+
+The `product-owner` evaluates:
+
+- Business value.
+- User impact.
+- Strategic alignment.
+- Evidence confidence.
+- Implementation effort.
+- Dependencies.
+- Risks.
+- Potential priority.
+
+### Business Validation
+
+Use `business-analyst` when operational workflows, financial processes, cross-module behavior, or business rules require clarification.
+
+### Approval
+
+Significant product decisions require stakeholder approval.
+
+Research recommendations are not automatically approved requirements.
+
+Do not implement speculative features without authorization.
+
+### Engineering Handoff
+
+Once scope is approved, provide:
+
+- Business objective.
+- Problem statement.
+- Target users.
+- Confirmed requirements.
+- Acceptance criteria.
+- Dependencies.
+- Risks.
+- Relevant documentation.
+
+---
+
+## 7. Product Backlog and Roadmap
+
+The `product-owner` owns backlog recommendations and roadmap proposals.
+
+Use existing documentation conventions.
+
+Default locations:
 
 - `docs/product/backlog.md`
 - `docs/product/roadmap.md`
 - `docs/product/requirements/`
 - `docs/product/discovery/`
 
-Prioritize using:
-
-- Business impact.
-- User value.
-- Financial impact.
-- Urgency.
-- Risk.
-- Evidence confidence.
-- Implementation effort.
-- Dependencies.
+Prioritize using business impact, user value, financial impact, urgency, risk, evidence confidence, implementation effort, and dependencies.
 
 Do not invent priority scores or release dates.
 
@@ -294,11 +439,13 @@ Distinguish:
 - Optional enhancements.
 - Technical debt.
 
-Do not automatically convert every audit finding into a development task.
+Do not automatically convert audit findings into development tasks.
 
 Do not automatically implement backlog proposals.
 
-## 6. Business and Financial Integrity
+---
+
+## 8. Business and Financial Integrity
 
 Never invent business rules.
 
@@ -323,7 +470,9 @@ Do not equate revenue, received cash, and profit.
 
 Financial optimization must not compromise calculation accuracy.
 
-## 7. Architecture and Implementation
+---
+
+## 9. Architecture and Implementation
 
 Prefer:
 
@@ -350,7 +499,9 @@ Use `developer` for implementation.
 
 Do not delegate code modification to read-only auditors or reviewers.
 
-## 8. Independent Quality Review
+---
+
+## 10. Independent Quality Review
 
 For important changes, separate implementation from review.
 
@@ -365,9 +516,13 @@ Do not treat passing tests as proof that business rules are correct.
 
 Do not approve changes without sufficient evidence.
 
-## 9. Token Efficiency
+Review only relevant changes and affected dependencies unless broader analysis is justified.
 
-Token efficiency is a mandatory engineering constraint.
+---
+
+## 11. Token and Resource Efficiency
+
+Token efficiency is a mandatory engineering constraint, subordinate to correctness and safety.
 
 ### Discovery
 
@@ -383,7 +538,7 @@ Token efficiency is a mandatory engineering constraint.
 - Avoid repeated competitor searches.
 - Investigate only relevant markets.
 - Prioritize actionable findings.
-- Stop researching when sufficient evidence supports a recommendation.
+- Stop when sufficient evidence supports a recommendation.
 
 ### Delegation
 
@@ -409,10 +564,28 @@ Token efficiency is a mandatory engineering constraint.
 - Store durable findings in project documentation.
 - Summarize completed work before major context transitions.
 - Do not rely on conversation history as the only record of important decisions.
+- Load skills and references progressively.
 
-Do not claim to automatically clear or compact the session unless that capability is available and actually used.
+Do not claim to automatically clear or compact a session unless that capability is available and actually used.
 
-## 10. Testing
+### Caveman Runtime
+
+The official Caveman runtime is optional and managed separately from project instructions.
+
+When available:
+
+- Use its supported compression and recovery capabilities.
+- Preserve access to original tool results.
+- Do not assume compression is always beneficial.
+- Do not activate cloud routing without authorization.
+- Do not assume telemetry is disabled without checking.
+- Measure actual savings rather than assuming benchmark results apply.
+
+Installing Caveman skills alone does not activate runtime compression.
+
+---
+
+## 12. Testing
 
 Use the cheapest reliable test layer.
 
@@ -431,7 +604,13 @@ Do not weaken assertions to make tests pass.
 
 Do not claim tests passed unless they were executed.
 
-## 11. Security and Data Safety
+Preserve relevant failure evidence.
+
+Use screenshots, traces, and verbose diagnostics only when needed.
+
+---
+
+## 13. Security and Data Safety
 
 Never:
 
@@ -447,7 +626,11 @@ For multi-tenant systems, preserve tenant isolation across queries, APIs, caches
 
 Use `security-analyst` for significant security risks.
 
-## 12. Performance
+Security requirements take precedence over token optimization.
+
+---
+
+## 14. Performance
 
 Prioritize measured bottlenecks over speculative optimization.
 
@@ -467,11 +650,13 @@ Use `performance-engineer` when performance analysis is justified.
 
 Never sacrifice financial correctness, security, or data integrity for speed.
 
-## 13. Documentation
+---
+
+## 15. Documentation
 
 Use existing project documentation conventions.
 
-When no established convention exists, use:
+When no convention exists, use:
 
 | Deliverable | Default location |
 |---|---|
@@ -501,13 +686,15 @@ Specialist agents own their respective reports.
 
 Do not duplicate documentation.
 
-For simple tasks, avoid unnecessary reports unless explicitly required by the selected agent.
+For simple tasks, avoid unnecessary reports unless explicitly required.
 
 Preserve existing finding identifiers.
 
 Research reports must distinguish verified evidence from hypotheses and include sources when external information is used.
 
-## 14. Git and Change Safety
+---
+
+## 16. Git and Change Safety
 
 Before editing:
 
@@ -524,7 +711,9 @@ Never:
 - Deploy to production without approval.
 - Commit automatically unless requested.
 
-## 15. Completion and Reporting
+---
+
+## 17. Completion and Reporting
 
 Before declaring a task complete, verify:
 
@@ -546,9 +735,13 @@ Final responses should be concise and include:
 
 Never invent agent executions, research findings, benchmark results, test outcomes, or completed work.
 
+---
+
 ## Fundamental Principle
 
-Use the smallest effective combination of agents, tools, and changes to deliver correct, secure, maintainable software.
+**Investigate first. Build lean. Patch surgically. Load context progressively. Delegate selectively. Verify and stop.**
+
+Use the smallest effective combination of agents, tools, context, and changes to deliver correct, secure, maintainable software.
 
 The Product Researcher discovers opportunities.
 
@@ -558,8 +751,6 @@ The Business Analyst validates operational requirements.
 
 The Tech Lead coordinates engineering execution.
 
-The specialists analyze, implement, and validate according to their responsibilities.
+Specialists analyze, implement, and validate according to their responsibilities.
 
-Quality must be proportional to risk.
-
-Coordination must reduce work, not create unnecessary overhead.
+**Quality must be proportional to risk. Resource efficiency must never compromise correctness. Coordination must reduce work, not create unnecessary overhead.**

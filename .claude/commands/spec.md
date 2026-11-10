@@ -32,8 +32,8 @@ Requirements are testable, scope boundaries explicit, and unresolved decisions c
 ## Output
 Problem; objective; current-state evidence; user stories/scenarios; functional and non-functional requirements; exclusions; acceptance criteria; dependencies; risks; open questions; next step `/plan`.
 
-## Caveman-inspired optimization (local, selective)
+## Execution optimization (on demand)
 
-- Load only relevant policy skills: `.claude/skills/context-policy/SKILL.md`, `.claude/skills/output-contracts/SKILL.md`. Do not preload all policies.
-- Preserve original evidence and required risk gates. Prefer concise tool outputs and targeted reads; when the official Caveman runtime is installed, let it handle supported compression and recovery. Never assume it is installed or active.
+- Apply `.claude/skills/delegation-policy/SKILL.md` only when coordinating specialists, and `.claude/skills/output-contracts/SKILL.md` only when producing handoffs or structured findings. Do not preload them.
+- Preserve original evidence and required risk gates. Prefer concise tool outputs and targeted reads; do not duplicate compression or routing logic. Caveman runtime integration is managed separately.
 - Avoid redundant delegation or repository-wide scans. Stop when acceptance and required checks pass.
