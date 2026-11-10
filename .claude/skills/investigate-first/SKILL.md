@@ -1,12 +1,16 @@
 ---
 name: investigate-first
-description: "Diagnose ambiguous bugs or unexplained behavior before modifying code. Use for /discover or /debug when cause is unknown. Do not use for trivial known fixes."
+description: Diagnose ambiguous failures before editing. Use for unknown causes, intermittent behavior, performance regressions, or investigations needing evidence-ranked hypotheses.
 ---
 
 # Investigate first
 
-- Separate observed symptoms from hypotheses.
-- Trace relevant input, state, ownership and failure evidence.
-- Rank hypotheses by cheap falsification value; use targeted reads.
-- Do not edit before credible mechanism identified unless user explicitly requests exploratory patching.
-- Stop once cause or precise blocker is evidenced. Report proof and unresolved uncertainty.
+Gather evidence before changing product code.
+
+- Separate observed symptom from inferred cause.
+- Trace inputs, state transitions, ownership boundaries, and failure output.
+- Rank hypotheses by evidence and cheap falsification value.
+- Do not edit until one credible mechanism explains evidence.
+- Stop exploration when evidence is sufficient to name cause or exact blocker.
+
+Report cause and proof. Make no fix unless task authorizes implementation.

@@ -1,13 +1,16 @@
 ---
 name: verify-and-stop
-description: "Validate acceptance and end work once required checks pass. Use for /test, /build, /debug or /ship. Never bypass critical gates to save tokens."
+description: Prove existing work meets acceptance conditions without expanding scope. Use for validation-only tasks, completion checks, focused gate runs, and last-mile proof.
 ---
 
 # Verify and stop
 
-- Convert acceptance criteria into the smallest sufficient proof set.
-- Reuse valid results only for unchanged relevant state.
-- Report commands, exit codes, pass/fail/skipped/blocked and remaining risks.
-- Run additional checks only when risk or evidence requires them.
-- Do not change product code during validation-only tasks without authorization.
-- Stop immediately once acceptance and mandatory checks are satisfied.
+Translate acceptance conditions into smallest sufficient proof set.
+
+- Reuse still-current results with matching repository state.
+- Run focused checks before wider gates.
+- Distinguish pass, fail, unavailable, and blocked exactly.
+- Do not edit product code unless verification request includes fixes.
+- Do not add polish, cleanup, or unrelated tests after criteria pass.
+
+Stop immediately when acceptance proof is complete. Report commands, results, and unresolved risk only.
