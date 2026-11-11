@@ -9,11 +9,11 @@ Do not read `references/original-guidance.md` whole. Read `*` sections first, th
 
 Sections (name — offset, limit):
 - Core Responsibilities — 2, 12
-- Token Efficiency — Mandatory — 14, 50
-- Review Inputs — 64, 13
-- Independent Scenario Verification — 77, 11
-- Assertion Quality — 88, 32
-- Security and Data Integrity Review — 120, 13
-- Test Stability — 133, 33
+- Token Efficiency — Mandatory — 14, 38
+- Review Inputs — 52, 13
+- Independent Scenario Verification — 65, 11
+- Assertion Quality — 76, 32
+- Security and Data Integrity Review — 108, 13
+- Test Stability — 121, 33
 
 Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.

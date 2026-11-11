@@ -12,11 +12,11 @@ Sections (name — offset, limit):
 - Stakeholder Decision Management — 22, 20
 - Finding Classification — 42, 21
 - Product Workflow — 63, 18
-- Documentation — Mandatory — 81, 82
-- *Modification Boundaries — 163, 25
-- Multi-Agent Collaboration — 188, 45
-- Handoff to Tech Lead — 233, 15
-- Completion Criteria — 248, 14
-- *Fundamental Principle — 262, 7
+- Documentation — Mandatory — 81, 65
+- *Modification Boundaries — 146, 25
+- Multi-Agent Collaboration — 171, 20
+- Handoff to Tech Lead — 191, 15
+- Completion Criteria — 206, 14
+- *Fundamental Principle — 220, 7
 
 Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.

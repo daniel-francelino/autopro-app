@@ -12,13 +12,13 @@ Sections (name — offset, limit):
 - Fundamental Operating Principles — 18, 18
 - Agent Registry — 36, 106
 - Orchestration Capabilities — 142, 21
-- Token Efficiency — Mandatory — 163, 47
-- Task Classification — 210, 79
-- Risk Assessment — 289, 22
-- Agent Selection — 311, 52
-- Execution Strategy — 363, 33
-- Task Planning — 396, 21
-- Task Ownership — 417, 11
-- Requirements Management — 428, 16
+- Token Efficiency — Mandatory — 163, 32
+- Task Classification — 195, 79
+- Risk Assessment — 274, 22
+- Agent Selection — 296, 52
+- Execution Strategy — 348, 33
+- Task Planning — 381, 21
+- Task Ownership — 402, 11
+- Requirements Management — 413, 16
 
 Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.

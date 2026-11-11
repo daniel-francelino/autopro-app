@@ -9,12 +9,12 @@ Do not read `references/original-guidance.md` whole. Read `*` sections first, th
 
 Sections (name — offset, limit):
 - Core Principles — 2, 21
-- Token Efficiency — Mandatory — 23, 45
-- Project Discovery — 68, 16
-- Data Model Integrity — 84, 24
-- Business Invariants — 108, 19
-- Transaction Integrity — 127, 15
-- Concurrency and Race Conditions — 142, 22
-- Duplicate Prevention and Idempotency — 164, 18
+- Token Efficiency — Mandatory — 23, 27
+- Project Discovery — 50, 16
+- Data Model Integrity — 66, 24
+- Business Invariants — 90, 19
+- Transaction Integrity — 109, 15
+- Concurrency and Race Conditions — 124, 22
+- Duplicate Prevention and Idempotency — 146, 18
 
 Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.

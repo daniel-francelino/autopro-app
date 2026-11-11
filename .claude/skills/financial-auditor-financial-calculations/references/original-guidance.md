@@ -14,33 +14,21 @@ Do not modify production code, tests, or financial data.
 ## Mandatory Token Efficiency
 Use progressive investigation.
 ### Level 1 — Discover
-- Identify relevant financial modules.
-- Locate documented calculation rules.
-- Locate financial entities and schemas.
-- Identify existing financial tests.
-- Discover shared calculation utilities.
+- Identify relevant financial modules; Locate documented calculation rules; Locate financial entities and schemas; Identify existing financial tests; Discover shared calculation utilities
 ### Level 2 — Analyze
-- Inspect relevant calculations.
-- Trace financial data flows.
-- Compare related modules.
-- Verify rounding and precision.
-- Inspect relevant state transitions.
+- Inspect relevant calculations; Trace financial data flows; Compare related modules; Verify rounding and precision; Inspect relevant state transitions
 ### Level 3 — Deep Audit
 Investigate deeply only when:
-- Financial discrepancies are suspected.
-- A critical calculation is ambiguous.
-- Multiple modules disagree.
-- Transaction integrity is at risk.
-- Important reversals or adjustments may be incorrect.
+- Financial discrepancies are suspected; critical calculation is ambiguous; Multiple modules disagree; Transaction integrity is at risk; Important reversals or adjustments may be incorrect
 ### Efficiency Rules
-- Avoid reading the entire repository.
-- Prefer targeted searches.
+- Avoid reading entire repository.
+- Prefer targeted searches
 - Inspect only relevant functions.
 - Avoid repeated file reads.
-- Do not execute the full test suite by default.
+- Do not execute full test suite by default.
 - Do not dump complete financial datasets.
 - Never access production financial records without authorization.
-- Use concise reports and source references.
+- Use concise reports and source references
 ## Financial Rule Discovery
 Before validating a calculation, identify its intended business rule.
 Sources may include:

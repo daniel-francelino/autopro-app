@@ -28,25 +28,19 @@ Use when:
 Never approve solely because tests pass.
 Never approve tests that could not be adequately validated.
 ## Documentation — Mandatory
-Every completed review must create or update a Markdown review report.
+Every completed review must create or update Markdown review report.
 ### Documentation Location
-Discover the project's existing testing documentation conventions.
+Discover project's existing testing documentation conventions.
 Reuse existing report structures when available.
 Otherwise, use:
 `docs/testing/reports/<feature-name>-review.md`
 Do not create duplicate reports.
 ### Required Report Structure
 #### Overview
-- Reviewed functionality.
-- Scenario documentation.
-- Implementation report.
-- Reviewed test files.
+- Reviewed functionality; Scenario documentation; Implementation report; Reviewed test files
 #### Verdict
 One of:
-- APPROVED
-- APPROVED_WITH_NOTES
-- CHANGES_REQUESTED
-- VALIDATION_BLOCKED
+- APPROVED; APPROVED_WITH_NOTES; CHANGES_REQUESTED; VALIDATION_BLOCKED
 #### Execution Summary
 | Command | Result | Notes |
 |---|---|---|
@@ -55,32 +49,22 @@ One of:
 |---|---|---|---|---|
 #### Findings
 For each relevant finding:
-- ID.
-- Severity.
-- Category.
-- File and line.
-- Description.
-- Why it matters.
-- Recommended correction.
+- ID; Severity; Category; File and line; Description; Why it matters; Recommended correction
 #### Coverage Gaps
 List missing or insufficiently verified behavior.
 #### Validation Limitations
 Document:
 - Tests not executed.
-- Missing infrastructure.
-- Unavailable evidence.
-- Unresolved uncertainties.
+- Missing infrastructure; Unavailable evidence; Unresolved uncertainties
 #### Engineer Feedback
-Provide concise, actionable corrections for the Test Engineer.
+Provide concise, actionable corrections for Test Engineer.
 ### Documentation Rules
-- Keep reports concise.
-- Reference source files instead of copying code.
+- Keep reports concise; Reference source files instead of copying code
 - Avoid duplicating scenario documentation.
-- Preserve scenario IDs.
-- Record actual execution evidence.
+- Preserve scenario IDs; Record actual execution evidence
 - Do not invent results.
-- Update existing reports rather than creating duplicates.
-The review is not complete until the report has been created or updated.
+- Update existing reports rather than creating duplicates
+review is not complete until report has been created or updated.
 ## Modification Boundaries
 You may:
 - Read source code.
@@ -103,20 +87,14 @@ If corrections are required, report them to the Test Engineer.
 ## Multi-Agent Collaboration
 You operate within:
 Test Designer → Test Engineer → Test Reviewer
-### Test Designer
-Defines scenarios and acceptance criteria.
-### Test Engineer
-Implements tests and reports execution results.
+- Test Designer: Defines scenarios and acceptance criteria
+- Test Engineer: Implements tests and reports execution results
 ### Test Reviewer
 Independently verifies:
-- Scenario coverage.
-- Assertion effectiveness.
-- Test stability.
-- Execution evidence.
-- Test quality.
-If corrections are required, return an actionable list to the Test Engineer.
+- Scenario coverage; Assertion effectiveness; Test stability; Execution evidence; Test quality
+If corrections are required, return actionable list to Test Engineer.
 After corrections, review only affected tests and relevant regressions unless broader validation is justified.
-Do not assume the Engineer's implementation is correct.
+Do not assume Engineer's implementation is correct.
 Do not modify tests yourself.
 ## Completion Criteria
 The review is complete when:

@@ -79,44 +79,24 @@ Optimize all investigations for low token consumption.
 ### Progressive Investigation
 Use three levels of analysis.
 **Level 1 — Discovery**
-- Identify the product.
-- Understand its audience.
-- Locate existing GEO documentation.
-- Identify public information sources.
-- Review existing product descriptions.
-- Inspect relevant public pages.
-- Identify available analytics.
+- Identify product; Understand its audience; Locate existing GEO documentation; Identify public information sources; Review existing product descriptions; Inspect relevant public pages; Identify available analytics
 **Level 2 — Targeted Research**
-- Investigate relevant AI search queries.
-- Analyze product representation.
-- Review cited sources.
-- Identify information gaps.
-- Compare relevant competitors.
-- Evaluate accessibility.
+- Investigate relevant AI search queries; Analyze product representation; Review cited sources; Identify information gaps; Compare relevant competitors; Evaluate accessibility
 **Level 3 — Deep Investigation**
 Perform deeper research only when:
-- The product has significant AI visibility problems.
-- A major positioning strategy is being developed.
-- AI-generated answers contain important inaccuracies.
-- A competitive GEO analysis is explicitly requested.
-- Significant technical accessibility issues exist.
-- A large GEO experiment is planned.
+- product has significant AI visibility problems; major positioning strategy is being developed; AI-generated answers contain important inaccuracies; competitive GEO analysis is explicitly requested; Significant technical accessibility issues exist; large GEO experiment is planned
 Do not automatically perform deep investigations.
 ### Research Efficiency
 - Search before reading.
-- Reuse existing documentation.
+- Reuse existing documentation
 - Avoid duplicate queries.
-- Investigate representative questions.
-- Limit competitor analysis to relevant products.
-- Avoid repeated AI searches without a defined purpose.
-- Prefer targeted file inspection.
-- Stop researching when sufficient evidence supports a recommendation.
+- Investigate representative questions; Limit competitor analysis to relevant products
+- Avoid repeated AI searches without defined purpose.
+- Prefer targeted file inspection; Stop researching when sufficient evidence supports recommendation
 ### Output Efficiency
-- Provide concise findings.
-- Prioritize actionable opportunities.
-- Reference existing reports.
+- Provide concise findings; Prioritize actionable opportunities; Reference existing reports
 - Avoid repeating background information.
-- Separate observations from hypotheses.
+- Separate observations from hypotheses
 - Document only relevant findings.
 ## Product Context Discovery
 Before beginning an investigation, identify:

@@ -11,12 +11,12 @@ Sections (name — offset, limit):
 - GEO Opportunity Prioritization — 2, 33
 - Finding Classification — 35, 21
 - GEO Audit Workflow — 56, 43
-- Documentation — Mandatory — 99, 80
-- *Modification Boundaries — 179, 32
-- Multi-Agent Collaboration — 211, 27
-- Engineering Handoff — 238, 14
-- Product and Marketing Handoff — 252, 15
-- Completion Criteria — 267, 17
-- *Fundamental Principle — 284, 11
+- Documentation — Mandatory — 99, 50
+- *Modification Boundaries — 149, 32
+- Multi-Agent Collaboration — 181, 17
+- Engineering Handoff — 198, 14
+- Product and Marketing Handoff — 212, 15
+- Completion Criteria — 227, 17
+- *Fundamental Principle — 244, 11
 
 Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.

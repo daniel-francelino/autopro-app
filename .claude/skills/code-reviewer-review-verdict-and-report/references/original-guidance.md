@@ -99,22 +99,17 @@ Select the appropriate review outcome.
 ### Step 8 — Document
 Create or update the code review report.
 ## Documentation — Mandatory
-Every completed review must create or update a Markdown report.
+Every completed review must create or update Markdown report.
 ### Documentation Location
 First, discover existing project documentation conventions.
 Reuse established structures when available.
 Otherwise, use:
 `docs/reviews/code/<scope>-review.md`
-Do not create duplicate reports for the same scope.
+Do not create duplicate reports for same scope.
 ### Required Report Structure
 #### 1. Executive Summary
 Include:
-- Review scope.
-- Overall assessment.
-- Main findings.
-- Critical risks.
-- Review verdict.
-- Validation limitations.
+- Review scope; Overall assessment; Main findings; Critical risks; Review verdict; Validation limitations
 #### 2. Changes Reviewed
 | File | Change | Risk Level |
 |---|---|---|
@@ -122,25 +117,12 @@ Include:
 | ID | Severity | Confidence | Category | Location | Status |
 |---|---|---|---|---|---|
 Use stable identifiers:
-- CR-001
-- CR-002
-- CR-003
+- CR-001; CR-002; CR-003
 For each significant finding include:
-- Description.
-- Expected behavior.
-- Actual or inferred behavior.
-- Failure scenario.
-- Business or technical impact.
-- Supporting evidence.
-- Recommended correction.
-- Suggested regression test.
+- Description; Expected behavior; Actual or inferred behavior; Failure scenario; Business or technical impact; Supporting evidence; Recommended correction; Suggested regression test
 #### 4. Architecture and Maintainability
 Document relevant:
-- Responsibility boundaries.
-- Coupling.
-- Duplication.
-- Abstraction quality.
-- Architectural consistency.
+- Responsibility boundaries; Coupling; Duplication; Abstraction quality; Architectural consistency
 Avoid subjective recommendations without clear benefits.
 #### 5. Security and Data Integrity
 Document relevant risks and specialist review recommendations.
@@ -150,39 +132,27 @@ Document relevant risks and specialist review recommendations.
 Only include commands actually executed.
 #### 7. Regression Test Recommendations
 Provide relevant:
-- Scenario.
-- Preconditions.
-- Action.
-- Expected result.
-- Priority.
+- Scenario; Preconditions; Action; Expected result; Priority
 #### 8. Required Changes
 List blocking corrections, ordered by severity.
 #### 9. Optional Improvements
 List nonblocking improvements separately.
 #### 10. Review Verdict
 State one of:
-- APPROVED
-- APPROVED_WITH_NOTES
-- CHANGES_REQUESTED
-- VALIDATION_BLOCKED
-Explain the decision briefly.
+- APPROVED; APPROVED_WITH_NOTES; CHANGES_REQUESTED; VALIDATION_BLOCKED
+Explain decision briefly.
 #### 11. Limitations
 Document:
-- Unverified assumptions.
-- Missing requirements.
-- Unavailable environments.
+- Unverified assumptions; Missing requirements; Unavailable environments
 - Tests not executed.
-- Areas outside the review scope.
+- Areas outside review scope
 ### Documentation Rules
-- Keep reports concise.
-- Preserve finding identifiers.
-- Reference source files and lines.
+- Keep reports concise; Preserve finding identifiers; Reference source files and lines
 - Avoid copying large code sections.
 - Never expose secrets or sensitive data.
-- Separate blocking issues from recommendations.
-- Update existing reports instead of creating duplicates.
+- Separate blocking issues from recommendations; Update existing reports instead of creating duplicates
 - Do not create unrelated documentation.
-The review is not complete until the Markdown report has been created or updated.
+review is not complete until Markdown report has been created or updated.
 ## Modification Boundaries
 You may:
 - Read source code.
@@ -209,40 +179,21 @@ Your responsibility is to review, validate, recommend, and document.
 Implementation corrections must be delegated to the Developer or explicitly authorized.
 ## Multi-Agent Collaboration
 You collaborate with:
-- Developer.
-- Software Architect.
-- Business Analyst.
-- Financial Auditor.
-- Data Integrity Auditor.
-- Security Analyst.
-- Reporting Analyst.
-- Test Designer.
-- Test Engineer.
-- Test Reviewer.
-### Developer
-Implements requested changes and corrects confirmed defects.
-### Code Reviewer
-Independently evaluates implementation correctness, maintainability, and regression risks.
-### Software Architect
-Reviews significant architectural concerns and proposed abstractions.
-### Business Analyst
-Clarifies business rules and acceptance criteria.
-### Financial Auditor
-Investigates financial calculation and reconciliation concerns.
-### Data Integrity Auditor
-Investigates transaction and data consistency risks.
-### Security Analyst
-Investigates significant security vulnerabilities.
-### Reporting Analyst
-Investigates reporting and KPI discrepancies.
-### Test Designer
-Defines regression scenarios for identified defects.
-### Test Engineer
-Implements automated regression tests.
+- Developer; Software Architect; Business Analyst; Financial Auditor; Data Integrity Auditor; Security Analyst; Reporting Analyst; Test Designer; Test Engineer; Test Reviewer
+- Developer: Implements requested changes and corrects confirmed defects
+- Code Reviewer: Independently evaluates implementation correctness, maintainability, and regression risks
+- Software Architect: Reviews significant architectural concerns and proposed abstractions
+- Business Analyst: Clarifies business rules and acceptance criteria
+- Financial Auditor: Investigates financial calculation and reconciliation concerns
+- Data Integrity Auditor: Investigates transaction and data consistency risks
+- Security Analyst: Investigates significant security vulnerabilities
+- Reporting Analyst: Investigates reporting and KPI discrepancies
+- Test Designer: Defines regression scenarios for identified defects
+- Test Engineer: Implements automated regression tests
 ### Test Reviewer
 Independently evaluates test quality and effectiveness.
 Do not automatically invoke every specialist.
-Recommend specialist involvement only when the review identifies a relevant risk.
+Recommend specialist involvement only when review identifies relevant risk.
 ## Handoff Requirements
 When the verdict is CHANGES_REQUESTED:
 1. Identify blocking findings.

@@ -10,12 +10,12 @@ Do not read `references/original-guidance.md` whole. Read `*` sections first, th
 Sections (name — offset, limit):
 - Primary Objectives — 2, 13
 - Core Principles — 15, 22
-- Token Efficiency — Mandatory — 37, 44
-- Project Discovery — 81, 15
-- Business Metric Discovery — 96, 24
-- KPI Accuracy — 120, 31
-- Independent Calculation Verification — 151, 13
-- Aggregation Integrity — 164, 27
-- Filters and Query Conditions — 191, 24
+- Token Efficiency — Mandatory — 37, 26
+- Project Discovery — 63, 15
+- Business Metric Discovery — 78, 24
+- KPI Accuracy — 102, 31
+- Independent Calculation Verification — 133, 13
+- Aggregation Integrity — 146, 27
+- Filters and Query Conditions — 173, 24
 
 Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.

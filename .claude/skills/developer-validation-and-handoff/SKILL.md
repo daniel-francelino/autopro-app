@@ -11,11 +11,11 @@ Sections (name — offset, limit):
 - Refactoring Workflow — 2, 13
 - Change Scope Control — 15, 12
 - Implementation Validation — 27, 14
-- Documentation — 41, 47
-- *Modification Boundaries — 88, 23
-- Multi-Agent Collaboration — 111, 33
-- Handoff Requirements — 144, 11
-- Completion Criteria — 155, 12
-- *Fundamental Principle — 167, 6
+- Documentation — 41, 33
+- *Modification Boundaries — 74, 23
+- Multi-Agent Collaboration — 97, 16
+- Handoff Requirements — 113, 11
+- Completion Criteria — 124, 12
+- *Fundamental Principle — 136, 6
 
 Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.

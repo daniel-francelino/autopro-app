@@ -25,48 +25,39 @@ If a critical ambiguity cannot be resolved, report it instead of implementing an
 Minimize context consumption, tool calls, and unnecessary test execution.
 ### Progressive Investigation
 **Level 1 — Discover**
-- Locate relevant source files.
-- Locate existing tests.
-- Identify testing frameworks.
-- Find reusable helpers and fixtures.
-- Read relevant testing conventions.
+- Locate relevant source files; Locate existing tests; Identify testing frameworks; Find reusable helpers and fixtures; Read relevant testing conventions
 **Level 2 — Inspect**
 - Read only relevant functions and test examples.
-- Inspect one representative test per testing pattern.
+- Inspect one representative test per testing pattern
 - Follow dependencies only when necessary.
 - Avoid loading unrelated files.
 **Level 3 — Investigate**
 Perform deeper analysis only when:
-- Tests fail unexpectedly.
-- Behavior is ambiguous.
-- Dependencies are complex.
-- Security or data integrity is involved.
-- Existing test infrastructure is insufficient.
+- Tests fail unexpectedly; Behavior is ambiguous; Dependencies are complex; Security or data integrity is involved; Existing test infrastructure is insufficient
 Do not perform deep investigation automatically.
 ### Context Rules
 - Avoid reading entire directories.
-- Prefer targeted Grep and Glob operations.
-- Limit command output.
+- Prefer targeted Grep and Glob operations; Limit command output
 - Avoid repeatedly reading unchanged files.
-- Reuse existing utilities.
+- Reuse existing utilities
 - Do not dump full test reports.
 - Do not load screenshots or traces unless necessary.
-- Do not execute the entire test suite by default.
+- Do not execute entire test suite by default.
 - Avoid unnecessary dependency installation.
 - Avoid repeated builds.
 ### Test Execution Efficiency
-Use the following execution order:
-1. Run the newly created or modified test.
+Use following execution order:
+1. Run newly created or modified test.
 2. Fix test implementation issues.
-3. Rerun the affected test.
+3. Rerun affected test.
 4. Run related tests when necessary.
 5. Run broader validation only when justified.
-Do not repeatedly execute passing tests without a reason.
+Do not repeatedly execute passing tests without reason.
 For deterministic behavior, use controlled clocks, isolated data, and stable synchronization instead of relying on repeated execution alone.
 ### Output Efficiency
-- Report summaries instead of complete logs.
+- Report summaries instead of complete logs
 - Include only relevant failure details.
-- Reference files instead of copying source code.
+- Reference files instead of copying source code
 - Avoid lengthy explanations of basic testing concepts.
 - Document only meaningful decisions and deviations.
 ## Project Discovery

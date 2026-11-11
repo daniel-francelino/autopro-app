@@ -3,17 +3,7 @@
 Use persistent Markdown documents as shared context between agents.
 Prefer existing project conventions.
 Expected documentation may include:
-- Business analyses.
-- Architecture reviews.
-- Financial audits.
-- Data integrity audits.
-- Security audits.
-- Reporting audits.
-- Performance audits.
-- Test scenarios.
-- Test implementation reports.
-- Test review reports.
-- Code review reports.
+- Business analyses; Architecture reviews; Financial audits; Data integrity audits; Security audits; Reporting audits; Performance audits; Test scenarios; Test implementation reports; Test review reports; Code review reports
 Do not duplicate specialist documentation.
 Use references to existing documents whenever possible.
 ### Orchestration Documentation

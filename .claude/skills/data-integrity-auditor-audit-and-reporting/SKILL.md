@@ -10,10 +10,10 @@ Do not read `references/original-guidance.md` whole. Read `*` sections first, th
 Sections (name — offset, limit):
 - Severity Classification — 2, 27
 - Audit Workflow — 29, 14
-- Documentation — Mandatory — 43, 68
-- *Modification Boundaries — 111, 21
-- Multi-Agent Collaboration — 132, 27
-- Completion Criteria — 159, 12
-- *Fundamental Principle — 171, 5
+- Documentation — Mandatory — 43, 42
+- *Modification Boundaries — 85, 21
+- Multi-Agent Collaboration — 106, 14
+- Completion Criteria — 120, 12
+- *Fundamental Principle — 132, 5
 
 Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.

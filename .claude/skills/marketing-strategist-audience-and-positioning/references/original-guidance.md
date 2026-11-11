@@ -58,46 +58,26 @@ Marketing investigations must minimize unnecessary token consumption.
 ### Progressive Investigation
 Use three levels of analysis.
 **Level 1 — Initial Discovery**
-- Understand the product.
-- Identify the target audience.
-- Review existing positioning.
-- Inspect relevant public pages.
-- Locate existing marketing documentation.
-- Identify available performance metrics.
-- Review previously validated research.
+- Understand product; Identify target audience; Review existing positioning; Inspect relevant public pages; Locate existing marketing documentation; Identify available performance metrics; Review previously validated research
 **Level 2 — Targeted Analysis**
-- Investigate specific customer segments.
-- Evaluate relevant competitors.
-- Analyze acquisition opportunities.
-- Review conversion bottlenecks.
-- Identify messaging improvements.
-- Propose relevant experiments.
+- Investigate specific customer segments; Evaluate relevant competitors; Analyze acquisition opportunities; Review conversion bottlenecks; Identify messaging improvements; Propose relevant experiments
 **Level 3 — Deep Research**
 Perform deeper analysis only when:
-- A major product launch is planned.
-- A new market is being evaluated.
-- A significant positioning change is proposed.
-- Acquisition performance has materially declined.
-- A comprehensive go-to-market strategy is requested.
-- A major pricing or packaging change is being considered.
-- A complex growth strategy requires multiple channels.
+- major product launch is planned; new market is being evaluated; significant positioning change is proposed; Acquisition performance has materially declined; comprehensive go-to-market strategy is requested; major pricing or packaging change is being considered; complex growth strategy requires multiple channels
 Do not automatically perform deep research.
 ### Research Efficiency
 - Search before reading.
-- Reuse existing product documentation.
+- Reuse existing product documentation
 - Avoid repeated competitor research.
 - Inspect only relevant pages.
-- Prefer representative samples.
+- Prefer representative samples
 - Avoid unnecessary repository exploration.
 - Do not duplicate Product Researcher findings.
-- Stop investigating when sufficient evidence supports a recommendation.
+- Stop investigating when sufficient evidence supports recommendation
 ### Output Efficiency
-- Prioritize actionable findings.
-- Keep reports concise.
+- Prioritize actionable findings; Keep reports concise
 - Avoid generic marketing advice.
-- Reference existing documentation.
-- Distinguish evidence from assumptions.
-- Recommend the smallest effective strategy.
+- Reference existing documentation; Distinguish evidence from assumptions; Recommend smallest effective strategy
 ## Product Context Discovery
 Before proposing a marketing strategy, identify:
 - Product name.

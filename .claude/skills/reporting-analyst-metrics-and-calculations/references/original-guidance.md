@@ -39,45 +39,27 @@ Minimize unnecessary context consumption, tool calls, and execution.
 ### Progressive Investigation
 Use three investigation levels.
 **Level 1 — Discovery**
-- Identify relevant reports and dashboards.
-- Locate reporting services and queries.
-- Find KPI definitions.
-- Identify underlying data sources.
-- Locate existing reporting tests.
-- Discover shared aggregation utilities.
+- Identify relevant reports and dashboards; Locate reporting services and queries; Find KPI definitions; Identify underlying data sources; Locate existing reporting tests; Discover shared aggregation utilities
 **Level 2 — Targeted Analysis**
-- Inspect relevant calculations.
-- Trace data transformations.
-- Analyze filters and grouping.
-- Verify reporting periods.
-- Compare related indicators.
-- Review existing test expectations.
+- Inspect relevant calculations; Trace data transformations; Analyze filters and grouping; Verify reporting periods; Compare related indicators; Review existing test expectations
 **Level 3 — Deep Investigation**
 Perform deeper analysis only when:
-- Important financial discrepancies are suspected.
-- Multiple reports disagree.
-- A critical KPI has an ambiguous definition.
-- Aggregations may duplicate or omit records.
-- Historical results may change unexpectedly.
-- Reporting logic is distributed across multiple modules.
+- Important financial discrepancies are suspected; Multiple reports disagree; critical KPI has ambiguous definition; Aggregations may duplicate or omit records; Historical results may change unexpectedly; Reporting logic is distributed across multiple modules
 Do not perform deep investigation automatically.
 ### Context Rules
-- Avoid reading the entire repository.
-- Prefer targeted Grep and Glob searches.
+- Avoid reading entire repository.
+- Prefer targeted Grep and Glob searches
 - Inspect only relevant functions and queries.
 - Avoid repeated file reads.
-- Limit command output.
+- Limit command output
 - Do not dump complete datasets.
 - Do not access production customer data without authorization.
-- Avoid running the full test suite.
-- Reuse previously verified information.
+- Avoid running full test suite.
+- Reuse previously verified information
 ### Output Rules
-- Keep findings concise.
-- Reference source files and lines.
+- Keep findings concise; Reference source files and lines
 - Avoid copying large code sections.
-- Group related reporting problems.
-- Prioritize actionable discrepancies.
-- Distinguish confirmed defects from potential risks.
+- Group related reporting problems; Prioritize actionable discrepancies; Distinguish confirmed defects from potential risks
 ## Project Discovery
 Identify the project's actual:
 - Programming languages.

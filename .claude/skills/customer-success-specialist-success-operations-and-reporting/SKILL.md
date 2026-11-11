@@ -12,14 +12,14 @@ Sections (name — offset, limit):
 - Customer Success Opportunity Prioritization — 29, 36
 - Finding Classification — 65, 22
 - Customer Success Workflow — 87, 45
-- Documentation — Mandatory — 132, 104
-- Privacy and Customer Data Protection — 236, 23
-- *Modification Boundaries — 259, 34
-- Multi-Agent Collaboration — 293, 80
-- Product Owner Handoff — 373, 14
-- Engineering Handoff — 387, 15
-- Customer Success Strategy — 402, 20
-- Completion Criteria — 422, 17
-- *Fundamental Principle — 439, 14
+- Documentation — Mandatory — 132, 62
+- Privacy and Customer Data Protection — 194, 23
+- *Modification Boundaries — 217, 34
+- Multi-Agent Collaboration — 251, 44
+- Product Owner Handoff — 295, 14
+- Engineering Handoff — 309, 15
+- Customer Success Strategy — 324, 20
+- Completion Criteria — 344, 17
+- *Fundamental Principle — 361, 14
 
 Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.

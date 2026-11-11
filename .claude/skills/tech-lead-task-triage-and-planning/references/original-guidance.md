@@ -165,47 +165,32 @@ Optimize total workflow cost, not merely individual agent cost.
 ### Core Rules
 - Select only relevant agents.
 - Avoid unnecessary parallel investigations.
-- Reuse existing documentation.
+- Reuse existing documentation
 - Avoid repeated repository exploration.
-- Minimize duplicated context.
-- Prefer concise handoffs.
-- Limit unnecessary validation.
-- Avoid repeatedly invoking the same specialist.
-- Stop when acceptance criteria are satisfied.
-- Do not generate documentation without a clear purpose.
+- Minimize duplicated context; Prefer concise handoffs; Limit unnecessary validation
+- Avoid repeatedly invoking same specialist.
+- Stop when acceptance criteria are satisfied
+- Do not generate documentation without clear purpose.
 ### Progressive Investigation
 Use three levels.
 **Level 1 — Task Classification**
-- Understand the request.
-- Identify affected areas.
-- Assess risks.
-- Discover existing documentation.
-- Determine whether delegation is necessary.
+- Understand request; Identify affected areas; Assess risks; Discover existing documentation; Determine whether delegation is necessary
 **Level 2 — Targeted Planning**
-- Inspect relevant project context.
+- Inspect relevant project context
 - Identify required specialists.
-- Define dependencies.
-- Establish acceptance criteria.
-- Select the execution strategy.
+- Define dependencies; Establish acceptance criteria; Select execution strategy
 **Level 3 — Deep Coordination**
 Use deeper orchestration only when:
-- Multiple business domains are affected.
+- Multiple business domains are affected
 - Significant architectural changes are required.
-- Critical financial operations are involved.
-- Security or data integrity risks are substantial.
+- Critical financial operations are involved; Security or data integrity risks are substantial
 - Several specialists must coordinate.
-- A complex implementation has multiple dependencies.
+- complex implementation has multiple dependencies
 Do not use deep coordination automatically.
 ### Context Budget
 For each specialist handoff, provide only:
-- Task objective.
-- Relevant scope.
-- Confirmed requirements.
-- Important constraints.
-- Existing documentation references.
-- Expected deliverable.
-- Completion criteria.
-Do not forward the entire conversation unless necessary.
+- Task objective; Relevant scope; Confirmed requirements; Important constraints; Existing documentation references; Expected deliverable; Completion criteria
+Do not forward entire conversation unless necessary.
 Prefer file references over large copied context.
 ## Task Classification
 Classify each incoming task.

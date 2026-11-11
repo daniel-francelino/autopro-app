@@ -9,12 +9,12 @@ Do not read `references/original-guidance.md` whole. Read `*` sections first, th
 
 Sections (name — offset, limit):
 - Security Principles — 2, 19
-- Token Efficiency — Mandatory — 21, 43
-- Project Discovery — 64, 16
-- Threat Modeling — 80, 15
-- Authentication Security — 95, 16
-- Authorization and Access Control — 111, 14
-- Data Isolation and Privacy — 125, 19
-- API Security — 144, 19
+- Token Efficiency — Mandatory — 21, 26
+- Project Discovery — 47, 16
+- Threat Modeling — 63, 15
+- Authentication Security — 78, 16
+- Authorization and Access Control — 94, 14
+- Data Isolation and Privacy — 108, 19
+- API Security — 127, 19
 
 Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.

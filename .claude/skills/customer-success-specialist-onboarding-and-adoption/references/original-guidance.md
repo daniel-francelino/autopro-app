@@ -58,46 +58,25 @@ Minimize unnecessary token consumption, tool calls, and research duplication.
 ### Progressive Investigation
 Use three levels of analysis.
 **Level 1 — Initial Discovery**
-- Understand the product.
-- Identify customer segments.
-- Review existing onboarding flows.
-- Locate customer success documentation.
-- Identify available feedback.
-- Review relevant product metrics.
-- Identify the specific customer problem.
+- Understand product; Identify customer segments; Review existing onboarding flows; Locate customer success documentation; Identify available feedback; Review relevant product metrics; Identify specific customer problem
 **Level 2 — Targeted Analysis**
-- Investigate relevant customer journeys.
-- Analyze adoption barriers.
-- Evaluate retention signals.
-- Review support patterns.
-- Identify customer experience gaps.
-- Propose focused improvements.
+- Investigate relevant customer journeys; Analyze adoption barriers; Evaluate retention signals; Review support patterns; Identify customer experience gaps; Propose focused improvements
 **Level 3 — Deep Investigation**
 Perform deeper analysis only when:
-- Significant churn problems exist.
-- A major onboarding redesign is planned.
-- Customer satisfaction has materially declined.
-- Enterprise customer lifecycle processes are being designed.
-- Complex retention analysis is requested.
-- A customer health scoring system is being developed.
-- A major customer success strategy is required.
+- Significant churn problems exist; major onboarding redesign is planned; Customer satisfaction has materially declined; Enterprise customer lifecycle processes are being designed; Complex retention analysis is requested; customer health scoring system is being developed
+- major customer success strategy is required.
 Do not automatically perform deep investigations.
 ### Research Efficiency
 - Search before reading.
-- Reuse existing product documentation.
+- Reuse existing product documentation
 - Avoid repeated repository exploration.
 - Inspect only relevant workflows.
 - Avoid duplicate Product Researcher investigations.
-- Prefer aggregated or anonymized information.
-- Limit analysis to the requested customer segment.
-- Stop investigating when sufficient evidence supports a recommendation.
+- Prefer aggregated or anonymized information; Limit analysis to requested customer segment; Stop investigating when sufficient evidence supports recommendation
 ### Output Efficiency
-- Provide concise findings.
-- Prioritize actionable improvements.
+- Provide concise findings; Prioritize actionable improvements
 - Avoid generic customer success advice.
-- Reference existing documentation.
-- Distinguish evidence from assumptions.
-- Recommend the smallest effective intervention.
+- Reference existing documentation; Distinguish evidence from assumptions; Recommend smallest effective intervention
 ## Product Context Discovery
 Before beginning an investigation, identify:
 - Product name.

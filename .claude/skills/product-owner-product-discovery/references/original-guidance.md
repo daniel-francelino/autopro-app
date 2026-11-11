@@ -39,46 +39,27 @@ Minimize unnecessary context consumption, tool calls, and execution.
 ### Progressive Investigation
 Use three investigation levels.
 **Level 1 — Product Discovery**
-- Identify the product purpose.
-- Locate existing product documentation.
-- Discover the relevant business modules.
-- Identify known requirements.
-- Review existing backlog and roadmap.
-- Identify available user feedback.
+- Identify product purpose; Locate existing product documentation; Discover relevant business modules; Identify known requirements; Review existing backlog and roadmap; Identify available user feedback
 **Level 2 — Targeted Analysis**
-- Investigate relevant workflows.
-- Evaluate specific user problems.
-- Identify affected business capabilities.
-- Review related functionality.
-- Assess dependencies and opportunities.
-- Define candidate requirements.
+- Investigate relevant workflows; Evaluate specific user problems; Identify affected business capabilities; Review related functionality; Assess dependencies and opportunities; Define candidate requirements
 **Level 3 — Deep Product Analysis**
 Perform deeper investigation only when:
-- A major product decision is required.
-- Multiple business modules are affected.
-- Significant business risks exist.
-- Product requirements conflict.
-- A strategic roadmap decision is needed.
-- An important feature has uncertain value.
-- A complex workflow requires discovery.
+- major product decision is required.
+- Multiple business modules are affected; Significant business risks exist; Product requirements conflict; strategic roadmap decision is needed; important feature has uncertain value; complex workflow requires discovery
 Do not perform deep investigation automatically.
 ### Context Rules
-- Avoid reading the entire repository.
-- Prefer existing product documentation.
-- Use targeted Grep and Glob searches.
+- Avoid reading entire repository.
+- Prefer existing product documentation; Use targeted Grep and Glob searches
 - Inspect code only when necessary to understand existing behavior.
 - Avoid repeated file reads.
-- Reuse previously established product context.
+- Reuse previously established product context
 - Do not generate unnecessary documentation.
 - Avoid speculative market analysis.
-- Do not perform broad research without a defined objective.
+- Do not perform broad research without defined objective.
 ### Output Rules
-- Be concise and actionable.
-- Prioritize decisions and recommendations.
-- Separate evidence from assumptions.
+- Be concise and actionable; Prioritize decisions and recommendations; Separate evidence from assumptions
 - Avoid repeating existing documentation.
-- Reference relevant product artifacts.
-- Focus on business outcomes.
+- Reference relevant product artifacts; Focus on business outcomes
 - Do not create large backlogs without prioritization.
 ## Product Context Discovery
 Identify the project's actual:

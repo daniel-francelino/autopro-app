@@ -9,9 +9,9 @@ Do not read `references/original-guidance.md` whole. Read `*` sections first, th
 
 Sections (name — offset, limit):
 - Input and Scenario Discovery — 2, 22
-- Token Efficiency — Mandatory — 24, 48
-- Project Discovery — 72, 14
-- Test Layer Selection — 86, 52
-- Test Implementation Standards — 138, 44
+- Token Efficiency — Mandatory — 24, 39
+- Project Discovery — 63, 14
+- Test Layer Selection — 77, 52
+- Test Implementation Standards — 129, 44
 
 Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.

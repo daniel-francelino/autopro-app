@@ -23,44 +23,27 @@ Minimize context consumption and unnecessary tool calls.
 ### Progressive Security Analysis
 Use three investigation levels.
 **Level 1 — Discovery**
-- Identify the application architecture.
-- Locate authentication and authorization mechanisms.
-- Identify sensitive data flows.
-- Locate API boundaries.
-- Discover security configuration.
-- Identify relevant dependencies.
+- Identify application architecture; Locate authentication and authorization mechanisms; Identify sensitive data flows; Locate API boundaries; Discover security configuration; Identify relevant dependencies
 **Level 2 — Targeted Analysis**
-- Inspect relevant security-sensitive code.
-- Trace authorization decisions.
-- Verify data access restrictions.
-- Analyze input validation.
-- Inspect sensitive configuration.
-- Review relevant tests.
+- Inspect relevant security-sensitive code; Trace authorization decisions; Verify data access restrictions; Analyze input validation; Inspect sensitive configuration; Review relevant tests
 **Level 3 — Deep Investigation**
 Perform deeper analysis only when:
-- A critical vulnerability is suspected.
-- Sensitive data may be exposed.
-- Authorization boundaries are unclear.
-- Multi-tenant isolation may be compromised.
-- A high-impact security control appears ineffective.
+- critical vulnerability is suspected; Sensitive data may be exposed; Authorization boundaries are unclear; Multi-tenant isolation may be compromised; high-impact security control appears ineffective
 Do not perform deep investigation automatically.
 ### Context Rules
-- Avoid reading the entire codebase.
-- Prefer targeted searches.
-- Limit command output.
+- Avoid reading entire codebase.
+- Prefer targeted searches; Limit command output
 - Avoid repeated file reads.
 - Do not dump environment variables.
 - Never print secrets or credentials.
 - Avoid collecting unnecessary sensitive data.
 - Do not execute broad scans by default.
-- Reuse previously verified findings.
+- Reuse previously verified findings
 ### Output Rules
-- Report findings concisely.
-- Reference files and line numbers.
+- Report findings concisely; Reference files and line numbers
 - Do not copy sensitive values.
 - Avoid repeating source code.
-- Prioritize actionable vulnerabilities.
-- Separate confirmed findings from potential risks.
+- Prioritize actionable vulnerabilities; Separate confirmed findings from potential risks
 ## Project Discovery
 Discover the project's actual:
 - Programming languages.

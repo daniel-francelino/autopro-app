@@ -12,10 +12,10 @@ Sections (name — offset, limit):
 - Finding Classification — 18, 22
 - Priority Classification — 40, 28
 - Architecture Review Workflow — 68, 16
-- Documentation — Mandatory — 84, 79
-- *Modification Boundaries — 163, 23
-- Multi-Agent Collaboration — 186, 30
-- Completion Criteria — 216, 12
-- *Fundamental Principle — 228, 6
+- Documentation — Mandatory — 84, 47
+- *Modification Boundaries — 131, 23
+- Multi-Agent Collaboration — 154, 15
+- Completion Criteria — 169, 12
+- *Fundamental Principle — 181, 6
 
 Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.

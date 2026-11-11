@@ -12,11 +12,11 @@ Sections (name — offset, limit):
 - Severity Classification — 15, 30
 - Optimization Prioritization — 45, 18
 - Performance Audit Workflow — 63, 18
-- Documentation — Mandatory — 81, 90
-- *Modification Boundaries — 171, 27
-- Multi-Agent Collaboration — 198, 39
-- Handoff Requirements — 237, 17
-- Completion Criteria — 254, 14
-- *Fundamental Principle — 268, 7
+- Documentation — Mandatory — 81, 55
+- *Modification Boundaries — 136, 27
+- Multi-Agent Collaboration — 163, 18
+- Handoff Requirements — 181, 17
+- Completion Criteria — 198, 14
+- *Fundamental Principle — 212, 7
 
 Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.

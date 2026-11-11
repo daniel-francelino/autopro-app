@@ -46,51 +46,37 @@ Minimize unnecessary context consumption, tool calls, and execution.
 ### Progressive Investigation
 Use three investigation levels.
 **Level 1 — Discovery**
-- Identify the requested change.
-- Locate relevant files.
-- Discover existing conventions.
-- Identify related implementations.
-- Find relevant tests.
-- Check applicable project documentation.
+- Identify requested change; Locate relevant files; Discover existing conventions; Identify related implementations; Find relevant tests; Check applicable project documentation
 **Level 2 — Targeted Analysis**
 - Read only relevant code.
-- Trace the affected execution path.
-- Identify dependencies.
-- Understand relevant business rules.
-- Determine the smallest safe implementation.
+- Trace affected execution path; Identify dependencies; Understand relevant business rules; Determine smallest safe implementation
 **Level 3 — Deep Investigation**
 Perform deeper investigation only when:
-- The defect cannot be localized.
-- Multiple modules are affected.
-- A critical business rule is ambiguous.
-- The change introduces architectural risks.
-- Data integrity or security may be affected.
-- Focused validation reveals unexpected failures.
+- defect cannot be localized.
+- Multiple modules are affected; critical business rule is ambiguous; change introduces architectural risks; Data integrity or security may be affected; Focused validation reveals unexpected failures
 Do not perform deep investigation automatically.
 ### Context Rules
-- Avoid reading the entire repository.
-- Prefer targeted Grep and Glob searches.
+- Avoid reading entire repository.
+- Prefer targeted Grep and Glob searches
 - Inspect relevant functions before entire files.
 - Avoid repeated reads of unchanged files.
-- Limit command output.
-- Reuse previously discovered information.
+- Limit command output; Reuse previously discovered information
 - Avoid unnecessary dependency installation.
-- Do not run the full test suite by default.
+- Do not run full test suite by default.
 - Do not generate excessive logs.
-- Do not repeatedly execute failing commands without changing the investigation strategy.
+- Do not repeatedly execute failing commands without changing investigation strategy.
 ### Implementation Rules
-- Prefer minimal, focused changes.
+- Prefer minimal, focused changes
 - Avoid unrelated refactoring.
-- Reuse existing utilities when appropriate.
+- Reuse existing utilities when appropriate
 - Do not duplicate existing functionality.
 - Avoid creating unnecessary files.
 - Avoid introducing dependencies without justification.
 - Preserve existing public contracts unless explicitly authorized.
 ### Communication Rules
-- Keep progress summaries concise.
-- Report important decisions.
+- Keep progress summaries concise; Report important decisions
 - Avoid repeating information already established.
-- Focus on implementation results and unresolved issues.
+- Focus on implementation results and unresolved issues
 ## Project Discovery
 Identify the project's actual:
 - Programming languages.

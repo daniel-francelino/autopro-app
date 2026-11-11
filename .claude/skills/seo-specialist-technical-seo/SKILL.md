@@ -10,13 +10,13 @@ Do not read `references/original-guidance.md` whole. Read `*` sections first, th
 Sections (name — offset, limit):
 - Primary Objectives — 2, 22
 - Core SEO Principles — 24, 19
-- Token Efficiency — Mandatory — 43, 46
-- Website Context Discovery — 89, 36
-- Technical SEO Audit — 125, 40
-- JavaScript SEO — 165, 16
-- On-Page SEO — 181, 29
-- Structured Data — 210, 24
-- Core Web Vitals — 234, 26
-- Keyword Research — 260, 25
+- Token Efficiency — Mandatory — 43, 25
+- Website Context Discovery — 68, 36
+- Technical SEO Audit — 104, 40
+- JavaScript SEO — 144, 16
+- On-Page SEO — 160, 29
+- Structured Data — 189, 24
+- Core Web Vitals — 213, 26
+- Keyword Research — 239, 25
 
 Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.

@@ -43,49 +43,30 @@ Minimize unnecessary context consumption, tool calls, and execution.
 ### Progressive Investigation
 Use three investigation levels.
 **Level 1 — Discovery**
-- Identify relevant application modules.
-- Locate performance-sensitive operations.
-- Discover database access patterns.
-- Identify existing monitoring tools.
-- Find performance tests and benchmarks.
-- Locate caching and background processing mechanisms.
+- Identify relevant application modules; Locate performance-sensitive operations; Discover database access patterns; Identify existing monitoring tools; Find performance tests and benchmarks; Locate caching and background processing mechanisms
 **Level 2 — Targeted Analysis**
-- Inspect relevant execution paths.
-- Analyze expensive queries.
-- Evaluate algorithmic complexity.
-- Review repeated operations.
-- Identify unnecessary network requests.
-- Inspect resource-intensive components.
+- Inspect relevant execution paths; Analyze expensive queries; Evaluate algorithmic complexity; Review repeated operations; Identify unnecessary network requests; Inspect resource-intensive components
 **Level 3 — Deep Performance Investigation**
 Perform deeper analysis only when:
-- A measurable bottleneck exists.
-- A critical operation may not scale.
-- Database performance is significantly affected.
-- Memory consumption is excessive.
-- Concurrency creates contention.
-- Reports become slow with large datasets.
-- Existing monitoring indicates abnormal resource usage.
+- measurable bottleneck exists
+- critical operation may not scale.
+- Database performance is significantly affected; Memory consumption is excessive; Concurrency creates contention; Reports become slow with large datasets; Existing monitoring indicates abnormal resource usage
 Do not perform deep investigation automatically.
 ### Context Rules
-- Avoid reading the entire repository.
-- Prefer targeted Grep and Glob searches.
+- Avoid reading entire repository.
+- Prefer targeted Grep and Glob searches
 - Inspect relevant functions before entire files.
 - Avoid repeated reads.
-- Limit command output.
-- Reuse previously discovered information.
-- Do not run the entire test suite.
+- Limit command output; Reuse previously discovered information
+- Do not run entire test suite.
 - Avoid unnecessary dependency installation.
 - Do not execute expensive benchmarks without authorization.
 - Do not generate excessive profiling output.
 - Do not inspect production datasets without authorization.
 ### Output Rules
-- Prioritize high-impact findings.
-- Reference relevant files and lines.
-- Explain the performance mechanism.
-- Distinguish evidence from assumptions.
-- Recommend measurable improvements.
+- Prioritize high-impact findings; Reference relevant files and lines; Explain performance mechanism; Distinguish evidence from assumptions; Recommend measurable improvements
 - Avoid generic optimization advice.
-- Keep reports concise and actionable.
+- Keep reports concise and actionable
 ## Project Discovery
 Identify the project's actual:
 - Programming languages.

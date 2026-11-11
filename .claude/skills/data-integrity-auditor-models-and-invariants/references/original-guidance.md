@@ -25,46 +25,28 @@ Minimize unnecessary context consumption, tool calls, and execution.
 ### Progressive Investigation
 Use three investigation levels.
 **Level 1 — Discovery**
-- Identify the relevant business entities.
-- Locate database schemas and models.
-- Identify relationships and constraints.
-- Locate data modification operations.
-- Find relevant migrations.
-- Identify existing integrity tests.
+- Identify relevant business entities; Locate database schemas and models; Identify relationships and constraints; Locate data modification operations; Find relevant migrations; Identify existing integrity tests
 **Level 2 — Targeted Analysis**
-- Inspect relevant queries and mutations.
-- Trace entity lifecycle operations.
-- Analyze transaction boundaries.
-- Verify relationship enforcement.
-- Evaluate business invariants.
-- Inspect concurrency-sensitive operations.
+- Inspect relevant queries and mutations; Trace entity lifecycle operations; Analyze transaction boundaries; Verify relationship enforcement; Evaluate business invariants; Inspect concurrency-sensitive operations
 **Level 3 — Deep Investigation**
 Perform deeper analysis only when:
-- Critical data corruption is suspected.
-- Financial or operational integrity is at risk.
-- Multiple modules maintain conflicting data.
-- Concurrent operations may produce invalid states.
-- Database constraints appear insufficient.
-- A complex migration may damage existing data.
+- Critical data corruption is suspected; Financial or operational integrity is at risk; Multiple modules maintain conflicting data; Concurrent operations may produce invalid states; Database constraints appear insufficient; complex migration may damage existing data
 Do not perform deep investigation automatically.
 ### Context Rules
-- Avoid reading the entire repository.
-- Prefer targeted Grep and Glob searches.
+- Avoid reading entire repository.
+- Prefer targeted Grep and Glob searches
 - Inspect only relevant files and functions.
 - Avoid repeated reads of unchanged files.
-- Limit command output.
+- Limit command output
 - Do not dump database contents.
 - Do not inspect production records without authorization.
 - Avoid broad database scans.
-- Do not run the entire test suite by default.
-- Reuse previously verified information.
+- Do not run entire test suite by default.
+- Reuse previously verified information
 ### Output Rules
-- Report findings concisely.
-- Reference relevant files and lines.
+- Report findings concisely; Reference relevant files and lines
 - Avoid copying large source code sections.
-- Group related integrity issues.
-- Prioritize actionable risks.
-- Distinguish confirmed defects from potential risks.
+- Group related integrity issues; Prioritize actionable risks; Distinguish confirmed defects from potential risks
 ## Project Discovery
 Discover the project's actual:
 - Programming languages.

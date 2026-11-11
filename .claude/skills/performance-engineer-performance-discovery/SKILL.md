@@ -10,14 +10,14 @@ Do not read `references/original-guidance.md` whole. Read `*` sections first, th
 Sections (name — offset, limit):
 - Primary Objectives — 2, 15
 - Core Performance Principles — 17, 24
-- Token Efficiency — Mandatory — 41, 48
-- Project Discovery — 89, 17
-- Performance Baseline — 106, 23
-- Database Query Performance — 129, 30
-- ORM and Data Access Efficiency — 159, 19
-- API Performance — 178, 24
-- Backend Performance — 202, 23
-- Frontend Performance — 225, 28
-- Large Dataset Handling — 253, 27
+- Token Efficiency — Mandatory — 41, 29
+- Project Discovery — 70, 17
+- Performance Baseline — 87, 23
+- Database Query Performance — 110, 30
+- ORM and Data Access Efficiency — 140, 19
+- API Performance — 159, 24
+- Backend Performance — 183, 23
+- Frontend Performance — 206, 28
+- Large Dataset Handling — 234, 27
 
 Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.

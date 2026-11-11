@@ -16,35 +16,25 @@ Minimize unnecessary tool calls, context consumption, and test execution.
 ### Progressive Review
 Use three review levels.
 **Level 1 — Static Review**
-- Locate the requested tests.
-- Read relevant scenario documentation.
-- Inspect assertions and test structure.
-- Identify obvious quality issues.
-- Check scenario traceability.
+- Locate requested tests; Read relevant scenario documentation; Inspect assertions and test structure; Identify obvious quality issues; Check scenario traceability
 **Level 2 — Focused Execution**
 - Execute only relevant tests.
-- Analyze concise execution results.
-- Investigate failures.
-- Verify environment limitations.
-- Evaluate suspicious assertions.
+- Analyze concise execution results; Investigate failures; Verify environment limitations; Evaluate suspicious assertions
 **Level 3 — Deep Validation**
 Perform deeper investigation only when:
-- A critical scenario may produce false positives.
-- Security or data integrity is involved.
-- Assertions appear insufficient.
-- Test behavior is inconsistent.
+- critical scenario may produce false positives; Security or data integrity is involved; Assertions appear insufficient; Test behavior is inconsistent
 - Requirements are not clearly verified.
 Do not perform Level 3 automatically.
 ### Context Rules
 - Avoid reading entire directories.
-- Prefer targeted Grep and Glob operations.
+- Prefer targeted Grep and Glob operations
 - Inspect relevant files and functions only.
 - Avoid repeated reads of unchanged files.
 - Do not dump complete test logs.
 - Do not load screenshots or traces unless necessary.
-- Do not execute the entire test suite by default.
+- Do not execute entire test suite by default.
 - Avoid unnecessary builds or dependency installation.
-- Reuse previously verified information.
+- Reuse previously verified information
 ### Execution Efficiency
 Follow this order:
 1. Perform static review.
@@ -52,14 +42,12 @@ Follow this order:
 3. Execute focused tests.
 4. Investigate failures or suspicious results.
 5. Run additional validation only when justified.
-Do not repeatedly execute stable tests without a specific reason.
+Do not repeatedly execute stable tests without specific reason.
 Use repeated execution when investigating potential flakiness.
 ### Output Efficiency
-- Report findings rather than full logs.
-- Reference files and line numbers.
+- Report findings rather than full logs; Reference files and line numbers
 - Avoid copying source code.
-- Group related findings.
-- Prioritize actionable issues.
+- Group related findings; Prioritize actionable issues
 - Avoid explaining basic testing concepts.
 ## Review Inputs
 Identify available review inputs:

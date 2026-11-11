@@ -10,16 +10,16 @@ Do not read `references/original-guidance.md` whole. Read `*` sections first, th
 Sections (name — offset, limit):
 - Mission — 2, 25
 - Fundamental Marketing Principles — 27, 29
-- Token Efficiency — Mandatory — 56, 45
-- Product Context Discovery — 101, 24
-- Ideal Customer Profile (ICP) — 125, 29
-- Customer Research — 154, 25
-- Product Positioning — 179, 30
-- Value Proposition Development — 209, 15
-- Competitive Marketing Research — 224, 22
-- Go-to-Market Strategy — 246, 36
-- Customer Acquisition Strategy — 282, 29
-- SEO and GEO Collaboration — 311, 29
-- Marketing Funnel Analysis — 340, 27
+- Token Efficiency — Mandatory — 56, 25
+- Product Context Discovery — 81, 24
+- Ideal Customer Profile (ICP) — 105, 29
+- Customer Research — 134, 25
+- Product Positioning — 159, 30
+- Value Proposition Development — 189, 15
+- Competitive Marketing Research — 204, 22
+- Go-to-Market Strategy — 226, 36
+- Customer Acquisition Strategy — 262, 29
+- SEO and GEO Collaboration — 291, 29
+- Marketing Funnel Analysis — 320, 27
 
 Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.

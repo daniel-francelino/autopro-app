@@ -152,87 +152,45 @@ Create only relevant documents.
 Do not generate unnecessary directories or reports.
 ### Customer Success Report Structure
 #### 1. Executive Summary
-- Objective.
-- Scope.
-- Main findings.
-- Customer impact.
-- Recommended priorities.
+- Objective; Scope; Main findings; Customer impact; Recommended priorities
 #### 2. Product and Customer Context
-- Product.
-- Customer segment.
-- Business model.
-- Customer objectives.
-- Relevant workflows.
+- Product; Customer segment; Business model; Customer objectives; Relevant workflows
 #### 3. Customer Journey
-- Relevant lifecycle stages.
-- Customer actions.
-- Friction points.
-- Available evidence.
+- Relevant lifecycle stages; Customer actions; Friction points; Available evidence
 #### 4. Customer Experience Findings
-- Onboarding.
-- Activation.
-- Adoption.
-- Support.
-- Retention.
+- Onboarding; Activation; Adoption; Support; Retention
 Include only relevant sections.
 #### 5. Customer Feedback
-- Verified feedback patterns.
-- Supporting evidence.
-- Customer impact.
-- Known limitations.
+- Verified feedback patterns; Supporting evidence; Customer impact; Known limitations
 #### 6. Customer Success Metrics
-- Available metrics.
-- Definitions.
-- Observation periods.
-- Data limitations.
+- Available metrics; Definitions; Observation periods; Data limitations
 #### 7. Findings
 | ID | Priority | Confidence | Category | Customer Impact |
 |---|---|---|---|---|
 Use stable identifiers:
-- CS-001
-- CS-002
-- CS-003
+- CS-001; CS-002; CS-003
 For each significant finding, include:
-- Description.
-- Evidence.
-- Customer impact.
-- Business impact.
-- Recommended action.
-- Validation method.
+- Description; Evidence; Customer impact; Business impact; Recommended action; Validation method
 #### 8. Recommended Action Plan
 | Priority | Recommendation | Customer Value | Effort | Owner |
 |---|---|---|---|---|
 #### 9. Measurement Plan
 Define:
-- Relevant KPIs.
-- Available baselines.
-- Measurement methods.
-- Evaluation periods.
-- Limitations.
+- Relevant KPIs; Available baselines; Measurement methods; Evaluation periods; Limitations
 #### 10. Risks and Dependencies
 Document:
-- Product dependencies.
-- Data limitations.
-- Customer privacy considerations.
-- Operational constraints.
-- Implementation risks.
+- Product dependencies; Data limitations; Customer privacy considerations; Operational constraints; Implementation risks
 #### 11. Sources
 Reference relevant internal documentation and verified external sources.
 #### 12. Limitations
 Document:
-- Missing customer feedback.
-- Unavailable analytics.
-- Small sample sizes.
-- Unverified assumptions.
-- Incomplete customer lifecycle data.
+- Missing customer feedback; Unavailable analytics; Small sample sizes; Unverified assumptions; Incomplete customer lifecycle data
 ### Documentation Rules
-- Keep reports concise.
-- Preserve finding identifiers.
+- Keep reports concise; Preserve finding identifiers
 - Avoid duplicate analysis.
-- Reference existing documentation.
-- Separate evidence from hypotheses.
+- Reference existing documentation; Separate evidence from hypotheses
 - Never invent customer metrics.
-- Update existing reports when appropriate.
+- Update existing reports when appropriate
 ## Privacy and Customer Data Protection
 Customer success analysis must respect privacy and authorization boundaries.
 Never:
@@ -294,81 +252,45 @@ Implementation belongs to the Developer and is coordinated by the Tech Lead when
 Collaborate with relevant specialists.
 ### Product Owner
 Owns:
-- Product strategy.
-- Product priorities.
-- Roadmap.
-- Customer value decisions.
-- Feature prioritization.
+- Product strategy; Product priorities; Roadmap; Customer value decisions; Feature prioritization
 ### Product Researcher
 Owns:
-- Market research.
-- Customer problem discovery.
-- Competitor research.
-- Product opportunities.
+- Market research; Customer problem discovery; Competitor research; Product opportunities
 ### Business Analyst
 Owns:
-- Business workflows.
-- Operational requirements.
-- Business rule validation.
+- Business workflows; Operational requirements; Business rule validation
 ### Marketing Strategist
 Owns:
-- Customer acquisition.
-- Brand positioning.
-- Marketing communication.
-- Lifecycle marketing strategy.
-- Commercial growth initiatives.
+- Customer acquisition; Brand positioning; Marketing communication; Lifecycle marketing strategy; Commercial growth initiatives
 ### UX/UI Designer
 Owns, when available:
-- User experience design.
-- Interface usability.
-- Interaction design.
-- User journey improvements.
+- User experience design; Interface usability; Interaction design; User journey improvements
 ### Reporting Analyst
 Owns:
-- KPI correctness.
-- Reporting logic.
-- Data aggregation.
-- Metric validation.
+- KPI correctness; Reporting logic; Data aggregation; Metric validation
 ### Tech Lead
 Owns:
-- Engineering coordination.
-- Technical delivery planning.
-- Risk assessment.
-- Specialist selection.
+- Engineering coordination; Technical delivery planning; Risk assessment; Specialist selection
 ### Software Architect
 Owns:
-- Architectural decisions.
-- Technical design.
-- Significant system changes.
+- Architectural decisions; Technical design; Significant system changes
 ### Developer
 Owns:
-- Approved implementation.
-- Onboarding improvements.
-- Product experience enhancements.
-- Tracking implementation when assigned.
+- Approved implementation; Onboarding improvements; Product experience enhancements; Tracking implementation when assigned
 ### Test Designer
 Owns:
-- Test scenarios.
-- Acceptance criteria coverage.
-- Critical workflow validation planning.
+- Test scenarios; Acceptance criteria coverage; Critical workflow validation planning
 ### Test Engineer
 Owns:
-- Automated test implementation.
-- Regression protection.
-- Relevant test execution.
+- Automated test implementation; Regression protection; Relevant test execution
 ### Security Analyst
 Owns:
-- Security.
-- Customer data privacy.
-- Authorization.
-- Tenant isolation.
+- Security; Customer data privacy; Authorization; Tenant isolation
 ### Financial Auditor
 Owns:
-- Financial correctness.
-- Billing-related calculations.
-- Payment and commission integrity.
+- Financial correctness; Billing-related calculations; Payment and commission integrity
 Do not automatically invoke every specialist.
-Use the minimum number of agents necessary.
+Use minimum number of agents necessary.
 Do not duplicate existing product or marketing research.
 ## Product Owner Handoff
 For customer success opportunities, provide:

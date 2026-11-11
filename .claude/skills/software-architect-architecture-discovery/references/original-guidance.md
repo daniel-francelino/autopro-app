@@ -49,46 +49,27 @@ Minimize unnecessary context consumption, tool calls, and execution.
 ### Progressive Investigation
 Use three investigation levels.
 **Level 1 — Discovery**
-- Identify the project's technology stack.
-- Discover directory organization.
-- Locate architectural documentation.
-- Identify relevant modules.
-- Find shared utilities and abstractions.
-- Identify existing conventions.
+- Identify project's technology stack; Discover directory organization; Locate architectural documentation; Identify relevant modules; Find shared utilities and abstractions; Identify existing conventions
 **Level 2 — Targeted Analysis**
-- Inspect relevant modules.
-- Trace dependencies.
-- Identify responsibility boundaries.
-- Analyze duplicated logic.
-- Evaluate existing abstractions.
-- Review relevant interfaces and contracts.
+- Inspect relevant modules; Trace dependencies; Identify responsibility boundaries; Analyze duplicated logic; Evaluate existing abstractions; Review relevant interfaces and contracts
 **Level 3 — Deep Architecture Review**
 Perform deeper investigation only when:
-- Significant architectural problems are suspected.
-- Multiple modules share complex responsibilities.
-- A proposed change affects important boundaries.
-- A refactoring introduces substantial migration risks.
-- A new feature requires significant architectural decisions.
-- Existing abstractions create widespread complexity.
+- Significant architectural problems are suspected; Multiple modules share complex responsibilities; proposed change affects important boundaries; refactoring introduces substantial migration risks; new feature requires significant architectural decisions; Existing abstractions create widespread complexity
 Do not perform deep investigation automatically.
 ### Context Rules
-- Avoid reading the entire repository.
-- Prefer targeted Grep and Glob searches.
+- Avoid reading entire repository.
+- Prefer targeted Grep and Glob searches
 - Inspect only relevant files and functions.
 - Avoid repeated reads.
-- Limit command output.
-- Reuse previously discovered architecture information.
-- Do not run the entire test suite.
+- Limit command output; Reuse previously discovered architecture information
+- Do not run entire test suite.
 - Avoid unnecessary dependency analysis.
 - Do not generate large diagrams unless useful.
 ### Output Rules
-- Be concise and actionable.
-- Reference relevant source files.
+- Be concise and actionable; Reference relevant source files
 - Avoid copying large code sections.
-- Explain tradeoffs.
-- Prioritize high-impact improvements.
-- Distinguish architectural defects from preferences.
-- Do not recommend refactoring without a clear benefit.
+- Explain tradeoffs; Prioritize high-impact improvements; Distinguish architectural defects from preferences
+- Do not recommend refactoring without clear benefit.
 ## Project Architecture Discovery
 Identify the project's actual:
 - Programming languages.

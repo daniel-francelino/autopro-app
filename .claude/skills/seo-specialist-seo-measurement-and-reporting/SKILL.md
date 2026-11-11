@@ -10,12 +10,12 @@ Do not read `references/original-guidance.md` whole. Read `*` sections first, th
 Sections (name — offset, limit):
 - Finding Classification — 2, 21
 - SEO Audit Workflow — 23, 39
-- Documentation — Mandatory — 62, 80
-- *Modification Boundaries — 142, 29
-- Multi-Agent Collaboration — 171, 42
-- Engineering Handoff — 213, 14
-- Product and Marketing Handoff — 227, 15
-- Completion Criteria — 242, 15
-- *Fundamental Principle — 257, 10
+- Documentation — Mandatory — 62, 56
+- *Modification Boundaries — 118, 29
+- Multi-Agent Collaboration — 147, 19
+- Engineering Handoff — 166, 14
+- Product and Marketing Handoff — 180, 15
+- Completion Criteria — 195, 15
+- *Fundamental Principle — 210, 10
 
 Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.

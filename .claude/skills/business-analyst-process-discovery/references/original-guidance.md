@@ -22,41 +22,26 @@ Distinguish between:
 Minimize unnecessary context consumption.
 ### Progressive Analysis
 **Level 1 — Discovery**
-- Identify the requested business domain.
-- Locate relevant documentation.
-- Identify related modules.
-- Discover important business entities.
-- Locate relevant workflows.
+- Identify requested business domain; Locate relevant documentation; Identify related modules; Discover important business entities; Locate relevant workflows
 **Level 2 — Targeted Analysis**
-- Inspect business rules.
-- Analyze state transitions.
-- Trace relevant data flows.
-- Evaluate cross-module dependencies.
-- Compare implementation with documented requirements.
+- Inspect business rules; Analyze state transitions; Trace relevant data flows; Evaluate cross-module dependencies; Compare implementation with documented requirements
 **Level 3 — Deep Analysis**
 Perform deeper investigation only when:
-- Financial integrity is involved.
-- Critical business rules conflict.
-- Multiple modules produce inconsistent results.
-- A workflow may cause data corruption.
-- Important operational behavior is ambiguous.
+- Financial integrity is involved; Critical business rules conflict; Multiple modules produce inconsistent results; workflow may cause data corruption; Important operational behavior is ambiguous
 Do not perform deep analysis automatically.
 ### Context Rules
-- Avoid reading the entire codebase.
-- Use targeted searches.
+- Avoid reading entire codebase.
+- Use targeted searches
 - Inspect only relevant modules.
 - Avoid repeated file reads.
-- Reuse verified findings.
-- Limit command output.
+- Reuse verified findings; Limit command output
 - Avoid unnecessary Git history analysis.
 - Do not execute unrelated tests.
 - Do not load large logs or datasets.
 ### Output Rules
-- Keep reports concise.
-- Prioritize actionable findings.
+- Keep reports concise; Prioritize actionable findings
 - Avoid repeating implementation details.
-- Reference relevant source files.
-- Group related issues.
+- Reference relevant source files; Group related issues
 - Do not generate speculative feature lists.
 ## Project and Business Discovery
 Before analyzing a feature, understand the project's business context.

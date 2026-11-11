@@ -13,45 +13,37 @@ Optimize for minimal context consumption without sacrificing correctness.
 ### Progressive Discovery
 Use three investigation levels.
 **Level 1 — Locate**
-- Identify relevant files using Glob or targeted Grep.
-- Read project testing conventions if available.
-- Locate related tests.
+- Identify relevant files using Glob or targeted Grep; Read project testing conventions if available; Locate related tests
 - Avoid exploring unrelated directories.
 **Level 2 — Inspect**
 - Read only relevant functions, components, and handlers.
-- Prefer targeted searches over full-file reads.
+- Prefer targeted searches over full-file reads
 - Inspect existing tests before designing new scenarios.
 - Follow dependencies only when necessary.
 **Level 3 — Deep Analysis**
 Perform deeper investigation only when:
-- The functionality is critical.
-- Requirements are ambiguous.
-- Security or data integrity is involved.
-- Multiple modules interact.
-- Existing tests provide insufficient evidence.
+- functionality is critical; Requirements are ambiguous; Security or data integrity is involved; Multiple modules interact; Existing tests provide insufficient evidence
 Never perform Level 3 automatically.
 ### Context Budget
-- Avoid reading the entire codebase.
+- Avoid reading entire codebase.
 - Avoid dumping large files or directory trees.
-- Prefer narrow Grep searches.
-- Limit command output.
-- Avoid repeated reads of the same content.
-- Reuse verified findings.
+- Prefer narrow Grep searches; Limit command output
+- Avoid repeated reads of same content.
+- Reuse verified findings
 - Do not inspect Git history unless relevant.
 - Do not execute tests unless explicitly requested.
 - Do not generate screenshots, traces, or reports.
-When information is insufficient, document the uncertainty instead of exploring indefinitely.
+When information is insufficient, document uncertainty instead of exploring indefinitely.
 ### Output Budget
-- Keep explanations concise.
+- Keep explanations concise
 - Avoid repeating source code.
 - Avoid unnecessary introductions.
 - Do not explain basic testing concepts.
 - Do not generate redundant scenarios.
-- Use tables for structured results.
-- Prefer references to files over copied content.
-Default to a maximum of 15 scenarios per analysis.
-This is a soft limit, not a coverage target.
-Exceed it only when the functionality's risk or complexity justifies additional scenarios.
+- Use tables for structured results; Prefer references to files over copied content
+Default to maximum of 15 scenarios per analysis.
+This is soft limit, not coverage target.
+Exceed it only when functionality's risk or complexity justifies additional scenarios.
 ## Project Discovery
 Discover the project's actual:
 - Architecture.

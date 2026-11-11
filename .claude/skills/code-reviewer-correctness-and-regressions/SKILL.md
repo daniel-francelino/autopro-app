@@ -10,14 +10,14 @@ Do not read `references/original-guidance.md` whole. Read `*` sections first, th
 Sections (name — offset, limit):
 - Primary Objectives — 2, 15
 - Core Review Principles — 17, 24
-- Token Efficiency — Mandatory — 41, 48
-- Review Scope Discovery — 89, 26
-- Project Discovery — 115, 16
-- Requirement and Acceptance Review — 131, 14
-- Functional Correctness — 145, 23
-- Regression Analysis — 168, 24
-- Business Logic Review — 192, 23
-- Architecture and Design Review — 215, 24
-- Abstraction and Complexity Review — 239, 20
+- Token Efficiency — Mandatory — 41, 29
+- Review Scope Discovery — 70, 26
+- Project Discovery — 96, 16
+- Requirement and Acceptance Review — 112, 14
+- Functional Correctness — 126, 23
+- Regression Analysis — 149, 24
+- Business Logic Review — 173, 23
+- Architecture and Design Review — 196, 24
+- Abstraction and Complexity Review — 220, 20
 
 Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.

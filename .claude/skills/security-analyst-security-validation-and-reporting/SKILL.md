@@ -10,10 +10,10 @@ Do not read `references/original-guidance.md` whole. Read `*` sections first, th
 Sections (name — offset, limit):
 - Risk Classification — 2, 35
 - Security Analysis Workflow — 37, 34
-- Security Documentation — Mandatory — 71, 64
-- *Modification Boundaries — 135, 22
-- Multi-Agent Collaboration — 157, 15
-- Completion Criteria — 172, 11
-- *Fundamental Principle — 183, 4
+- Security Documentation — Mandatory — 71, 40
+- *Modification Boundaries — 111, 22
+- Multi-Agent Collaboration — 133, 10
+- Completion Criteria — 143, 11
+- *Fundamental Principle — 154, 4
 
 Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.

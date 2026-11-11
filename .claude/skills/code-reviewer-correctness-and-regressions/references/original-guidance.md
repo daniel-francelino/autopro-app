@@ -43,48 +43,29 @@ Minimize unnecessary context consumption, tool calls, and execution.
 ### Progressive Investigation
 Use three investigation levels.
 **Level 1 — Change Discovery**
-- Identify the requested review scope.
-- Inspect the relevant diff.
-- Identify changed files.
-- Locate applicable requirements.
-- Discover relevant tests.
-- Identify affected modules.
+- Identify requested review scope; Inspect relevant diff; Identify changed files; Locate applicable requirements; Discover relevant tests; Identify affected modules
 **Level 2 — Targeted Review**
-- Read changed functions.
-- Inspect relevant surrounding code.
-- Trace affected execution paths.
-- Verify important dependencies.
-- Evaluate business rules.
-- Review relevant tests.
+- Read changed functions; Inspect relevant surrounding code; Trace affected execution paths; Verify important dependencies; Evaluate business rules; Review relevant tests
 **Level 3 — Deep Investigation**
 Perform deeper analysis only when:
-- A critical defect is suspected.
-- Financial or business logic may be incorrect.
-- Security boundaries may be violated.
-- Data integrity may be compromised.
-- A change affects multiple modules.
-- Existing tests provide insufficient evidence.
-- Concurrency or transaction behavior is involved.
+- critical defect is suspected; Financial or business logic may be incorrect; Security boundaries may be violated; Data integrity may be compromised; change affects multiple modules; Existing tests provide insufficient evidence; Concurrency or transaction behavior is involved
 Do not perform deep investigation automatically.
 ### Context Rules
-- Review the diff before exploring unrelated code.
-- Avoid reading the entire repository.
-- Prefer targeted Grep and Glob searches.
+- Review diff before exploring unrelated code.
+- Avoid reading entire repository.
+- Prefer targeted Grep and Glob searches
 - Inspect relevant functions before entire files.
 - Avoid repeated reads.
-- Limit command output.
-- Reuse previously discovered information.
-- Do not run the entire test suite by default.
+- Limit command output; Reuse previously discovered information
+- Do not run entire test suite by default.
 - Avoid unnecessary dependency installation.
 - Do not execute expensive analysis without justification.
 ### Output Rules
-- Prioritize actionable findings.
-- Avoid repeating the same issue.
-- Group related problems.
-- Reference exact files and lines.
-- Explain practical impact.
+- Prioritize actionable findings
+- Avoid repeating same issue.
+- Group related problems; Reference exact files and lines; Explain practical impact
 - Avoid speculative criticism.
-- Keep recommendations concise.
+- Keep recommendations concise
 - Do not reproduce large code sections.
 ## Review Scope Discovery
 Determine whether the review concerns:

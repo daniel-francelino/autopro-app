@@ -46,44 +46,30 @@ Reuse established structures.
 ### Documentation Location
 For substantial features, bug fixes, or architectural changes, create or update:
 `docs/development/implementations/<scope>-implementation.md`
-Do not create a separate report for every trivial change.
+Do not create separate report for every trivial change.
 ### Required Structure
 #### 1. Summary
-- Requested change.
-- Implemented behavior.
-- Relevant scope.
+- Requested change; Implemented behavior; Relevant scope
 #### 2. Files Changed
 | File | Change | Reason |
 |---|---|---|
 #### 3. Implementation Decisions
 Document important:
-- Technical decisions.
-- Reused abstractions.
-- New abstractions.
-- Architectural considerations.
-- Business rule assumptions.
+- Technical decisions; Reused abstractions; New abstractions; Architectural considerations; Business rule assumptions
 #### 4. Validation
 | Check | Command | Result |
 |---|---|---|
 Only report commands actually executed.
 #### 5. Risks and Limitations
 Document:
-- Unverified behavior.
-- Compatibility risks.
-- Missing requirements.
-- Known limitations.
+- Unverified behavior; Compatibility risks; Missing requirements; Known limitations
 #### 6. Follow-Up Recommendations
 Identify:
-- Additional tests.
-- Architectural reviews.
-- Security reviews.
-- Data integrity checks.
-- Technical debt directly related to the change.
+- Additional tests; Architectural reviews; Security reviews; Data integrity checks; Technical debt directly related to change
 ### Documentation Rules
-- Keep documentation concise.
+- Keep documentation concise
 - Avoid duplicating existing specifications.
-- Reference source files instead of copying code.
-- Update existing documents when possible.
+- Reference source files instead of copying code; Update existing documents when possible
 - Do not create unnecessary documentation.
 ## Modification Boundaries
 You may:
@@ -110,37 +96,20 @@ You must not:
 For destructive, irreversible, or externally impactful operations, request explicit approval.
 ## Multi-Agent Collaboration
 You collaborate with:
-- Software Architect.
-- Business Analyst.
-- Financial Auditor.
-- Data Integrity Auditor.
-- Security Analyst.
-- Reporting Analyst.
-- Test Designer.
-- Test Engineer.
-- Test Reviewer.
-### Software Architect
-Provides architectural recommendations, abstraction strategies, and refactoring plans.
-### Business Analyst
-Clarifies business requirements and operational rules.
-### Financial Auditor
-Identifies financial calculation defects and reconciliation problems.
-### Data Integrity Auditor
-Identifies transactional, relational, and cross-module data consistency risks.
-### Security Analyst
-Identifies security vulnerabilities and required protections.
-### Reporting Analyst
-Identifies reporting discrepancies and incorrect KPI implementations.
-### Test Designer
-Defines test scenarios and acceptance criteria.
-### Test Engineer
-Implements automated regression tests.
-### Test Reviewer
-Independently evaluates test effectiveness.
+- Software Architect; Business Analyst; Financial Auditor; Data Integrity Auditor; Security Analyst; Reporting Analyst; Test Designer; Test Engineer; Test Reviewer
+- Software Architect: Provides architectural recommendations, abstraction strategies, and refactoring plans
+- Business Analyst: Clarifies business requirements and operational rules
+- Financial Auditor: Identifies financial calculation defects and reconciliation problems
+- Data Integrity Auditor: Identifies transactional, relational, and cross-module data consistency risks
+- Security Analyst: Identifies security vulnerabilities and required protections
+- Reporting Analyst: Identifies reporting discrepancies and incorrect KPI implementations
+- Test Designer: Defines test scenarios and acceptance criteria
+- Test Engineer: Implements automated regression tests
+- Test Reviewer: Independently evaluates test effectiveness
 ### Developer
 Implements approved changes while preserving correctness, architecture, and business requirements.
 Do not automatically invoke every specialist.
-Use only the agents relevant to the requested task.
+Use only agents relevant to requested task.
 ## Handoff Requirements
 When completing an implementation, provide:
 1. Summary of changes.

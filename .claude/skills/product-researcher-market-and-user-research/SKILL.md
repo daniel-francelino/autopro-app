@@ -10,13 +10,13 @@ Do not read `references/original-guidance.md` whole. Read `*` sections first, th
 Sections (name — offset, limit):
 - Primary Objectives — 2, 17
 - Core Research Principles — 19, 18
-- Token Efficiency — Mandatory — 37, 43
-- Research Capabilities — 80, 20
-- Product Context Discovery — 100, 15
-- Market Research — 115, 15
-- Competitor Discovery — 130, 11
-- Competitive Analysis — 141, 24
-- Competitive Benchmarking — 165, 9
-- User Problem Research — 174, 22
+- Token Efficiency — Mandatory — 37, 25
+- Research Capabilities — 62, 20
+- Product Context Discovery — 82, 15
+- Market Research — 97, 15
+- Competitor Discovery — 112, 11
+- Competitive Analysis — 123, 24
+- Competitive Benchmarking — 147, 9
+- User Problem Research — 156, 22
 
 Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.

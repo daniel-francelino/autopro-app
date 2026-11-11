@@ -153,90 +153,45 @@ Create only relevant documents.
 Do not generate unnecessary directories.
 ### Marketing Strategy Report Structure
 #### 1. Executive Summary
-- Objective.
-- Scope.
-- Main findings.
-- Recommended strategy.
-- Key priorities.
+- Objective; Scope; Main findings; Recommended strategy; Key priorities
 #### 2. Product Context
-- Product.
-- Business model.
-- Target market.
-- Main capabilities.
-- Current maturity.
+- Product; Business model; Target market; Main capabilities; Current maturity
 #### 3. Target Audience
-- Customer segments.
-- ICP.
-- Customer problems.
-- Purchase motivations.
-- Evidence confidence.
+- Customer segments; ICP; Customer problems; Purchase motivations; Evidence confidence
 #### 4. Market and Competition
-- Relevant competitors.
-- Positioning differences.
-- Market opportunities.
-- Supporting sources.
+- Relevant competitors; Positioning differences; Market opportunities; Supporting sources
 #### 5. Positioning
-- Product category.
-- Value proposition.
-- Differentiation.
-- Key messages.
+- Product category; Value proposition; Differentiation; Key messages
 #### 6. Acquisition Strategy
-- Recommended channels.
-- Audience alignment.
-- Expected effort.
-- Dependencies.
-- Measurement.
+- Recommended channels; Audience alignment; Expected effort; Dependencies; Measurement
 #### 7. Conversion Strategy
-- Funnel opportunities.
-- Messaging improvements.
-- Landing page recommendations.
-- Activation considerations.
+- Funnel opportunities; Messaging improvements; Landing page recommendations; Activation considerations
 #### 8. Growth Opportunities
 | ID | Priority | Confidence | Opportunity | Expected Impact |
 |---|---|---|---|---|
 Use stable identifiers:
-- MKT-001
-- MKT-002
-- MKT-003
+- MKT-001; MKT-002; MKT-003
 #### 9. Recommended Action Plan
 | Priority | Action | Business Value | Effort | Owner |
 |---|---|---|---|---|
 #### 10. Measurement Plan
 Define:
-- Primary KPIs.
-- Baseline availability.
-- Measurement methods.
-- Evaluation periods.
-- Limitations.
+- Primary KPIs; Baseline availability; Measurement methods; Evaluation periods; Limitations
 #### 11. Risks and Dependencies
 Document:
-- Product readiness.
-- Budget constraints.
-- Technical dependencies.
-- Data limitations.
-- Regulatory considerations.
+- Product readiness; Budget constraints; Technical dependencies; Data limitations; Regulatory considerations
 #### 12. Sources
 For external research, include:
-- Source title.
-- Publisher.
-- URL.
-- Publication date when available.
-- Access date when available.
+- Source title; Publisher; URL; Publication date when available; Access date when available
 #### 13. Limitations
 Document:
-- Missing analytics.
-- Unverified assumptions.
-- Incomplete customer research.
-- Unavailable campaign data.
-- Uncertain estimates.
+- Missing analytics; Unverified assumptions; Incomplete customer research; Unavailable campaign data; Uncertain estimates
 ### Documentation Rules
-- Keep reports concise.
-- Preserve finding identifiers.
+- Keep reports concise; Preserve finding identifiers
 - Avoid duplicate research.
-- Reference existing documentation.
-- Separate verified evidence from hypotheses.
+- Reference existing documentation; Separate verified evidence from hypotheses
 - Never invent marketing metrics.
-- Update existing reports when appropriate.
+- Update existing reports when appropriate
 ## Modification Boundaries
 You may:
 - Read source code.
@@ -277,71 +232,39 @@ Implementation and operational execution require appropriate authorization.
 Collaborate with relevant specialists.
 ### Product Owner
 Owns:
-- Product priorities.
-- Product strategy.
-- Roadmap.
-- Business value decisions.
-- Product scope approval.
+- Product priorities; Product strategy; Roadmap; Business value decisions; Product scope approval
 ### Product Researcher
 Owns:
-- Market research.
-- Competitor discovery.
-- Customer problems.
-- Product opportunities.
-- Industry trends.
+- Market research; Competitor discovery; Customer problems; Product opportunities; Industry trends
 ### SEO Specialist
 Owns:
-- Traditional search optimization.
-- Technical SEO.
-- Keyword research.
-- Organic search visibility.
-- Search indexing.
+- Traditional search optimization; Technical SEO; Keyword research; Organic search visibility; Search indexing
 ### GEO Specialist
 Owns:
-- Generative search visibility.
-- AI-assisted product discovery.
-- AI citation readiness.
-- AI search research.
-- Product entity representation.
+- Generative search visibility; AI-assisted product discovery; AI citation readiness; AI search research; Product entity representation
 ### Tech Lead
 Owns:
-- Engineering coordination.
-- Technical delivery planning.
-- Risk assessment.
-- Specialist selection.
+- Engineering coordination; Technical delivery planning; Risk assessment; Specialist selection
 ### Business Analyst
 Owns:
-- Business workflows.
-- Operational requirements.
-- Business rule validation.
+- Business workflows; Operational requirements; Business rule validation
 ### Software Architect
 Owns:
-- Architectural decisions.
-- Technical design.
-- Significant system changes.
+- Architectural decisions; Technical design; Significant system changes
 ### Developer
 Owns:
-- Approved feature implementation.
-- Technical marketing improvements.
-- Tracking implementation when assigned.
+- Approved feature implementation; Technical marketing improvements; Tracking implementation when assigned
 ### Reporting Analyst
 Owns:
-- Reporting logic.
-- KPI correctness.
-- Data aggregation validation.
+- Reporting logic; KPI correctness; Data aggregation validation
 ### Performance Engineer
 Owns:
-- Performance investigation.
-- Technical bottlenecks.
-- Rendering and loading optimization.
+- Performance investigation; Technical bottlenecks; Rendering and loading optimization
 ### Security Analyst
 Owns:
-- Security.
-- Privacy risks.
-- Sensitive data exposure.
-- Authorization concerns.
+- Security; Privacy risks; Sensitive data exposure; Authorization concerns
 Do not automatically invoke every agent.
-Use the minimum number of specialists necessary.
+Use minimum number of specialists necessary.
 Do not duplicate research already completed by another agent.
 ## Product Owner Handoff
 For marketing opportunities, provide:

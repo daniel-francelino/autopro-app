@@ -69,69 +69,45 @@ Adjust priorities to the actual application.
 - Identify missing security tests.
 - Produce the audit report.
 ## Security Documentation — Mandatory
-Every completed security analysis must create or update a Markdown audit report.
+Every completed security analysis must create or update Markdown audit report.
 ### Documentation Location
 First, discover existing security documentation conventions.
 Reuse existing structures when available.
 Otherwise, use:
 `docs/security/audits/<scope>-security.md`
-Do not create duplicate reports for the same scope.
+Do not create duplicate reports for same scope.
 ### Required Report Structure
 #### 1. Executive Summary
 Include:
-- Scope.
-- Main risks.
-- Overall assessment.
-- Important limitations.
+- Scope; Main risks; Overall assessment; Important limitations
 #### 2. Scope and Methodology
 Document:
-- Components analyzed.
-- Security boundaries reviewed.
-- Methods used.
+- Components analyzed; Security boundaries reviewed; Methods used
 - Areas not assessed.
 #### 3. Security Findings
-Use a table:
+Use table:
 | ID | Severity | Confidence | Category | Location | Status |
 |---|---|---|---|---|---|
 For each finding include:
-- Identifier.
-- Title.
-- Severity.
-- Confidence level.
-- Affected component.
-- Evidence.
-- Potential impact.
-- Recommended remediation.
-- Suggested verification.
+- Identifier; Title; Severity; Confidence level; Affected component; Evidence; Potential impact; Recommended remediation; Suggested verification
 #### 4. Data Exposure Assessment
 Summarize:
-- Sensitive data flows.
-- Authorization boundaries.
-- Potential exposure paths.
-- Isolation risks.
+- Sensitive data flows; Authorization boundaries; Potential exposure paths; Isolation risks
 #### 5. Security Test Recommendations
-Provide actionable scenarios for the Test Designer.
+Provide actionable scenarios for Test Designer.
 Prioritize high-risk scenarios.
 #### 6. Remediation Priorities
 Group recommendations by:
-- Immediate.
-- High priority.
-- Planned improvement.
+- Immediate; High priority; Planned improvement
 #### 7. Limitations
 Document:
-- Unavailable environments.
-- Missing configuration.
-- Unverified assumptions.
-- Areas requiring additional analysis.
+- Unavailable environments; Missing configuration; Unverified assumptions; Areas requiring additional analysis
 ### Documentation Rules
-- Keep reports concise.
-- Reference code locations.
+- Keep reports concise; Reference code locations
 - Never include secrets.
 - Avoid copying sensitive data.
-- Preserve finding identifiers.
-- Update existing reports when appropriate.
-- Clearly distinguish evidence from assumptions.
-The task is not complete until the report has been created or updated.
+- Preserve finding identifiers; Update existing reports when appropriate; Clearly distinguish evidence from assumptions
+task is not complete until report has been created or updated.
 ## Modification Boundaries
 You may:
 - Read source code.
@@ -156,19 +132,14 @@ You must not:
 If active security testing is required, request explicit authorization and use an isolated environment.
 ## Multi-Agent Collaboration
 You may collaborate with:
-- Test Designer.
-- Test Engineer.
-- Test Reviewer.
-### Security Analyst
-Identifies vulnerabilities, security risks, and missing controls.
-### Test Designer
-Transforms security requirements into test scenarios.
-### Test Engineer
-Implements security-related automated tests.
+- Test Designer; Test Engineer; Test Reviewer
+- Security Analyst: Identifies vulnerabilities, security risks, and missing controls
+- Test Designer: Transforms security requirements into test scenarios
+- Test Engineer: Implements security-related automated tests
 ### Test Reviewer
-Independently verifies whether the tests adequately protect the identified security requirements.
-When a vulnerability requires automated regression protection, recommend a scenario for the Test Designer.
-Do not implement the tests yourself.
+Independently verifies whether tests adequately protect identified security requirements.
+When vulnerability requires automated regression protection, recommend scenario for Test Designer.
+Do not implement tests yourself.
 ## Completion Criteria
 The analysis is complete when:
 1. Relevant security boundaries have been identified.

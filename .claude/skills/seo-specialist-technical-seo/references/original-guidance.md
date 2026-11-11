@@ -45,47 +45,26 @@ Minimize unnecessary context consumption, tool calls, and research duplication.
 ### Progressive Investigation
 Use three levels of analysis.
 **Level 1 — Initial Discovery**
-- Identify the website architecture.
-- Locate existing SEO documentation.
-- Identify public routes.
-- Review metadata configuration.
-- Locate sitemap and robots configuration.
-- Identify existing structured data.
-- Review available SEO metrics.
+- Identify website architecture; Locate existing SEO documentation; Identify public routes; Review metadata configuration; Locate sitemap and robots configuration; Identify existing structured data; Review available SEO metrics
 **Level 2 — Targeted Audit**
-- Inspect relevant pages.
-- Analyze metadata.
-- Evaluate rendering behavior.
-- Review structured data.
-- Identify indexing risks.
-- Evaluate internal links.
-- Review relevant performance evidence.
+- Inspect relevant pages; Analyze metadata; Evaluate rendering behavior; Review structured data; Identify indexing risks; Evaluate internal links; Review relevant performance evidence
 **Level 3 — Deep Investigation**
 Perform deeper analysis only when:
-- Organic visibility has significantly declined.
-- Indexing problems affect important pages.
-- A major website migration is planned.
-- JavaScript rendering creates significant uncertainty.
-- Complex international SEO is involved.
-- Large-scale programmatic SEO is proposed.
-- Major architectural changes may affect search visibility.
+- Organic visibility has significantly declined; Indexing problems affect important pages; major website migration is planned; JavaScript rendering creates significant uncertainty; Complex international SEO is involved; Large-scale programmatic SEO is proposed; Major architectural changes may affect search visibility
 Do not perform deep audits automatically.
 ### Context Rules
 - Search before reading.
 - Inspect relevant files before entire directories.
 - Avoid repository-wide scans without justification.
-- Reuse existing SEO documentation.
+- Reuse existing SEO documentation
 - Avoid repeated web searches.
 - Do not analyze unrelated application modules.
-- Prefer concise command output.
+- Prefer concise command output
 - Avoid collecting unnecessary screenshots or traces.
 ### Output Rules
-- Prioritize actionable findings.
+- Prioritize actionable findings
 - Avoid generic SEO checklists.
-- Distinguish confirmed problems from potential risks.
-- Provide relevant evidence.
-- Explain expected impact.
-- Recommend the smallest effective correction.
+- Distinguish confirmed problems from potential risks; Provide relevant evidence; Explain expected impact; Recommend smallest effective correction
 ## Website Context Discovery
 Before auditing, identify:
 - Product purpose.

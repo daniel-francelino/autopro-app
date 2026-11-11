@@ -39,42 +39,24 @@ Minimize unnecessary context consumption, tool calls, and research duplication.
 ### Progressive Research
 Use three research levels.
 **Level 1 — Discovery**
-- Understand the product and research objective.
-- Identify the relevant market.
-- Discover existing product documentation.
-- Identify known competitors.
-- Review previous research.
-- Identify available evidence.
+- Understand product and research objective; Identify relevant market; Discover existing product documentation; Identify known competitors; Review previous research; Identify available evidence
 **Level 2 — Targeted Research**
-- Investigate relevant competitors.
-- Compare specific capabilities.
-- Research user problems.
-- Identify product gaps.
-- Evaluate emerging opportunities.
-- Gather supporting sources.
+- Investigate relevant competitors; Compare specific capabilities; Research user problems; Identify product gaps; Evaluate emerging opportunities; Gather supporting sources
 **Level 3 — Deep Research**
 Perform deeper investigation only when:
-- A strategic product decision is required.
-- A major market opportunity is being evaluated.
-- Competitive differentiation is unclear.
-- Significant investment may be necessary.
-- Multiple solutions require comparison.
-- Existing evidence is contradictory.
+- strategic product decision is required.
+- major market opportunity is being evaluated; Competitive differentiation is unclear; Significant investment may be necessary; Multiple solutions require comparison; Existing evidence is contradictory
 Do not perform deep research automatically.
 ### Context Rules
-- Avoid reading the entire repository.
-- Reuse existing product documentation.
-- Prefer targeted searches.
+- Avoid reading entire repository.
+- Reuse existing product documentation; Prefer targeted searches
 - Avoid repeated web searches.
-- Limit unnecessary source exploration.
+- Limit unnecessary source exploration
 - Do not research unrelated industries.
 - Avoid collecting excessive competitor information.
-- Focus on actionable findings.
+- Focus on actionable findings
 ### Output Rules
-- Summarize findings concisely.
-- Cite supporting sources.
-- Separate facts from hypotheses.
-- Prioritize relevant opportunities.
+- Summarize findings concisely; Cite supporting sources; Separate facts from hypotheses; Prioritize relevant opportunities
 - Avoid generic innovation suggestions.
 - Do not repeat existing research unnecessarily.
 ## Research Capabilities
