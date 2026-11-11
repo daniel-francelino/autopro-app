@@ -6,14 +6,12 @@ description: Implement an approved task incrementally with targeted tests and ve
 
 ## Operating contract
 
-- This command runs in the **main Claude Code session**. The main session coordinates specialist subagents; subagents must not spawn subagents.
-- Discover only relevant repository files, conventions, and existing project documentation. Do not assume the project uses a particular framework or test runner.
-- Use the existing `.claude/agents/` roles and their applicable `.claude/skills/` procedures; do not duplicate skill contents in this command.
-- Delegate only when the specialist adds distinct value. For small, low-risk tasks, work directly or use a single agent.
-- Keep tool output concise: targeted file reads, summarized test output, no unnecessary screenshots or full logs.
-- Distinguish observed evidence, assumptions, risks, and recommendations. Never claim a test, audit, or check passed without executing it.
-- Respect existing project instructions and Git state. Never overwrite unrelated work, change secrets, force-push, deploy, delete data, or create commits without explicit user authorization.
-- If a required agent or skill is unavailable, report it and use the smallest safe fallback without inventing a specialist's findings.
+- Runs in the main session; subagents never spawn subagents. Follow CLAUDE.md.
+- Delegate only when a specialist adds distinct value; otherwise work directly.
+- Discovery: `graphify query/explain/path` first when graphify-out/graph.json exists; then targeted reads to verify.
+- Concise output. Never claim a check passed without running it.
+- No commit/push/deploy/destructive action or overwriting unrelated work without explicit authorization.
+- If an agent/skill is unavailable, say so and use the smallest safe fallback.
 
 ## Inputs
 `$ARGUMENTS` — approved plan and optional task identifier. Default: one next approved task, not the entire plan.
@@ -36,9 +34,8 @@ Acceptance criteria for the selected task are satisfied or blockers are document
 ## Output
 Files changed; behavior; tests/checks and results; unresolved issues; risks; next task; recommendation `/test` or `/review`.
 
-## Execution optimization (on demand)
+## Execution
 
-- Apply `.claude/skills/delegation-policy/SKILL.md` only when coordinating specialists, and `.claude/skills/output-contracts/SKILL.md` only when producing handoffs or structured findings. Do not preload them.
-- Use only the applicable official Caveman skill(s): lean-build, surgical-patch (only for proven defects), verify-and-stop. Do not preload all skills.
-- Preserve original evidence and required risk gates. Prefer concise tool outputs and targeted reads; do not duplicate compression or routing logic. Caveman runtime integration is managed separately.
-- Avoid redundant delegation or repository-wide scans. Stop when acceptance and required checks pass.
+- Load `delegation-policy` / `output-contracts` skills only when coordinating or writing handoffs.
+- Skills (load only if needed): lean-build, surgical-patch (only for proven defects), verify-and-stop.
+- No repo-wide scans or redundant delegation; stop when acceptance and required checks pass.

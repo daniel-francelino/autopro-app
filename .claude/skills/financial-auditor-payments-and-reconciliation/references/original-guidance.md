@@ -1,11 +1,6 @@
 # financial-auditor: Payments And Reconciliation
-
-<!-- Verbatim source sections retained from the original agent; do not treat as always-on instructions. -->
-
-## 8. Revenue, Costs, and Profitability
-
+## Revenue, Costs, and Profitability
 When applicable, evaluate:
-
 - Gross revenue.
 - Net revenue.
 - Collected revenue.
@@ -17,23 +12,14 @@ When applicable, evaluate:
 - Gross profit.
 - Net profit.
 - Margins.
-
 Verify that reports distinguish different financial concepts.
-
 Revenue is not necessarily cash received.
-
 Cash balance is not necessarily profit.
-
 Gross profit is not necessarily net profit.
-
 Confirm which definitions the ERP uses before assessing correctness.
-
 Do not invent accounting policies.
-
-## 9. Financial Reporting
-
+## Financial Reporting
 Audit reports for:
-
 - Correct source data.
 - Consistent business rules.
 - Accurate aggregation.
@@ -46,26 +32,17 @@ Audit reports for:
 - Pending transactions.
 - Duplicate records.
 - Historical consistency.
-
 Compare report totals with underlying valid transactions when suitable evidence is available.
-
 Verify that different reports do not unintentionally apply conflicting definitions to the same metric.
-
 Document differences between:
-
 - Transaction date.
 - Payment date.
 - Settlement date.
 - Accounting recognition date.
-
 Use the definitions established by the project.
-
-## 10. Cross-Module Financial Consistency
-
+## Cross-Module Financial Consistency
 Identify dependencies between relevant modules.
-
 Examples:
-
 - Orders and invoices.
 - Sales and payments.
 - Payments and receivables.
@@ -74,11 +51,8 @@ Examples:
 - Inventory and costs.
 - Refunds and financial reports.
 - Transactions and account balances.
-
 Verify that operations maintain consistent financial state across modules.
-
 Look for:
-
 - Missing updates.
 - Duplicate financial effects.
 - Inconsistent totals.
@@ -86,13 +60,9 @@ Look for:
 - Incorrect state transitions.
 - Incomplete reversals.
 - Broken historical references.
-
 Do not assume all example modules exist.
-
-## 11. Transaction Integrity
-
+## Transaction Integrity
 When relevant, evaluate:
-
 - Atomicity.
 - Concurrent updates.
 - Duplicate requests.
@@ -103,31 +73,20 @@ When relevant, evaluate:
 - Retry behavior.
 - Race conditions.
 - Financial event ordering.
-
 Identify scenarios where concurrent or repeated operations may create incorrect balances or duplicate financial records.
-
 Do not perform destructive concurrency tests without authorization.
-
-## 12. Financial Invariants
-
+## Financial Invariants
 Identify important invariants for the analyzed domain.
-
 Examples:
-
 - A transaction's total must match its valid components.
 - Outstanding balances must reconcile with applied payments and adjustments.
 - Financial reversals must preserve an auditable history.
 - Report totals must reconcile with the underlying eligible transactions.
 - Commission payouts must not exceed the legitimately payable amount unless explicitly permitted.
-
 Treat these as candidate invariants.
-
 Validate each against confirmed project rules before classifying violations.
-
-## 13. Audit Scenarios
-
+## Audit Scenarios
 Evaluate relevant scenarios such as:
-
 - Zero-value transactions.
 - Smallest supported monetary unit.
 - Large monetary amounts.
@@ -143,33 +102,19 @@ Evaluate relevant scenarios such as:
 - Transactions crossing reporting periods.
 - Time zone boundaries.
 - Rounding differences between line items and totals.
-
 Prioritize realistic, high-impact cases.
-
 Avoid generating unnecessary scenario combinations.
-
-## 14. Findings and Evidence
-
+## Findings and Evidence
 Classify findings as:
-
 ### Confirmed
-
 A discrepancy is supported by a verified business rule and reproducible evidence.
-
 ### Likely
-
 Strong evidence suggests a defect, but complete verification is unavailable.
-
 ### Potential
-
 A plausible financial risk requires additional validation.
-
 ### Recommendation
-
 An improvement opportunity without a demonstrated defect.
-
 For every significant finding, include:
-
 - Affected business rule.
 - Expected result.
 - Observed result or implementation behavior.
@@ -179,5 +124,4 @@ For every significant finding, include:
 - Source references.
 - Recommended correction.
 - Suggested regression test.
-
 Do not claim a calculation is incorrect without a defensible expected result.

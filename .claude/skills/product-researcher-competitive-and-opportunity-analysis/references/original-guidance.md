@@ -1,11 +1,6 @@
 # product-researcher: Competitive And Opportunity Analysis
-
-<!-- Verbatim source sections retained from the original agent; do not treat as always-on instructions. -->
-
-## 11. Product Opportunity Discovery
-
+## Product Opportunity Discovery
 Identify opportunities involving:
-
 - Missing capabilities.
 - Workflow improvements.
 - Process automation.
@@ -18,9 +13,7 @@ Identify opportunities involving:
 - Data quality.
 - Financial visibility.
 - Product differentiation.
-
 For each opportunity, define:
-
 - Problem statement.
 - Affected users.
 - Existing alternatives.
@@ -29,13 +22,9 @@ For each opportunity, define:
 - Expected business value.
 - Implementation considerations.
 - Validation needs.
-
 Prefer problems with clear operational or business consequences.
-
-## 12. ERP Innovation Research
-
+## ERP Innovation Research
 When relevant, investigate opportunities involving:
-
 - Financial management.
 - Payments and receivables.
 - Commissions.
@@ -50,19 +39,12 @@ When relevant, investigate opportunities involving:
 - Audit trails.
 - Forecasting.
 - Decision support.
-
 These are research categories, not mandatory product features.
-
 Evaluate opportunities according to the ERP's actual business domain.
-
 Do not recommend unnecessary enterprise complexity.
-
-## 13. Emerging Technology Research
-
+## Emerging Technology Research
 Investigate relevant technologies when they may solve meaningful problems.
-
 Examples:
-
 - Artificial intelligence.
 - Machine learning.
 - Intelligent automation.
@@ -72,9 +54,7 @@ Examples:
 - Workflow orchestration.
 - Advanced reporting.
 - Integration platforms.
-
 For each technology opportunity, evaluate:
-
 1. User problem.
 2. Proposed application.
 3. Available evidence.
@@ -85,17 +65,11 @@ For each technology opportunity, evaluate:
 8. Data requirements.
 9. Reliability limitations.
 10. Validation strategy.
-
 Do not recommend AI merely because it is popular.
-
 Prefer deterministic solutions when they adequately solve the problem.
-
-## 14. Innovation and Differentiation
-
+## Innovation and Differentiation
 Identify opportunities to differentiate the product.
-
 Consider:
-
 - Simpler workflows.
 - Faster task completion.
 - Better financial visibility.
@@ -106,15 +80,10 @@ Consider:
 - Stronger data reliability.
 - Industry-specific capabilities.
 - Intelligent recommendations.
-
 Differentiation must be relevant to target users.
-
 Avoid proposing novelty without a clear business benefit.
-
-## 15. Opportunity Evaluation
-
+## Opportunity Evaluation
 Evaluate each opportunity using:
-
 - User value.
 - Business impact.
 - Strategic alignment.
@@ -126,41 +95,23 @@ Evaluate each opportunity using:
 - Security risks.
 - Data requirements.
 - Time to value.
-
 Use qualitative assessments when quantitative data is unavailable.
-
 Do not invent scores or expected financial returns.
-
-## 16. Research Confidence
-
+## Research Confidence
 Classify findings as:
-
 ### Verified
-
 Supported by reliable, directly relevant evidence.
-
 ### Strong Evidence
-
 Supported by multiple credible sources, with some limitations.
-
 ### Preliminary
-
 Supported by limited evidence requiring further investigation.
-
 ### Hypothesis
-
 A plausible opportunity without sufficient validation.
-
 ### Unverified
-
 A claim that could not be confirmed.
-
 Do not present hypotheses as established facts.
-
-## 17. Opportunity Prioritization
-
+## Opportunity Prioritization
 Recommend priorities using:
-
 - Potential business value.
 - User impact.
 - Evidence confidence.
@@ -168,51 +119,28 @@ Recommend priorities using:
 - Implementation effort.
 - Dependencies.
 - Risk.
-
 Use:
-
 **P1 — High Opportunity**
-
 Strong evidence of meaningful business value.
-
 **P2 — Medium Opportunity**
-
 Relevant improvement with reasonable supporting evidence.
-
 **P3 — Exploratory Opportunity**
-
 Interesting hypothesis requiring validation.
-
 These are research recommendations, not approved backlog priorities.
-
 The Product Owner owns backlog prioritization.
-
-## 18. Product Hypotheses
-
+## Product Hypotheses
 Express unvalidated opportunities as hypotheses.
-
 Preferred structure:
-
 **We believe that** [proposed improvement]
-
 **For** [target users]
-
 **Will improve** [expected outcome]
-
 **Because** [supporting reasoning]
-
 **We will validate this through** [research or experiment]
-
 Define measurable success indicators when possible.
-
 Do not invent expected improvements.
-
-## 19. Opportunity Validation
-
+## Opportunity Validation
 Recommend appropriate validation methods.
-
 Examples:
-
 - User interviews.
 - Workflow observation.
 - Prototype testing.
@@ -222,7 +150,5 @@ Examples:
 - Small experiments.
 - Customer feedback.
 - Technical feasibility analysis.
-
 Select the least expensive method capable of reducing the relevant uncertainty.
-
 Do not recommend building a complete feature merely to validate an early hypothesis.

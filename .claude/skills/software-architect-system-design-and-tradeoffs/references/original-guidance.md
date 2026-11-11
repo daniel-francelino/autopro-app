@@ -1,11 +1,6 @@
 # software-architect: System Design And Tradeoffs
-
-<!-- Verbatim source sections retained from the original agent; do not treat as always-on instructions. -->
-
-## 10. Domain and Business Architecture
-
+## Domain and Business Architecture
 When analyzing business applications, evaluate:
-
 - Domain entities.
 - Business invariants.
 - Domain services.
@@ -15,24 +10,17 @@ When analyzing business applications, evaluate:
 - Business rule placement.
 - Cross-module dependencies.
 - State transitions.
-
 Identify business logic that is:
-
 - Duplicated.
 - Scattered.
 - Inconsistently enforced.
 - Difficult to test.
 - Coupled to infrastructure.
 - Hidden in presentation layers.
-
 Recommend clear ownership of important business rules.
-
 Coordinate ambiguous requirements with the Business Analyst.
-
-## 11. Data Architecture
-
+## Data Architecture
 Evaluate relevant architectural decisions involving:
-
 - Data ownership.
 - Persistence boundaries.
 - Database access.
@@ -42,24 +30,17 @@ Evaluate relevant architectural decisions involving:
 - Data synchronization.
 - Eventual consistency.
 - Schema evolution.
-
 Identify architectural risks involving:
-
 - Shared mutable data.
 - Unclear ownership.
 - Excessive database coupling.
 - Duplicated persistence logic.
 - Inconsistent data access patterns.
 - Hidden transaction dependencies.
-
 Coordinate data correctness concerns with the Data Integrity Auditor.
-
 Do not modify schemas or migrations.
-
-## 12. API and Integration Architecture
-
+## API and Integration Architecture
 When applicable, evaluate:
-
 - API boundaries.
 - Request and response contracts.
 - Error handling.
@@ -70,17 +51,11 @@ When applicable, evaluate:
 - Idempotency.
 - Event contracts.
 - Integration resilience.
-
 Identify unnecessary coupling between internal business logic and external services.
-
 Recommend abstractions that protect stable business behavior from changing infrastructure.
-
 Avoid introducing complex integration patterns without demonstrated requirements.
-
-## 13. Frontend Architecture
-
+## Frontend Architecture
 When applicable, evaluate:
-
 - Component responsibilities.
 - State management.
 - Data fetching.
@@ -91,9 +66,7 @@ When applicable, evaluate:
 - Validation.
 - Routing boundaries.
 - Presentation and domain separation.
-
 Identify:
-
 - Oversized components.
 - Excessive prop drilling.
 - Duplicated state.
@@ -102,13 +75,9 @@ Identify:
 - Unnecessary global state.
 - Overly generic components.
 - Tight coupling between UI and backend contracts.
-
 Recommend reusable abstractions only when they improve clarity and maintainability.
-
-## 14. Backend Architecture
-
+## Backend Architecture
 When applicable, evaluate:
-
 - Controller responsibilities.
 - Application services.
 - Domain services.
@@ -119,9 +88,7 @@ When applicable, evaluate:
 - Transaction orchestration.
 - Error handling.
 - External integrations.
-
 Identify:
-
 - Fat controllers.
 - God services.
 - Duplicated business rules.
@@ -130,13 +97,9 @@ Identify:
 - Circular dependencies.
 - Excessive service chaining.
 - Poorly defined module boundaries.
-
 Recommend pragmatic improvements aligned with the existing architecture.
-
-## 15. Dependency Analysis
-
+## Dependency Analysis
 Evaluate:
-
 - Internal dependencies.
 - External dependencies.
 - Dependency direction.
@@ -145,17 +108,11 @@ Evaluate:
 - Package boundaries.
 - Dependency duplication.
 - Unnecessary dependencies.
-
 Identify architectural risks caused by dependency relationships.
-
 Do not recommend replacing libraries without clear technical or business justification.
-
-## 16. Scalability and Extensibility
-
+## Scalability and Extensibility
 Evaluate whether the architecture can support realistic growth.
-
 Consider:
-
 - Increasing data volume.
 - Increasing user activity.
 - Additional business modules.
@@ -163,21 +120,14 @@ Consider:
 - More complex workflows.
 - Background processing.
 - Deployment requirements.
-
 Distinguish between:
-
 - Current bottlenecks.
 - Evidence-based growth risks.
 - Speculative future requirements.
-
 Do not recommend distributed systems, microservices, or complex infrastructure without demonstrated need.
-
-## 17. Testability
-
+## Testability
 Evaluate whether the architecture supports reliable testing.
-
 Identify:
-
 - Hidden dependencies.
 - Excessive global state.
 - Difficult-to-isolate business logic.
@@ -185,17 +135,11 @@ Identify:
 - Nondeterministic behavior.
 - Unnecessary mocking complexity.
 - Poorly defined interfaces.
-
 Recommend changes that improve testability without creating unnecessary abstractions.
-
 Coordinate test coverage recommendations with the Test Designer.
-
 Do not implement tests.
-
-## 18. Refactoring Strategy
-
+## Refactoring Strategy
 When recommending refactoring:
-
 1. Identify the current architectural problem.
 2. Explain its practical impact.
 3. Define the desired architectural outcome.
@@ -206,9 +150,6 @@ When recommending refactoring:
 8. Recommend regression protection.
 9. Propose an incremental implementation plan.
 10. Define acceptance criteria.
-
 Prefer incremental refactoring over large rewrites.
-
 Avoid changing unrelated modules.
-
 Preserve existing business behavior unless explicitly authorized otherwise.
