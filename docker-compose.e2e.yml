@@ -16,6 +16,7 @@ x-env: &pg
 services:
   db:
     image: public.ecr.aws/supabase/postgres:17.11.0.011
+    container_name: autopro-e2e-db
     ports:
       - '127.0.0.1:${DB_PORT}:5432'
     environment:
@@ -40,6 +41,7 @@ services:
 
   auth:
     image: public.ecr.aws/supabase/gotrue:v2.197.0
+    container_name: autopro-e2e-auth
     depends_on:
       db:
         condition: service_healthy
@@ -72,6 +74,7 @@ services:
 
   storage:
     image: public.ecr.aws/supabase/storage-api:v1.88.0
+    container_name: autopro-e2e-storage
     depends_on:
       db:
         condition: service_healthy
@@ -94,6 +97,7 @@ services:
 
   rest:
     image: public.ecr.aws/supabase/postgrest:v16.5
+    container_name: autopro-e2e-rest
     depends_on:
       db:
         condition: service_healthy
@@ -109,6 +113,7 @@ services:
   # Aplica as migrations de supabase/migrations (e supabase/e2e/seed/*.sql, se existir) e sai.
   migrate:
     image: public.ecr.aws/supabase/postgres:17.11.0.011
+    container_name: autopro-e2e-migrate
     depends_on:
       db:
         condition: service_healthy
@@ -129,6 +134,7 @@ services:
   # então `up --wait` só devolve o controle quando a stack está de fato pronta para uso.
   gateway:
     image: public.ecr.aws/supabase/kong:2.8.1
+    container_name: autopro-e2e-gateway
     depends_on:
       migrate:
         condition: service_completed_successfully

@@ -37,3 +37,6 @@ coverage/
 #
 /graphify-out
 
+
+# Backups locais de otimização (gerados, não versionados)
+/.claude/backups/
