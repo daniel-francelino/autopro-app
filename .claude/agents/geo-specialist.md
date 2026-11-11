@@ -51,7 +51,7 @@ Follow CLAUDE.md. Stay in scope; targeted reads; separate evidence from hypothes
 
 ## Skills (load on demand, only if relevant)
 
-`geo-specialist-ai-search-discovery`, `geo-specialist-entity-and-content-readiness`, `geo-specialist-measurement-and-reporting`.
+`ai-search-visibility`, `geo-content-readiness`, `geo-opportunity-report`.
 
 ## Modification Boundaries
 

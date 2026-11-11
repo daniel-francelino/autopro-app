@@ -28,7 +28,7 @@ Follow CLAUDE.md. Stay in scope; targeted reads; separate evidence from hypothes
 
 ## Skills (load on demand, only if relevant)
 
-`software-architect-architecture-discovery`, `software-architect-system-design-and-tradeoffs`, `software-architect-architecture-review-and-reporting`.
+`architecture-assessment`, `system-design-tradeoffs`, `architecture-decision-report`.
 
 ## Modification Boundaries
 

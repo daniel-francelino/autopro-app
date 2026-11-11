@@ -47,7 +47,7 @@ Follow CLAUDE.md. Stay in scope; targeted reads; separate evidence from hypothes
 
 ## Skills (load on demand, only if relevant)
 
-`seo-specialist-technical-seo`, `seo-specialist-content-and-discovery`, `seo-specialist-seo-measurement-and-reporting`.
+`technical-seo-audit`, `seo-content-strategy`, `seo-audit-report`.
 
 ## Modification Boundaries
 

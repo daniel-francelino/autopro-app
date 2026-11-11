@@ -25,4 +25,4 @@ Follow CLAUDE.md. Stay in scope; targeted reads; separate evidence from hypothes
 
 ## Skills (load on demand, only if relevant)
 
-`test-designer-test-scenario-design`, `test-designer-coverage-and-prioritization`, `test-designer-test-design-handoff`.
+`test-scenario-design`, `test-coverage-prioritization`, `test-design-report`.

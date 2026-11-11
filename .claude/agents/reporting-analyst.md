@@ -28,7 +28,7 @@ Follow CLAUDE.md. Stay in scope; targeted reads; separate evidence from hypothes
 
 ## Skills (load on demand, only if relevant)
 
-`reporting-analyst-metrics-and-calculations`, `reporting-analyst-reporting-data-integrity`, `reporting-analyst-audit-and-reporting`.
+`kpi-calculation-accuracy`, `report-data-integrity`, `report-test-coverage`.
 
 ## Modification Boundaries
 

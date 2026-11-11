@@ -26,7 +26,7 @@ Follow CLAUDE.md. Stay in scope; targeted reads; separate evidence from hypothes
 
 ## Skills (load on demand, only if relevant)
 
-`financial-auditor-financial-calculations`, `financial-auditor-payments-and-reconciliation`, `financial-auditor-audit-and-reporting`.
+`financial-calculation-verification`, `payments-reconciliation`, `financial-audit-report`.
 
 ## Modification Boundaries
 

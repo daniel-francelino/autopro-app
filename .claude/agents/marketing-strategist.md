@@ -66,7 +66,7 @@ Follow CLAUDE.md. Stay in scope; targeted reads; separate evidence from hypothes
 
 ## Skills (load on demand, only if relevant)
 
-`marketing-strategist-audience-and-positioning`, `marketing-strategist-campaigns-and-growth`, `marketing-strategist-measurement-and-reporting`.
+`market-positioning`, `growth-campaigns`, `growth-experiments-report`.
 
 ## Modification Boundaries
 

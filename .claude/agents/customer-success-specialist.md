@@ -62,7 +62,7 @@ Follow CLAUDE.md. Stay in scope; targeted reads; separate evidence from hypothes
 
 ## Skills (load on demand, only if relevant)
 
-`customer-success-specialist-onboarding-and-adoption`, `customer-success-specialist-retention-and-feedback`, `customer-success-specialist-success-operations-and-reporting`.
+`customer-onboarding`, `customer-retention-analytics`, `customer-operations-experiments`.
 
 ## Modification Boundaries
 

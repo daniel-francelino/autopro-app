@@ -35,7 +35,7 @@ Follow CLAUDE.md. Stay in scope; targeted reads; separate evidence from hypothes
 
 ## Skills (load on demand, only if relevant)
 
-`product-owner-product-discovery`, `product-owner-prioritization-and-requirements`, `product-owner-delivery-and-alignment`.
+`product-discovery`, `backlog-prioritization`, `stakeholder-alignment`.
 
 ## Modification Boundaries
 

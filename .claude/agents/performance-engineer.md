@@ -30,7 +30,7 @@ Follow CLAUDE.md. Stay in scope; targeted reads; separate evidence from hypothes
 
 ## Skills (load on demand, only if relevant)
 
-`performance-engineer-performance-discovery`, `performance-engineer-profiling-and-optimization`, `performance-engineer-validation-and-reporting`.
+`performance-baseline`, `performance-optimization`, `performance-audit-report`.
 
 ## Modification Boundaries
 

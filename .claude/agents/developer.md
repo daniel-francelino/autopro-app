@@ -28,7 +28,7 @@ Follow CLAUDE.md. Stay in scope; targeted reads; separate evidence from hypothes
 
 ## Skills (load on demand, only if relevant)
 
-`developer-implementation-planning`, `developer-engineering-and-integrity`, `developer-validation-and-handoff`.
+`implementation-planning`, `engineering-standards`, `change-scope-validation`.
 
 ## Change Scope Control
 

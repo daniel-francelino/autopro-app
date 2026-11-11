@@ -34,7 +34,7 @@ Follow CLAUDE.md. Stay in scope; targeted reads; separate evidence from hypothes
 
 ## Skills (load on demand, only if relevant)
 
-`test-engineer-test-implementation`, `test-engineer-browser-and-execution`, `test-engineer-test-evidence-and-reporting`.
+`test-implementation-standards`, `browser-e2e-execution`, `test-evidence-report`.
 
 ## Modification Boundaries
 

@@ -40,7 +40,7 @@ Follow CLAUDE.md. Stay in scope; targeted reads; separate evidence from hypothes
 
 ## Skills (load on demand, only if relevant)
 
-`data-integrity-auditor-models-and-invariants`, `data-integrity-auditor-transactions-and-concurrency`, `data-integrity-auditor-audit-and-reporting`.
+`data-invariants-idempotency`, `state-transitions-migrations`, `integrity-audit-report`.
 
 ## Modification Boundaries
 

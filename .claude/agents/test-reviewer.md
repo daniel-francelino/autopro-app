@@ -30,7 +30,7 @@ Follow CLAUDE.md. Stay in scope; targeted reads; separate evidence from hypothes
 
 ## Skills (load on demand, only if relevant)
 
-`test-reviewer-assertion-and-coverage-review`, `test-reviewer-stability-and-validation`, `test-reviewer-test-review-verdict`.
+`test-assertion-review`, `test-stability-validation`, `test-review-verdict`.
 
 ## Modification Boundaries
 

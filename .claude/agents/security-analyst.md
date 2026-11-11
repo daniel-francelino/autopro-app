@@ -40,7 +40,7 @@ Follow CLAUDE.md. Stay in scope; targeted reads; separate evidence from hypothes
 
 ## Skills (load on demand, only if relevant)
 
-`security-analyst-threats-and-access-control`, `security-analyst-application-and-infrastructure-security`, `security-analyst-security-validation-and-reporting`.
+`access-control-threats`, `app-infrastructure-security`, `security-audit-report`.
 
 ## Modification Boundaries
 

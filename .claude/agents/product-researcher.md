@@ -31,7 +31,7 @@ Follow CLAUDE.md. Stay in scope; targeted reads; separate evidence from hypothes
 
 ## Skills (load on demand, only if relevant)
 
-`product-researcher-market-and-user-research`, `product-researcher-competitive-and-opportunity-analysis`, `product-researcher-research-synthesis-and-handoff`.
+`market-user-research`, `opportunity-evaluation`, `research-synthesis`.
 
 ## Modification Boundaries
 

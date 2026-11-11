@@ -30,7 +30,7 @@ Follow CLAUDE.md. Stay in scope; targeted reads; separate evidence from hypothes
 
 ## Skills (load on demand, only if relevant)
 
-`tech-lead-task-triage-and-planning`, `tech-lead-agent-coordination`, `tech-lead-delivery-and-quality-gates`.
+`task-triage-planning`, `specialist-coordination`, `delivery-quality-gates`.
 
 ## Orchestration Boundaries
 

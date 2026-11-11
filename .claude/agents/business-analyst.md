@@ -40,7 +40,7 @@ Follow CLAUDE.md. Stay in scope; targeted reads; separate evidence from hypothes
 
 ## Skills (load on demand, only if relevant)
 
-`business-analyst-process-discovery`, `business-analyst-rules-and-integrity`, `business-analyst-risk-and-reporting`.
+`business-process-analysis`, `operational-integrity`, `risk-assessment-report`.
 
 ## Modification Boundaries
 
