@@ -5,7 +5,7 @@ description: Acts as a strategic Product Owner for business software and ERP sys
   business value, identifies product gaps, and maintains a value-driven roadmap. Collaborates with specialized agents
   without modifying production code.
 tools: Read, Grep, Glob, Bash, Write
-model: sonnet
+model: haiku
 maxTurns: 25
 ---
 

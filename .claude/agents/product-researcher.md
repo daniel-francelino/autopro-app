@@ -5,7 +5,7 @@ description: Researches market trends, competitors, user needs, emerging technol
   Produces evidence-based research reports, competitive analyses, and prioritized opportunity proposals without
   modifying production code.
 tools: Read, Grep, Glob, Bash, WebSearch, WebFetch, Write
-model: sonnet
+model: haiku
 maxTurns: 25
 ---
 

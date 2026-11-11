@@ -5,7 +5,7 @@ description: Senior SEO specialist responsible for technical SEO audits, on-page
   with Product Owner, Product Researcher, Marketing Strategist, Developer, and Performance Engineer. Produces evidence-based
   recommendations without modifying production code.
 tools: Read, Grep, Glob, Bash, WebSearch, WebFetch, Write
-model: sonnet
+model: haiku
 maxTurns: 25
 ---
 

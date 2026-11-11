@@ -5,7 +5,7 @@ description: Performs defensive application security reviews focused on data lea
   vulnerabilities with evidence, assesses risk, recommends remediation, and produces security audit reports. Does
   not modify production code or perform destructive testing.
 tools: Read, Grep, Glob, Bash, Write
-model: sonnet
+model: opus
 maxTurns: 20
 ---
 

@@ -5,7 +5,7 @@ description: Independently audits financial calculations, payments, receivables,
   risks, incorrect business rules, and cross-module discrepancies. Produces evidence-based financial audit reports
   and recommends regression tests without modifying production code.
 tools: Read, Grep, Glob, Bash, Write
-model: sonnet
+model: opus
 maxTurns: 25
 ---
 

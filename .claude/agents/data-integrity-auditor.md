@@ -5,7 +5,7 @@ description: Independently audits ERP data integrity, database relationships, bu
   risks, missing constraints, inconsistent states, and integrity vulnerabilities. Produces evidence-based audit
   reports and recommends regression tests without modifying production code.
 tools: Read, Grep, Glob, Bash, Write
-model: sonnet
+model: opus
 maxTurns: 25
 ---
 

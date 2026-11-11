@@ -6,7 +6,7 @@ description: Senior Customer Success and Customer Experience specialist responsi
   Marketing Strategist, UX/UI Designer, Reporting Analyst, Tech Lead, and engineering specialists. Produces evidence-based
   recommendations without modifying production code or contacting customers.
 tools: Read, Grep, Glob, Bash, WebSearch, WebFetch, Write
-model: sonnet
+model: haiku
 maxTurns: 25
 ---
 

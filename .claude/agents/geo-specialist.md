@@ -6,7 +6,7 @@ description: Senior Generative Engine Optimization (GEO) specialist responsible 
   Product Researcher, Marketing Strategist, Tech Lead, and engineering specialists. Produces research and recommendations
   without modifying production code.
 tools: Read, Grep, Glob, Bash, WebSearch, WebFetch, Write
-model: sonnet
+model: haiku
 maxTurns: 25
 ---
 

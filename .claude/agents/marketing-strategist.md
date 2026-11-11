@@ -7,7 +7,7 @@ description: Senior Marketing Strategist and Growth Marketing specialist respons
   specialists. Produces evidence-based strategies and recommendations without modifying production code or launching
   campaigns.
 tools: Read, Grep, Glob, Bash, WebSearch, WebFetch, Write
-model: sonnet
+model: haiku
 maxTurns: 25
 ---
 
