@@ -3,7 +3,7 @@
 import { expect, skipUnlessAuth, test, today } from './support/fixtures'
 import {
   InstallmentsCard, apiDownPayment, apiProcessPayment, expectPaymentBadge, fillCashModal, installmentsOf, openHeaderModal, openOrder, orderInOtherShop, paidSetup, payInFull, sum, transactions
-} from './support/helpers-dinheiro'
+} from './support/helpers-money'
 
 skipUnlessAuth(test)
 test.describe.configure({ timeout: 180_000 })

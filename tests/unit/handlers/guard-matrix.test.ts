@@ -1,4 +1,4 @@
-// L3-lite — matriz M1 (sem sessão → 401) e regra "admin só para owner" executadas nos
+// L3-lite — matriz M1 (no session → 401) e regra "admin só para owner" executadas nos
 // handlers REAIS, com os guards reais (requireAuthUser/requireOwner) e Supabase falso.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeEvent, installNitroGlobals, installServerUtilsGlobals, callHandler } from '../../helpers/handler-harness'
@@ -36,8 +36,8 @@ beforeEach(() => {
   auth.refreshSession.mockReset().mockResolvedValue({ data: { session: null }, error: { status: 401 } })
 })
 
-describe('M1: sem cookie de sessão → 401 em todo handler protegido', () => {
-  it('há handlers protegidos para exercitar', () => {
+describe('M1: no session cookie → 401 on every protected handler', () => {
+  it('there are protected handlers to exercise', () => {
     expect(protectedHandlers.length).toBeGreaterThan(200)
   })
 
@@ -48,7 +48,7 @@ describe('M1: sem cookie de sessão → 401 em todo handler protegido', () => {
   })
 })
 
-describe('Admin da plataforma: não-owner recebe 403', () => {
+describe('Platform admin: non-owner gets 403', () => {
   const admin = protectedHandlers.filter(h => h.file.startsWith('server/api/admin/'))
 
   it.each(admin.map(h => [h.file]))('%s', async (file) => {

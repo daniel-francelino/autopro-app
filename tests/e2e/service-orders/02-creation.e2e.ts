@@ -1,7 +1,7 @@
 // OS-B — Create an order through the UI (docs/testing/e2e-service-orders.md §4).
 // The action happens in the interface; verification looks at the screen and the database. Setup data comes from the fixed catalog (support/catalog.ts).
 import { expect, skipUnlessAuth, test } from './support/fixtures'
-import { addGroupProduct, countAllOrders, countOrders, expectToast, num } from './support/helpers-os'
+import { addGroupProduct, countAllOrders, countOrders, expectToast, num } from './support/helpers-order'
 import { OrdersPage } from './support/pages'
 
 skipUnlessAuth(test)

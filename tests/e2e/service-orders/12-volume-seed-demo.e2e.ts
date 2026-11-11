@@ -6,7 +6,7 @@ import { join } from 'node:path'
 import { E2E } from '../support/env'
 import { authSkipReason } from '../support/env'
 import { loginViaApi, type TestUser } from '../support/fixtures'
-import { cardNumbers, expect, ListFilters, test } from './support/helpers-lista'
+import { cardNumbers, expect, ListFilters, test } from './support/helpers-list'
 import { OrdersPage, parseBRL } from './support/pages'
 
 const DEMO_LOGIN = { email: 'admin@demo.autopro.test', password: 'Demo@12345' }

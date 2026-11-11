@@ -1,4 +1,4 @@
-// Cálculos puros do painel do owner: cobrança (MRR/churn), bateria GEO e checagens do /admin/system.
+// Cálculos puros do painel do owner: cobrança (MRR/churn), GEO battery e checagens do /admin/system.
 import { describe, expect, it } from 'vitest'
 import { computeChurnSeries, computeMrr, lastMonths, monthKey, type SubscriptionRow } from '../../../server/utils/billing-metrics'
 import { computeRates, weekStart, weeklySeries, type GeoRunRow } from '../../../server/utils/geo-metrics'
@@ -11,7 +11,7 @@ const sub = (over: Partial<SubscriptionRow>): SubscriptionRow => ({
 })
 
 describe('billing: MRR', () => {
-  it('soma só assinaturas active, por plano, e conta as sem valor', () => {
+  it('sums only active subscriptions, per plan, and counts those without value', () => {
     const r = computeMrr([
       sub({ monthly_amount: 99.9 }),
       sub({ plan_key: 'fiscal', monthly_amount: '199.90' }),
@@ -29,22 +29,22 @@ describe('billing: MRR', () => {
     ])
   })
 
-  it('sem assinaturas → zero', () => {
+  it('no subscriptions → zero', () => {
     expect(computeMrr([])).toMatchObject({ mrr: 0, active_subscriptions: 0, by_plan: [] })
   })
 })
 
-describe('billing: churn e novas', () => {
+describe('billing: churn and new', () => {
   const now = new Date('2026-11-15T12:00:00Z')
 
-  it('lastMonths devolve 12 meses terminando no atual', () => {
+  it('lastMonths returns 12 months ending in the current one', () => {
     const months = lastMonths(now, 12)
     expect(months).toHaveLength(12)
     expect(months[0]).toBe('2025-12')
     expect(months[11]).toBe('2026-11')
   })
 
-  it('churn = canceladas no mês ÷ ativas no início do mês', () => {
+  it('churn = cancelled in the month ÷ active at the start of the month', () => {
     const rows = [
       sub({ start_date: '2026-01-05' }), // ativa o tempo todo
       sub({ start_date: '2026-02-01' }), // ativa o tempo todo
@@ -56,7 +56,7 @@ describe('billing: churn e novas', () => {
     expect(oct).toMatchObject({ new: 1, cancelled: 1, active_at_start: 3, churn_rate: 33.33 })
   })
 
-  it('base zero → churn null (sem divisão por zero)', () => {
+  it('zero base → churn null (no division by zero)', () => {
     expect(computeChurnSeries([], now, 3).every(m => m.churn_rate === null)).toBe(true)
   })
 
@@ -67,13 +67,13 @@ describe('billing: churn e novas', () => {
   })
 })
 
-describe('GEO: taxas e série semanal', () => {
+describe('GEO: rates and weekly series', () => {
   const row = (over: Partial<GeoRunRow>): GeoRunRow => ({
     run_date: '2026-11-09', engine: 'chatgpt', search_enabled: true, brand_mentioned: true, brand_linked: false, recommended: false,
     price_correct: null, fiscal_correct: null, ...over
   })
 
-  it('exatidão considera só as respostas que citaram preço/fiscal', () => {
+  it('accuracy considers only the answers that cited price/fiscal', () => {
     const r = computeRates([
       row({ price_correct: true }), row({ price_correct: false }), row({ price_correct: null }),
       row({ fiscal_correct: true })
@@ -84,32 +84,32 @@ describe('GEO: taxas e série semanal', () => {
     expect(r.link_rate).toBe(0)
   })
 
-  it('sem registros → null, nunca NaN', () => {
+  it('no records → null, never NaN', () => {
     expect(computeRates([])).toMatchObject({ total: 0, mention_rate: null, price_accuracy: null })
   })
 
-  it('weekStart devolve a segunda-feira', () => {
+  it('weekStart returns the Monday', () => {
     expect(weekStart('2026-11-09')).toBe('2026-11-09') // segunda
     expect(weekStart('2026-11-15')).toBe('2026-11-09') // domingo
     expect(weekStart('2026-11-16')).toBe('2026-11-16')
   })
 
-  it('série separa COM e SEM busca e ordena por semana', () => {
+  it('series separates WITH and WITHOUT search and sorts by week', () => {
     const series = weeklySeries([
       row({ run_date: '2026-11-16' }), row({ run_date: '2026-11-09', search_enabled: false }), row({ run_date: '2026-11-10' })
     ])
     expect(series.map(s => `${s.week} ${s.mode}`)).toEqual(['2026-11-09 no_search', '2026-11-09 search', '2026-11-16 search'])
   })
 
-  it('a bateria tem 20 perguntas fixas, ids 1..20, e o texto vem do servidor', () => {
+  it('the battery has 20 fixed questions, ids 1..20, and the text comes from the server', () => {
     expect(GEO_QUESTIONS.map(q => q.id)).toEqual(Array.from({ length: 20 }, (_, i) => i + 1))
     expect(geoQuestionText(19)).toContain('AutoPro')
     expect(geoQuestionText(99)).toBeNull()
   })
 })
 
-describe('system: checagens', () => {
-  it('runCheck captura erro e timeout sem lançar', async () => {
+describe('system: checks', () => {
+  it('runCheck captures error and timeout without throwing', async () => {
     const failed = await runCheck('x', 'X', async () => { throw new Error('banco caiu') })
     expect(failed).toMatchObject({ status: 'error', detail: 'banco caiu' })
 
@@ -118,12 +118,12 @@ describe('system: checagens', () => {
     expect(slow.detail).toMatch(/sem resposta/)
   })
 
-  it('runCheck repassa status e detalhe', async () => {
+  it('runCheck passes through status and detail', async () => {
     expect(await runCheck('z', 'Z', async () => ({ status: 'warning', detail: 'devagar' }))).toMatchObject({ status: 'warning', detail: 'devagar' })
     expect((await runCheck('k', 'K', async () => ({}))).status).toBe('ok')
   })
 
-  it('topFailingRoutes agrupa, ignora sucesso e põe 5xx antes de 4xx', () => {
+  it('topFailingRoutes groups, ignores success and puts 5xx before 4xx', () => {
     const at = (n: number) => `2026-11-09T10:0${n}:00Z`
     const rows = [
       { http_method: 'POST', route_pattern: '/api/a', status_code: 400, outcome: 'invalid', created_at: at(1) },
@@ -137,15 +137,15 @@ describe('system: checagens', () => {
     expect(top[1]!.last_at).toBe(at(3))
   })
 
-  it('alerta de owner único', () => {
+  it('single owner alert', () => {
     expect(ownerAlert(0)).toMatch(/Nenhum owner/)
     expect(ownerAlert(1)).toMatch(/um owner/)
     expect(ownerAlert(2)).toBeNull()
   })
 })
 
-describe('suspensão de oficina', () => {
-  it('detecta suspensão no embed do PostgREST (objeto ou lista) e ignora o resto', () => {
+describe('workshop suspension', () => {
+  it('detects suspension in the PostgREST embed (object or list) and ignores the rest', () => {
     expect(isOrganizationSuspended({ organizations: { suspended_at: '2026-11-09T10:00:00Z' } })).toBe(true)
     expect(isOrganizationSuspended({ organizations: [{ suspended_at: '2026-11-09T10:00:00Z' }] })).toBe(true)
     expect(isOrganizationSuspended({ organizations: { suspended_at: null } })).toBe(false)

@@ -38,7 +38,7 @@ const SCREENS: Array<[string, string]> = [
   ['Notificações', '/app/settings/notifications']
 ]
 
-test.describe('Fluxo: telas do app abrem sem erro', () => {
+test.describe('Flow: app screens open without error', () => {
   for (const [name, path] of SCREENS) {
     test(`${name} (${path})`, async ({ page, loginAs }) => {
       await loginAs('admin')

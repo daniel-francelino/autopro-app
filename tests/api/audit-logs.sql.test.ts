@@ -42,29 +42,29 @@ describe.skipIf(!enabled)('migration 097 (Postgres real)', () => {
     if (enabled) execFileSync('docker', ['exec', CONTAINER, 'psql', '-U', 'postgres', '-c', 'DROP DATABASE IF EXISTS audit_test'])
   })
 
-  it('cria as partições do mês atual + 2 meses e a partição padrão', () => {
+  it('creates the partitions for the current month + 2 months and the default partition', () => {
     const names = psql(`SELECT c.relname FROM pg_inherits i JOIN pg_class c ON c.oid=i.inhrelid JOIN pg_class p ON p.oid=i.inhparent WHERE p.relname='audit_logs' ORDER BY 1`).split('\n')
     expect(names).toContain('audit_logs_default')
     expect(names.filter(n => /^audit_logs_y\d{4}m\d{2}$/.test(n))).toHaveLength(3)
   })
 
-  it('service_role grava e lê; a linha cai na partição do mês (não na padrão)', () => {
+  it('service_role writes and reads; the row lands in the month partition (not the default)', () => {
     psql(row('11111111-1111-4111-8111-111111111111'), 'service_role')
     expect(psql(`SELECT count(*) FROM public.audit_logs`, 'service_role')).toBe('1')
     expect(psql(`SELECT count(*) FROM public.audit_logs_default`)).toBe('0')
   })
 
-  it('UPDATE e DELETE são bloqueados, inclusive para o service_role e o dono', () => {
+  it('UPDATE and DELETE are blocked, including for service_role and the owner', () => {
     expect(psqlFails(`UPDATE public.audit_logs SET action='x'`, 'service_role')).toMatch(/append-only/)
     expect(psqlFails(`DELETE FROM public.audit_logs`, 'service_role')).toMatch(/append-only/)
     expect(psqlFails(`UPDATE public.audit_logs SET action='x'`)).toMatch(/append-only/)
   })
 
-  it('TRUNCATE é negado ao service_role', () => {
+  it('TRUNCATE is denied to service_role', () => {
     expect(psqlFails(`TRUNCATE public.audit_logs`, 'service_role')).toMatch(/permission denied/)
   })
 
-  it('anon e authenticated não leem nem escrevem na tabela, nem em partições (PostgREST expõe ambas)', () => {
+  it('anon and authenticated neither read nor write the table or its partitions (PostgREST exposes both)', () => {
     const partition = psql(`SELECT relname FROM pg_class WHERE relname ~ '^audit_logs_y\\d{4}m\\d{2}$' ORDER BY 1 LIMIT 1`)
     for (const role of ['anon', 'authenticated']) {
       expect(psqlFails(`SELECT * FROM public.audit_logs`, role)).toMatch(/permission denied/)
@@ -75,30 +75,30 @@ describe.skipIf(!enabled)('migration 097 (Postgres real)', () => {
   // 9 chamadas a `docker exec psql`: no Docker Desktop do Windows cada uma leva alguns segundos.
   }, 120_000)
 
-  it('anon/authenticated não executam as funções de manutenção', () => {
+  it('anon/authenticated do not run the maintenance functions', () => {
     for (const role of ['anon', 'authenticated']) {
       expect(psqlFails(`SELECT public.audit_logs_maintain(2, 6)`, role)).toMatch(/permission denied/)
       expect(psqlFails(`SELECT public.audit_logs_create_partition(now()::date)`, role)).toMatch(/permission denied/)
     }
   })
 
-  it('rejeita outcome e actor_type fora da lista', () => {
+  it('rejects outcome and actor_type outside the list', () => {
     expect(psqlFails(`INSERT INTO public.audit_logs (request_id, action, http_method, http_path, status_code, outcome) VALUES (gen_random_uuid(), 'a', 'POST', '/x', 200, 'talvez')`)).toMatch(/check constraint/)
     expect(psqlFails(row('44444444-4444-4444-8444-444444444444', `actor_type|'hacker'`))).toMatch(/check constraint/)
   })
 
-  it('aceita ip como inet e rejeita texto inválido (por isso o plugin valida o IP)', () => {
+  it('accepts ip as inet and rejects invalid text (that is why the plugin validates the IP)', () => {
     psql(row('55555555-5555-4555-8555-555555555555', `ip_address|'203.0.113.9'`))
     expect(psqlFails(row('66666666-6666-4666-8666-666666666666', `ip_address|'nao-e-ip'`))).toMatch(/inet/)
   })
 
-  it('manutenção é idempotente', () => {
+  it('maintenance is idempotent', () => {
     psql(`SELECT public.audit_logs_maintain(2, 6); SELECT public.audit_logs_maintain(2, 6)`)
     const count = psql(`SELECT count(*) FROM pg_class WHERE relname ~ '^audit_logs_y\\d{4}m\\d{2}$' AND relkind='r'`)
     expect(count).toBe('3')
   })
 
-  it('retenção: descarta partição com mais de 6 meses e preserva as recentes', () => {
+  it('retention: drops partitions older than 6 months and keeps the recent ones', () => {
     psql(`SELECT public.audit_logs_create_partition((now() - interval '8 months')::date)`)
     psql(`SELECT public.audit_logs_create_partition((now() - interval '5 months')::date)`)
     const old = psql(`SELECT to_char(date_trunc('month', now() - interval '8 months'), '"audit_logs_y"YYYY"m"MM')`)
@@ -110,17 +110,17 @@ describe.skipIf(!enabled)('migration 097 (Postgres real)', () => {
     expect(psql(`SELECT count(*) FROM public.audit_logs`)).toBe('2') // dados do mês atual intactos
   })
 
-  it('a partição padrão continua vazia', () => {
+  it('the default partition stays empty', () => {
     expect(psql(`SELECT count(*) FROM public.audit_logs_default`)).toBe('0')
   })
 
-  it('consulta por request_id usa o intervalo de prefixo do handler do owner', () => {
+  it('request_id lookup uses the prefix range of the owner handler', () => {
     psql(`INSERT INTO public.audit_logs (request_id, action, http_method, http_path, status_code, outcome)
           VALUES ('abc12345-0000-4000-8000-000000000001', 'a.b', 'POST', '/x', 500, 'error')`)
     expect(psql(`SELECT count(*) FROM public.audit_logs WHERE request_id >= 'abc12345-0000-0000-0000-000000000000' AND request_id <= 'abc12345-ffff-ffff-ffff-ffffffffffff'`)).toBe('1')
   })
 
-  it('linhas montadas por buildAuditRow cabem na tabela (colunas, tipos, limites e jsonb)', () => {
+  it('rows built by buildAuditRow fit the table (columns, types, limits and jsonb)', () => {
     const base = { requestId: '99999999-9999-4999-8999-999999999999', startedAt: Date.now() - 5 }
     const ctxs = [
       { ctx: { ...base, userId: '22222222-2222-4222-8222-222222222222', email: 'a@a.com', organizationId: '33333333-3333-4333-8333-333333333333', role: 'admin', changes: { changed_fields: ['total'], diff: { total: { from: 500, to: 50 } } } }, method: 'POST', path: '/api/service-orders', matchedRoute: '/api/service-orders', status: 200, body: { orderId: 'o1', total: 50, password: 'x' } },

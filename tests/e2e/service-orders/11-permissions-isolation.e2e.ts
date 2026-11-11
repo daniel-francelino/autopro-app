@@ -1,7 +1,7 @@
 // OS-K — Permissões e isolamento entre oficinas, pela tela e pela API (docs/testing/e2e-service-orders.md §4).
 // O papel do `staff` ("operador") nasce SEM permissões; cada teste concede só o que precisa (`staffPerms`) e o helper desfaz no fim.
 import { skipUnlessAuth } from './support/fixtures'
-import { expect, freshClient, test } from './support/helpers-lista'
+import { expect, freshClient, test } from './support/helpers-list'
 import { OrdersPage } from './support/pages'
 
 skipUnlessAuth(test)

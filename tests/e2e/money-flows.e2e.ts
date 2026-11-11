@@ -42,8 +42,8 @@ async function expectCashConsistent(world: World, accountId: string, startingBal
   expect(money((await dbBalance(world, accountId)) - startingBalance)).toBe(money(signed))
 }
 
-test.describe('Fluxo: receber uma OS à vista', () => {
-  test('quita a OS, soma no saldo, gera extrato e aparece nos relatórios', async ({ apiAs, world }) => {
+test.describe('Flow: receive payment for an OS paid in full', () => {
+  test('settles the OS, adds to the balance, creates a statement and appears in the reports', async ({ apiAs, world }) => {
     const api = await apiAs('admin')
     const before = await api.get('/api/reports/overview', { dateFrom: today(), dateTo: today() })
     const s = await setup(api)
@@ -66,7 +66,7 @@ test.describe('Fluxo: receber uma OS à vista', () => {
     expect(cash.body.data.profitReport.currentData.revenue).toBeGreaterThanOrEqual(s.total)
   })
 
-  test('repetir o recebimento é recusado (409) e o saldo não muda', async ({ apiAs, world }) => {
+  test('repeating the receipt is refused (409) and the balance does not change', async ({ apiAs, world }) => {
     const api = await apiAs('admin')
     const s = await setup(api)
     const body = { paymentMethod: 'pix', bankAccountId: s.accountId, installments: [{ amount: s.total, status: 'paid' }] }
@@ -76,7 +76,7 @@ test.describe('Fluxo: receber uma OS à vista', () => {
     expect(await dbStatements(world, s.accountId)).toHaveLength(1)
   })
 
-  test('OS ainda aberta não recebe plano de pagamento', async ({ apiAs, world }) => {
+  test('open OS does not receive a payment plan', async ({ apiAs, world }) => {
     const api = await apiAs('admin')
     const s = await setup(api, { status: 'open' })
     const pay = await api.post(`/api/service-orders/${s.orderId}/process-payment`, {
@@ -87,8 +87,8 @@ test.describe('Fluxo: receber uma OS à vista', () => {
   })
 })
 
-test.describe('Fluxo: receber uma OS parcelada e em partes', () => {
-  test('1ª parcela paga → parcial; pagar a 2ª em duas partes; quitar a 3ª → paga', async ({ apiAs, world }) => {
+test.describe('Flow: receive payment for an installment OS and in parts', () => {
+  test('1st installment paid → partial; pay the 2nd in two parts; settle the 3rd → paid', async ({ apiAs, world }) => {
     const api = await apiAs('admin')
     const s = await setup(api)
 
@@ -113,7 +113,7 @@ test.describe('Fluxo: receber uma OS parcelada e em partes', () => {
     await expectCashConsistent(world, s.accountId, s.balance)
   })
 
-  test('acima do saldo da parcela é recusado e nada é gravado', async ({ apiAs, world }) => {
+  test('above the installment balance is refused and nothing is stored', async ({ apiAs, world }) => {
     const api = await apiAs('admin')
     const s = await setup(api)
     await api.post(`/api/service-orders/${s.orderId}/process-payment`, {
@@ -126,7 +126,7 @@ test.describe('Fluxo: receber uma OS parcelada e em partes', () => {
     expect(await dbStatements(world, s.accountId)).toHaveLength(0)
   })
 
-  test('a soma das parcelas diferente do total é recusada (400)', async ({ apiAs, world }) => {
+  test('installment sum different from the total is refused (400)', async ({ apiAs, world }) => {
     const api = await apiAs('admin')
     const s = await setup(api)
     const res = await api.post(`/api/service-orders/${s.orderId}/process-payment`, {
@@ -137,8 +137,8 @@ test.describe('Fluxo: receber uma OS parcelada e em partes', () => {
   })
 })
 
-test.describe('Fluxo: desfazer o pagamento', () => {
-  test('devolve o saldo, apaga o extrato e a OS volta para pendente', async ({ apiAs, world }) => {
+test.describe('Flow: undo payment', () => {
+  test('restores the balance, deletes the statement and the OS returns to pending', async ({ apiAs, world }) => {
     const api = await apiAs('admin')
     const s = await setup(api)
     await api.post(`/api/service-orders/${s.orderId}/process-payment`, {
@@ -153,7 +153,7 @@ test.describe('Fluxo: desfazer o pagamento', () => {
     expect((await dbOrder(world, s.orderId)).payment_status).toBe('pending')
   })
 
-  test('ciclo receber → desfazer → receber de novo deixa o saldo certo', async ({ apiAs, world }) => {
+  test('receive → undo → receive again leaves the balance correct', async ({ apiAs, world }) => {
     const api = await apiAs('admin')
     const s = await setup(api)
     const body = { paymentMethod: 'pix', bankAccountId: s.accountId, installments: [{ amount: s.total, status: 'paid' }] }
@@ -165,8 +165,8 @@ test.describe('Fluxo: desfazer o pagamento', () => {
   })
 })
 
-test.describe('Fluxo: cancelar a OS', () => {
-  test('sem pagamento cancela; com pagamento é recusado até desfazer o recebimento', async ({ apiAs, world }) => {
+test.describe('Flow: cancel the OS', () => {
+  test('without payment cancels; with payment is refused until the receipt is undone', async ({ apiAs, world }) => {
     const api = await apiAs('admin')
     const paid = await setup(api)
     await api.post(`/api/service-orders/${paid.orderId}/process-payment`, {
@@ -183,7 +183,7 @@ test.describe('Fluxo: cancelar a OS', () => {
     expect((await api.post(`/api/service-orders/${free.orderId}/cancel`)).status).toBe(200)
   })
 
-  test('OS cancelada não entra no faturamento', async ({ apiAs }) => {
+  test('cancelled OS does not enter revenue', async ({ apiAs }) => {
     const api = await apiAs('admin')
     const before = (await api.get('/api/reports/overview', { dateFrom: today(), dateTo: today() })).body.data.overview.grossRevenue
     const s = await setup(api, { total: 777 })
@@ -193,8 +193,8 @@ test.describe('Fluxo: cancelar a OS', () => {
   })
 })
 
-test.describe('Fluxo: despesa avulsa', () => {
-  test('lançar → pagar baixa o saldo uma única vez', async ({ apiAs, world }) => {
+test.describe('Flow: one-off expense', () => {
+  test('record → pay reduces the balance only once', async ({ apiAs, world }) => {
     const api = await apiAs('admin')
     const s = await setup(api)
     const created = await api.post('/api/financial', {
@@ -210,7 +210,7 @@ test.describe('Fluxo: despesa avulsa', () => {
     await expectCashConsistent(world, s.accountId, s.balance)
   })
 
-  test('pagamento em lote: paga os pendentes, ignora os já pagos e não duplica', async ({ apiAs, world }) => {
+  test('batch payment: pays the pending ones, ignores the already paid and does not duplicate', async ({ apiAs, world }) => {
     const api = await apiAs('admin')
     const s = await setup(api)
     const ids: string[] = []
@@ -227,8 +227,8 @@ test.describe('Fluxo: despesa avulsa', () => {
   })
 })
 
-test.describe('Fluxo: isolamento entre oficinas', () => {
-  test('usuário de outra oficina não vê, não recebe e não cancela a OS', async ({ apiAs, world }) => {
+test.describe('Flow: isolation between workshops', () => {
+  test('user from another workshop cannot see, receive or cancel the OS', async ({ apiAs, world }) => {
     const owner = await apiAs('admin')
     const intruder = await apiAs('otherOrg')
     const s = await setup(owner)
@@ -243,7 +243,7 @@ test.describe('Fluxo: isolamento entre oficinas', () => {
     expect((await dbOrder(world, s.orderId)).status).toBe('completed')
   })
 
-  test('os relatórios de uma oficina não somam os dados da outra', async ({ apiAs }) => {
+  test('reports of one workshop do not sum the data of the other', async ({ apiAs }) => {
     const a = await apiAs('admin')
     const b = await apiAs('otherOrg')
     const beforeB = (await b.get('/api/reports/overview', { dateFrom: today(), dateTo: today() })).body.data.overview.grossRevenue
@@ -252,7 +252,7 @@ test.describe('Fluxo: isolamento entre oficinas', () => {
     expect(afterB).toBe(beforeB)
   })
 
-  test('conta bancária de outra oficina é recusada no recebimento', async ({ apiAs, world }) => {
+  test('bank account from another workshop is refused on receipt', async ({ apiAs, world }) => {
     const a = await apiAs('admin')
     const b = await apiAs('otherOrg')
     const s = await setup(a)
@@ -266,8 +266,8 @@ test.describe('Fluxo: isolamento entre oficinas', () => {
   })
 })
 
-test.describe('Fluxo: relatórios batem entre si (dado real)', () => {
-  test('dashboard e visão geral mostram o mesmo faturamento do mês', async ({ apiAs }) => {
+test.describe('Flow: reports match each other (real data)', () => {
+  test('dashboard and overview show the same monthly revenue', async ({ apiAs }) => {
     const api = await apiAs('admin')
     await setup(api, { total: 123.45 })
     const now = new Date()
@@ -280,7 +280,7 @@ test.describe('Fluxo: relatórios batem entre si (dado real)', () => {
     expect(dash.body.grossRevenue ?? dash.body.data?.grossRevenue).toBe(overview.body.data.overview.grossRevenue)
   })
 
-  test('devedores: OS concluída sem pagamento soma no que se deve; depois de quitada, sai', async ({ apiAs }) => {
+  test('debtors: completed OS without payment adds to what is owed; after settled, it leaves', async ({ apiAs }) => {
     const api = await apiAs('admin')
     const owed = async () => {
       const r = await api.get('/api/reports/debtors', { dateFrom: '2000-01-01', dateTo: '2100-01-01', orderStatusFilters: 'completed', pageSize: '100' })

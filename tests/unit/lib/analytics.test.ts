@@ -24,17 +24,17 @@ const { actionRuleFor, resolveActionEvent } = await import('../../../server/util
 const { takeRateLimit } = await import('../../../server/utils/analytics/record')
 
 describe('lib/analytics/events', () => {
-  it('evento desconhecido é rejeitado', () => {
+  it('unknown event is rejected', () => {
     expect(isClientEvent('page_view')).toBe(true)
     expect(isClientEvent('service_order_created')).toBe(false) // ação só nasce no servidor
     expect(isClientEvent('hack')).toBe(false)
     expect(isClientEvent(undefined)).toBe(false)
   })
-  it('listas fechadas não se sobrepõem', () => {
+  it('closed lists do not overlap', () => {
     const all = [...CLIENT_EVENTS, ...ACTION_EVENTS, ...LIFECYCLE_EVENTS]
     expect(new Set(all).size).toBe(all.length)
   })
-  it('normalizações', () => {
+  it('normalizations', () => {
     expect(normalizePlatform('ios')).toBe('ios')
     expect(normalizePlatform('windows')).toBeNull()
     expect(normalizeArea('Painel')).toBe('Painel')
@@ -44,29 +44,29 @@ describe('lib/analytics/events', () => {
     expect(normalizeSessionId('com espaço e <script>')).toBeNull()
     expect(normalizeSessionId(undefined)).toBeNull()
   })
-  it('cleanClientEvent: evento inválido → null', () => {
+  it('cleanClientEvent: invalid event → null', () => {
     expect(cleanClientEvent({ event: 'hack' } as never)).toBeNull()
   })
-  it('cleanClientEvent: limita duração e passo', () => {
+  it('cleanClientEvent: limits duration and step', () => {
     const clean = cleanClientEvent({ event: 'active_time', durationMs: MAX_DURATION_MS * 10, step: MAX_STEP * 5, area: 'Painel' } as never)
     if (clean) {
       expect(clean.durationMs ?? 0).toBeLessThanOrEqual(MAX_DURATION_MS)
       expect(clean.step ?? 0).toBeLessThanOrEqual(MAX_STEP)
     }
   })
-  it('areas: rota crua vira rótulo, sem IDs', () => {
+  it('areas: raw route becomes label, without IDs', () => {
     expect(analyticsArea('/app/service-orders/6f1c0e1a-1111-2222-3333-444455556666')).not.toMatch(/6f1c/)
     expect(analyticsArea('/pricing')).toBe('Planos')
   })
 })
 
-describe('lib/analytics/attribution e traffic', () => {
-  it('sanitizeAttribution descarta lixo', () => {
+describe('lib/analytics/attribution and traffic', () => {
+  it('sanitizeAttribution discards junk', () => {
     expect(sanitizeAttribution(null)).toBeNull()
     expect(sanitizeAttribution('texto')).toBeNull()
     expect(sanitizeAttribution(42)).toBeNull()
   })
-  it('classifyTraffic reconhece bots e navegadores', () => {
+  it('classifyTraffic recognizes bots and browsers', () => {
     expect(classifyTraffic('Mozilla/5.0 (Windows NT 10.0) Chrome/120 Safari/537.36').bot).toBeFalsy()
     expect(classifyTraffic('Googlebot/2.1 (+http://www.google.com/bot.html)').bot).toBeTruthy()
     expect(() => classifyTraffic(null)).not.toThrow()
@@ -74,7 +74,7 @@ describe('lib/analytics/attribution e traffic', () => {
 })
 
 describe('server/utils/analytics', () => {
-  it('hashUser é estável, depende do segredo e não revela o ID', () => {
+  it('hashUser is stable, depends on the secret and does not reveal the ID', () => {
     const a = hashUser('user-1', 'segredo')
     expect(hashUser('user-1', 'segredo')).toBe(a)
     expect(hashUser('user-1', 'outro')).not.toBe(a)
@@ -82,21 +82,21 @@ describe('server/utils/analytics', () => {
     expect(a).toHaveLength(24)
     expect(a).not.toContain('user-1')
   })
-  it('actionRuleFor mapeia método + rota para evento de negócio', () => {
+  it('actionRuleFor maps method + route to business event', () => {
     const rule = actionRuleFor('POST', '/api/clients')!
     expect(resolveActionEvent(rule, null)).toBe('client_created')
     expect(resolveActionEvent(actionRuleFor('POST', '/api/service-orders/')!, null)).toBe('service_order_created')
     expect(resolveActionEvent(actionRuleFor('POST', '/api/service-orders?x=1')!, { orderId: 'abc' })).toBe('service_order_updated')
     expect(resolveActionEvent(actionRuleFor('POST', '/api/service-orders/abc/installments/def/pay')!, null)).toBe('installment_paid')
   })
-  it('rotas sem regra e métodos de leitura não geram evento', () => {
+  it('routes without rule and read methods do not generate an event', () => {
     expect(actionRuleFor('GET', '/api/clients')).toBeNull()
     expect(actionRuleFor('POST', '/api/rota-desconhecida')).toBeNull()
   })
-  it('exportações viram report_exported', () => {
+  it('exports become report_exported', () => {
     expect(resolveActionEvent(actionRuleFor('POST', '/api/reports/export-file')!, null)).toBe('report_exported')
   })
-  it('todo evento de ação usado nas regras existe na lista fechada', () => {
+  it('every action event used in the rules exists in the closed list', () => {
     const probes: Array<[string, string]> = [
       ['POST', '/api/appointments'], ['POST', '/api/vehicles'], ['POST', '/api/financial'], ['POST', '/api/bonuses'],
       ['POST', '/api/commissions'], ['POST', '/api/products'], ['POST', '/api/purchases'], ['POST', '/api/employees'],
@@ -109,7 +109,7 @@ describe('server/utils/analytics', () => {
       expect(known.has(resolveActionEvent(rule!, null)), `${m} ${p}`).toBe(true)
     }
   })
-  it('takeRateLimit respeita o teto por chave e isola chaves', () => {
+  it('takeRateLimit respects the cap per key and isolates keys', () => {
     expect(takeRateLimit('k1', 100)).toBe(100)
     expect(takeRateLimit('k1', 100)).toBe(100)
     expect(takeRateLimit('k1', 100)).toBe(40) // 240 - 200

@@ -13,17 +13,17 @@ const state = (o: { isOwner?: boolean, organizationId?: string | null, isOnboard
     isOnboardingComplete: { value: o.isOnboardingComplete ?? false }
   }) as never
 
-describe('resolveAuthenticatedDestination (destino pós-login)', () => {
-  it('owner da plataforma → /admin, mesmo com organização', () => {
+describe('resolveAuthenticatedDestination (post-login destination)', () => {
+  it('platform owner → /admin, even with organization', () => {
     expect(resolveAuthenticatedDestination(state({ isOwner: true, organizationId: 'o', isOnboardingComplete: true }))).toBe('/admin')
   })
-  it('com organização e onboarding concluído → /app', () => {
+  it('with organization and onboarding completed → /app', () => {
     expect(resolveAuthenticatedDestination(state({ organizationId: 'o', isOnboardingComplete: true }))).toBe('/app')
   })
-  it('com organização e onboarding incompleto → /onboarding', () => {
+  it('with organization and incomplete onboarding → /onboarding', () => {
     expect(resolveAuthenticatedDestination(state({ organizationId: 'o' }))).toBe('/onboarding')
   })
-  it('sem organização → /subscription', () => {
+  it('no organization → /subscription', () => {
     expect(resolveAuthenticatedDestination(state({}))).toBe('/subscription')
   })
 })

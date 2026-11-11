@@ -20,8 +20,8 @@ afterAll(async () => {
   await adminDb().from('geo_probe_runs').delete().eq('run_date', '2001-01-01')
 })
 
-describe.skipIf(!available)('suspensão de oficina (migration 101)', () => {
-  it('o embed `organizations(suspended_at)` que o servidor usa devolve a suspensão', async () => {
+describe.skipIf(!available)('workshop suspension (migration 101)', () => {
+  it('the `organizations(suspended_at)` embed used by the server returns the suspension', async () => {
     const org = await createOrg()
     orgs.push(org.id)
     const userId = randomUUID()
@@ -52,7 +52,7 @@ describe.skipIf(!available)('webhook do Stripe: idempotência (migration 102)', 
     return { id, type: 'invoice.paid' }
   }
 
-  it('o 1º recebimento processa; a reentrega de evento processado vira duplicata', async () => {
+  it('the 1st delivery is processed; redelivery of an already processed event becomes a duplicate', async () => {
     const e = evt()
     expect(await claimStripeEvent(adminDb(), e, e)).toEqual({ kind: 'process', tracked: true })
     await finishStripeEvent(adminDb(), e.id, { status: 'processed' })
@@ -63,7 +63,7 @@ describe.skipIf(!available)('webhook do Stripe: idempotência (migration 102)', 
     expect(data!.processed_at).toBeTruthy()
   })
 
-  it('evento que falhou é reprocessado na reentrega do Stripe', async () => {
+  it('failed event is reprocessed on Stripe redelivery', async () => {
     const e = evt()
     await claimStripeEvent(adminDb(), e, e)
     await finishStripeEvent(adminDb(), e.id, { status: 'failed', errorMessage: 'boom' })
@@ -72,26 +72,26 @@ describe.skipIf(!available)('webhook do Stripe: idempotência (migration 102)', 
     expect(data).toMatchObject({ status: 'received', error_message: null })
   })
 
-  it('evento ignorado (tipo não tratado) também não é repetido', async () => {
+  it('ignored event (unhandled type) is also not repeated', async () => {
     const e = evt()
     await claimStripeEvent(adminDb(), e, e)
     await finishStripeEvent(adminDb(), e.id, { status: 'ignored' })
     expect(await claimStripeEvent(adminDb(), e, e)).toEqual({ kind: 'duplicate' })
   })
 
-  it('status inválido é rejeitado pelo CHECK', async () => {
+  it('invalid status is rejected by the CHECK', async () => {
     const { error } = await adminDb().from('stripe_webhook_events').insert({ id: `evt_bad_${randomUUID().slice(0, 8)}`, type: 'x', status: 'quase', payload: {} })
     expect(error?.message).toMatch(/check constraint/)
   })
 })
 
-describe.skipIf(!available)('bateria GEO (migration 103)', () => {
+describe.skipIf(!available)('GEO battery (migration 103)', () => {
   const row = (over: Record<string, unknown> = {}) => ({
     run_date: '2001-01-01', question_id: 1, question_text: 'q', engine: 'claude', search_enabled: true,
     brand_mentioned: true, brand_linked: false, recommended: false, ...over
   })
 
-  it('a mesma (data, pergunta, motor, busca) é regravada em vez de duplicar', async () => {
+  it('the same (date, question, engine, search) is rewritten instead of duplicated', async () => {
     const first = await adminDb().from('geo_probe_runs').upsert(row(), { onConflict: 'run_date,question_id,engine,search_enabled' })
     expect(first.error).toBeNull()
     const second = await adminDb().from('geo_probe_runs').upsert(row({ recommended: true }), { onConflict: 'run_date,question_id,engine,search_enabled' })
@@ -100,7 +100,7 @@ describe.skipIf(!available)('bateria GEO (migration 103)', () => {
     expect(data).toEqual([{ recommended: true }])
   })
 
-  it('rejeita pergunta fora de 1..20 e motor desconhecido', async () => {
+  it('rejects question outside 1..20 and unknown engine', async () => {
     expect((await adminDb().from('geo_probe_runs').insert(row({ question_id: 21 }))).error?.message).toMatch(/check constraint/)
     expect((await adminDb().from('geo_probe_runs').insert(row({ engine: 'bing' }))).error?.message).toMatch(/check constraint/)
   })
@@ -116,7 +116,7 @@ describe.skipIf(!available)('tabelas novas não são legíveis por anon/authenti
 })
 
 describe.skipIf(!available)('cobrança: churn calculado sobre assinaturas reais do banco', () => {
-  it('uma assinatura criada hoje aparece como nova no mês atual', async () => {
+  it('a subscription created today appears as new in the current month', async () => {
     const org = await createOrg()
     orgs.push(org.id)
     const today = new Date().toISOString().slice(0, 10)

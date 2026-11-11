@@ -4,7 +4,7 @@ import { buildOrderData, expect, skipUnlessAuth, test, today } from './support/f
 import {
   METHOD_VALUE, PayModal, apiDownPayment, apiProcessPayment, expectPaymentBadge, installmentsOf, openOrder, orderInOtherShop, paidSetup, payInFull,
   sum, transactions, type MethodLabel
-} from './support/helpers-dinheiro'
+} from './support/helpers-money'
 
 skipUnlessAuth(test)
 test.describe.configure({ timeout: 180_000 })

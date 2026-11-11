@@ -2,7 +2,7 @@
 // The starting state (paid order, plan, commission) is prepared via API; undoing and cancelling are done through the UI.
 import { expect, money, skipUnlessAuth, test, today } from './support/fixtures'
 import type { OrderDetail } from './support/pages'
-import { apiProcessPayment, expectPaymentBadge, openUntilVisible, installmentsOf, openOrder, paidSetup, payInFull, transactions } from './support/helpers-dinheiro'
+import { apiProcessPayment, expectPaymentBadge, openUntilVisible, installmentsOf, openOrder, paidSetup, payInFull, transactions } from './support/helpers-money'
 import type { Page } from '@playwright/test'
 
 skipUnlessAuth(test)

@@ -26,14 +26,14 @@ const ROUTES: Array<[string, RegExp]> = [
   ['Fiscal logs', /\/admin\/fiscal\/logs/]
 ]
 
-test.describe('Fluxo: painel admin', () => {
+test.describe('Flow: admin panel', () => {
   test.beforeEach(async ({ page, loginAs }) => {
     await loginAs('platformOwner')
     await page.goto('/admin')
     await expect(page).toHaveURL(/\/admin$/)
   })
 
-  test('o menu mostra os 5 grupos, cada item no grupo certo', async ({ page }) => {
+  test('the menu shows the 5 groups, each item in the right group', async ({ page }) => {
     for (const [group, items] of Object.entries(GROUPS)) {
       await expect(page.getByText(group, { exact: true }).first(), `grupo ${group}`).toBeVisible()
       for (const item of items) await expect(page.getByRole('link', { name: item }).first(), item).toBeVisible()
@@ -43,7 +43,7 @@ test.describe('Fluxo: painel admin', () => {
     expect(labels.slice(0, 5)).toEqual(Object.keys(GROUPS))
   })
 
-  test('cada item do menu abre a sua tela, sem erro de JavaScript', async ({ page }) => {
+  test('each menu item opens its screen, without JavaScript error', async ({ page }) => {
     const errors: string[] = []
     page.on('pageerror', e => errors.push(e.message))
     for (const [label, url] of ROUTES) {
@@ -53,7 +53,7 @@ test.describe('Fluxo: painel admin', () => {
     expect(errors, errors.join('\n')).toEqual([])
   })
 
-  test('menu do usuário: só tema, aparência e sair (nada da oficina)', async ({ page, world }) => {
+  test('user menu: only theme, appearance and sign out (nothing from the workshop)', async ({ page, world }) => {
     await page.getByRole('button', { name: world.users.platformOwner.displayName }).first().click()
     for (const name of ['Tema', 'Aparência', 'Sair']) await expect(page.getByRole('menuitem', { name }), name).toBeVisible()
     for (const name of ['Perfil', 'Empresa', 'Assinatura', 'Configurações', 'Documentação']) {
@@ -61,14 +61,14 @@ test.describe('Fluxo: painel admin', () => {
     }
   })
 
-  test('Ctrl+K abre a busca com os itens agrupados como no menu', async ({ page }) => {
+  test('Ctrl+K opens the search with items grouped as in the menu', async ({ page }) => {
     await page.keyboard.press('Control+k')
     await expect(page.getByRole('dialog')).toBeVisible()
     await page.getByRole('dialog').getByRole('combobox').fill('Auditoria')
     await expect(page.getByRole('dialog').getByText('Auditoria').first()).toBeVisible()
   })
 
-  test('trocar para o tema escuro persiste ao navegar', async ({ page, world }) => {
+  test('switching to dark theme persists when navigating', async ({ page, world }) => {
     await page.getByRole('button', { name: world.users.platformOwner.displayName }).first().click()
     await page.getByRole('menuitem', { name: 'Aparência' }).click()
     await page.getByRole('menuitemcheckbox', { name: 'Escuro' }).click()

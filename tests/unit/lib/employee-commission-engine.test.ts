@@ -39,19 +39,19 @@ function rule(overrides: Partial<ResolvedCommissionRule> = {}): ResolvedCommissi
 afterEach(() => vi.useRealTimers())
 
 describe('toCommissionMonthStart', () => {
-  it('converte string ISO para o dia 1 do mês', () => {
+  it('converts an ISO string to the 1st day of the month', () => {
     expect(toCommissionMonthStart('2026-03-17')).toBe('2026-03-01')
   })
-  it('aceita Date', () => {
+  it('accepts Date', () => {
     expect(toCommissionMonthStart(new Date(2026, 11, 31, 23, 0))).toBe('2026-12-01')
   })
-  it('dia 31 às 23h (horário local) não vira o mês seguinte', () => {
+  it('day 31 at 23h (local time) does not become the next month', () => {
     expect(toCommissionMonthStart(new Date(2026, 0, 31, 23, 59, 59))).toBe('2026-01-01')
   })
-  it('ano bissexto: 29/02', () => {
+  it('leap year: 29/02', () => {
     expect(toCommissionMonthStart('2028-02-29')).toBe('2028-02-01')
   })
-  it('currentCommissionMonthStart usa o relógio', () => {
+  it('currentCommissionMonthStart uses the clock', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date(2026, 4, 20, 10))
     expect(currentCommissionMonthStart()).toBe('2026-05-01')
@@ -60,20 +60,20 @@ describe('toCommissionMonthStart', () => {
 
 describe('resolveEffectiveCommissionVersion', () => {
   const v = (id: string, effective_from: string) => ({ id, plan_id: 'p', effective_from, notes: null })
-  it('sem versões devolve null', () => {
+  it('no versions returns null', () => {
     expect(resolveEffectiveCommissionVersion([], '2026-03-01')).toBeNull()
   })
-  it('uma versão vigente', () => {
+  it('one version in force', () => {
     expect(resolveEffectiveCommissionVersion([v('a', '2026-01-01')], '2026-03-01')?.id).toBe('a')
   })
-  it('várias versões: pega a de maior effective_from <= referência', () => {
+  it('several versions: picks the one with the greatest effective_from <= reference', () => {
     const versions = [v('a', '2026-01-01'), v('c', '2026-06-01'), v('b', '2026-03-01')]
     expect(resolveEffectiveCommissionVersion(versions, '2026-04-01')?.id).toBe('b')
   })
-  it('versão futura é ignorada', () => {
+  it('future version is ignored', () => {
     expect(resolveEffectiveCommissionVersion([v('f', '2026-09-01')], '2026-03-01')).toBeNull()
   })
-  it('versão com effective_from igual à referência vale', () => {
+  it('version with effective_from equal to the reference applies', () => {
     expect(resolveEffectiveCommissionVersion([v('a', '2026-03-01')], '2026-03-01')?.id).toBe('a')
   })
 })
@@ -82,17 +82,17 @@ describe('getApplicableCommissionRule / matchCommissionRule', () => {
   const specific = rule({ id: 'spec', category_ids: ['c1'] })
   const fallback = rule({ id: 'def', is_default: true })
 
-  it('regra específica vence a padrão', () => {
+  it('specific rule beats the default', () => {
     expect(getApplicableCommissionRule([fallback, specific], 'c1')?.id).toBe('spec')
   })
-  it('categoria sem regra específica cai na padrão', () => {
+  it('category without specific rule falls back to the default', () => {
     expect(getApplicableCommissionRule([specific, fallback], 'c2')?.id).toBe('def')
   })
-  it('item sem categoria cai na padrão', () => {
+  it('item without category falls back to the default', () => {
     expect(getApplicableCommissionRule([specific, fallback], null)?.id).toBe('def')
     expect(getApplicableCommissionRule([specific, fallback], undefined)?.id).toBe('def')
   })
-  it('sem regra aplicável nem padrão devolve null', () => {
+  it('no applicable rule nor default returns null', () => {
     expect(getApplicableCommissionRule([specific], 'c2')).toBeNull()
     expect(getApplicableCommissionRule([], 'c1')).toBeNull()
   })
@@ -103,32 +103,32 @@ describe('getApplicableCommissionRule / matchCommissionRule', () => {
 
 describe('computeCommissionAmount', () => {
   const fixed = rule({ commission_type: 'fixed_amount', commission_amount: 20, commission_base: null })
-  it('percentual sobre faturamento', () => {
+  it('percentage over revenue', () => {
     expect(computeCommissionAmount(rule({ commission_amount: 10 }), { revenue: 200, profit: 50 })).toBe(20)
   })
-  it('percentual sobre lucro', () => {
+  it('percentage over profit', () => {
     expect(computeCommissionAmount(rule({ commission_base: 'profit', commission_amount: 10 }), { revenue: 200, profit: 50 })).toBe(5)
   })
-  it('valor fixo é por unidade', () => {
+  it('fixed amount is per unit', () => {
     expect(computeCommissionAmount(fixed, { revenue: 1, profit: 1, quantity: 4 })).toBe(80)
   })
-  it('valor fixo sem quantidade assume 1', () => {
+  it('fixed amount without quantity assumes 1', () => {
     expect(computeCommissionAmount(fixed, { revenue: 1, profit: 1 })).toBe(20)
   })
-  it('arredonda para 2 casas', () => {
+  it('rounds to 2 decimals', () => {
     expect(computeCommissionAmount(rule({ commission_amount: 7.5 }), { revenue: 33.33, profit: 0 })).toBe(2.5)
     expect(computeCommissionAmount(rule({ commission_amount: 3 }), { revenue: 10.01, profit: 0 })).toBe(0.3)
   })
-  it('percentual 0 = 0', () => {
+  it('percentage 0 = 0', () => {
     expect(computeCommissionAmount(rule({ commission_amount: 0 }), { revenue: 999, profit: 999 })).toBe(0)
   })
 })
 
 describe('buildCommissionSnapshot', () => {
-  it('sem regra devolve null', () => {
+  it('no rule returns null', () => {
     expect(buildCommissionSnapshot([], { categoryId: 'x', revenue: 1, profit: 1 })).toBeNull()
   })
-  it('monta o snapshot completo', () => {
+  it('builds the full snapshot', () => {
     const snap = buildCommissionSnapshot([rule({ is_default: true, name: 'Padrão' })], { categoryId: null, revenue: 100, profit: 40 })
     expect(snap).toEqual({
       commission_plan_id: 'p1',
@@ -149,16 +149,16 @@ describe('computeEmployeeOrderCommission', () => {
   const fixedDefault = (amount: number) =>
     rule({ is_default: true, commission_type: 'fixed_amount', commission_base: null, commission_amount: amount })
 
-  it('sem regras ou sem itens: nada elegível', () => {
+  it('no rules or no items: nothing eligible', () => {
     expect(computeEmployeeOrderCommission([], [item()], ctx).hasMatchingItems).toBe(false)
     expect(computeEmployeeOrderCommission([rule({ is_default: true })], [], ctx)).toMatchObject({ hasMatchingItems: false, total: 0 })
   })
-  it('nenhum item casa com as regras', () => {
+  it('no item matches the rules', () => {
     const result = computeEmployeeOrderCommission([rule({ category_ids: ['c1'] })], [item({ categoryId: 'c2' })], ctx)
     expect(result).toMatchObject({ hasMatchingItems: false, total: 0 })
     expect(result.perItem).toEqual([null])
   })
-  it('vários itens com regras mistas; soma por item == total', () => {
+  it('several items with mixed rules; sum per item == total', () => {
     const rules = [
       rule({ id: 'a', category_ids: ['c1'], commission_amount: 10 }),
       rule({ id: 'b', is_default: true, commission_amount: 5 })
@@ -168,7 +168,7 @@ describe('computeEmployeeOrderCommission', () => {
     expect(result.perItem.map(p => p?.amount)).toEqual([10, 10])
     expect(result.total).toBe(20)
   })
-  it('desconto é rateado entre itens elegíveis', () => {
+  it('discount is prorated among eligible items', () => {
     const result = computeEmployeeOrderCommission(
       [rule({ is_default: true, commission_amount: 10 })],
       [item({ total: 100 }), item({ total: 100 })],
@@ -176,7 +176,7 @@ describe('computeEmployeeOrderCommission', () => {
     )
     expect(result.total).toBe(18)
   })
-  it('lucro nunca é negativo (custo maior que a venda)', () => {
+  it('profit is never negative (cost greater than sale)', () => {
     const result = computeEmployeeOrderCommission(
       [rule({ is_default: true, commission_base: 'profit', commission_amount: 10 })],
       [item({ total: 100, cost: 500 })],
@@ -186,7 +186,7 @@ describe('computeEmployeeOrderCommission', () => {
     expect(result.perItem[0]).toBeNull()
     expect(result.allMatches[0]?.amount).toBe(0)
   })
-  it('impostos reduzem o lucro', () => {
+  it('taxes reduce profit', () => {
     const result = computeEmployeeOrderCommission(
       [rule({ is_default: true, commission_base: 'profit', commission_amount: 10 })],
       [item({ total: 100, cost: 40 })],
@@ -194,27 +194,27 @@ describe('computeEmployeeOrderCommission', () => {
     )
     expect(result.total).toBe(5)
   })
-  it('valor fixo multiplica pela quantidade', () => {
+  it('fixed amount multiplies by quantity', () => {
     expect(computeEmployeeOrderCommission([fixedDefault(20)], [item({ total: 400, quantity: 4 })], ctx).total).toBe(80)
   })
-  it('quantidade inválida (0, NaN) vira 1', () => {
+  it('invalid quantity (0, NaN) becomes 1', () => {
     expect(computeEmployeeOrderCommission([fixedDefault(20)], [item({ quantity: 0 })], ctx).total).toBe(20)
     expect(computeEmployeeOrderCommission([fixedDefault(20)], [item({ quantity: Number.NaN })], ctx).total).toBe(20)
   })
-  it('itens com total 0 não geram NaN', () => {
+  it('items with total 0 do not generate NaN', () => {
     const result = computeEmployeeOrderCommission([fixedDefault(5)], [item({ total: 0 }), item({ total: 0 })], { discount: 10, totalTaxesAmount: 0 })
     expect(Number.isNaN(result.total)).toBe(false)
     expect(result.total).toBe(10)
   })
-  it('regressão de arredondamento: total tem no máximo 2 casas', () => {
+  it('rounding regression: total has at most 2 decimals', () => {
     const items = Array.from({ length: 3 }, () => item({ total: 33.33 }))
     const result = computeEmployeeOrderCommission([rule({ is_default: true, commission_amount: 3 })], items, ctx)
     expect(Math.round(result.total * 100) / 100).toBe(result.total)
   })
 })
 
-describe('leitores de campos do item', () => {
-  it('quantidade: ausente=1, string numérica, inválida=1', () => {
+describe('item field readers', () => {
+  it('quantity: missing=1, numeric string, invalid=1', () => {
     expect(getOrderItemQuantity({})).toBe(1)
     expect(getOrderItemQuantity({ quantity: '3' })).toBe(3)
     expect(getOrderItemQuantity({ quantity: 'abc' })).toBe(1)
@@ -227,10 +227,10 @@ describe('leitores de campos do item', () => {
     expect(getOrderItemTotal({ unit_price: 10, quantity: 3 })).toBe(30)
     expect(getOrderItemTotal({})).toBe(0)
   })
-  it('total_price = 0 explícito é respeitado', () => {
+  it('explicit total_price = 0 is respected', () => {
     expect(getOrderItemTotal({ total_price: 0, unit_price: 10, quantity: 3 })).toBe(0)
   })
-  it('custo: cost_price ?? cost_amount, multiplicado pela quantidade', () => {
+  it('cost: cost_price ?? cost_amount, multiplied by quantity', () => {
     expect(getOrderItemCost({ cost_price: 5, quantity: 2 })).toBe(10)
     expect(getOrderItemCost({ cost_amount: '4', quantity: 2 })).toBe(8)
     expect(getOrderItemCost({})).toBe(0)
@@ -242,7 +242,7 @@ describe('leitores de campos do item', () => {
   })
 })
 
-describe('override manual de comissão', () => {
+describe('manual commission override', () => {
   const entry = (o: Partial<CommissionManualAdjustmentLogEntry>): CommissionManualAdjustmentLogEntry => ({
     employee_id: 'e1',
     employee_name: 'A',
@@ -259,29 +259,29 @@ describe('override manual de comissão', () => {
   const remove = (e = 'e1') =>
     entry({ employee_id: e, override_action: 'remove', override_commission_plan_id: null })
 
-  it('log vazio: sem override', () => {
+  it('empty log: no override', () => {
     expect(getActiveCommissionOverride([], 'e1')).toBeNull()
     expect(getActiveOverridePlanIds([])).toEqual([])
   })
-  it('recálculo simples (sem override_action) não conta', () => {
+  it('simple recalculation (without override_action) does not count', () => {
     expect(getActiveCommissionOverride([entry({})], 'e1')).toBeNull()
   })
-  it('apply é o override ativo', () => {
+  it('apply is the active override', () => {
     expect(getActiveCommissionOverride([apply('pA')], 'e1')).toEqual({ employeeId: 'e1', commissionPlanId: 'pA', commissionPlanName: 'Plano pA' })
   })
-  it('apply → remove → sem override', () => {
+  it('apply → remove → no override', () => {
     expect(getActiveCommissionOverride([apply('pA'), remove()], 'e1')).toBeNull()
   })
-  it('apply → remove → apply: vale o último', () => {
+  it('apply → remove → apply: the last one counts', () => {
     expect(getActiveCommissionOverride([apply('pA'), remove(), apply('pB')], 'e1')?.commissionPlanId).toBe('pB')
   })
-  it('apply seguido de recálculo simples mantém o override', () => {
+  it('apply followed by simple recalculation keeps the override', () => {
     expect(getActiveCommissionOverride([apply('pA'), entry({})], 'e1')?.commissionPlanId).toBe('pA')
   })
-  it('override é por funcionário', () => {
+  it('override is per employee', () => {
     expect(getActiveCommissionOverride([apply('pA', 'e2')], 'e1')).toBeNull()
   })
-  it('getActiveOverridePlanIds devolve planos distintos só dos ativos', () => {
+  it('getActiveOverridePlanIds returns distinct plans only of the active ones', () => {
     const log = [apply('pA', 'e1'), apply('pA', 'e2'), apply('pB', 'e3'), remove('e3')]
     expect(getActiveOverridePlanIds(log)).toEqual(['pA'])
   })
@@ -292,20 +292,20 @@ describe('override manual de comissão', () => {
     const base = new Map([['e1', [standard]], ['e2', [standard]]])
     const plans = new Map([['pA', [over]]])
 
-    it('log vazio devolve o mesmo mapa', () => {
+    it('empty log returns the same map', () => {
       expect(resolveEffectiveCommissionRules(base, [], plans)).toBe(base)
     })
-    it('regras do override ficam antes das padrão (patch, não substituição)', () => {
+    it('override rules come before the defaults (patch, not replacement)', () => {
       const result = resolveEffectiveCommissionRules(base, [apply('pA')], plans)
       expect(result.get('e1')!.map(r => r.id)).toEqual(['ovr', 'std'])
       expect(result.get('e2')!.map(r => r.id)).toEqual(['std'])
       expect(getApplicableCommissionRule(result.get('e1') as CommissionRuleRecord[], 'c1')?.id).toBe('ovr')
       expect(getApplicableCommissionRule(result.get('e1') as CommissionRuleRecord[], 'c2')?.id).toBe('std')
     })
-    it('plano do override sem regras resolvidas mantém as padrão', () => {
+    it('override plan without resolved rules keeps the defaults', () => {
       expect(resolveEffectiveCommissionRules(base, [apply('pZ')], plans).get('e1')!.map(r => r.id)).toEqual(['std'])
     })
-    it('não muta o mapa de entrada', () => {
+    it('does not mutate the input map', () => {
       resolveEffectiveCommissionRules(base, [apply('pA')], plans)
       expect(base.get('e1')!.map(r => r.id)).toEqual(['std'])
     })

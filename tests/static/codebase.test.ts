@@ -33,12 +33,12 @@ const PUBLIC_ALLOWLIST: Record<string, string> = {
   'server/api/supabase/health.get.ts': 'health check'
 }
 
-describe('L0: matriz de guards', () => {
-  it('há handlers para analisar', () => {
+describe('L0: guard matrix', () => {
+  it('there are handlers to analyze', () => {
     expect(handlers.length).toBeGreaterThan(200)
   })
 
-  it('todo handler chama um guard ou está na allowlist pública (catraca para as exceções conhecidas)', () => {
+  it('every handler calls a guard or is in the public allowlist (ratchet for known exceptions)', () => {
     const unguarded = handlers
       .filter(h => !AUTH_GUARDS.test(h.source))
       .map(h => h.file)
@@ -50,12 +50,12 @@ describe('L0: matriz de guards', () => {
     expect(fixed, `Rota agora protegida: remova de tests/static/baselines/unguarded-routes.json (UPDATE_BASELINE=1):\n${fixed.join('\n')}`).toEqual([])
   })
 
-  it('a allowlist pública não tem entradas órfãs', () => {
+  it('the public allowlist has no orphan entries', () => {
     const files = new Set(handlers.map(h => h.file))
     for (const f of Object.keys(PUBLIC_ALLOWLIST)) expect(files.has(f), f).toBe(true)
   })
 
-  it('nenhum handler é arquivo vazio (rota fantasma)', () => {
+  it('no handler is an empty file (ghost route)', () => {
     const empty = handlers.filter(h => h.size === 0).map(h => h.file)
     const { added, fixed } = checkRatchet('empty-handlers', empty)
     // KF-08: fiscal/zip_code/index.get.ts
@@ -63,12 +63,12 @@ describe('L0: matriz de guards', () => {
     expect(fixed).toEqual([])
   })
 
-  it('todo handler segue a convenção <nome>.<método>.ts', () => {
+  it('every handler follows the <name>.<method>.ts convention', () => {
     const odd = handlers.filter(h => h.method === null).map(h => h.file)
     expect(odd).toEqual([])
   })
 
-  it('toda rota /api/admin/** exige owner da plataforma', () => {
+  it('every /api/admin/** route requires platform owner', () => {
     const admin = handlers.filter(h => h.file.startsWith('server/api/admin/'))
     expect(admin.length).toBeGreaterThan(0)
     const weak = admin.filter(h => !/\brequireOwner\b/.test(h.source)).map(h => h.file)
@@ -76,8 +76,8 @@ describe('L0: matriz de guards', () => {
   })
 })
 
-describe('L0: permissão nas rotas de escrita', () => {
-  it('rotas de escrita sem requireOrgPermission/requireOwner só podem diminuir', () => {
+describe('L0: permission on write routes', () => {
+  it('write routes without requireOrgPermission/requireOwner can only decrease', () => {
     const writes = handlers
       .filter(h => h.method && WRITE_METHODS.has(h.method))
       .filter(h => !(h.file in PUBLIC_ALLOWLIST))
@@ -91,8 +91,8 @@ describe('L0: permissão nas rotas de escrita', () => {
   })
 })
 
-describe('L0: isolamento por organização', () => {
-  it('handlers que usam o cliente admin referenciam organization_id (catraca)', () => {
+describe('L0: isolation by organization', () => {
+  it('handlers using the admin client reference organization_id (ratchet)', () => {
     const missing = handlers
       .filter(h => /getSupabaseAdminClient/.test(h.source))
       .filter(h => !h.file.startsWith('server/api/admin/'))
@@ -106,36 +106,36 @@ describe('L0: isolamento por organização', () => {
   })
 })
 
-describe('L0: paridade front/servidor de planos (R9)', () => {
+describe('L0: front/server plan parity (R9)', () => {
   const guardSource = read('server/utils/require-org-permission.ts')
   const licenseSource = read('server/utils/license.ts')
 
-  it('ACTION_PLAN_REQUIREMENTS é igual em usePlans.ts e require-org-permission.ts', () => {
+  it('ACTION_PLAN_REQUIREMENTS is equal in usePlans.ts and require-org-permission.ts', () => {
     const block = guardSource.match(/ACTION_PLAN_REQUIREMENTS[^{]*\{([\s\S]*?)\n\}/)![1]!
     const server = Object.fromEntries([...block.matchAll(/'([a-z_.]+)':\s*'([a-z]+)'/g)].map(m => [m[1], m[2]]))
     const front = Object.fromEntries(Object.entries(ACTION_PLAN_REQUIREMENTS).map(([k, v]) => [k, String(v)]))
     expect(server).toEqual(front)
   })
 
-  it('limites de funcionários iguais em usePlans.ts (PLAN_LICENSES) e license.ts (EMPLOYEE_LIMITS)', () => {
+  it('employee limits equal in usePlans.ts (PLAN_LICENSES) and license.ts (EMPLOYEE_LIMITS)', () => {
     const block = licenseSource.match(/EMPLOYEE_LIMITS[^{]*\{([\s\S]*?)\n\}/)![1]!
     const server = Object.fromEntries([...block.matchAll(/(\w+):\s*(null|\d+)/g)].map(m => [m[1], m[2] === 'null' ? null : Number(m[2])]))
     const front = Object.fromEntries(Object.entries(PLAN_LICENSES).map(([k, v]) => [k, v.maxEmployees]))
     expect(server).toEqual(front)
   })
 
-  it('a ordem de planos do servidor é a mesma do front', () => {
+  it('the server plan order is the same as the front end', () => {
     const order = guardSource.match(/PLAN_ORDER\s*=\s*\[([^\]]*)\]/)![1]!.match(/'(\w+)'/g)!.map(s => s.replace(/'/g, ''))
     expect(order).toEqual(Object.keys(PLAN_LICENSES))
   })
 })
 
-describe('L0: códigos de ação', () => {
+describe('L0: action codes', () => {
   const migrations = walk(join(ROOT, 'supabase/migrations')).filter(f => f.endsWith('.sql'))
   const allSql = migrations.map(f => read(rel(f))).join('\n')
   const seededCodes = new Set([...allSql.matchAll(/'([a-z_]+\.[a-z_]+)'/g)].map(m => m[1]))
 
-  it('todo código de ActionCode (front) existe nas migrations', () => {
+  it('every ActionCode (front) exists in the migrations', () => {
     const codes = [...read('app/constants/action-codes.ts').matchAll(/=\s*'([a-z_]+\.[a-z_]+)'/g)].map(m => m[1]!)
     expect(codes.length).toBeGreaterThan(30)
     const missing = codes.filter(c => !seededCodes.has(c))
@@ -144,7 +144,7 @@ describe('L0: códigos de ação', () => {
     expect(fixed).toEqual([])
   })
 
-  it('todo código passado a requireOrgPermission(...) no servidor existe nas migrations', () => {
+  it('every code passed to requireOrgPermission(...) on the server exists in the migrations', () => {
     const used = new Set<string>()
     for (const h of handlers) {
       for (const m of h.source.matchAll(/requireOrgPermission\([^)]*?'([a-z_]+\.[a-z_]+)'/g)) used.add(m[1]!)
@@ -154,7 +154,7 @@ describe('L0: códigos de ação', () => {
     expect(missing).toEqual([])
   })
 
-  it('códigos de ActionCode são únicos', () => {
+  it('ActionCode codes are unique', () => {
     const codes = [...read('app/constants/action-codes.ts').matchAll(/=\s*'([a-z_]+\.[a-z_]+)'/g)].map(m => m[1]!)
     expect(new Set(codes).size).toBe(codes.length)
   })
@@ -163,11 +163,11 @@ describe('L0: códigos de ação', () => {
 describe('L0: migrations', () => {
   const files = readdirSync(join(ROOT, 'supabase/migrations')).filter(f => f.endsWith('.sql')).sort()
 
-  it('todas seguem o padrão <timestamp>_<nome>.sql', () => {
+  it('all follow the <timestamp>_<name>.sql pattern', () => {
     expect(files.filter(f => !/^\d{14}_[a-z0-9_]+\.sql$/.test(f))).toEqual([])
   })
 
-  it('não há timestamps duplicados (conflito de ordem de aplicação)', () => {
+  it('there are no duplicate timestamps (application order conflict)', () => {
     const stamps = files.map(f => f.split('_')[0]!)
     const dup = [...new Set(stamps.filter((s, i) => stamps.indexOf(s) !== i))]
     // KF-10: 20240101000093 aparece duas vezes. Catraca: não podem surgir novos.
@@ -176,14 +176,14 @@ describe('L0: migrations', () => {
   })
 
   // KF-10 (corrigido em 2026-11-09: a segunda ...093 virou ...099).
-  it('timestamps estritamente crescentes e únicos', () => {
+  it('timestamps strictly increasing and unique', () => {
     const stamps = files.map(f => f.split('_')[0]!)
     expect(new Set(stamps).size).toBe(stamps.length)
   })
 })
 
-describe('L0: afirmações públicas', () => {
-  it('check:claims passa (FAQ/preços não prometem o que não existe)', async () => {
+describe('L0: public claims', () => {
+  it('check:claims passes (FAQ/prices do not promise what does not exist)', async () => {
     const { spawnSync } = await import('node:child_process')
     const result = spawnSync(process.execPath, ['scripts/check-public-claims.mjs'], { cwd: ROOT, encoding: 'utf8' })
     expect(result.status, result.stdout + result.stderr).toBe(0)

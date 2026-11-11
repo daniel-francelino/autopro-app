@@ -3,13 +3,13 @@ import { expect, test } from '@playwright/test'
 // Fluxos do VISITANTE (sem Supabase de verdade): validação de formulário, navegação entre telas de acesso
 // e recusa de credenciais inválidas. Rodam sempre, com ou sem E2E_SUPABASE_*.
 
-test.describe('Fluxo: entrar na conta (validação e recusa)', () => {
+test.describe('Flow: sign in (validation and refusal)', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/login')
     await expect(page.getByRole('heading', { name: 'Bem-vindo de volta' })).toBeVisible()
   })
 
-  test('e-mail inválido é barrado no formulário, sem chamar a API', async ({ page }) => {
+  test('invalid email is blocked in the form, without calling the API', async ({ page }) => {
     let loginCalls = 0
     page.on('request', (req) => { if (req.url().includes('/api/auth/login')) loginCalls++ })
     await page.getByLabel('Email').fill('isto-nao-e-email')
@@ -20,7 +20,7 @@ test.describe('Fluxo: entrar na conta (validação e recusa)', () => {
     await expect(page).toHaveURL(/\/login/)
   })
 
-  test('senha curta é barrada no formulário', async ({ page }) => {
+  test('short password is blocked in the form', async ({ page }) => {
     await page.getByLabel('Email').fill('alguem@exemplo.com')
     await page.getByLabel('Senha').fill('curta')
     await page.getByLabel('Senha').press('Enter')
@@ -28,7 +28,7 @@ test.describe('Fluxo: entrar na conta (validação e recusa)', () => {
     await expect(page).toHaveURL(/\/login/)
   })
 
-  test('credenciais que o servidor recusa mantêm o usuário em /login, sem sessão', async ({ page, context }) => {
+  test('credentials the server refuses keep the user on /login, without session', async ({ page, context }) => {
     const response = page.waitForResponse(r => r.url().includes('/api/auth/login') && r.request().method() === 'POST')
     await page.getByLabel('Email').fill('ninguem@exemplo.com')
     await page.getByLabel('Senha').fill('SenhaErrada123')
@@ -43,8 +43,8 @@ test.describe('Fluxo: entrar na conta (validação e recusa)', () => {
   })
 })
 
-test.describe('Fluxo: navegar entre telas de acesso', () => {
-  test('login → criar conta → voltar para entrar', async ({ page }) => {
+test.describe('Flow: navigate between access screens', () => {
+  test('login → create account → back to sign in', async ({ page }) => {
     await page.goto('/login')
     await page.getByRole('link', { name: 'Crie sua conta' }).click()
     await expect(page).toHaveURL(/\/signup/)
@@ -53,7 +53,7 @@ test.describe('Fluxo: navegar entre telas de acesso', () => {
     await expect(page).toHaveURL(/\/login/)
   })
 
-  test('login → esqueci a senha → voltar', async ({ page }) => {
+  test('login → forgot password → back', async ({ page }) => {
     await page.goto('/login')
     await page.getByRole('link', { name: 'Esqueceu a senha?' }).click()
     await expect(page).toHaveURL(/\/forgot-password/)
@@ -61,8 +61,8 @@ test.describe('Fluxo: navegar entre telas de acesso', () => {
   })
 })
 
-test.describe('Fluxo: criar conta (validação)', () => {
-  test('campos obrigatórios e regras de e-mail/senha', async ({ page }) => {
+test.describe('Flow: create account (validation)', () => {
+  test('required fields and email/password rules', async ({ page }) => {
     let signupCalls = 0
     page.on('request', (req) => { if (req.url().includes('/api/auth/signup')) signupCalls++ })
     await page.goto('/signup')
@@ -74,8 +74,8 @@ test.describe('Fluxo: criar conta (validação)', () => {
   })
 })
 
-test.describe('Fluxo: recuperar senha (validação)', () => {
-  test('e-mail inválido é barrado', async ({ page }) => {
+test.describe('Flow: recover password (validation)', () => {
+  test('invalid email is blocked', async ({ page }) => {
     let calls = 0
     page.on('request', (req) => { if (req.url().includes('/api/auth/forgot-password')) calls++ })
     await page.goto('/forgot-password')
@@ -86,7 +86,7 @@ test.describe('Fluxo: recuperar senha (validação)', () => {
   })
 })
 
-test.describe('Fluxo: API fechada para visitante', () => {
+test.describe('Flow: API closed to guests', () => {
   // Rotas de dinheiro e de dados: sem sessão, sempre 401 (a matriz completa está em tests/unit/handlers/guard-matrix).
   const routes: Array<[string, string]> = [
     ['GET', '/api/service-orders'],

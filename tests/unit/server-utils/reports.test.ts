@@ -38,7 +38,7 @@ import { normalizeOsNumber } from '../../../server/utils/service-order-number'
 
 afterEach(() => vi.useRealTimers())
 
-describe('report-helpers: parâmetros e números', () => {
+describe('report-helpers: parameters and numbers', () => {
   it('qArr', () => {
     expect(qArr(undefined)).toEqual([])
     expect(qArr('a')).toEqual(['a'])
@@ -73,7 +73,7 @@ describe('report-helpers: parâmetros e números', () => {
   })
 })
 
-describe('report-helpers: datas', () => {
+describe('report-helpers: dates', () => {
   it('parseDateStart/End', () => {
     expect(parseDateStart('2026-03-10')?.getHours()).toBe(0)
     const end = parseDateEnd('2026-03-10')!
@@ -82,17 +82,17 @@ describe('report-helpers: datas', () => {
     expect(parseDateStart('lixo')).toBeNull()
     expect(parseDateEnd('2026-13-45')).toBeNull()
   })
-  it('parseDateRange: só "from" vira dia único', () => {
+  it('parseDateRange: only "from" becomes a single day', () => {
     const { dateFrom, dateTo } = parseDateRange('2026-03-10')
     expect(dateFrom?.getDate()).toBe(10)
     expect(dateTo?.getDate()).toBe(10)
     expect(dateTo?.getHours()).toBe(23)
   })
-  it('parseDateRange: "to" antes de "from" é devolvido como está (sem inverter)', () => {
+  it('parseDateRange: "to" before "from" is returned as is (not inverted)', () => {
     const { dateFrom, dateTo } = parseDateRange('2026-03-10', '2026-03-01')
     expect(dateFrom! > dateTo!).toBe(true)
   })
-  it('parseDateRange vazio', () => {
+  it('empty parseDateRange', () => {
     expect(parseDateRange()).toEqual({ dateFrom: null, dateTo: null })
   })
   it('formatOptionalDate', () => {
@@ -106,14 +106,14 @@ describe('report-helpers: datas', () => {
   })
 })
 
-describe('report-helpers: paginação e status', () => {
-  it('paginate: total e páginas', () => {
+describe('report-helpers: pagination and status', () => {
+  it('paginate: total and pages', () => {
     const items = Array.from({ length: 25 }, (_, n) => n)
     const p = paginate(items, 2, 10)
     expect(p.data).toEqual([10, 11, 12, 13, 14, 15, 16, 17, 18, 19])
     expect(p.pagination).toEqual({ page: 2, pageSize: 10, totalItems: 25, totalPages: 3 })
   })
-  it('paginate: página além do fim vai para a última; lista vazia tem 1 página', () => {
+  it('paginate: page beyond the end goes to the last; empty list has 1 page', () => {
     expect(paginate([1, 2, 3], 99, 2).pagination.page).toBe(2)
     expect(paginate([], 1, 10).pagination).toEqual({ page: 1, pageSize: 10, totalItems: 0, totalPages: 1 })
   })
@@ -139,7 +139,7 @@ describe('report-helpers: paginação e status', () => {
     expect(formatStatusLabel('')).toBe('-')
     expect(formatStatusLabel('algo_novo')).toBe('Algo Novo')
   })
-  it('getPurchasePaymentStatus: paga, vencida e pendente', () => {
+  it('getPurchasePaymentStatus: paid, overdue and pending', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date(2026, 5, 15))
     expect(getPurchasePaymentStatus({ payment_status: 'paid', due_date: '2020-01-01' })).toBe('paid')
@@ -150,38 +150,38 @@ describe('report-helpers: paginação e status', () => {
   })
 })
 
-describe('report-helpers: comparação de períodos', () => {
+describe('report-helpers: period comparison', () => {
   const d = (y: number, m: number, day: number) => new Date(y, m - 1, day)
   const key = (x: Date) => `${x.getFullYear()}-${x.getMonth() + 1}-${x.getDate()}`
 
-  it('mesmo período do ano anterior', () => {
+  it('same period of the previous year', () => {
     const r = getPreviousRangeByMode(d(2026, 3, 1), d(2026, 3, 31), 'same_period_last_year')
     expect([key(r.previousStartDate), key(r.previousEndDate)]).toEqual(['2025-3-1', '2025-3-31'])
   })
-  it('mês anterior (e virada de ano)', () => {
+  it('previous month (and year rollover)', () => {
     const r = getPreviousRangeByMode(d(2026, 1, 10), d(2026, 1, 20), 'previous_month')
     expect([key(r.previousStartDate), key(r.previousEndDate)]).toEqual(['2025-12-1', '2025-12-31'])
   })
-  it('trimestre anterior (e virada de ano)', () => {
+  it('previous quarter (and year rollover)', () => {
     const q2 = getPreviousRangeByMode(d(2026, 5, 1), d(2026, 5, 31), 'previous_quarter')
     expect([key(q2.previousStartDate), key(q2.previousEndDate)]).toEqual(['2026-1-1', '2026-3-31'])
     const q1 = getPreviousRangeByMode(d(2026, 2, 1), d(2026, 2, 28), 'previous_quarter')
     expect([key(q1.previousStartDate), key(q1.previousEndDate)]).toEqual(['2025-10-1', '2025-12-31'])
   })
-  it('padrão: período equivalente imediatamente anterior', () => {
+  it('default: immediately preceding equivalent period', () => {
     const r = getPreviousRangeByMode(d(2026, 3, 11), new Date(2026, 2, 20, 23, 59, 59, 999), 'qualquer')
     expect([key(r.previousStartDate), key(r.previousEndDate)]).toEqual(['2026-3-1', '2026-3-10'])
   })
-  it('rótulos', () => {
+  it('labels', () => {
     expect(getComparisonModeLabel('previous_month')).toBe('Mês anterior')
     expect(getComparisonModeLabel('x')).toBe('Período anterior equivalente')
   })
-  it('calculateVariation: base zero não gera Infinity/NaN', () => {
+  it('calculateVariation: zero base does not generate Infinity/NaN', () => {
     expect(calculateVariation(0, 0)).toEqual({ variation: 0, type: 'equal' })
     expect(calculateVariation(10, 0)).toMatchObject({ variation: null, type: 'increase', fromZeroBase: true })
     expect(calculateVariation(-10, 0)).toMatchObject({ variation: null, type: 'decrease' })
   })
-  it('calculateVariation: aumento, queda e base negativa', () => {
+  it('calculateVariation: increase, decrease and negative base', () => {
     expect(calculateVariation(150, 100)).toEqual({ variation: 50, type: 'increase', fromZeroBase: false })
     expect(calculateVariation(50, 100)).toEqual({ variation: 50, type: 'decrease', fromZeroBase: false })
     expect(calculateVariation(100, 100)).toMatchObject({ variation: 0, type: 'equal' })
@@ -202,17 +202,17 @@ describe('profit-report-helpers', () => {
     { type: 'income', status: 'paid', due_date: null, amount: 5 }
   ]
 
-  it('fluxo de caixa: período, cancelados e filtro de status', () => {
+  it('cash flow: period, cancelled and status filter', () => {
     const all = calculateCashFlowFromTransactions(tx, start, end, [])
     expect(all).toMatchObject({ revenue: 1500, costs: 400, profit: 1100, orderCount: 2 })
     expect(all.profitMargin).toBeCloseTo(73.33, 1)
     const paidOnly = calculateCashFlowFromTransactions(tx, start, end, ['paid'])
     expect(paidOnly).toMatchObject({ revenue: 1000, costs: 400, profit: 600 })
   })
-  it('fluxo de caixa: período vazio devolve zeros e margem 0', () => {
+  it('cash flow: empty period returns zeros and margin 0', () => {
     expect(calculateCashFlowFromTransactions([], start, end, [])).toMatchObject({ revenue: 0, costs: 0, profit: 0, profitMargin: 0, orderCount: 0 })
   })
-  it('evolução diária cobre todos os dias do período', () => {
+  it('daily evolution covers all days of the period', () => {
     const data = calculateCashFlowFromTransactions(tx, start, end, [])
     const evolution = buildCashFlowTransactionsEvolutionData(data, start, end)
     expect(evolution).toHaveLength(31)
@@ -225,15 +225,15 @@ describe('profit-report-helpers', () => {
     { number: 'OS2', entry_date: '2026-03-03', status: 'open', payment_status: 'pending', total_amount: 500, total_cost_amount: 0, commission_amount: 0 },
     { number: 'OS3', entry_date: '2026-05-03', status: 'completed', payment_status: 'paid', total_amount: 9999, total_cost_amount: 0, commission_amount: 0 }
   ]
-  it('pelas OS: custo = peças + comissão', () => {
+  it('by OS: cost = parts + commission', () => {
     const r = calculateByOrderPeriodData(orders, start, end)
     expect(r).toMatchObject({ revenue: 1500, partsCost: 300, commissionCost: 100, costs: 400, profit: 1100, orderCount: 2 })
   })
-  it('pelas OS: filtros de status da OS e de pagamento', () => {
+  it('by OS: OS status and payment filters', () => {
     expect(calculateByOrderPeriodData(orders, start, end, ['completed']).orderCount).toBe(1)
     expect(calculateByOrderPeriodData(orders, start, end, [], ['pending']).orderCount).toBe(1)
   })
-  it('evolução pelas OS e top lucrativas', () => {
+  it('evolution by OS and top profitable', () => {
     const r = calculateByOrderPeriodData(orders, start, end)
     const evo = buildByOrderEvolutionData(r, start, end)
     expect(evo.find(p => p.name === '02/03')).toMatchObject({ revenue: 1000, costs: 400, profit: 600 })
@@ -242,7 +242,7 @@ describe('profit-report-helpers', () => {
     expect(top.find(t => t.number === 'OS1')).toMatchObject({ cost: 400, profit: 600, margin: 60 })
     expect(buildTopProfitableOrders(Array.from({ length: 15 }, (_, n) => ({ number: n, total_amount: n })))).toHaveLength(10)
   })
-  it('margem de OS sem receita é 0 (sem NaN)', () => {
+  it('margin of OS without revenue is 0 (no NaN)', () => {
     expect(buildTopProfitableOrders([{ number: 'x', total_amount: 0, total_cost_amount: 10 }])[0]!.margin).toBe(0)
   })
   it('buildVariations e resolveComparison', () => {
@@ -257,7 +257,7 @@ describe('profit-report-helpers', () => {
     expect(cmp.previousData).toBe(prev)
     expect(cmp.comparisonMeta).toMatchObject({ currentStartDate: '2026-03-01', previousStartDate: '2026-02-01', previousEndDate: '2026-02-28' })
   })
-  it('toPublicPeriodData não vaza campos internos', () => {
+  it('toPublicPeriodData does not leak internal fields', () => {
     const data = calculateByOrderPeriodData(orders, start, end)
     const pub = toPublicPeriodData(data)!
     expect(Object.keys(pub).sort()).toEqual(['commissionCost', 'costs', 'orderCount', 'partsCost', 'profit', 'profitMargin', 'revenue'])
@@ -267,8 +267,8 @@ describe('profit-report-helpers', () => {
   })
 })
 
-describe('report-export (CSV e base64)', () => {
-  it('csvEscape: aspas, vírgula e quebra de linha', () => {
+describe('report-export (CSV and base64)', () => {
+  it('csvEscape: quotes, comma and line break', () => {
     expect(csvEscape('a,b')).toBe('"a,b"')
     expect(csvEscape('diz "oi"')).toBe('"diz ""oi"""')
     expect(csvEscape('linha1\nlinha2')).toBe('"linha1 linha2"')
@@ -279,7 +279,7 @@ describe('report-export (CSV e base64)', () => {
   it.each(['=1+1', '+SUM(A1)', '-2+3', '@cmd'])('csvEscape neutraliza fórmula: %s', (value) => {
     expect(csvEscape(value)).toMatch(/^"'/)
   })
-  it('base64 e data local', () => {
+  it('base64 and local date', () => {
     expect(textToBase64('olá')).toBe(Buffer.from('olá').toString('base64'))
     expect(uint8ToBase64(new Uint8Array(50_000).fill(65))).toBe(Buffer.alloc(50_000, 'A').toString('base64'))
     expect(toLocalDateOnly(new Date(2026, 0, 5))).toBe('2026-01-05')
@@ -301,27 +301,27 @@ describe('supabase-pagination: fetchAllOrganizationRows', () => {
     }
     return { calls, supabase: { from: () => builder } as never }
   }
-  it('filtra sempre por organization_id', async () => {
+  it('always filters by organization_id', async () => {
     const { calls, supabase } = client([[{ id: 1 }]])
     await fetchAllOrganizationRows(supabase, { table: 't', organizationId: 'org-a', nullColumns: ['deleted_at'], eq: { k: 'v' } })
     expect(calls).toContain('eq:organization_id,org-a')
     expect(calls).toContain('is:deleted_at,null')
     expect(calls).toContain('eq:k,v')
   })
-  it('pagina até receber página incompleta', async () => {
+  it('paginates until an incomplete page is received', async () => {
     const { calls, supabase } = client([[1, 2], [3, 4], [5]])
     const rows = await fetchAllOrganizationRows(supabase, { table: 't', organizationId: 'o', pageSize: 2 } as never)
     expect(rows).toEqual([1, 2, 3, 4, 5])
     expect(calls.filter(c => c.startsWith('range'))).toEqual(['range:0-1', 'range:2-3', 'range:4-5'])
   })
-  it('erro vira 500 com a tabela na mensagem', async () => {
+  it('error becomes 500 with the table in the message', async () => {
     const { supabase } = client([{ error: 'boom' }])
     await expect(fetchAllOrganizationRows(supabase, { table: 'clients', organizationId: 'o' })).rejects.toMatchObject({ statusCode: 500, statusMessage: expect.stringContaining('clients') })
   })
 })
 
-describe('busca e número de OS', () => {
-  it('normalizeSearchText ignora acento e caixa', () => {
+describe('search and OS number', () => {
+  it('normalizeSearchText ignores accent and case', () => {
     expect(normalizeSearchText('  José ')).toBe('jose')
     expect(normalizeSearchText('AÇÃO')).toBe('acao')
     expect(normalizeSearchText(null)).toBe('')

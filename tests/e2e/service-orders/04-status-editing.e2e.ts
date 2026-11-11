@@ -1,7 +1,7 @@
 // OS-D — Status, editing, duplicating, deleting and cancelling through the UI (docs/testing/e2e-service-orders.md §4).
 // Setup via API (ready-made orders); the tested action is done in the interface; verification looks at the screen and the database.
 import { expect, skipUnlessAuth, test, today } from './support/fixtures'
-import { advanceButton, advanceCount, cardIcon, detailLoaded, expectToast, ignorePopups, openConfirm, payInFull } from './support/helpers-os'
+import { advanceButton, advanceCount, cardIcon, detailLoaded, expectToast, ignorePopups, openConfirm, payInFull } from './support/helpers-order'
 import { OrdersPage } from './support/pages'
 
 skipUnlessAuth(test)

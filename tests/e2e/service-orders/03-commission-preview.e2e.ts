@@ -3,7 +3,7 @@
 // Values: truth table §3.5 of docs/testing/e2e-service-orders.md. OS-REF1 = S1 ×1 (1,000) + P1 ×2 (400) = 1,400.
 import { expect, skipUnlessAuth, test } from './support/fixtures'
 import { monthStart } from './support/catalog'
-import { fillNewOrder, previewAmount, previewOf, saveOrder, snapshotCommission, type ItemInput } from './support/helpers-comissao'
+import { fillNewOrder, previewAmount, previewOf, saveOrder, snapshotCommission, type ItemInput } from './support/helpers-commission'
 import { OrdersPage } from './support/pages'
 
 skipUnlessAuth(test)

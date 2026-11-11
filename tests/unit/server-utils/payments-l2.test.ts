@@ -21,27 +21,27 @@ describe('recalculateServiceOrderPaymentStatus', () => {
     return { status, stored: fake.tables.service_orders![0]!.payment_status }
   }
 
-  it('0 parcelas → pending', async () => {
+  it('0 installments → pending', async () => {
     expect((await run([])).status).toBe('pending')
   })
-  it('todas pagas → paid (e grava na OS)', async () => {
+  it('all paid → paid (and stores on the OS)', async () => {
     const r = await run([{ status: 'paid' }, { status: 'paid' }])
     expect(r).toEqual({ status: 'paid', stored: 'paid' })
   })
-  it('uma parcial → partial', async () => {
+  it('one partial → partial', async () => {
     expect((await run([{ status: 'partial' }])).status).toBe('partial')
   })
-  it('uma paga e outra pendente → partial', async () => {
+  it('one paid and another pending → partial', async () => {
     expect((await run([{ status: 'paid' }, { status: 'pending' }])).status).toBe('partial')
   })
-  it('só pendentes → pending', async () => {
+  it('only pending → pending', async () => {
     expect((await run([{ status: 'pending' }, { status: 'pending' }])).status).toBe('pending')
   })
-  it('parcela soft-deletada é ignorada', async () => {
+  it('soft-deleted installment is ignored', async () => {
     const r = await run([{ status: 'paid' }, { status: 'pending', deleted_at: '2026-01-01' }])
     expect(r.status).toBe('paid')
   })
-  it('parcela de outra organização é ignorada', async () => {
+  it('installment from another organization is ignored', async () => {
     const r = await run([{ status: 'paid' }, { status: 'pending', organization_id: 'org-b' }])
     expect(r.status).toBe('paid')
   })
@@ -54,19 +54,19 @@ describe('getNextInstallmentNumber', () => {
     })
     return getNextInstallmentNumber({ supabase: fake.client, organizationId: ORG, orderId: 'o1' })
   }
-  it('primeira parcela = 1', async () => {
+  it('first installment = 1', async () => {
     expect(await next([])).toBe(1)
   })
-  it('conta só as ativas', async () => {
+  it('counts only the active ones', async () => {
     expect(await next([{}, {}, { deleted_at: '2026-01-01' }])).toBe(3)
   })
-  it('número é reaproveitado após soft delete', async () => {
+  it('number is reused after soft delete', async () => {
     expect(await next([{}, { deleted_at: '2026-01-01' }])).toBe(2)
   })
 })
 
 describe('softDeleteFinancialTransaction', () => {
-  it('nunca apaga de verdade: marca deleted_at + motivo + origem, filtrando por organização', async () => {
+  it('never really deletes: marks deleted_at + reason + origin, filtering by organization', async () => {
     const fake = createFakeSupabase({
       financial_transactions: [{ id: 't1', organization_id: ORG }, { id: 't1', organization_id: 'org-b' }]
     })
@@ -100,7 +100,7 @@ describe('reverseServiceOrderReceipt', () => {
   const reverse = (transaction: Record<string, unknown> = { id: 't1', type: 'income', service_order_id: 'o1', service_order_installment_id: 'i1' }) =>
     reverseServiceOrderReceipt({ supabase: fake.client, organizationId: ORG, transaction, reason: 'erro', source: 'service_orders.financial_transactions.delete', userEmail: 'u@x.com' })
 
-  it('estorna saldo, parcela, status da OS e remove o extrato', async () => {
+  it('reverses balance, installment, OS status and removes the statement', async () => {
     await reverse()
     expect(fake.tables.bank_accounts![0]!.current_balance).toBe(1000)
     expect(fake.tables.bank_account_statements).toHaveLength(0)
@@ -108,36 +108,36 @@ describe('reverseServiceOrderReceipt', () => {
     expect(fake.tables.service_order_installments![0]).toMatchObject({ status: 'pending', payment_date: null, financial_transaction_id: null })
     expect(fake.tables.service_orders![0]!.payment_status).toBe('pending')
   })
-  it('recusa lançamento sem OS', async () => {
+  it('refuses entry without OS', async () => {
     await expect(reverse({ id: 't1', type: 'income' })).rejects.toMatchObject({ statusCode: 500 })
   })
-  it('recusa lançamento que não é recebimento (409)', async () => {
+  it('refuses entry that is not a receipt (409)', async () => {
     await expect(reverse({ id: 't1', type: 'expense', service_order_id: 'o1' })).rejects.toMatchObject({ statusCode: 409 })
   })
-  it('recusa quando há comissão já paga na OS (409) e não mexe no saldo', async () => {
+  it('refuses when there is commission already paid on the OS (409) and does not touch the balance', async () => {
     fake.tables.employee_financial_records!.push({ id: 'c1', organization_id: ORG, service_order_id: 'o1', record_type: 'commission', status: 'paid' })
     await expect(reverse()).rejects.toMatchObject({ statusCode: 409 })
     expect(fake.tables.bank_accounts![0]!.current_balance).toBe(1100)
   })
-  it('é idempotente: repetir não altera o saldo de novo', async () => {
+  it('is idempotent: repeating does not change the balance again', async () => {
     await reverse()
     await reverse()
     expect(fake.tables.bank_accounts![0]!.current_balance).toBe(1000)
   })
-  it('recebimento parcial de uma parcela com outro recebimento restante → partial', async () => {
+  it('partial receipt of an installment with another remaining receipt → partial', async () => {
     fake.tables.financial_transactions!.push({ id: 't2', organization_id: ORG, type: 'income', status: 'paid', amount: 40, service_order_installment_id: 'i1', deleted_at: null })
     await reverse()
     expect(fake.tables.service_order_installments![0]!.status).toBe('partial')
     expect(fake.tables.service_orders![0]!.payment_status).toBe('partial')
   })
-  it('não toca em contas de outra organização', async () => {
+  it('does not touch accounts from another organization', async () => {
     fake.tables.bank_accounts!.push({ id: 'acc1', organization_id: 'org-b', current_balance: 5 })
     await reverse()
     expect(fake.tables.bank_accounts![1]!.current_balance).toBe(5)
   })
   // KF-02: o estorno restaura o saldo "anterior" gravado no extrato, e não subtrai o valor
   // do recebimento; qualquer movimento posterior na conta é sobrescrito.
-  it('estorna só o valor do recebimento, preservando movimentos posteriores na conta', async () => {
+  it('reverses only the receipt amount, preserving later movements on the account', async () => {
     fake.tables.bank_accounts![0]!.current_balance = 1400 // +300 de outro lançamento depois do recebimento
     await reverse()
     expect(fake.tables.bank_accounts![0]!.current_balance).toBe(1300)

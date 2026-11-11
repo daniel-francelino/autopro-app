@@ -1,4 +1,4 @@
-// Consulta do log de auditoria (/api/admin/audit-logs): só o owner da plataforma (plano §4.2 e §9).
+// Consulta do log de auditoria (/api/admin/audit-logs): só o platform owner (plano §4.2 e §9).
 import { readFileSync } from 'node:fs'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeEvent, installNitroGlobals, installServerUtilsGlobals, callHandler } from '../../helpers/handler-harness'
@@ -50,16 +50,16 @@ const list = (query: Record<string, unknown> = {}, ck: Record<string, string> = 
   callHandler(LIST, fakeEvent({ cookies: ck, query }))
 
 describe('GET /api/admin/audit-logs', () => {
-  it('sem sessão → 401', async () => {
+  it('no session → 401', async () => {
     expect((await list({}, {})).status).toBe(401)
   })
 
-  it('usuário de oficina (não owner) → 403', async () => {
+  it('workshop user (not owner) → 403', async () => {
     seed(false)
     expect((await list()).status).toBe(403)
   })
 
-  it('owner: lista as linhas do período (padrão 24 h) com o nome da oficina e sem corpos', async () => {
+  it('owner: lists the rows of the period (default 24 h) with the workshop name and no bodies', async () => {
     const r = await list()
     expect(r.status).toBe(200)
     const body = r.body as any
@@ -70,27 +70,27 @@ describe('GET /api/admin/audit-logs', () => {
     expect(columns).not.toMatch(/request_body|response_body|changes/)
   })
 
-  it('período maior que 31 dias → 400; fim antes do início → 400; data inválida → 400', async () => {
+  it('period longer than 31 days → 400; end before start → 400; invalid date → 400', async () => {
     const to = new Date()
     expect((await list({ from: new Date(to.getTime() - 40 * 86_400_000).toISOString(), to: to.toISOString() })).status).toBe(400)
     expect((await list({ from: to.toISOString(), to: new Date(to.getTime() - 1000).toISOString() })).status).toBe(400)
     expect((await list({ from: 'ontem' })).status).toBe(400)
   })
 
-  it('filtra por e-mail (parcial), ação, outcome e organização', async () => {
+  it('filters by email (partial), action, outcome and organization', async () => {
     expect(((await list({ actorEmail: 'JOAO' })).body as any).data.map((x: any) => x.id)).toEqual([ID_2])
     expect(((await list({ action: 'client.create' })).body as any).data.map((x: any) => x.id)).toEqual([ID_1])
     expect(((await list({ outcome: 'error,denied' })).body as any).data.map((x: any) => x.id)).toEqual([ID_2])
     expect(((await list({ organizationId: 'outra' })).body as any).total).toBe(0)
   })
 
-  it('filtra pelo código curto do erro (8 primeiros caracteres do request_id)', async () => {
+  it('filters by the short error code (first 8 characters of request_id)', async () => {
     const r = await list({ requestId: 'abc12345' })
     expect(((r.body as any).data as any[]).map(x => x.id)).toEqual([ID_1])
     expect((await list({ requestId: 'zzzz' })).status).toBe(400)
   })
 
-  it('pageSize é limitado a 100', async () => {
+  it('pageSize is capped at 100', async () => {
     expect(((await list({ pageSize: 9999 })).body as any).pageSize).toBe(100)
   })
 })
@@ -99,18 +99,18 @@ describe('GET /api/admin/audit-logs/:id', () => {
   const detail = (id: string, ck: Record<string, string> = cookies) =>
     callHandler(DETAIL, fakeEvent({ cookies: ck, params: { id } }))
 
-  it('sem sessão → 401; não-owner → 403', async () => {
+  it('no session → 401; non-owner → 403', async () => {
     expect((await detail(ID_1, {})).status).toBe(401)
     seed(false)
     expect((await detail(ID_1)).status).toBe(403)
   })
 
-  it('id inválido → 400; inexistente → 404', async () => {
+  it('invalid id → 400; nonexistent → 404', async () => {
     expect((await detail('nao-e-uuid')).status).toBe(400)
     expect((await detail('eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee')).status).toBe(404)
   })
 
-  it('devolve a linha completa e as outras linhas da mesma requisição', async () => {
+  it('returns the full row and the other rows of the same request', async () => {
     const r = await detail(ID_2)
     expect(r.status).toBe(200)
     expect(r.body).toMatchObject({ id: ID_2, request_body: { x: 1 }, organization_name: 'Oficina A', related: [] })

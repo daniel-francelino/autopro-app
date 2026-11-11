@@ -44,11 +44,11 @@ const event = {} as never
 describe('resolveOrganizationId', () => {
   const profile = (o: Record<string, unknown> = {}) => ({ user_id: 'u1', organization_id: 'org-a', employee_id: null, is_active: true, ...o })
 
-  it('sem perfil → 400', async () => {
+  it('no profile → 400', async () => {
     fake = createFakeSupabase({ user_profiles: [] })
     await expect(resolveOrganizationId(event, 'u1')).rejects.toMatchObject({ statusCode: 400 })
   })
-  it('perfil sem organização → 400', async () => {
+  it('profile without organization → 400', async () => {
     fake = createFakeSupabase({ user_profiles: [profile({ organization_id: null })] })
     await expect(resolveOrganizationId(event, 'u1')).rejects.toMatchObject({ statusCode: 400 })
   })
@@ -56,23 +56,23 @@ describe('resolveOrganizationId', () => {
     fake = createFakeSupabase({ user_profiles: [profile({ is_active: false })] })
     await expect(resolveOrganizationId(event, 'u1')).rejects.toMatchObject({ statusCode: 403 })
   })
-  it('ok → devolve a organização', async () => {
+  it('ok → returns the organization', async () => {
     fake = createFakeSupabase({ user_profiles: [profile()] })
     expect(await resolveOrganizationId(event, 'u1')).toBe('org-a')
   })
-  it('erro de banco → 500', async () => {
+  it('database error → 500', async () => {
     fake = createFakeSupabase({ user_profiles: [profile()] })
     fake.failNext('user_profiles')
     await expect(resolveOrganizationId(event, 'u1')).rejects.toMatchObject({ statusCode: 500 })
   })
-  it('funcionário ativo (sem desligamento) passa', async () => {
+  it('active employee (not terminated) passes', async () => {
     fake = createFakeSupabase({
       user_profiles: [profile({ employee_id: 'e1' })],
       employees: [{ id: 'e1', name: 'Zé', termination_date: null, deleted_at: null }]
     })
     expect(await resolveOrganizationId(event, 'u1')).toBe('org-a')
   })
-  it('funcionário desligado → 403 e revoga o acesso do perfil', async () => {
+  it('terminated employee → 403 and revokes profile access', async () => {
     fake = createFakeSupabase({
       user_profiles: [profile({ employee_id: 'e1', role_id: 'r1' })],
       employees: [{ id: 'e1', name: 'Zé', termination_date: '2020-01-01', deleted_at: null }]
@@ -80,14 +80,14 @@ describe('resolveOrganizationId', () => {
     await expect(resolveOrganizationId(event, 'u1')).rejects.toMatchObject({ statusCode: 403 })
     expect(fake.tables.user_profiles![0]).toMatchObject({ is_active: false, organization_id: null, role_id: null })
   })
-  it('funcionário com desligamento futuro ainda tem acesso', async () => {
+  it('employee with future termination still has access', async () => {
     fake = createFakeSupabase({
       user_profiles: [profile({ employee_id: 'e1' })],
       employees: [{ id: 'e1', name: 'Zé', termination_date: '2999-01-01', deleted_at: null }]
     })
     expect(await resolveOrganizationId(event, 'u1')).toBe('org-a')
   })
-  it('funcionário excluído (deleted_at) → 403', async () => {
+  it('deleted employee (deleted_at) → 403', async () => {
     fake = createFakeSupabase({
       user_profiles: [profile({ employee_id: 'e1' })],
       employees: [{ id: 'e1', name: 'Zé', termination_date: null, deleted_at: '2026-01-01' }]
@@ -107,39 +107,39 @@ describe('requireOrgPermission', () => {
     ...over
   })
 
-  it('sem perfil → 403', async () => {
+  it('no profile → 403', async () => {
     fake = base({ user_profiles: [] })
     await expect(requireOrgPermission('u1', 'clients.create')).rejects.toMatchObject({ statusCode: 403 })
   })
-  it('perfil inativo → 403', async () => {
+  it('inactive profile → 403', async () => {
     fake = base({ user_profiles: [{ user_id: 'u1', organization_id: 'org-a', role_id: 'r1', is_active: false }] })
     await expect(requireOrgPermission('u1', 'clients.create')).rejects.toMatchObject({ statusCode: 403 })
   })
-  it('sem organização → 403', async () => {
+  it('no organization → 403', async () => {
     fake = base({ user_profiles: [{ user_id: 'u1', organization_id: null, role_id: 'r1', is_active: true }] })
     await expect(requireOrgPermission('u1', 'clients.create')).rejects.toMatchObject({ statusCode: 403 })
   })
-  it('papel com a ação concedida passa', async () => {
+  it('role with the granted action passes', async () => {
     fake = base()
     await expect(requireOrgPermission('u1', 'clients.create')).resolves.toBeUndefined()
   })
-  it('is_owner passa sem papel', async () => {
+  it('is_owner passes without role', async () => {
     fake = base({ user_profiles: [{ user_id: 'u1', organization_id: 'org-a', role_id: null, is_owner: true, is_active: true }] })
     await expect(requireOrgPermission('u1', 'clients.create')).resolves.toBeUndefined()
   })
-  it('papel admin de sistema passa', async () => {
+  it('system admin role passes', async () => {
     fake = base({ roles: [{ id: 'r1', name: 'admin', is_system_role: true }], role_actions: [] })
     await expect(requireOrgPermission('u1', 'clients.create')).resolves.toBeUndefined()
   })
-  it('papel chamado "admin" mas NÃO de sistema não passa', async () => {
+  it('role named "admin" but NOT system does not pass', async () => {
     fake = base({ roles: [{ id: 'r1', name: 'admin', is_system_role: false }], role_actions: [] })
     await expect(requireOrgPermission('u1', 'clients.create')).rejects.toMatchObject({ statusCode: 403 })
   })
-  it('sem papel atribuído → 403', async () => {
+  it('no assigned role → 403', async () => {
     fake = base({ user_profiles: [{ user_id: 'u1', organization_id: 'org-a', role_id: null, is_owner: false, is_active: true }] })
     await expect(requireOrgPermission('u1', 'clients.create')).rejects.toMatchObject({ statusCode: 403 })
   })
-  it('ação inexistente → 403', async () => {
+  it('nonexistent action → 403', async () => {
     fake = base()
     await expect(requireOrgPermission('u1', 'nao.existe')).rejects.toMatchObject({ statusCode: 403 })
   })
@@ -147,35 +147,35 @@ describe('requireOrgPermission', () => {
     fake = base({ role_actions: [{ role_id: 'r1', action_id: 'a1', is_granted: false }] })
     await expect(requireOrgPermission('u1', 'clients.create')).rejects.toMatchObject({ statusCode: 403 })
   })
-  it('sem linha em role_actions → 403', async () => {
+  it('no row in role_actions → 403', async () => {
     fake = base({ role_actions: [] })
     await expect(requireOrgPermission('u1', 'clients.create')).rejects.toMatchObject({ statusCode: 403 })
   })
-  it('ação fiscal no plano starter → 403 com nome do plano', async () => {
+  it('fiscal action on starter plan → 403 with plan name', async () => {
     fake = base({ actions: [{ id: 'a1', code: 'service_invoice.create', deleted_at: null }] })
     await expect(requireOrgPermission('u1', 'service_invoice.create')).rejects.toMatchObject({
       statusCode: 403,
       statusMessage: expect.stringContaining('Fiscal')
     })
   })
-  it('plano é verificado ANTES do bypass de owner', async () => {
+  it('plan is checked BEFORE the owner bypass', async () => {
     fake = base({ user_profiles: [{ user_id: 'u1', organization_id: 'org-a', role_id: null, is_owner: true, is_active: true }] })
     await expect(requireOrgPermission('u1', 'fiscal.manage')).rejects.toMatchObject({ statusCode: 403 })
   })
-  it('ação fiscal no plano fiscal passa', async () => {
+  it('fiscal action on fiscal plan passes', async () => {
     fake = base({
       subscriptions: [{ organization_id: 'org-a', plan_key: 'fiscal', status: 'active', deleted_at: null }],
       actions: [{ id: 'a1', code: 'service_invoice.create', deleted_at: null }]
     })
     await expect(requireOrgPermission('u1', 'service_invoice.create')).resolves.toBeUndefined()
   })
-  it('relatório pro no plano starter → 403; no pro passa', async () => {
+  it('pro report on starter plan → 403; on pro passes', async () => {
     fake = base({ actions: [{ id: 'a1', code: 'reports.debtors', deleted_at: null }] })
     await expect(requireOrgPermission('u1', 'reports.debtors')).rejects.toMatchObject({ statusCode: 403 })
     fake.tables.subscriptions![0]!.plan_key = 'pro'
     await expect(requireOrgPermission('u1', 'reports.debtors')).resolves.toBeUndefined()
   })
-  it('sem assinatura ativa e ação com plano → 403', async () => {
+  it('no active subscription and action requiring a plan → 403', async () => {
     fake = base({ subscriptions: [], actions: [{ id: 'a1', code: 'reports.costs', deleted_at: null }] })
     await expect(requireOrgPermission('u1', 'reports.costs')).rejects.toMatchObject({ statusCode: 403 })
   })
@@ -188,24 +188,24 @@ describe('requireOwner', () => {
     anon.getUser.mockReset().mockResolvedValue({ data: { user: { id: 'u1', email: 'a@b.c' } }, error: null })
     anon.refreshSession.mockReset()
   })
-  it('owner passa e devolve o usuário', async () => {
+  it('owner passes and returns the user', async () => {
     fake = createFakeSupabase({ user_profiles: [{ user_id: 'u1', is_owner: true }] })
     await expect(requireOwner(event)).resolves.toMatchObject({ id: 'u1' })
   })
-  it('não-owner → 403', async () => {
+  it('non-owner → 403', async () => {
     fake = createFakeSupabase({ user_profiles: [{ user_id: 'u1', is_owner: false }] })
     await expect(requireOwner(event)).rejects.toMatchObject({ statusCode: 403 })
   })
-  it('sem perfil → 403', async () => {
+  it('no profile → 403', async () => {
     fake = createFakeSupabase({ user_profiles: [] })
     await expect(requireOwner(event)).rejects.toMatchObject({ statusCode: 403 })
   })
-  it('erro de banco → 500', async () => {
+  it('database error → 500', async () => {
     fake = createFakeSupabase({ user_profiles: [{ user_id: 'u1', is_owner: true }] })
     fake.failNext('user_profiles')
     await expect(requireOwner(event)).rejects.toMatchObject({ statusCode: 500 })
   })
-  it('deslogado → 401', async () => {
+  it('logged out → 401', async () => {
     cookies = {}
     fake = createFakeSupabase()
     await expect(requireOwner(event)).rejects.toMatchObject({ statusCode: 401 })
@@ -225,14 +225,14 @@ describe('requireAuthUser', () => {
     setAuthUserCookie.mockReset()
   })
 
-  it('token válido', async () => {
+  it('valid token', async () => {
     cookies = { access: jwt(4102444800) }
     anon.getUser.mockResolvedValue(okUser)
     await expect(requireAuthUser(event)).resolves.toMatchObject({ id: 'u1' })
     expect(anon.refreshSession).not.toHaveBeenCalled()
     expect(setAuthUserCookie).toHaveBeenCalledOnce()
   })
-  it('token inválido + refresh válido → renova cookies', async () => {
+  it('invalid token + valid refresh → renews cookies', async () => {
     cookies = { access: 'ruim', refresh: 'ref' }
     anon.getUser
       .mockResolvedValueOnce({ data: { user: null }, error: { status: 401 } })
@@ -241,31 +241,31 @@ describe('requireAuthUser', () => {
     await expect(requireAuthUser(event)).resolves.toMatchObject({ id: 'u1' })
     expect(setAuthCookies).toHaveBeenCalledOnce()
   })
-  it('sem nada → 401', async () => {
+  it('nothing → 401', async () => {
     await expect(requireAuthUser(event)).rejects.toMatchObject({ statusCode: 401 })
   })
-  it('token inválido sem refresh → 401', async () => {
+  it('invalid token without refresh → 401', async () => {
     cookies = { access: 'ruim' }
     anon.getUser.mockResolvedValue({ data: { user: null }, error: { status: 401 } })
     await expect(requireAuthUser(event)).rejects.toMatchObject({ statusCode: 401 })
   })
-  it('token e refresh inválidos → 401', async () => {
+  it('invalid token and refresh → 401', async () => {
     cookies = { access: 'ruim', refresh: 'ruim' }
     anon.getUser.mockResolvedValue({ data: { user: null }, error: { status: 401 } })
     anon.refreshSession.mockResolvedValue({ data: { session: null }, error: { status: 400 } })
     await expect(requireAuthUser(event)).rejects.toMatchObject({ statusCode: 401 })
   })
-  it('Supabase Auth fora do ar (5xx no getUser) → 503, não 401', async () => {
+  it('Supabase Auth down (5xx on getUser) → 503, not 401', async () => {
     cookies = { access: 'tok' }
     anon.getUser.mockResolvedValue({ data: { user: null }, error: { status: 500 } })
     await expect(requireAuthUser(event)).rejects.toMatchObject({ statusCode: 503 })
   })
-  it('Supabase Auth fora do ar no refresh → 503', async () => {
+  it('Supabase Auth down on refresh → 503', async () => {
     cookies = { refresh: 'ref' }
     anon.refreshSession.mockResolvedValue({ data: { session: null }, error: { status: 502 } })
     await expect(requireAuthUser(event)).rejects.toMatchObject({ statusCode: 503 })
   })
-  it('refresh ok mas getUser seguinte cai (5xx) → 503', async () => {
+  it('refresh ok but the following getUser fails (5xx) → 503', async () => {
     cookies = { refresh: 'ref' }
     anon.refreshSession.mockResolvedValue({ data: { session: { access_token: 'n', refresh_token: 'r', expires_at: 1 } }, error: null })
     anon.getUser.mockResolvedValue({ data: { user: null }, error: { status: 500 } })
@@ -282,7 +282,7 @@ describe('license', () => {
     })
   }
 
-  it('resolveOrgLicense: limites por plano', async () => {
+  it('resolveOrgLicense: limits per plan', async () => {
     withPlan('starter')
     expect(await resolveOrgLicense('org-a')).toEqual({ planKey: 'starter', maxEmployees: 2 })
     withPlan('pro')
@@ -290,46 +290,46 @@ describe('license', () => {
     withPlan('fiscal')
     expect((await resolveOrgLicense('org-a')).maxEmployees).toBeNull()
   })
-  it('resolveOrgLicense: assinatura de outra organização não conta', async () => {
+  it('resolveOrgLicense: subscription from another organization does not count', async () => {
     withPlan('pro')
     expect(await resolveOrgLicense('org-b')).toEqual({ planKey: null, maxEmployees: null })
   })
-  it('starter bloqueia o 3º funcionário', async () => {
+  it('starter blocks the 3rd employee', async () => {
     withPlan('starter', 2)
     await expect(enforceEmployeeLimit('org-a')).rejects.toMatchObject({ statusCode: 403 })
   })
-  it('starter permite o 2º', async () => {
+  it('starter allows the 2nd', async () => {
     withPlan('starter', 1)
     await expect(enforceEmployeeLimit('org-a')).resolves.toBeUndefined()
   })
-  it('pro bloqueia o 11º', async () => {
+  it('pro blocks the 11th', async () => {
     withPlan('pro', 10)
     await expect(enforceEmployeeLimit('org-a')).rejects.toMatchObject({ statusCode: 403 })
     withPlan('pro', 9)
     await expect(enforceEmployeeLimit('org-a')).resolves.toBeUndefined()
   })
-  it('fiscal não tem limite', async () => {
+  it('fiscal has no limit', async () => {
     withPlan('fiscal', 500)
     await expect(enforceEmployeeLimit('org-a')).resolves.toBeUndefined()
   })
   // KF-03: sem assinatura ativa, maxEmployees=null e o limite NÃO é aplicado.
-  it('sem assinatura ativa não deveria liberar funcionários ilimitados', async () => {
+  it('no active subscription should not grant unlimited employees', async () => {
     withPlan(null, 50)
     await expect(enforceEmployeeLimit('org-a')).rejects.toMatchObject({ statusCode: 403 })
   })
-  it('erro ao contar → 500', async () => {
+  it('error when counting → 500', async () => {
     withPlan('starter', 0)
     // 1ª consulta (subscriptions) ok; falha na contagem de employees
     fake.failNext('employees')
     await expect(enforceEmployeeLimit('org-a')).rejects.toMatchObject({ statusCode: 500 })
   })
-  it('enforceReportAccess: starter e sem plano bloqueados nos relatórios restritos', async () => {
+  it('enforceReportAccess: starter and no plan blocked from restricted reports', async () => {
     withPlan('starter')
     await expect(enforceReportAccess('org-a', 'debtors')).rejects.toMatchObject({ statusCode: 403 })
     withPlan(null)
     await expect(enforceReportAccess('org-a', 'sales-items')).rejects.toMatchObject({ statusCode: 403 })
   })
-  it('enforceReportAccess: pro/fiscal liberados; relatório livre passa no starter', async () => {
+  it('enforceReportAccess: pro/fiscal allowed; free report passes on starter', async () => {
     withPlan('pro')
     await expect(enforceReportAccess('org-a', 'customers')).resolves.toBeUndefined()
     withPlan('starter')

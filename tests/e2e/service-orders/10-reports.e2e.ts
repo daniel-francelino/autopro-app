@@ -2,7 +2,7 @@
 // Setup (create/pay the order) goes through the API; the thing under test is what each SCREEN shows.
 // Expected numbers come from the database (independent of the report APIs), not from the report endpoints.
 import { skipUnlessAuth, buildOrderData } from './support/fixtures'
-import { expect, freshClient, freshVehicle, test } from './support/helpers-lista'
+import { expect, freshClient, freshVehicle, test } from './support/helpers-list'
 import { OrdersPage, parseBRL } from './support/pages'
 
 skipUnlessAuth(test)

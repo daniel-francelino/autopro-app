@@ -1,6 +1,6 @@
 // OS-E — Order detail, quote (preview, PDF, print) and isolation (docs/testing/e2e-service-orders.md §4).
 import { expect, skipUnlessAuth, test, today } from './support/fixtures'
-import { cardIcon, dateBR, detailLoaded, detailMoney, ignorePopups } from './support/helpers-os'
+import { cardIcon, dateBR, detailLoaded, detailMoney, ignorePopups } from './support/helpers-order'
 import { OrdersPage } from './support/pages'
 
 skipUnlessAuth(test)

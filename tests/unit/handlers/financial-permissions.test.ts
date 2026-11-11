@@ -91,8 +91,8 @@ const run = (r: Route, extra: Partial<Route> = {}) =>
 const balanceB = () => fake.tables.bank_accounts!.find(a => a.id === 'acc-b')!.current_balance as number
 const stmtB = () => fake.tables.bank_account_statements!.filter(s => s.bank_account_id === 'acc-b')
 
-describe('S1: as rotas financeiras estão dentro da matriz M1 (sem login → 401)', () => {
-  it('todas existem e respondem 401 sem sessão', async () => {
+describe('S1: financial routes are within matrix M1 (no login → 401)', () => {
+  it('all exist and respond 401 without session', async () => {
     auth.getUser.mockResolvedValue({ data: { user: null }, error: { status: 401 } })
     auth.refreshSession.mockResolvedValue({ data: { session: null }, error: { status: 401 } })
     for (const r of MONEY_ROUTES) {
@@ -102,29 +102,29 @@ describe('S1: as rotas financeiras estão dentro da matriz M1 (sem login → 401
   })
 })
 
-describe('S2 / KF-09: usuário sem papel financeiro não mexe em dinheiro', () => {
+describe('S2 / KF-09: user without financial role does not touch money', () => {
   // Enquanto o KF-09 existir, cada rota abaixo responde 200 para um usuário sem nenhuma permissão.
   // Ao corrigir uma rota (requireOrgPermission), o Vitest acusa "unexpected pass": troque it.fails por it.
   for (const r of MONEY_ROUTES) {
-    it.fails(`${r.name} → 403 para papel sem permissão`, async () => {
+    it.fails(`${r.name} → 403 for role without permission`, async () => {
       const res = await run(r)
       expect(res.status, `${r.name} respondeu ${res.status} (${res.error?.message ?? 'ok'})`).toBe(403)
     })
   }
-  it('o dono da oficina continua podendo (controle: a permissão não pode ser a única barreira de uso)', async () => {
+  it('the workshop owner can still do it (control: permission must not be the only barrier to use)', async () => {
     seed('owner')
     const res = await run(MONEY_ROUTES[0]!)
     expect(res.status).toBe(200)
   })
 })
 
-describe('S3: organization_id vindo do cliente é ignorado', () => {
-  it('query ?organization_id=org-b não dá acesso a lançamento da outra oficina (404)', async () => {
+describe('S3: organization_id coming from the client is ignored', () => {
+  it('query ?organization_id=org-b does not grant access to an entry from the other workshop (404)', async () => {
     const res = await callHandler('server/api/financial/[id]/pay.post.ts', fakeEvent({ method: 'POST', cookies, params: { id: 'exp-b' }, query: { organization_id: 'org-b' } }))
     expect(res.status).toBe(404)
     expect(balanceB()).toBe(50)
   })
-  it('body.organization_id=org-b no recebimento avulso grava na org A da sessão', async () => {
+  it('body.organization_id=org-b in the one-off receipt is stored in the session org A', async () => {
     const res = await callHandler(`${SO}/receive-extra-payment.post.ts`, fakeEvent({ method: 'POST', cookies, params: { id: 'o1' }, body: { amount: 10, bankAccountId: 'acc-a', paymentMethod: 'pix', organization_id: 'org-b' } }))
     expect(res.status).toBe(200)
     const created = [...fake.tables.service_order_installments!, ...fake.tables.financial_transactions!.filter(t => t.service_order_id === 'o1')]
@@ -132,14 +132,14 @@ describe('S3: organization_id vindo do cliente é ignorado', () => {
     expect(created.every(x => x.organization_id === 'org-a')).toBe(true)
     expect(balanceB()).toBe(50)
   })
-  it('body.organization_id no pagamento de comissão em lote não paga registro da outra oficina', async () => {
+  it('body.organization_id in the batch commission payment does not pay a record from the other workshop', async () => {
     const res = await callHandler('server/api/financial/pay-commissions-bulk.post.ts', fakeEvent({ method: 'POST', cookies, body: { registroIds: ['cm-b'], organization_id: 'org-b' } }))
     expect((res.body as any).data).toMatchObject({ paidCount: 0, failedCount: 1 })
     expect(fake.tables.employee_financial_records!.find(r => r.id === 'cm-b')!.status).toBe('pending')
   })
 })
 
-describe('S4: conta bancária de outra organização nunca é movimentada', () => {
+describe('S4: bank account from another organization is never moved', () => {
   const FOREIGN: Route[] = [
     { name: 'down-payment', file: `${SO}/down-payment.post.ts`, params: { id: 'o-open' }, body: { amount: 50, bankAccountId: 'acc-b', paymentMethod: 'pix' } },
     { name: 'process-payment', file: `${SO}/process-payment.post.ts`, params: { id: 'o1' }, body: { paymentMethod: 'pix', bankAccountId: 'acc-b', installments: [{ amount: 300, status: 'paid' }] } },
@@ -151,7 +151,7 @@ describe('S4: conta bancária de outra organização nunca é movimentada', () =
     { name: 'pay-entries-bulk (lançamento → conta alheia)', file: 'server/api/financial/pay-entries-bulk.post.ts', body: { entryIds: ['exp-xacc'] } }
   ]
   for (const r of FOREIGN) {
-    it(`${r.name}: saldo e extrato da org B ficam intactos`, async () => {
+    it(`${r.name}: org B balance and statement stay intact`, async () => {
       seed('owner')
       await run(r)
       expect(balanceB()).toBe(50)
@@ -160,27 +160,27 @@ describe('S4: conta bancária de outra organização nunca é movimentada', () =
   }
 })
 
-describe('S6: varredura estática das escritas financeiras', () => {
+describe('S6: static scan of financial writes', () => {
   const TOUCHES_MONEY = /from\(\s*['"](financial_transactions|bank_accounts|bank_account_statements|service_order_installments|employee_financial_records)['"]\s*\)/
   const moneyWriters = listHandlers().filter(h => h.size > 0 && h.method && WRITE_METHODS.has(h.method) && TOUCHES_MONEY.test(h.source))
 
-  it('há escritas financeiras para analisar', () => {
+  it('there are financial writes to analyze', () => {
     expect(moneyWriters.length).toBeGreaterThan(15)
   })
-  it('as rotas de dinheiro listadas neste arquivo existem (a lista não envelhece)', () => {
+  it('the money routes listed in this file exist (the list does not go stale)', () => {
     const files = new Set(listHandlers().map(h => h.file))
     for (const r of MONEY_ROUTES) expect(files.has(r.file), r.file).toBe(true)
   })
-  it('toda escrita financeira resolve a organização da sessão (resolveOrganizationId/requireOrgPermission/requireOwner)', () => {
+  it('every financial write resolves the session organization (resolveOrganizationId/requireOrgPermission/requireOwner)', () => {
     const missing = moneyWriters.filter(h => !/\b(resolveOrganizationId|requireOrgPermission|requireOwner)\b/.test(h.source)).map(h => h.file)
     expect(missing, `Sem organização da sessão:\n${missing.join('\n')}`).toEqual([])
   })
-  it('nenhuma escrita financeira lê organization_id do corpo/query da requisição', () => {
+  it('no financial write reads organization_id from the request body/query', () => {
     const leaky = moneyWriters.filter(h => /(body|query)\??\.(organization_id|organizationId)\b/.test(h.source)).map(h => h.file)
     expect(leaky, `Confia no organization_id do cliente:\n${leaky.join('\n')}`).toEqual([])
   })
   // Mesma causa do KF-09, visão focada em dinheiro: lista o que ainda não pede permissão por papel.
-  it.fails('KF-09 (foco financeiro): toda escrita que mexe em dinheiro exige requireOrgPermission/requireOwner', () => {
+  it.fails('KF-09 (financial focus): every write that touches money requires requireOrgPermission/requireOwner', () => {
     const open = moneyWriters.filter(h => !PERMISSION_GUARDS.test(h.source)).map(h => h.file)
     expect(open, `Sem permissão por papel (${open.length}):\n${open.join('\n')}`).toEqual([])
   })

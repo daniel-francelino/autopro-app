@@ -4,8 +4,8 @@ import { expect, skipUnlessAuth, test } from './support/fixtures'
 
 skipUnlessAuth(test)
 
-test.describe('Fluxo: entrar → usar → sair', () => {
-  test('admin da oficina entra pelo formulário e cai no dashboard', async ({ page, world }) => {
+test.describe('Flow: sign in → use → sign out', () => {
+  test('workshop admin signs in via the form and lands on the dashboard', async ({ page, world }) => {
     const user = world.users.admin
     await page.goto('/login')
     await page.getByLabel('Email').fill(user.email)
@@ -15,7 +15,7 @@ test.describe('Fluxo: entrar → usar → sair', () => {
     await expect(page.getByRole('heading', { name: 'Dashboard' }).first()).toBeVisible()
   })
 
-  test('senha errada de um usuário que existe é recusada e não cria sessão', async ({ page, context, world }) => {
+  test('wrong password for an existing user is refused and creates no session', async ({ page, context, world }) => {
     const user = world.users.admin
     await page.goto('/login')
     await page.getByLabel('Email').fill(user.email)
@@ -25,7 +25,7 @@ test.describe('Fluxo: entrar → usar → sair', () => {
     expect((await context.cookies()).some(c => c.name === 'sb-access-token')).toBe(false)
   })
 
-  test('sair encerra a sessão: a área protegida volta a pedir login', async ({ page, loginAs }) => {
+  test('signing out ends the session: the protected area asks for login again', async ({ page, loginAs }) => {
     const user = await loginAs('admin')
     await page.goto('/app')
     await expect(page).toHaveURL(/\/app(\/|$)/)
@@ -40,7 +40,7 @@ test.describe('Fluxo: entrar → usar → sair', () => {
     expect(me.status()).toBe(401)
   })
 
-  test('com sessão ativa, /login redireciona para a área do usuário', async ({ page, loginAs }) => {
+  test('with an active session, /login redirects to the user area', async ({ page, loginAs }) => {
     await loginAs('admin')
     await page.goto('/login')
     await expect(page).toHaveURL(/\/app(\/|$)/)

@@ -13,7 +13,7 @@ afterAll(async () => {
 })
 
 describe.skipIf(!available)('banco: migrations e regras de integridade', () => {
-  it('as tabelas centrais existem (migrations sobem em banco limpo — R8)', async () => {
+  it('core tables exist (migrations run on a clean database — R8)', async () => {
     const tables = ['organizations', 'user_profiles', 'roles', 'actions', 'role_actions', 'service_orders', 'service_order_installments',
       'financial_transactions', 'bank_accounts', 'bank_account_statements', 'employees', 'subscriptions']
     for (const table of tables) {
@@ -22,7 +22,7 @@ describe.skipIf(!available)('banco: migrations e regras de integridade', () => {
     }
   })
 
-  it('número de OS: RPC devolve OS<n+1> e respeita o piso da organização', async () => {
+  it('OS number: RPC returns OS<n+1> and respects the organization floor', async () => {
     const org = await createOrg({ initial_service_order_number: 4000 })
     created.push(org.id)
     const first = await adminDb().rpc('next_service_order_number', { p_organization_id: org.id })
@@ -32,7 +32,7 @@ describe.skipIf(!available)('banco: migrations e regras de integridade', () => {
     expect(second.data).toBe('OS4001')
   })
 
-  it('duas OS com o mesmo número na mesma organização são rejeitadas; em organizações diferentes, aceitas', async () => {
+  it('two OS with the same number in the same organization are rejected; in different organizations, accepted', async () => {
     const [a, b] = [await createOrg(), await createOrg()]
     created.push(a.id, b.id)
     expect((await createServiceOrder(a.id, 'OS1')).error).toBeNull()
@@ -40,7 +40,7 @@ describe.skipIf(!available)('banco: migrations e regras de integridade', () => {
     expect((await createServiceOrder(b.id, 'OS1')).error).toBeNull()
   })
 
-  it('número de parcela pode ser reaproveitado após soft delete (índice parcial)', async () => {
+  it('installment number can be reused after soft delete (partial index)', async () => {
     const org = await createOrg()
     created.push(org.id)
     const { data: so } = await createServiceOrder(org.id, 'OS1')
@@ -54,7 +54,7 @@ describe.skipIf(!available)('banco: migrations e regras de integridade', () => {
     expect((await adminDb().from('service_order_installments').insert(row(1))).error).toBeNull()
   })
 
-  it('assinatura ativa por organização é única', async () => {
+  it('active subscription per organization is unique', async () => {
     const org = await createOrg()
     created.push(org.id)
     await createSubscription(org.id, 'starter')
@@ -62,7 +62,7 @@ describe.skipIf(!available)('banco: migrations e regras de integridade', () => {
     expect(second.error).not.toBeNull()
   })
 
-  it('saldo inicial da conta é preservado', async () => {
+  it('initial account balance is preserved', async () => {
     const org = await createOrg()
     created.push(org.id)
     const acc = await createBankAccount(org.id, 250)
@@ -72,5 +72,5 @@ describe.skipIf(!available)('banco: migrations e regras de integridade', () => {
 })
 
 describe.skipIf(available)('banco (api) indisponível', () => {
-  it.skip(`PULADO: ${inject('apiSkipReason')}`, () => {})
+  it.skip(`SKIPPED: ${inject('apiSkipReason')}`, () => {})
 })

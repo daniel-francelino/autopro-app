@@ -101,8 +101,8 @@ const statements = (acc = 'acc-a') => fake.tables.bank_account_statements!.filte
 const signed = (acc = 'acc-a') => Number(statements(acc).reduce((s, x) => s + (x.transaction_type === 'income' ? 1 : -1) * Number(x.amount), 0).toFixed(2))
 const expectI10 = (start: number, acc = 'acc-a') => expect(Number((balance(acc) - start).toFixed(2))).toBe(signed(acc))
 
-describe('P45 / KF-43: pagar compra (decisão de produto)', () => {
-  it('hoje só muda o status da compra: não cria lançamento, extrato nem mexe no saldo', async () => {
+describe('P45 / KF-43: pay purchase (product decision)', () => {
+  it('today it only changes the purchase status: does not create an entry, statement or touch the balance', async () => {
     const r = await post(H.purchasePay, { id: 'pu1' }, { payment_date: '2026-03-15' })
     expect(r.status).toBe(200)
     expect(fake.tables.purchases!.find(p => p.id === 'pu1')).toMatchObject({ payment_status: 'paid', payment_date: '2026-03-15' })
@@ -110,18 +110,18 @@ describe('P45 / KF-43: pagar compra (decisão de produto)', () => {
     expect(statements()).toHaveLength(0)
     expect(fake.tables.financial_transactions!.filter(t => t.purchase_id === 'pu1')).toHaveLength(0)
   })
-  it('pagar duas vezes → 400', async () => {
+  it('paying twice → 400', async () => {
     await post(H.purchasePay, { id: 'pu1' }, {})
     expect((await post(H.purchasePay, { id: 'pu1' }, {})).status).toBe(400)
   })
-  it('compra de outra organização → 404 e nada muda', async () => {
+  it('purchase from another organization → 404 and nothing changes', async () => {
     expect((await post(H.purchasePay, { id: 'pu-b' }, {})).status).toBe(404)
     expect(fake.tables.purchases!.find(p => p.id === 'pu-b')!.payment_status).toBe('pending')
   })
 })
 
-describe('P46: financial/:id/pay (regressão KF-18)', () => {
-  it('despesa: saldo −valor, 1 extrato com antes/depois, lançamento pago', async () => {
+describe('P46: financial/:id/pay (KF-18 regression)', () => {
+  it('expense: balance −amount, 1 statement with before/after, entry paid', async () => {
     const r = await post(H.finPay, { id: 'exp1' })
     expect(r.status).toBe(200)
     expect(balance()).toBe(920)
@@ -130,30 +130,30 @@ describe('P46: financial/:id/pay (regressão KF-18)', () => {
     expect(tx('exp1').status).toBe('paid')
     expectI10(1000)
   })
-  it('receita: saldo +valor', async () => {
+  it('income: balance +amount', async () => {
     await post(H.finPay, { id: 'inc1' })
     expect(balance()).toBe(1120)
     expectI10(1000)
   })
-  it('já pago → 400 e o saldo não se move; pagar duas vezes movimenta uma só vez', async () => {
+  it('already paid → 400 and balance does not move; paying twice moves it only once', async () => {
     expect((await post(H.finPay, { id: 'paid1' })).status).toBe(400)
     await post(H.finPay, { id: 'exp1' })
     expect((await post(H.finPay, { id: 'exp1' })).status).toBe(400)
     expect(balance()).toBe(920)
     expect(statements()).toHaveLength(1)
   })
-  it('lançamento de outra organização → 404', async () => {
+  it('entry from another organization → 404', async () => {
     expect((await post(H.finPay, { id: 'exp-b' })).status).toBe(404)
     expect(balance('acc-b')).toBe(50)
     expect(tx('exp-b').status).toBe('pending')
   })
-  it('sem conta bancária: marca pago e não gera extrato', async () => {
+  it('no bank account: marks as paid and creates no statement', async () => {
     await post(H.finPay, { id: 'noacc' })
     expect(tx('noacc').status).toBe('paid')
     expect(statements()).toHaveLength(0)
     expect(balance()).toBe(1000)
   })
-  it('se o extrato já existe (criado por outro fluxo), não duplica nem mexe no saldo', async () => {
+  it('if the statement already exists (created by another flow), does not duplicate it or touch the balance', async () => {
     fake.tables.bank_account_statements!.push({ id: 's0', organization_id: 'org-a', bank_account_id: 'acc-a', financial_transaction_id: 'exp1', amount: 80, transaction_type: 'expense' })
     await post(H.finPay, { id: 'exp1' })
     expect(statements()).toHaveLength(1)
@@ -164,21 +164,21 @@ describe('P46: financial/:id/pay (regressão KF-18)', () => {
 describe('P47: financial/pay-entries-bulk', () => {
   const bulk = (entryIds: unknown) => post(H.bulk, {}, { entryIds })
 
-  it('lote misto (despesa + receita): contadores, saldo e extrato fecham (I10)', async () => {
+  it('mixed batch (expense + income): counters, balance and statement reconcile (I10)', async () => {
     const r = await bulk(['exp1', 'inc1'])
     expect((r.body as any).data).toMatchObject({ paidCount: 2, skippedCount: 0, failedCount: 0 })
     expect(balance()).toBe(1040) // −80 + 120
     expect(statements()).toHaveLength(2)
     expectI10(1000)
   })
-  it('item pago, inexistente e de outra organização não derrubam o lote; só o válido movimenta', async () => {
+  it('paid, nonexistent and other-organization items do not break the batch; only the valid one moves', async () => {
     const r = await bulk(['exp1', 'paid1', 'nao-existe', 'exp-b'])
     expect((r.body as any).data).toMatchObject({ paidCount: 1, skippedCount: 1, failedCount: 2 })
     expect(balance()).toBe(920)
     expect(balance('acc-b')).toBe(50)
     expect(tx('exp-b').status).toBe('pending')
   })
-  it('ids repetidos contam uma vez; repetir o lote inteiro não paga de novo', async () => {
+  it('repeated ids count once; repeating the whole batch does not pay again', async () => {
     await bulk(['exp1', 'exp1', 'exp1'])
     expect(balance()).toBe(920)
     const again = await bulk(['exp1'])
@@ -186,24 +186,24 @@ describe('P47: financial/pay-entries-bulk', () => {
     expect(balance()).toBe(920)
     expect(statements()).toHaveLength(1)
   })
-  it('lista vazia ou acima de 200 → 400', async () => {
+  it('empty list or more than 200 → 400', async () => {
     expect((await bulk([])).status).toBe(400)
     expect((await bulk(Array.from({ length: 201 }, (_, i) => `x${i}`))).status).toBe(400)
   })
-  it('lançamento sem conta é pago sem extrato; com extrato prévio não duplica', async () => {
+  it('entry without account is paid without statement; with a prior statement it is not duplicated', async () => {
     fake.tables.bank_account_statements!.push({ id: 's0', organization_id: 'org-a', bank_account_id: 'acc-a', financial_transaction_id: 'exp1', amount: 80, transaction_type: 'expense' })
     const r = await bulk(['noacc', 'exp1'])
     expect((r.body as any).data).toMatchObject({ paidCount: 2, extratoSkippedCount: 1 })
     expect(statements()).toHaveLength(1)
     expect(balance()).toBe(1000)
   })
-  it('comissão vinculada (employee_financial_record_id) é marcada como paga junto', async () => {
+  it('linked commission (employee_financial_record_id) is marked as paid together', async () => {
     Object.assign(tx('exp1'), { employee_financial_record_id: 'cm1' })
     await bulk(['exp1'])
     expect(rec('cm1')!.status).toBe('paid')
   })
   // KF-41: igual ao KF-30, mas no pagamento em lote — o saldo é somado sem arredondar.
-  it.fails('KF-41: 10 receitas de R$ 0,10 pagas em lote somam exatamente R$ 1,00 no saldo', async () => {
+  it.fails('KF-41: 10 incomes of R$ 0,10 paid in a batch sum exactly R$ 1,00 in the balance', async () => {
     const ids = Array.from({ length: 10 }, (_, i) => `c${i}`)
     for (const id of ids) fake.tables.financial_transactions!.push({ id, ...org('org-a'), type: 'income', status: 'pending', amount: 0.1, due_date: '2026-03-10', bank_account_id: 'acc-a' })
     await bulk(ids)
@@ -211,9 +211,9 @@ describe('P47: financial/pay-entries-bulk', () => {
   })
 })
 
-describe('P48 / KF-42: excluir lançamento já pago', () => {
+describe('P48 / KF-42: delete already paid entry', () => {
   // Pago pelo fluxo normal (saldo e extrato movidos); depois o usuário exclui o lançamento.
-  it.fails('KF-42: excluir uma despesa paga devolve o saldo e remove/estorna o extrato (I10)', async () => {
+  it.fails('KF-42: deleting a paid expense restores the balance and removes/reverses the statement (I10)', async () => {
     await post(H.finPay, { id: 'exp1' })
     expect(balance()).toBe(920)
     const r = await post(H.finDelete, { id: 'exp1' }, { reason: 'lançado por engano' }, 'DELETE')
@@ -221,21 +221,21 @@ describe('P48 / KF-42: excluir lançamento já pago', () => {
     expect(tx('exp1').deleted_at).toBeTruthy()
     expect(balance()).toBe(1000)
   })
-  it('excluir exige motivo (400) e lançamento de outra organização é 404', async () => {
+  it('deleting requires a reason (400) and an entry from another organization is 404', async () => {
     expect((await post(H.finDelete, { id: 'exp1' }, {}, 'DELETE')).status).toBe(400)
     expect((await post(H.finDelete, { id: 'exp-b' }, { reason: 'x' }, 'DELETE')).status).toBe(404)
   })
-  it('excluir despesa ainda pendente não mexe no saldo', async () => {
+  it('deleting a still-pending expense does not touch the balance', async () => {
     expect((await post(H.finDelete, { id: 'exp1' }, { reason: 'duplicada' }, 'DELETE')).status).toBe(200)
     expect(tx('exp1').deleted_at).toBeTruthy()
     expect(balance()).toBe(1000)
   })
 })
 
-describe('C37 / C38: pagar uma comissão (reports/commissions/:id/pay)', () => {
+describe('C37 / C38: pay a commission (reports/commissions/:id/pay)', () => {
   const pay = (id: string, body: unknown = {}) => post(H.commPay, { id }, body)
 
-  it('C37: cria despesa "Salários" paga, extrato, baixa o saldo e liga o registro à transação', async () => {
+  it('C37: creates a paid "Salários" expense, statement, reduces the balance and links the record to the transaction', async () => {
     const r = await pay('cm1', { paymentDate: '2026-03-20' })
     expect(r.status).toBe(200)
     const t = fake.tables.financial_transactions!.find(x => x.employee_financial_record_id === 'cm1')!
@@ -245,31 +245,31 @@ describe('C37 / C38: pagar uma comissão (reports/commissions/:id/pay)', () => {
     expect(statements()[0]).toMatchObject({ previous_balance: 1000, balance_after: 900, amount: 100, transaction_type: 'expense' })
     expectI10(1000)
   })
-  it('C38: pagar duas vezes (duplo clique) → 400 e o saldo cai uma única vez', async () => {
+  it('C38: paying twice (double click) → 400 and the balance drops only once', async () => {
     await pay('cm1')
     expect((await pay('cm1')).status).toBe(400)
     expect(balance()).toBe(900)
     expect(fake.tables.financial_transactions!.filter(x => x.employee_financial_record_id === 'cm1')).toHaveLength(1)
   })
-  it('comissão já paga → 400, de outra organização → 404', async () => {
+  it('commission already paid → 400, from another organization → 404', async () => {
     expect((await pay('cm-paid')).status).toBe(400)
     expect((await pay('cm-b')).status).toBe(404)
     expect(rec('cm-b')!.status).toBe('pending')
     expect(balance()).toBe(1000)
   })
-  it('conta bancária de outra organização é recusada e nada é gravado', async () => {
+  it('bank account from another organization is refused and nothing is stored', async () => {
     const r = await pay('cm1', { bankAccountId: 'acc-b' })
     expect(r.status).toBe(400)
     expect(balance('acc-b')).toBe(50)
     expect(rec('cm1')!.status).toBe('pending')
     expect(fake.tables.financial_transactions!.filter(x => x.employee_financial_record_id === 'cm1')).toHaveLength(0)
   })
-  it('sem conta informada usa a primeira conta ativa da própria organização', async () => {
+  it('without an account, uses the first active account of the own organization', async () => {
     await pay('cm1')
     expect(balance('acc-a')).toBe(900)
     expect(balance('acc-b')).toBe(50)
   })
-  it('sem nenhuma conta ativa → 400 e a comissão continua pendente', async () => {
+  it('no active account → 400 and the commission stays pending', async () => {
     fake.tables.bank_accounts = fake.tables.bank_accounts!.filter(a => a.organization_id !== 'org-a')
     expect((await pay('cm1')).status).toBe(400)
     expect(rec('cm1')!.status).toBe('pending')
@@ -279,7 +279,7 @@ describe('C37 / C38: pagar uma comissão (reports/commissions/:id/pay)', () => {
 describe('C42: pay-commissions-bulk', () => {
   const bulk = (registroIds: unknown, extra: Record<string, unknown> = {}) => post(H.commBulk, {}, { registroIds, ...extra })
 
-  it('lote misto: paga só o pendente válido; pago e adiantamento são ignorados; outra org e inexistente falham', async () => {
+  it('mixed batch: pays only the valid pending one; paid and advance are ignored; other org and nonexistent fail', async () => {
     const r = await bulk(['cm1', 'cm-paid', 'adv1', 'cm-b', 'nao-existe'])
     expect((r.body as any).data).toMatchObject({ paidCount: 1, skippedCount: 2, failedCount: 2 })
     expect(balance()).toBe(900)
@@ -288,7 +288,7 @@ describe('C42: pay-commissions-bulk', () => {
     expect(rec('cm-b')!.status).toBe('pending')
     expectI10(1000)
   })
-  it('vários registros: uma despesa "Salários" e um extrato por registro; saldo cai pela soma', async () => {
+  it('multiple records: one "Salários" expense and one statement per record; balance drops by the sum', async () => {
     await bulk(['cm1', 'cm2'])
     expect(balance()).toBe(860)
     const exp = fake.tables.financial_transactions!.filter(t => t.employee_financial_record_id)
@@ -297,19 +297,19 @@ describe('C42: pay-commissions-bulk', () => {
     expect(statements()).toHaveLength(2)
     expectI10(1000)
   })
-  it('repetir o lote não paga de novo (idempotente)', async () => {
+  it('repeating the batch does not pay again (idempotent)', async () => {
     await bulk(['cm1'])
     const again = await bulk(['cm1'])
     expect((again.body as any).data).toMatchObject({ paidCount: 0, skippedCount: 1 })
     expect(balance()).toBe(900)
   })
-  it('conta de outra organização → 400 e nada é pago', async () => {
+  it('account from another organization → 400 and nothing is paid', async () => {
     const r = await bulk(['cm1'], { contaBancariaId: 'acc-b' })
     expect(r.status).toBe(400)
     expect(balance('acc-b')).toBe(50)
     expect(rec('cm1')!.status).toBe('pending')
   })
-  it('falha no meio do registro desfaz saldo, extrato e transação (rollback)', async () => {
+  it('failure in the middle of the record rolls back balance, statement and transaction (rollback)', async () => {
     // o registro "some" entre a leitura e a escrita final: o update devolve 0 linhas
     const original = fake.client.from.bind(fake.client)
     ;(fake.client as any).from = (table: string) => {
@@ -330,16 +330,16 @@ describe('C42: pay-commissions-bulk', () => {
     const t = fake.tables.financial_transactions!.find(x => x.employee_financial_record_id === 'cm1')
     expect(t?.deleted_at).toBeTruthy()
   })
-  it('lista vazia ou acima de 200 → 400', async () => {
+  it('empty list or more than 200 → 400', async () => {
     expect((await bulk([])).status).toBe(400)
     expect((await bulk(Array.from({ length: 201 }, (_, i) => `x${i}`))).status).toBe(400)
   })
 })
 
-describe('E18: cancelar OS (cancel.post)', () => {
+describe('E18: cancel OS (cancel.post)', () => {
   const cancel = (id: string) => post(H.cancel, { id })
 
-  it('OS sem pagamento: cancela, zera o snapshot e recolhe as comissões pendentes', async () => {
+  it('OS without payment: cancels, resets the snapshot and reverts pending commissions', async () => {
     const r = await cancel('o1')
     expect(r.status).toBe(200)
     const o = fake.tables.service_orders!.find(x => x.id === 'o1')!
@@ -347,20 +347,20 @@ describe('E18: cancelar OS (cancel.post)', () => {
     expect(fake.tables.employee_financial_records!.filter(x => x.service_order_id === 'o1' && x.status === 'pending')).toHaveLength(0)
     expect((r.body as any).data.deleted.commissions).toBeGreaterThan(0)
   })
-  it('com pagamento (parcial ou total) é recusado (409): o usuário precisa desfazer o pagamento antes', async () => {
+  it('with payment (partial or full) is refused (409): the user must undo the payment first', async () => {
     Object.assign(fake.tables.service_orders!.find(x => x.id === 'o1')!, { payment_status: 'partial' })
     expect((await cancel('o1')).status).toBe(409)
     expect(fake.tables.service_orders!.find(x => x.id === 'o1')!.status).toBe('completed')
   })
-  it('com parcela cadastrada, mesmo "pending", é recusado (409)', async () => {
+  it('with a registered installment, even "pending", is refused (409)', async () => {
     fake.tables.service_order_installments!.push({ id: 'i1', ...org('org-a'), service_order_id: 'o1', amount: 1000, status: 'pending', kind: 'installment' })
     expect((await cancel('o1')).status).toBe(409)
   })
-  it('com recebimento avulso lançado na descrição "OS #número" é recusado (409)', async () => {
+  it('with a one-off receipt recorded in the description "OS #número" is refused (409)', async () => {
     fake.tables.financial_transactions!.push({ id: 'x', ...org('org-a'), type: 'income', status: 'paid', amount: 10, description: 'Recebimento OS #100' })
     expect((await cancel('o1')).status).toBe(409)
   })
-  it('já cancelada é idempotente; OS de outra organização → 404', async () => {
+  it('already cancelled is idempotent; OS from another organization → 404', async () => {
     await cancel('o1')
     const again = await cancel('o1')
     expect(again.status).toBe(200)
@@ -369,7 +369,7 @@ describe('E18: cancelar OS (cancel.post)', () => {
   })
   // KF-40: viola a invariante I3. Possível com liberação integral (commission_release_mode='full'): a comissão
   // é paga antes de a OS receber qualquer valor, e o cancelamento apaga o registro pago e estorna o dinheiro.
-  it.fails('KF-40: comissão já paga não é apagada nem estornada ao cancelar a OS', async () => {
+  it.fails('KF-40: commission already paid is not deleted or reversed when the OS is cancelled', async () => {
     fake.tables.financial_transactions!.push({ id: 'ftc', ...org('org-a'), type: 'expense', status: 'paid', amount: 60, employee_financial_record_id: 'cm-paid', bank_account_id: 'acc-a' })
     fake.tables.bank_account_statements!.push({ id: 'sc', organization_id: 'org-a', bank_account_id: 'acc-a', financial_transaction_id: 'ftc', amount: 60, transaction_type: 'expense', previous_balance: 1060, balance_after: 1000 })
     Object.assign(rec('cm-paid')!, { financial_transaction_id: 'ftc' })
@@ -379,7 +379,7 @@ describe('E18: cancelar OS (cancel.post)', () => {
   })
 })
 
-describe('E19 / C43: generate-commissions manual', () => {
+describe('E19 / C43: manual generate-commissions', () => {
   const generate = (body: unknown = {}) => post(H.generate, { id: 'o1' }, body)
   const pendingTotal = () => Number(fake.tables.employee_financial_records!.filter(r => r.service_order_id === 'o1' && r.record_type === 'commission' && r.status === 'pending' && ['cm1', 'cm2', 'cm-paid'].indexOf(String(r.id)) < 0).reduce((s, r) => s + Number(r.amount), 0).toFixed(2))
 
@@ -388,7 +388,7 @@ describe('E19 / C43: generate-commissions manual', () => {
     fake.tables.employee_financial_records = fake.tables.employee_financial_records!.filter(r => r.service_order_id !== 'o1')
   })
 
-  it('E19: chamar duas vezes não duplica registros nem valores', async () => {
+  it('E19: calling twice does not duplicate records or amounts', async () => {
     fake.tables.service_order_installments!.push({ id: 'i1', ...org('org-a'), service_order_id: 'o1', kind: 'installment', installment_number: 1, amount: 1000, status: 'paid' })
     await generate()
     const first = fake.tables.employee_financial_records!.filter(r => r.service_order_id === 'o1' && r.record_type === 'commission')
@@ -398,11 +398,11 @@ describe('E19 / C43: generate-commissions manual', () => {
     expect(second).toHaveLength(1)
     expect(Number(second[0]!.amount)).toBe(100)
   })
-  it('sem nada recebido não libera comissão', async () => {
+  it('nothing received does not release commission', async () => {
     await generate()
     expect(fake.tables.employee_financial_records!.filter(r => r.service_order_id === 'o1' && r.record_type === 'commission' && Number(r.amount) > 0)).toHaveLength(0)
   })
-  it('C43: com 40% recebido, o resultado manual é o mesmo do fluxo automático (R$ 40 de R$ 100)', async () => {
+  it('C43: with 40% received, the manual result equals the automatic flow (R$ 40 of R$ 100)', async () => {
     // fluxo automático
     await post(H.process, { id: 'o1' }, { paymentMethod: 'pix', bankAccountId: 'acc-a', installments: [{ amount: 400, status: 'paid' }, { amount: 600 }] })
     expect(pendingTotal()).toBe(40)
@@ -411,14 +411,14 @@ describe('E19 / C43: generate-commissions manual', () => {
     const manual = fake.tables.employee_financial_records!.filter(r => r.service_order_id === 'o1' && r.record_type === 'commission').map(r => ({ e: r.employee_id, a: Number(r.amount) }))
     expect(manual).toEqual(automatic)
   })
-  it('OS de outra organização → erro e nenhuma comissão criada', async () => {
+  it('OS from another organization → error and no commission created', async () => {
     const r = await post(H.generate, { id: 'o-b' }, {})
     expect(r.status).toBeGreaterThanOrEqual(400)
     expect(fake.tables.employee_financial_records!.filter(x => x.service_order_id === 'o-b')).toHaveLength(0)
   })
 })
 
-describe('E16: PATCH installments/:id (reagendar / ajustar valor)', () => {
+describe('E16: PATCH installments/:id (reschedule / adjust amount)', () => {
   const patch = (installmentId: string, body: unknown, orderId = 'o1') =>
     post('server/api/service-orders/[id]/installments/[installmentId].patch.ts', { id: orderId, installmentId }, body, 'PATCH')
   const inst = (id: string) => fake.tables.service_order_installments!.find(i => i.id === id)!
@@ -431,7 +431,7 @@ describe('E16: PATCH installments/:id (reagendar / ajustar valor)', () => {
     )
   })
 
-  it('parcela pendente: altera data e valor sem mexer em saldo, extrato nem status da OS', async () => {
+  it('pending installment: changes date and amount without touching balance, statement or OS status', async () => {
     const r = await patch('ip', { due_date: '2026-05-05', amount: 450 })
     expect(r.status).toBe(200)
     expect(inst('ip')).toMatchObject({ due_date: '2026-05-05', amount: 450 })
@@ -439,7 +439,7 @@ describe('E16: PATCH installments/:id (reagendar / ajustar valor)', () => {
     expect(statements()).toHaveLength(0)
     expect(fake.tables.service_orders!.find(o => o.id === 'o1')!.payment_status).toBe('pending')
   })
-  it('parcela parcial ou paga está travada (409): corrija cancelando o recebimento', async () => {
+  it('partial or paid installment is locked (409): fix it by cancelling the receipt', async () => {
     expect((await patch('ipart', { amount: 100 })).status).toBe(409)
     expect((await patch('ipaid', { due_date: '2026-06-01' })).status).toBe(409)
     expect(inst('ipart').amount).toBe(300)
@@ -449,10 +449,10 @@ describe('E16: PATCH installments/:id (reagendar / ajustar valor)', () => {
     expect((await patch('ip', { amount })).status).toBe(400)
     expect(inst('ip').amount).toBe(400)
   })
-  it('corpo sem data nem valor → 400', async () => {
+  it('body without date or amount → 400', async () => {
     expect((await patch('ip', {})).status).toBe(400)
   })
-  it('parcela de outra OS ou de outra organização → 404', async () => {
+  it('installment from another OS or another organization → 404', async () => {
     expect((await patch('ip', { amount: 10 }, 'o-b')).status).toBe(404)
     fake.tables.service_order_installments!.push({ id: 'ib', ...org('org-b'), service_order_id: 'o-b', amount: 50, status: 'pending' })
     expect((await patch('ib', { amount: 10 }, 'o-b')).status).toBe(404)
@@ -460,7 +460,7 @@ describe('E16: PATCH installments/:id (reagendar / ajustar valor)', () => {
   })
 })
 
-describe('P41: commission_release_mode="full" é uma via de mão única (por desenho)', () => {
+describe('P41: commission_release_mode="full" is a one-way street (by design)', () => {
   // Decisão de produto registrada no código ("One-way switch"). O teste documenta a consequência:
   // depois de desfazer o pagamento, a próxima entrada de dinheiro ainda libera 100% da comissão.
   const plan = (releaseCommissionsInFull?: boolean) => post(H.process, { id: 'o1' }, {
@@ -473,12 +473,12 @@ describe('P41: commission_release_mode="full" é uma via de mão única (por des
     fake.tables.employee_financial_records = fake.tables.employee_financial_records!.filter(r => r.service_order_id !== 'o1')
   })
 
-  it('com a opção ligada, 10% recebidos liberam 100% da comissão e o pedido fica em modo "full"', async () => {
+  it('with the option on, 10% received releases 100% of the commission and the order stays in "full" mode', async () => {
     await plan(true)
     expect(commissions()).toBe(100)
     expect(fake.tables.service_orders!.find(o => o.id === 'o1')!.commission_release_mode).toBe('full')
   })
-  it('depois de desfazer o pagamento o modo continua "full" e o próximo recebimento libera tudo de novo', async () => {
+  it('after undoing the payment the mode stays "full" and the next receipt releases everything again', async () => {
     await plan(true)
     const undo = await post('server/api/service-orders/[id]/payment.delete.ts', { id: 'o1' }, {}, 'DELETE')
     expect(undo.status).toBe(200)
@@ -489,7 +489,7 @@ describe('P41: commission_release_mode="full" é uma via de mão única (por des
   })
 })
 
-describe('Auditoria (Camada 2): antes/depois nas rotas de comissão e no cancelamento', () => {
+describe('Audit (Layer 2): before/after on commission routes and cancellation', () => {
   /** Chama o handler com um contexto de auditoria e devolve o que o plugin anexaria à linha. */
   async function audited(file: string, params: Record<string, string>, body: unknown = {}, method = 'POST') {
     const event = fakeEvent({ method, cookies, params, body }) as ReturnType<typeof fakeEvent> & { context: { audit: Record<string, any> } }
@@ -498,7 +498,7 @@ describe('Auditoria (Camada 2): antes/depois nas rotas de comissão e no cancela
     return { res, audit: event.context.audit }
   }
 
-  it('pagar comissão: guarda status antes/depois, transação, conta e saldo', async () => {
+  it('paying commission: stores status before/after, transaction, account and balance', async () => {
     const { res, audit } = await audited(H.commPay, { id: 'cm1' }, { paymentDate: '2026-03-20' })
     expect(res.status).toBe(200)
     expect(audit.resourceType).toBe('employee_financial_record')
@@ -507,18 +507,18 @@ describe('Auditoria (Camada 2): antes/depois nas rotas de comissão e no cancela
     expect(audit.changes.diff.status).toEqual({ from: 'pending', to: 'paid' })
     expect(audit.changes.extra).toMatchObject({ bank_account_id: 'acc-a', balance: { from: 1000, to: 900 } })
   })
-  it('pagar comissão que falha (já paga) não deixa antes/depois', async () => {
+  it('paying a commission that fails (already paid) leaves no before/after', async () => {
     const { res, audit } = await audited(H.commPay, { id: 'cm-paid' })
     expect(res.status).toBe(400)
     expect(audit.changes).toBeUndefined()
   })
-  it('excluir comissão: guarda o registro excluído (valor, funcionário, OS)', async () => {
+  it('deleting commission: stores the deleted record (amount, employee, OS)', async () => {
     const { res, audit } = await audited('server/api/reports/commissions/[id].delete.ts', { id: 'cm1' }, {}, 'DELETE')
     expect(res.status).toBe(200)
     expect(audit.resourceId).toBe('cm1')
     expect(audit.changes.before).toMatchObject({ id: 'cm1', amount: 100, employee_id: 'e1', service_order_id: 'o1' })
   })
-  it('generate-commissions: guarda a comissão por funcionário antes e depois do recálculo', async () => {
+  it('generate-commissions: stores the commission per employee before and after the recalculation', async () => {
     fake.tables.employee_financial_records = fake.tables.employee_financial_records!.filter(r => r.service_order_id !== 'o1')
     fake.tables.employee_financial_records!.push({ id: 'old', ...org('org-a'), employee_id: 'e1', record_type: 'commission', amount: 5, status: 'pending', service_order_id: 'o1' })
     fake.tables.service_order_installments!.push({ id: 'i1', ...org('org-a'), service_order_id: 'o1', kind: 'installment', installment_number: 1, amount: 1000, status: 'paid' })
@@ -530,7 +530,7 @@ describe('Auditoria (Camada 2): antes/depois nas rotas de comissão e no cancela
     // o recálculo complementa (R$ 5 já existentes + R$ 95), e o total do funcionário fecha o direito de R$ 100
     expect(audit.changes.diff.e1.to).toEqual([{ amount: 5, status: 'pending' }, { amount: 95, status: 'pending' }])
   })
-  it('cancelar OS: guarda o status antes/depois e o que foi recolhido', async () => {
+  it('cancelling OS: stores status before/after and what was reverted', async () => {
     const { res, audit } = await audited(H.cancel, { id: 'o1' })
     expect(res.status).toBe(200)
     expect(audit.changes.diff.status).toEqual({ from: 'completed', to: 'cancelled' })
@@ -538,14 +538,14 @@ describe('Auditoria (Camada 2): antes/depois nas rotas de comissão e no cancela
   })
 })
 
-describe('KF-44: excluir comissão já paga (reports/commissions/:id DELETE)', () => {
+describe('KF-44: delete already paid commission (reports/commissions/:id DELETE)', () => {
   // A rota apaga o registro sem olhar o status: a despesa "Salários" e o saldo continuam, e a comissão some do relatório.
-  it.fails('KF-44: comissão já paga não pode ser excluída (I3)', async () => {
+  it.fails('KF-44: already paid commission cannot be deleted (I3)', async () => {
     const res = await post('server/api/reports/commissions/[id].delete.ts', { id: 'cm-paid' }, {}, 'DELETE')
     expect(res.status).toBe(409)
     expect(rec('cm-paid')).toBeTruthy()
   })
-  it('comissão pendente pode ser excluída; de outra organização → 404', async () => {
+  it('pending commission can be deleted; from another organization → 404', async () => {
     expect((await post('server/api/reports/commissions/[id].delete.ts', { id: 'cm1' }, {}, 'DELETE')).status).toBe(200)
     expect(rec('cm1')).toBeUndefined()
     expect((await post('server/api/reports/commissions/[id].delete.ts', { id: 'cm-b' }, {}, 'DELETE')).status).toBe(404)

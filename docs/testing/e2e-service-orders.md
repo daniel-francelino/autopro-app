@@ -57,13 +57,13 @@ tests/e2e/service-orders/
     catalog.ts          # constrói o catálogo fixo por API (categorias, produtos, clientes, veículos, funcionários, planos, contas)
     pages/              # page objects: OrdersListPage, OrderFormModal, OrderDetail, PaymentModal, InstallmentsCard...
     db.ts               # leituras de asserção: saldo, extrato, parcelas, comissões, status
-  01-listagem.e2e.ts          05-detalhe-orcamento.e2e.ts      09-comissao.e2e.ts
-  02-criacao.e2e.ts           06-receber.e2e.ts                10-relatorios.e2e.ts
-  03-comissao-preview.e2e.ts  07-desfazer-cancelar.e2e.ts      11-permissoes-isolamento.e2e.ts
-  04-status-edicao.e2e.ts     08-parcelas-avulso-sinal.e2e.ts  12-volume-seed-demo.e2e.ts
+  01-listing.e2e.ts               05-detail-quote.e2e.ts           09-commission.e2e.ts
+  02-creation.e2e.ts              06-receive-payment.e2e.ts        10-reports.e2e.ts
+  03-commission-preview.e2e.ts    07-undo-cancel.e2e.ts            11-permissions-isolation.e2e.ts
+  04-status-editing.e2e.ts        08-installments-extra-down-payment.e2e.ts  12-volume-seed-demo.e2e.ts
 ```
 
-Nome do teste = ID do cenário + comportamento: `test('OS-C-03 desconto rateado reduz a comissão de quem tem regra por receita', …)`.
+Nome do teste = ID do cenário + comportamento: `test('OS-C-09 prorated discount reduces the commission of whoever has a revenue-based rule', …)`.
 
 ### 2.3 Convenções específicas
 

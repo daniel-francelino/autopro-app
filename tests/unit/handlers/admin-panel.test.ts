@@ -67,7 +67,7 @@ const GLOBAL_ROUTES: Array<[string, string]> = [
   ['POST', 'server/api/admin/feedbacks/[id]/respond.post.ts']
 ]
 
-describe('todas as rotas novas: só o owner', () => {
+describe('all new routes: owner only', () => {
   it.each([...ORG_ROUTES, ...GLOBAL_ROUTES])('%s %s → 401 sem sessão', async (method, file) => {
     expect((await callHandler(file, fakeEvent({ method, params: { id: ORG }, body: {} }))).status).toBe(401)
   })
@@ -79,26 +79,26 @@ describe('todas as rotas novas: só o owner', () => {
   })
 })
 
-describe('ficha da oficina', () => {
-  it('id que não é UUID → 400; oficina inexistente → 404', async () => {
+describe('workshop record', () => {
+  it('id that is not a UUID → 400; nonexistent workshop → 404', async () => {
     expect((await call('server/api/admin/organizations/[id].get.ts', 'GET', { params: { id: 'abc' } })).status).toBe(400)
     expect((await call('server/api/admin/organizations/[id].get.ts', 'GET', { params: { id: '99999999-9999-4999-8999-999999999999' } })).status).toBe(404)
   })
 
-  it('cabeçalho devolve a oficina', async () => {
+  it('header returns the workshop', async () => {
     const r = await call('server/api/admin/organizations/[id].get.ts', 'GET', { params: { id: ORG } })
     expect(r.status).toBe(200)
     expect(r.body).toMatchObject({ id: ORG, name: 'Oficina A', subscription: null })
   })
 
-  it('usuários trazem o nome do papel', async () => {
+  it('users include the role name', async () => {
     const r = await call('server/api/admin/organizations/[id]/users.get.ts', 'GET', { params: { id: ORG } })
     const users = (r.body as any).data as Array<Record<string, unknown>>
     expect(users.map(u => u.email).sort()).toEqual(['alvo@a.com', 'func@a.com'])
     expect(users[0]).toMatchObject({ role_name: 'Funcionário' })
   })
 
-  it('uso: devolve 6 meses e os módulos', async () => {
+  it('usage: returns 6 months and the modules', async () => {
     const r = await call('server/api/admin/organizations/[id]/usage.get.ts', 'GET', { params: { id: ORG } })
     expect(r.status).toBe(200)
     expect((r.body as any).service_orders_by_month).toHaveLength(6)
@@ -106,18 +106,18 @@ describe('ficha da oficina', () => {
   })
 })
 
-describe('suspender e reativar oficina', () => {
+describe('suspend and reactivate workshop', () => {
   const suspend = (reason?: string) => call('server/api/admin/organizations/[id]/suspend.post.ts', 'POST', { params: { id: ORG }, body: { reason } })
   const reactivate = (reason?: string) => call('server/api/admin/organizations/[id]/reactivate.post.ts', 'POST', { params: { id: ORG }, body: { reason } })
   const org = () => fake.tables.organizations![0]!
 
-  it('exige motivo (mínimo 5 caracteres) e não altera nada sem ele', async () => {
+  it('requires a reason (minimum 5 characters) and changes nothing without it', async () => {
     expect((await suspend()).status).toBe(400)
     expect((await suspend('abc')).status).toBe(400)
     expect(org().suspended_at).toBeNull()
   })
 
-  it('suspende com motivo, registra quem e quando; segunda vez → 409', async () => {
+  it('suspends with a reason, records who and when; second time → 409', async () => {
     const r = await suspend('Inadimplência há 60 dias')
     expect(r.status).toBe(200)
     expect(org()).toMatchObject({ suspended_reason: 'Inadimplência há 60 dias', suspended_by: 'owner@x.com' })
@@ -125,30 +125,30 @@ describe('suspender e reativar oficina', () => {
     expect((await suspend('de novo, sem efeito')).status).toBe(409)
   })
 
-  it('reativar limpa os campos; reativar quem não está suspenso → 409', async () => {
+  it('reactivating clears the fields; reactivating a non-suspended workshop → 409', async () => {
     expect((await reactivate('já regularizou')).status).toBe(409)
     await suspend('Inadimplência há 60 dias')
     expect((await reactivate('Pagamento confirmado')).status).toBe(200)
     expect(org()).toMatchObject({ suspended_at: null, suspended_reason: null, suspended_by: null })
   })
 
-  it('oficina inexistente → 404', async () => {
+  it('nonexistent workshop → 404', async () => {
     const r = await call('server/api/admin/organizations/[id]/suspend.post.ts', 'POST', { params: { id: '99999999-9999-4999-8999-999999999999' }, body: { reason: 'motivo válido' } })
     expect(r.status).toBe(404)
   })
 })
 
-describe('desativar e reativar usuário', () => {
+describe('deactivate and reactivate user', () => {
   const deactivate = (id: string, reason?: string) => call('server/api/admin/users/[id]/deactivate.post.ts', 'POST', { params: { id }, body: { reason } })
   const reactivate = (id: string, reason?: string) => call('server/api/admin/users/[id]/reactivate.post.ts', 'POST', { params: { id }, body: { reason } })
   const target = () => fake.tables.user_profiles!.find(p => p.id === USER_PROFILE)!
 
-  it('exige motivo', async () => {
+  it('requires a reason', async () => {
     expect((await deactivate(USER_PROFILE)).status).toBe(400)
     expect(target().is_active).toBe(true)
   })
 
-  it('desativa e reativa; repetir a mesma ação → 409', async () => {
+  it('deactivates and reactivates; repeating the same action → 409', async () => {
     expect((await deactivate(USER_PROFILE, 'Desligado da oficina')).status).toBe(200)
     expect(target().is_active).toBe(false)
     expect((await deactivate(USER_PROFILE, 'Desligado da oficina')).status).toBe(409)
@@ -157,21 +157,21 @@ describe('desativar e reativar usuário', () => {
     expect((await reactivate(USER_PROFILE, 'Voltou a trabalhar')).status).toBe(409)
   })
 
-  it('não age sobre owners nem sobre si mesmo', async () => {
+  it('does not act on owners or on itself', async () => {
     expect((await deactivate(OWNER_PROFILE, 'tentativa de abuso')).status).toBe(409)
     expect((await deactivate('55555555-0000-4000-8000-000000000000', 'não existe')).status).toBe(404)
     expect(fake.tables.user_profiles!.find(p => p.id === OWNER_PROFILE)!.is_active).toBe(true)
   })
 })
 
-describe('bateria GEO', () => {
+describe('GEO battery', () => {
   const run = (over: Record<string, unknown> = {}) => ({
     run_date: '2026-11-09', question_id: 19, engine: 'chatgpt', search_enabled: true,
     brand_mentioned: true, brand_linked: false, recommended: false, ...over
   })
   const post = (body: unknown) => call('server/api/admin/geo/runs.post.ts', 'POST', { body })
 
-  it('grava o texto da pergunta a partir da bateria fixa (ignora o enviado)', async () => {
+  it('stores the question text from the fixed battery (ignores the one sent)', async () => {
     const r = await post(run({ question_text: 'pergunta trocada' }))
     expect(r.status).toBe(200)
     const saved = fake.tables.geo_probe_runs![0]!
@@ -179,7 +179,7 @@ describe('bateria GEO', () => {
     expect(saved.created_by).toBe('owner@x.com')
   })
 
-  it('aceita lista e rejeita motor, pergunta e data inválidos', async () => {
+  it('accepts list and rejects invalid engine, question and date', async () => {
     expect((await post([run(), run({ question_id: 20 })])).body).toMatchObject({ saved: 2 })
     expect((await post(run({ engine: 'bing' }))).status).toBe(400)
     expect((await post(run({ question_id: 21 }))).status).toBe(400)
@@ -187,7 +187,7 @@ describe('bateria GEO', () => {
     expect((await post({})).status).toBe(400)
   })
 
-  it('o resumo calcula taxas das linhas gravadas', async () => {
+  it('the summary computes rates from the stored rows', async () => {
     fake.tables.geo_probe_runs!.push(
       { run_date: new Date().toISOString().slice(0, 10), engine: 'claude', search_enabled: true, brand_mentioned: true, brand_linked: true, recommended: false, price_correct: true, fiscal_correct: null },
       { run_date: new Date().toISOString().slice(0, 10), engine: 'claude', search_enabled: true, brand_mentioned: false, brand_linked: false, recommended: false, price_correct: null, fiscal_correct: null }
@@ -199,8 +199,8 @@ describe('bateria GEO', () => {
   })
 })
 
-describe('cobrança e sistema', () => {
-  it('summary devolve MRR e série de 12 meses', async () => {
+describe('billing and system', () => {
+  it('summary returns MRR and a 12-month series', async () => {
     fake.tables.subscriptions!.push({ status: 'active', plan_key: 'pro', monthly_amount: 120, start_date: '2026-01-01', cancellation_date: null, deleted_at: null })
     fake.tables.billing_invoices = []
     const r = await call('server/api/admin/billing/summary.get.ts', 'GET')
@@ -209,7 +209,7 @@ describe('cobrança e sistema', () => {
     expect((r.body as any).series).toHaveLength(12)
   })
 
-  it('system: lista owners e alerta quando há um só', async () => {
+  it('system: lists owners and alerts when there is only one', async () => {
     fake.tables.user_profiles = fake.tables.user_profiles!.filter(p => p.id !== OWNER_PROFILE)
     const r = await call('server/api/admin/system.get.ts', 'GET')
     expect(r.status).toBe(200)

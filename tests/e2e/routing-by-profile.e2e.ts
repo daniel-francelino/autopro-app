@@ -18,7 +18,7 @@ const cases: Array<{ who: UserKind, from: string, to: RegExp, why: string }> = [
   { who: 'pendingOnboarding', from: '/app/financial', to: /\/onboarding/, why: 'qualquer rota do /app respeita o onboarding' }
 ]
 
-test.describe('Fluxo: redirecionamento por perfil', () => {
+test.describe('Flow: redirect by profile', () => {
   for (const c of cases) {
     test(`${c.who}: ${c.from} → ${c.to} (${c.why})`, async ({ page, loginAs }) => {
       await loginAs(c.who)
@@ -28,15 +28,15 @@ test.describe('Fluxo: redirecionamento por perfil', () => {
   }
 })
 
-test.describe('Fluxo: a API respeita o mesmo perfil', () => {
-  test('admin de oficina → 403 nas rotas do dono da plataforma', async ({ apiAs }) => {
+test.describe('Flow: the API respects the same profile', () => {
+  test('workshop admin → 403 on platform owner routes', async ({ apiAs }) => {
     const api = await apiAs('admin')
     for (const path of ['/api/admin/audit-logs', '/api/admin/organizations', '/api/admin/users']) {
       const res = await api.get(path)
       expect(res.status, path).toBe(403)
     }
   })
-  test('dono da plataforma acessa a auditoria (período padrão)', async ({ apiAs }) => {
+  test('platform owner accesses the audit log (default period)', async ({ apiAs }) => {
     const api = await apiAs('platformOwner')
     const res = await api.get('/api/admin/audit-logs')
     expect(res.status).toBe(200)

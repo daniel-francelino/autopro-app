@@ -62,38 +62,38 @@ beforeEach(() => {
   auth.getUser.mockReset().mockResolvedValue({ data: { user: { id: 'u1', email: 'a@a.com' } }, error: null })
 })
 
-describe('E1–E8: criação e edição', () => {
-  it('E1: edição parcial mantém os campos não enviados', async () => {
+describe('E1–E8: creation and editing', () => {
+  it('E1: partial edit keeps the fields not sent', async () => {
     await save('o1', { notes: 'nova observação' })
     expect(order()).toMatchObject({ notes: 'nova observação', total_amount: 1000, status: 'completed', number: 'OS100' })
   })
   // E2 (número duplicado → sugestão via RPC next_service_order_number) exige Postgres real: ver tests/api.
-  it('E3: editar OS de outra organização → 404 e nada muda', async () => {
+  it('E3: editing OS from another organization → 404 and nothing changes', async () => {
     expect((await save('o-b', { notes: 'x' })).status).toBe(404)
   })
-  it('E4: sem orderData → 400', async () => {
+  it('E4: without orderData → 400', async () => {
     expect((await callHandler(SAVE, fakeEvent({ method: 'POST', cookies, body: {} }))).status).toBe(400)
   })
-  it('E5: ao salvar com responsáveis e itens, grava o direito de comissão da OS (commission_amount)', async () => {
+  it('E5: when saving with responsibles and items, stores the OS commission entitlement (commission_amount)', async () => {
     await save('o1', { items: [item(2000)], total_amount: 2000 })
     expect(order().commission_amount).toBe(200)
   })
-  it('E6: sem responsáveis, commission_amount zera', async () => {
+  it('E6: without responsibles, commission_amount resets to zero', async () => {
     await save('o1', { responsible_employees: [] })
     expect(order().commission_amount).toBe(0)
   })
-  it('E7: organization_id do corpo é ignorado', async () => {
+  it('E7: organization_id in the body is ignored', async () => {
     await save('o1', { organization_id: 'org-b' })
     expect(order().organization_id).toBe('org-a')
   })
-  it('E8: criar OS nova devolve registro da organização do usuário', async () => {
+  it('E8: creating a new OS returns the record of the organization of the user', async () => {
     const r = await save(null, { number: '555', client_id: 'c1', total_amount: 0 })
     expect(r.status).toBe(200)
     expect(fake.tables.service_orders!.find(o => o.number === 'OS555')).toMatchObject({ organization_id: 'org-a', status: 'open', payment_status: 'pending' })
   })
 })
 
-describe('E9–E12: edição de OS que já tem pagamento', () => {
+describe('E9–E12: editing OS that already has payment', () => {
   async function paidHalf() {
     // Plano de 1 parcela de 1000; recebe 500 → comissão 50
     const { default: _ } = { default: 0 }
@@ -101,32 +101,32 @@ describe('E9–E12: edição de OS que já tem pagamento', () => {
     await callHandler(PAY, fakeEvent({ method: 'POST', cookies, params: { id: 'o1', installmentId: 'i1' }, body: { amount: 500 } }))
   }
 
-  it('E9: reabrir/editar observação de OS paga não altera pagamento nem comissão', async () => {
+  it('E9: reopening/editing the note of a paid OS does not change payment or commission', async () => {
     fake.tables.service_order_installments!.push({ id: 'i1', organization_id: 'org-a', service_order_id: 'o1', amount: 1000, status: 'paid', deleted_at: null })
     order().payment_status = 'paid'
     await save('o1', { notes: 'ok' })
     expect(order().payment_status).toBe('paid')
   })
-  it('E10: o desconto/itens salvos recalculam o snapshot por item mantendo override manual ativo', async () => {
+  it('E10: saved discount/items recalculate the per-item snapshot keeping the active manual override', async () => {
     order().commission_manual_adjustments_log = []
     await save('o1', { discount: 100 })
     expect(order().commission_amount).toBe(90)
   })
 
   // KF-37: o servidor aceita payment_status vindo do cliente — contraria a regra "payment_status é derivado das parcelas".
-  it.fails('KF-37: payment_status enviado no corpo é ignorado (vem sempre das parcelas)', async () => {
+  it.fails('KF-37: payment_status sent in the body is ignored (always comes from installments)', async () => {
     await save('o1', { payment_status: 'paid' })
     expect(order().payment_status).toBe('pending')
   })
   // KF-38: editar valor/itens depois de receber não reconcilia as comissões já liberadas (ficam velhas até o próximo pagamento).
-  it.fails('KF-38: reduzir o valor da OS depois de receber ajusta a comissão pendente', async () => {
+  it.fails('KF-38: reducing the OS amount after receiving adjusts the pending commission', async () => {
     await paidHalf()
     expect(commission()).toBe(50)
     await save('o1', { items: [item(400)], total_amount: 400 }) // 500 recebidos ≥ 400 → direito = 40
     expect(commission()).toBe(40)
   })
   // KF-39: aumentar o total de uma OS já quitada mantém payment_status = paid, e ela some dos devedores.
-  it.fails('KF-39: aumentar o total de OS quitada volta o status para parcial', async () => {
+  it.fails('KF-39: increasing the total of a settled OS reverts the status to partial', async () => {
     fake.tables.service_order_installments!.push({ id: 'i1', organization_id: 'org-a', service_order_id: 'o1', amount: 1000, status: 'paid', deleted_at: null })
     order().payment_status = 'paid'
     await save('o1', { items: [item(1500)], total_amount: 1500 })
@@ -134,8 +134,8 @@ describe('E9–E12: edição de OS que já tem pagamento', () => {
   })
 })
 
-describe('E13–E16: parcelas (excluir, patch) e reflexo no status/comissão', () => {
-  it('E13: excluir parcela PAGA devolve o saldo, recalcula status e recolhe comissão pendente', async () => {
+describe('E13–E16: installments (delete, patch) and effect on status/commission', () => {
+  it('E13: deleting a PAID installment restores the balance, recalculates status and reverts pending commission', async () => {
     fake.tables.service_order_installments!.push({ id: 'i1', organization_id: 'org-a', service_order_id: 'o1', kind: 'installment', installment_number: 1, amount: 1000, status: 'pending', deleted_at: null })
     await callHandler(PAY, fakeEvent({ method: 'POST', cookies, params: { id: 'o1', installmentId: 'i1' }, body: { amount: 1000 } }))
     expect(commission()).toBe(100)
@@ -145,7 +145,7 @@ describe('E13–E16: parcelas (excluir, patch) e reflexo no status/comissão', (
     expect(order().payment_status).toBe('pending')
     expect(commission()).toBe(0)
   })
-  it('E14: excluir parcela de OUTRA organização → 404', async () => {
+  it('E14: deleting an installment from ANOTHER organization → 404', async () => {
     fake.tables.service_order_installments!.push({ id: 'ib', organization_id: 'org-b', service_order_id: 'o-b', amount: 1, status: 'pending', deleted_at: null })
     const r = await callHandler(DEL_INSTALLMENT, fakeEvent({ method: 'DELETE', cookies, params: { id: 'o-b', installmentId: 'ib' }, body: { reason: 'teste' } }))
     expect(r.status).toBe(404)

@@ -4,7 +4,7 @@
 // OS-REF1 with a R$ 140 discount = 1,260 → Ana 126, Bruno 198, Carla 40.
 import { expect, skipUnlessAuth, test } from './support/fixtures'
 import { monthStart } from './support/catalog'
-import { amountOf, commissionRecords, payFirstInstallment, receivePayment } from './support/helpers-comissao'
+import { amountOf, commissionRecords, payFirstInstallment, receivePayment } from './support/helpers-commission'
 import { OrdersPage } from './support/pages'
 
 skipUnlessAuth(test)

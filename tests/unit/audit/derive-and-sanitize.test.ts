@@ -1,4 +1,4 @@
-// Auditoria: derivação de action/resource e sanitização (docs/audit/audit-log-plan.md §5.3 e §5.6).
+// Auditoria: derivação de action/resource e sanitization (docs/audit/audit-log-plan.md §5.3 e §5.6).
 import { describe, expect, it } from 'vitest'
 import { deriveAction, normalizePattern, routePatternFor, singular } from '../../../server/utils/audit/derive'
 import { REDACTED, redact, sanitizeAndCap, MAX_REQUEST_BYTES } from '../../../server/utils/audit/sanitize'
@@ -25,22 +25,22 @@ describe('deriveAction', () => {
     expect(derive(method, pattern).action).toBe(expected)
   })
 
-  it('resource_type é o 1º segmento no singular e resource_id o último parâmetro', () => {
+  it('resource_type is the 1st segment in singular and resource_id the last parameter', () => {
     const r = derive('DELETE', '/api/service-orders/:id/installments/:installmentId', { id: 'o1', installmentId: 'i9' })
     expect(r.resourceType).toBe('service_order')
     expect(r.resourceId).toBe('i9')
   })
 
-  it('/api/admin/** usa o recurso que vem depois de admin', () => {
+  it('/api/admin/** uses the resource that comes after admin', () => {
     expect(derive('POST', '/api/admin/organizations/:id/suspend', { id: 'x' }).action).toBe('organization.suspend')
   })
 
   describe('overrides', () => {
-    it('POST /api/service-orders sem orderId é create', () => {
+    it('POST /api/service-orders without orderId is create', () => {
       expect(derive('POST', '/api/service-orders', {}, { number: '1' })).toMatchObject({ action: 'service_order.create' })
     })
 
-    it('POST /api/service-orders com orderId é update e usa o orderId como resource_id', () => {
+    it('POST /api/service-orders with orderId is update and uses orderId as resource_id', () => {
       expect(derive('POST', '/api/service-orders', {}, { orderId: 'o-7' })).toMatchObject({ action: 'service_order.update', resourceId: 'o-7' })
     })
 
@@ -62,24 +62,24 @@ describe('deriveAction', () => {
   })
 })
 
-describe('padrões de rota', () => {
-  it('normalizePattern troca qualquer parâmetro por :p', () => {
+describe('route patterns', () => {
+  it('normalizePattern replaces any parameter with :p', () => {
     expect(normalizePattern('/api/service-orders/:id/installments/:installmentId')).toBe('/api/service-orders/:p/installments/:p')
   })
 
-  it('sem rota casada, UUIDs e números viram :id e a query some', () => {
+  it('without matched route, UUIDs and numbers become :id and the query disappears', () => {
     const uuid = '123e4567-e89b-12d3-a456-426614174000'
     expect(routePatternFor(`/api/clients/${uuid}/notes/42?x=1`)).toBe('/api/clients/:id/notes/:id')
   })
 
-  it('singular: plurais irregulares usados nas rotas', () => {
+  it('singular: irregular plurals used in routes', () => {
     expect([singular('bonuses'), singular('taxes'), singular('categories'), singular('roles'), singular('status'), singular('financial')])
       .toEqual(['bonus', 'tax', 'category', 'role', 'status', 'financial'])
   })
 })
 
-describe('sanitização', () => {
-  it('redige senha, token, certificado e cartão em qualquer profundidade, sem diferenciar maiúsculas', () => {
+describe('sanitization', () => {
+  it('redacts password, token, certificate and card at any depth, case-insensitive', () => {
     const out = redact({
       email: 'a@a.com',
       Password: 'x',
@@ -94,19 +94,19 @@ describe('sanitização', () => {
     expect(JSON.stringify(out)).not.toMatch(/4111|"x"|"a"/)
   })
 
-  it('não altera o objeto original', () => {
+  it('does not change the original object', () => {
     const input = { password: 'segredo' }
     redact(input)
     expect(input.password).toBe('segredo')
   })
 
-  it('sobrevive a referência circular', () => {
+  it('survives a circular reference', () => {
     const a: Record<string, unknown> = { name: 'a' }
     a.self = a
     expect(() => redact(a)).not.toThrow()
   })
 
-  it('corpo acima do teto vira resumo e é marcado como truncado', () => {
+  it('body above the limit becomes a summary and is marked as truncated', () => {
     const big = { items: Array.from({ length: 2000 }, (_, i) => ({ i, text: 'x'.repeat(30) })), note: 'ok' }
     const capped = sanitizeAndCap(big, MAX_REQUEST_BYTES)
     expect(capped.truncated).toBe(true)
@@ -114,7 +114,7 @@ describe('sanitização', () => {
     expect(capped.value).toMatchObject({ items: { type: 'array', length: 2000 }, note: 'string' })
   })
 
-  it('corpo pequeno passa inteiro', () => {
+  it('small body passes through whole', () => {
     expect(sanitizeAndCap({ a: 1 }, MAX_REQUEST_BYTES)).toMatchObject({ truncated: false, value: { a: 1 } })
   })
 })
