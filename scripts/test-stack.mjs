@@ -71,7 +71,11 @@ function walk(dir, out = []) {
 /** Hash do que influencia o build: código-fonte, conteúdo, config, lockfile, .env* (o Nuxt os lê) e variáveis de build. */
 function buildKey() {
   const h = createHash('sha256')
-  const feed = (label, data) => { h.update(`${label}\0`); h.update(data); h.update('\0') }
+  const feed = (label, data) => {
+    h.update(`${label}\0`)
+    h.update(data)
+    h.update('\0')
+  }
   const files = [
     ...hashedDirs.filter(d => existsSync(join(root, d))).flatMap(d => walk(join(root, d))),
     ...hashedFiles.map(f => join(root, f)).filter(existsSync),
@@ -93,7 +97,11 @@ if (flags.includes('--print-build-key')) {
 }
 
 function readStamp() {
-  try { return JSON.parse(readFileSync(stampFile, 'utf8')).key } catch { return null }
+  try {
+    return JSON.parse(readFileSync(stampFile, 'utf8')).key
+  } catch {
+    return null
+  }
 }
 const outputOk = () => existsSync(join(root, '.output', 'server', 'index.mjs'))
 
@@ -109,7 +117,10 @@ function run(cmd, cmdArgs, env = {}, step = 'step') {
   const shell = process.platform === 'win32'
   const fullEnv = { ...process.env, ...env }
   const t0 = Date.now()
-  const finish = (status) => { timings.push({ step, seconds: Number(((Date.now() - t0) / 1000).toFixed(1)), status }); return status }
+  const finish = (status) => {
+    timings.push({ step, seconds: Number(((Date.now() - t0) / 1000).toFixed(1)), status })
+    return status
+  }
   if (verbose) {
     console.log(`\n$ ${cmd} ${cmdArgs.join(' ')}`)
     return finish(spawnSync(cmd, cmdArgs, { cwd: root, stdio: 'inherit', shell, env: fullEnv }).status ?? 1)
@@ -210,12 +221,14 @@ try {
     let buildCode = ensureBuild()
     // Seed demo opcional (1.265 OS): carregado só aqui, depois dos testes de banco, para não contaminá-los. Usa a mesma stack (docker compose exec db + gateway de stack.env).
     if (buildCode === 0 && withDemoSeed) buildCode = run('node', ['scripts/seed/load-demo.mjs'], {}, 'demo-seed')
-    const e2eCode = buildCode !== 0 ? buildCode : run('pnpm', ['exec', 'playwright', 'test', ...playwrightArgs], {
-      E2E_SERVER: 'prod',
-      E2E_SUPABASE_URL: url,
-      E2E_SUPABASE_ANON_KEY: stack.ANON_KEY,
-      E2E_SUPABASE_SERVICE_ROLE_KEY: stack.SERVICE_ROLE_KEY
-    }, 'e2e')
+    const e2eCode = buildCode !== 0
+      ? buildCode
+      : run('pnpm', ['exec', 'playwright', 'test', ...playwrightArgs], {
+          E2E_SERVER: 'prod',
+          E2E_SUPABASE_URL: url,
+          E2E_SUPABASE_ANON_KEY: stack.ANON_KEY,
+          E2E_SUPABASE_SERVICE_ROLE_KEY: stack.SERVICE_ROLE_KEY
+        }, 'e2e')
     code = code || e2eCode
   }
 } finally {
