@@ -16,6 +16,8 @@ const alias = {
 export default defineConfig({
   resolve: { alias },
   test: {
+    // Saída mínima por padrão; VERBOSE=1 mostra o detalhe de cada teste.
+    reporters: process.env.VERBOSE ? ['default'] : ['dot'],
     // Dois "projects": o que roda sem Docker (unit) e o que exige Supabase local (api).
     projects: [
       {
@@ -45,6 +47,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['lib/**/*.ts', 'server/utils/**/*.ts', 'app/utils/**/*.ts'],
+      reportsDirectory: '.test-output/coverage',
       reporter: ['text-summary', 'html']
     }
   }

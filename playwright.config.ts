@@ -14,11 +14,15 @@ export default defineConfig({
   testMatch: '**/*.e2e.ts',
   timeout: 60_000,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
+  outputDir: '.test-output/playwright',
+  // Saída mínima fora do CI; VERBOSE=1 volta ao 'list'.
+  reporter: process.env.CI
+    ? [['github'], ['html', { open: 'never', outputFolder: '.test-output/playwright-report' }]]
+    : process.env.VERBOSE ? 'list' : 'dot',
   use: {
     baseURL: `http://${HOST}:${PORT}`,
     trace: 'retain-on-failure',
-    video: 'retain-on-failure'
+    video: 'off'
   },
   projects: [
     { name: 'desktop', use: { ...devices['Desktop Chrome'] } },

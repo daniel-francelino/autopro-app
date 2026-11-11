@@ -5,7 +5,7 @@
 //   pnpm test:stack --no-build       reaproveita o .output do último build (só vale se o código não mudou)
 //   pnpm test:stack --project=desktop --grep money   o resto vai para o Playwright
 import { spawnSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { closeSync, mkdirSync, openSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -30,15 +30,41 @@ const stack = Object.fromEntries(
 )
 const url = `http://127.0.0.1:${stack.GATEWAY_PORT}`
 
-function run(cmd, cmdArgs, env = {}) {
-  console.log(`\n$ ${cmd} ${cmdArgs.join(' ')}`)
-  return spawnSync(cmd, cmdArgs, { cwd: root, stdio: 'inherit', shell: process.platform === 'win32', env: { ...process.env, ...env } }).status ?? 1
+const verbose = !!process.env.VERBOSE
+const logsDir = join(root, '.test-output', 'logs')
+mkdirSync(logsDir, { recursive: true })
+
+// Padrão: saída completa vai para .test-output/logs/<etapa>.log; o console mostra só o resumo.
+// Em falha, mostra as últimas linhas e o caminho do log. VERBOSE=1: stdio herdado (comportamento antigo).
+function run(cmd, cmdArgs, env = {}, step = 'step') {
+  const shell = process.platform === 'win32'
+  const fullEnv = { ...process.env, ...env }
+  if (verbose) {
+    console.log(`\n$ ${cmd} ${cmdArgs.join(' ')}`)
+    return spawnSync(cmd, cmdArgs, { cwd: root, stdio: 'inherit', shell, env: fullEnv }).status ?? 1
+  }
+  const logPath = join(logsDir, `${step}.log`)
+  const fd = openSync(logPath, 'w')
+  let status
+  try {
+    status = spawnSync(cmd, cmdArgs, { cwd: root, stdio: ['ignore', fd, fd], shell, env: fullEnv }).status ?? 1
+  } finally {
+    closeSync(fd)
+  }
+  if (status === 0) {
+    console.log(`[ok]   ${step}  (log: ${logPath})`)
+  } else {
+    console.log(`[FAIL] ${step} (exit ${status}) - últimas linhas:`)
+    console.log(readFileSync(logPath, 'utf8').split(/\r?\n/).filter(Boolean).slice(-40).join('\n'))
+    console.log(`Log completo: ${logPath}`)
+  }
+  return status
 }
 
-let code = run('docker', [...compose, 'up', '-d', '--wait'])
+let code = run('docker', [...compose, 'up', '-d', '--wait', '--quiet-pull'], {}, 'stack-up')
 if (code !== 0) {
-  run('docker', [...compose, 'logs', '--tail=80'])
-  if (!keep) run('docker', [...compose, 'down', '-v'])
+  run('docker', [...compose, 'logs', '--tail=80'], {}, 'stack-logs')
+  if (!keep) run('docker', [...compose, 'down', '-v'], {}, 'stack-down')
   process.exit(code)
 }
 
@@ -52,7 +78,7 @@ try {
       // O teste da migration de auditoria roda no Postgres da própria stack (via `docker exec`).
       AUDIT_PG_URL: `postgres://postgres@127.0.0.1:${stack.DB_PORT}/postgres`,
       AUDIT_PG_CONTAINER: 'autopro-e2e-db-1'
-    })
+    }, 'api')
   }
   if ((only === 'all' || only === 'e2e') && (code === 0 || only === 'e2e')) {
     const port = process.env.E2E_PORT ?? '3100'
@@ -67,18 +93,18 @@ try {
         STRIPE_WEBHOOK_SECRET: 'whsec_e2e_placeholder',
         NUXT_PUBLIC_SITE_URL: `http://127.0.0.1:${port}`,
         NITRO_PRESET: 'node-server'
-      })
+      }, 'build')
     }
     const e2eCode = buildCode !== 0 ? buildCode : run('pnpm', ['exec', 'playwright', 'test', ...playwrightArgs], {
       E2E_SERVER: 'prod',
       E2E_SUPABASE_URL: url,
       E2E_SUPABASE_ANON_KEY: stack.ANON_KEY,
       E2E_SUPABASE_SERVICE_ROLE_KEY: stack.SERVICE_ROLE_KEY
-    })
+    }, 'e2e')
     code = code || e2eCode
   }
 } finally {
   if (keep) console.log(`\nStack mantida em ${url} (derrubar: pnpm stack:down)`)
-  else run('docker', [...compose, 'down', '-v'])
+  else run('docker', [...compose, 'down', '-v'], {}, 'stack-down')
 }
 process.exit(code)

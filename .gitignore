@@ -28,11 +28,7 @@ logs
 /old_project
 
 # Testes
-test-results/
-test-results-bde/
-test-results-money/
-playwright-report/
-coverage/
+.test-output/
 
 #
 /graphify-out

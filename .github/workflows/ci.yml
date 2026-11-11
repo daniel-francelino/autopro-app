@@ -107,5 +107,5 @@ jobs:
         with:
           name: playwright-report
           path: |
-            playwright-report/
-            test-results/
+            .test-output/playwright-report/
+            .test-output/playwright/
