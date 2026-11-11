@@ -1,6 +1,6 @@
 # Plano de implementação — Auditoria e log de ações do usuário
 
-> Status: **implementado (Fases 0–3)** em 2026-11-09, **pendente de validação em Postgres real** (ver §14) · Criado em 2026-11-08 · Revisado em 2026-11-08 (verificado no código)
+> Status: **concluído (Fases 0–3)** em 2026-11-09. **Camada 3 e Fase 4 descartadas** (decisão de 2026-11-09). Resta só a validação em ambiente real listada no §14 · Criado em 2026-11-08 · Revisado em 2026-11-09
 > Objetivo: gravar no banco **quem fez o quê, quando, com qual resultado** em todos os endpoints, para investigar
 > reclamações do tipo "o sistema não funciona" e separar *bug do sistema* de *erro de uso*.
 >
@@ -16,6 +16,7 @@
 | Acesso | **Somente o owner da plataforma** (`is_owner = true`), em `/admin/audit` | §4.2, §9 |
 | LGPD / aviso de privacidade | Fora de escopo por enquanto | Só proteções técnicas (sanitização, acesso restrito) |
 | Rotas GET | **Só GETs de detalhe** (registro único, com a resposta) e **GETs que falham**; listas e relatórios com sucesso não são registrados | §5.2 |
+| Camada 3 (triggers no banco) | **Descartada (2026-11-09).** Os dados só são alterados pelo sistema (API), e toda escrita passa pelas Camadas 1 e 2. Alteração direta no banco não é um fluxo previsto | §3, §11, §12 |
 
 ### O que mudou nesta revisão
 
@@ -84,9 +85,11 @@ Responde: *"o que o usuário tentou e o que o sistema respondeu"*.
 Helper `recordAudit()` chamado nos handlers sensíveis, que anexa `changes = { before, after, changed_fields }` à **mesma linha**
 da Camada 1 (mesmo `request_id`). Responde: *"o que exatamente mudou"* (ex.: a parcela era 500, passou para 50).
 
-### Camada 3 — Gatilhos no banco (opcional, rede de segurança)
-Triggers `AFTER INSERT/UPDATE/DELETE` nas tabelas financeiras para mudanças feitas **fora** da API (SQL manual, scripts,
-migrations). Como a API usa service role, `auth.uid()` é nulo; o autor viria de `updated_by`/`deleted_by`. **Fase 4.**
+### Camada 3 — Gatilhos no banco · **descartada**
+Era uma rede de segurança opcional (triggers `AFTER INSERT/UPDATE/DELETE` nas tabelas financeiras) para mudanças feitas **fora**
+da API (SQL manual, scripts, migrations). Foi descartada em 2026-11-09: no produto **tudo é alterado pelo sistema**, então as
+Camadas 1 e 2 cobrem o que precisa ser investigado. Se algum dia houver correção direta no banco (ex.: reparo de dados em produção),
+tratar caso a caso: registrar a intervenção num documento de operação, não num gatilho permanente.
 
 ## 4. Modelo de dados
 
@@ -367,7 +370,7 @@ Alguns `POST` só leem (`commissions/preview`, `clients/batch`) — registrados 
 | `server/utils/require-auth.ts` | Ao autenticar: `event.context.audit && Object.assign(event.context.audit, { userId, email })` | 224 handlers passam a ter autor sem alteração |
 | `server/utils/organization.ts` (`resolveOrganizationId`) | Gravar `organizationId` e `employeeId` no contexto | 170 handlers |
 | `server/utils/require-owner.ts` | Gravar `actorType='owner'`, `role='owner'` | 7+ handlers |
-| `server/utils/require-org-permission.ts` | Nova assinatura `requireOrgPermission(userId, actionCode, event?)`; quando `event` vier, gravar `role.name` e `organizationId` | Codemod nas **37** chamadas para passar `event`; sem `event` continua funcionando |
+| `server/utils/require-org-permission.ts` | Nova assinatura `requireOrgPermission(userId, actionCode, event?)`; quando `event` vier, gravar `role.name` e `organizationId` | Codemod nas **37** chamadas (hoje são 44 no repositório, todas passando `event`); sem `event` continua funcionando |
 | `server/api/auth/login.post.ts` (e signup/reset) | Nenhuma: o plugin extrai `email` do corpo (nunca a senha) e marca `actor_type='anonymous'` quando não há usuário | Explica "não consigo entrar" |
 | `server/api/stripe/webhook.post.ts` | Gravar no contexto `actorType='webhook'`, `action='stripe.<event.type>'`, `organizationId` quando resolvido | Cobrança investigável |
 
@@ -533,7 +536,7 @@ SELECT * FROM audit_logs WHERE request_id::text LIKE 'abc12345%' AND created_at 
 | **1 — Fundação** | Migration 097 (tabela particionada, trigger append-only, RLS/REVOKE, funções de partição, `pg_cron`); contexto nos utilitários (§5.5) incl. codemod das 37 chamadas; plugin completo (sanitização, resposta truncada, gravação, exclusões, overrides); header `X-Request-Id`; `X-Client-Platform` | 2–3 dias | Toda escrita e GET de detalhe gera linha; senha/token nunca aparecem; login falho registra; editar uma OS gera `service_order.update` |
 | **2 — Domínio** | `recordAudit()` em OS, financeiro, comissões/bônus, papéis; leitura de `service_order_edit_logs` migrada | 2–3 dias | Editar o valor de uma parcela mostra `before`/`after` |
 | **3 — Consulta** | `GET /api/admin/audit-logs[/:id]`, página `/admin/audit`, `useApiErrorToast` com código | 2 dias | Owner filtra por usuário e vê falhas e respostas sem SQL; não-owner recebe 403 |
-| **4 — Opcional** | Triggers no banco (tabelas financeiras); alertas (ex.: > 20 exclusões em 10 min na mesma oficina; > 10 erros 5xx na mesma rota em 1 h) via notificação ao owner | variável | Alteração direta no banco aparece no log; alerta chega |
+| ~~4 — Opcional~~ | **Descartada.** Triggers no banco = Camada 3 (descartada). Alertas automáticos (ex.: > 20 exclusões em 10 min; > 10 erros 5xx na mesma rota em 1 h) ficam como melhoria futura, fora deste plano | — | — |
 
 **Recomendação:** Fase 0 e 1 logo depois da Fase 0a de segurança do painel (que apaga/move rotas; evita auditar rotas que vão sumir).
 A partir da Fase 1 cada reclamação nova já é investigável pelos SQLs do §9.2.
@@ -546,30 +549,48 @@ A partir da Fase 1 cada reclamação nova já é investigável pelos SQLs do §9
 - **Sanitização por denylist** — revisar a lista a cada endpoint novo que receba segredo (incluir no checklist de PR).
 - **Log ≠ tela** — registra o que a API recebeu e respondeu, não o que o usuário viu. Para "a tela não atualizou", cruzar com as
   métricas de navegação (`page_view`/`active_time`) do plano de métricas.
-- **Escrita fora da API** (scripts em `scripts/`, SQL manual, migrations) não passa pela Camada 1 — só a Camada 3 cobre.
+- **Escrita fora da API** (scripts em `scripts/`, SQL manual, migrations) não passa pela Camada 1. **Risco aceito**: o sistema é a única porta de alteração (Camada 3 descartada).
 - **`denied` raro hoje** — enquanto as permissões por papel não forem checadas no servidor (painel §2.2), uma ação proibida
   aparece como `success`. O log mostra **quem** fez, o que já resolve a investigação, mas não o bloqueio.
+  Para dinheiro isso está **provado por teste**: `tests/unit/handlers/financial-permissions.test.ts` mostra que 10 rotas de
+  pagamento, estorno e cancelamento respondem 200 a um usuário sem permissão (KF-09 em `docs/testing/known-failures.md`).
+  Até o KF-09 ser corrigido, a auditoria é o único rastro de quem mexeu em dinheiro.
+- **Aliasing no banco de teste** — o fake em memória devolvia as próprias linhas por referência, o que faria "antes" mudar junto com
+  o `update`. Corrigido em `tests/helpers/fake-supabase.ts` (o `select` devolve cópias, como um banco real).
 
 ## 13. Testes de aceitação
 
-- [ ] `POST /api/clients` → 1 linha `client.create`, `outcome=success`, `actor_email` e `organization_id` corretos, `X-Request-Id` igual ao `request_id`.
-- [ ] `POST /api/service-orders` com `orderId` → `service_order.update` com `resource_id = orderId`; sem `orderId` → `service_order.create`.
-- [ ] `PUT /api/clients/:id` com `person_type` inválido → `outcome=invalid`, status 400, mensagem do erro.
-- [ ] Rota que lança 403 → `outcome=denied` (ex.: `DELETE /api/fiscal/nfse/:ref` antes da correção do painel §2.3).
-- [ ] Erro 500 forçado → `outcome=error`, `response_body` com a mensagem.
-- [ ] Login com senha errada → `actor_type=anonymous`, e-mail presente, **sem senha** no corpo.
-- [ ] Corpo com `password`/`token`/`certificado` aninhado → `[REDACTED]`.
-- [ ] Import de planilha (multipart) → linha com nome/tamanho do arquivo, sem conteúdo.
-- [ ] Simular falha do INSERT de log → a requisição original responde normalmente.
-- [ ] `UPDATE`/`DELETE` em `audit_logs` (inclusive via service role) → exceção.
-- [ ] `anon`/`authenticated` via PostgREST não leem `audit_logs` **nem** uma partição (`audit_logs_y2026m11`).
-- [ ] Não-owner recebe 403 em `GET /api/admin/audit-logs`.
-- [ ] `GET /api/service-orders/:id` → linha com `response_body` e `response_size_bytes`.
-- [ ] `GET /api/clients` (lista) com sucesso → **nenhuma** linha; com 403/500 → linha de falha.
-- [ ] Login não grava tokens na resposta; `GET /api/auth/me` e `POST /api/metrics/track` não geram linha.
-- [ ] `audit_logs_maintain()` cria as partições dos próximos 2 meses e descarta as anteriores a 6 meses; `audit_logs_default` vazia.
-- [ ] Webhook do Stripe gera `stripe.<type>` com `actor_type=webhook` e `organization_id` quando resolvido.
-- [ ] Cancelar OS gera `service_order.cancel` com `changes` (Fase 2).
+> Cada item abaixo está coberto por teste automatizado (**18 de 18**). Onde está o teste:
+>
+> | Itens | Teste |
+> |---|---|
+> | 1–9, 13–15 | `tests/unit/audit/plugin.test.ts` e `build-and-record.test.ts` (plugin e linha montada, com Nitro/h3 simulados) |
+> | 2 | também `derive-and-sanitize.test.ts` (overrides de `service-orders`) |
+> | 10, 11, 16 | `tests/api/audit-logs.sql.test.ts` em **Postgres real** (precisa de `AUDIT_PG_URL`; sem ele o teste é pulado) |
+> | 12 | `tests/unit/handlers/admin-audit-logs.test.ts` |
+> | 17 | `build-and-record.test.ts` (linha de webhook a partir do contexto). O handler do Stripe preencher o contexto não tem teste próprio |
+> | 18 | `tests/unit/handlers/financial-payments.test.ts` → "Auditoria (Camada 2)" |
+>
+> Os itens 10, 11 e 16 só são verificados quando o teste de Postgres roda; ver §14.
+
+- [x] `POST /api/clients` → 1 linha `client.create`, `outcome=success`, `actor_email` e `organization_id` corretos, `X-Request-Id` igual ao `request_id`.
+- [x] `POST /api/service-orders` com `orderId` → `service_order.update` com `resource_id = orderId`; sem `orderId` → `service_order.create`.
+- [x] `PUT /api/clients/:id` com `person_type` inválido → `outcome=invalid`, status 400, mensagem do erro.
+- [x] Rota que lança 403 → `outcome=denied` (ex.: `DELETE /api/fiscal/nfse/:ref` antes da correção do painel §2.3).
+- [x] Erro 500 forçado → `outcome=error`, `response_body` com a mensagem.
+- [x] Login com senha errada → `actor_type=anonymous`, e-mail presente, **sem senha** no corpo.
+- [x] Corpo com `password`/`token`/`certificado` aninhado → `[REDACTED]`.
+- [x] Import de planilha (multipart) → linha com nome/tamanho do arquivo, sem conteúdo.
+- [x] Simular falha do INSERT de log → a requisição original responde normalmente.
+- [x] `UPDATE`/`DELETE` em `audit_logs` (inclusive via service role) → exceção.
+- [x] `anon`/`authenticated` via PostgREST não leem `audit_logs` **nem** uma partição (`audit_logs_y2026m11`).
+- [x] Não-owner recebe 403 em `GET /api/admin/audit-logs`.
+- [x] `GET /api/service-orders/:id` → linha com `response_body` e `response_size_bytes`.
+- [x] `GET /api/clients` (lista) com sucesso → **nenhuma** linha; com 403/500 → linha de falha.
+- [x] Login não grava tokens na resposta; `GET /api/auth/me` e `POST /api/metrics/track` não geram linha.
+- [x] `audit_logs_maintain()` cria as partições dos próximos 2 meses e descarta as anteriores a 6 meses; `audit_logs_default` vazia.
+- [x] Webhook do Stripe gera `stripe.<type>` com `actor_type=webhook` e `organization_id` quando resolvido.
+- [x] Cancelar OS gera `service_order.cancel` com `changes` (Fase 2).
 
 ## 14. Estado da implementação (2026-11-09)
 
@@ -580,18 +601,19 @@ A partir da Fase 1 cada reclamação nova já é investigável pelos SQLs do §9
 | Migration 097 (tabela particionada, append-only, RLS sem policy, `REVOKE`, funções de partição/retenção, `pg_cron` condicional) | `supabase/migrations/20240101000097_create_audit_logs.sql` |
 | Plugin Nitro (hooks `request`/`error`/`beforeResponse`/`afterResponse`/`close`), `X-Request-Id` | `server/plugins/audit-log.ts` |
 | Regras, derivação de `action`, sanitização, montagem da linha, fila (waitUntil × buffer), diff antes/depois | `server/utils/audit/*` |
-| Autor/oficina/papel no contexto sem tocar nos handlers | `require-auth`, `organization`, `require-owner`, `require-org-permission` (novo 3º parâmetro `event`, 35 chamadas ajustadas) |
+| Autor/oficina/papel no contexto sem tocar nos handlers | `require-auth`, `organization`, `require-owner`, `require-org-permission` (novo 3º parâmetro `event`; todas as chamadas passam `event`) |
 | Webhook do Stripe (`actor_type=webhook`, `stripe.<tipo>`, oficina quando resolvida) | `server/api/stripe/webhook.post.ts` |
-| Camada 2 (`recordAudit`): OS (criar/editar/cancelar), `financial/:id` (PUT), `financial/:id/pay`, `roles/:id/actions` | handlers correspondentes |
+| Camada 2 (`recordAudit`): OS (criar/editar/cancelar), `financial/:id` (PUT), `financial/:id/pay`, `roles/:id/actions`; ampliada em 2026-11-09 (abaixo) | handlers correspondentes |
 | Histórico da OS lido de `audit_logs` (substitui `service_order_edit_logs`, que nunca foi gravada) | `server/api/service-orders/[id].get.ts` |
 | API do owner `GET /api/admin/audit-logs[/:id]` (filtros, máx. 31 dias, `audit.view`) e tela `/admin/audit` | `server/api/admin/audit-logs/*`, `app/pages/admin/audit.vue` |
 | Código do erro para o usuário (`X-Request-Id` → toast com "Copiar código") e `X-Client-Platform` sempre enviado | `app/composables/useApiErrorToast.ts`, `app/plugins/api-client.client.ts` |
-| Testes | `tests/unit/audit/*`, `tests/unit/handlers/admin-audit-logs.test.ts` |
+| Testes | `tests/unit/audit/*`, `tests/unit/handlers/admin-audit-logs.test.ts`, `tests/unit/handlers/financial-payments.test.ts` (Camada 2 em comissão e cancelamento), `tests/api/audit-logs.sql.test.ts` (Postgres real) |
 
 **Validado com o Nitro 2.13.1 em execução (Fase 0):** `X-Request-Id` sai em toda resposta `/api/**`; `matchedRoute` vem preenchido (`/api/clients`, `/api/auth/login`) e o catch-all do Nuxt aparece como `/**` (tratado como "sem rota"). **Correção ao plano (§5.1, item 1):** quando o handler lança `createError`, o Nitro responde sozinho e o h3 **não** chama `afterResponse` (`event.handled`). Por isso o erro é registrado no hook `error` (`ctx.logged` evita duplicar); `afterResponse` cobre só os sucessos.
 
 **Ainda não validado (precisa de ambiente)**
-- Migration 097 **validada isolada** em Postgres 17 real (imagem `supabase/postgres`): 13 testes em `tests/api/audit-logs.sql.test.ts` cobrem partições, append-only (inclusive service role), `TRUNCATE` negado, `anon`/`authenticated` sem acesso à tabela, às partições e às funções, constraints, `inet`, idempotência, retenção de 6 meses e o encaixe das linhas montadas por `buildAuditRow`. **Não** validada no schema completo: `supabase start` falha antes (KF-23 em `docs/testing/known-failures.md`: a migration 012 referencia `employees`, criada na 013). O ramo `cron.schedule` (com `pg_cron` ligado) também não foi exercitado.
+- Migration 097 **validada isolada** em Postgres 17 real (imagem `supabase/postgres`): 13 testes em `tests/api/audit-logs.sql.test.ts` cobrem partições, append-only (inclusive service role), `TRUNCATE` negado, `anon`/`authenticated` sem acesso à tabela, às partições e às funções, constraints, `inet`, idempotência, retenção de 6 meses e o encaixe das linhas montadas por `buildAuditRow`.
+  **Schema completo (2026-11-09):** o impedimento (KF-23) foi corrigido e a 097 foi aplicada junto das outras 101 migrations na stack `docker-compose.e2e.yml`; os 13 testes de `tests/api/audit-logs.sql.test.ts` passam nesse Postgres (`pnpm test:stack --only=api`, que também roda no CI). O ramo `cron.schedule` (com `pg_cron` ligado) não foi exercitado.
 - Leitura do corpo JSON em `afterResponse`/`error` com tráfego autenticado real (item 3 do §5.1) e o INSERT contra um banco de verdade: só foi exercitado até a tentativa de gravar.
 - `pg_cron` habilitado no projeto Supabase (§10.1) e o destino de deploy (§10.3). Sem `pg_cron`, agendar `SELECT public.audit_logs_maintain(2, 6)` antes do fim de cada mês.
 
@@ -599,4 +621,11 @@ A partir da Fase 1 cada reclamação nova já é investigável pelos SQLs do §9
 
 **Camada 2 ampliada (2026-11-09):** além de OS/financeiro/papéis, `recordAudit` está em compras, solicitações e devoluções de compra, contas bancárias, planos de comissão (criar/editar/excluir/versões/atribuições), bônus (criar/editar/excluir/versões/atribuições/geração/exclusão de geração/exclusão de pagamento), pagamentos e estornos da OS (`process-payment`, `down-payment`, `receive-extra-payment`, `payment`, `[id]` DELETE, recebimentos, parcelas pagar/alterar/excluir) e financeiro (criar, excluir, recorrência, pagamentos em lote, categorias). Nos handlers de parcela, `resource_id` é o id da **OS** (o `installmentId` vai em `changes.extra`), para o histórico da OS reunir tudo.
 
-**Fora desta entrega:** Camada 3 (triggers no banco), alertas (Fase 4), `recordAudit` em cadastros simples (clientes, veículos, fornecedores, produtos, funcionários, impostos, maquininhas, agenda) e adoção do `useApiErrorToast` nos toasts além do login.
+**Camada 2 fechada nas rotas de dinheiro (2026-11-09):** `reports/commissions/:id/pay` (status antes/depois, transação, conta e saldo), `reports/commissions/:id` DELETE (registro excluído) e `service-orders/:id/generate-commissions` (comissão por funcionário antes e depois, com `reason` e `override`; é a rota do recálculo manual do incidente KF-36). Com isso, toda escrita financeira tem `recordAudit`, exceto `financial/export` (exportação: a Camada 1 já registra a requisição). Cobertura em `financial-payments.test.ts`.
+
+**Fora desta entrega (decidido):**
+- Camada 3 (triggers no banco) e a Fase 4 (alertas): descartadas; ver §3 e §11.
+- `recordAudit` em cadastros simples (clientes, veículos, fornecedores, produtos, funcionários, impostos, maquininhas, agenda): a Camada 1 já registra quem, quando e o corpo enviado; antes/depois só se ela se mostrar insuficiente (§7, item 6).
+- Adoção do `useApiErrorToast` nos toasts além do login: gradual, a cada tela mexida.
+
+**Observação sobre `reports/commissions/:id` DELETE:** apaga o registro de comissão de verdade (inclusive se já estiver paga) e não mexe na despesa nem no saldo. A auditoria agora guarda o que foi excluído, mas o comportamento em si é um risco financeiro: é o KF-44 em `docs/testing/known-failures.md` (quebra a invariante I3).
