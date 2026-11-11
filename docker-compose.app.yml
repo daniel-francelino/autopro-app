@@ -1,0 +1,29 @@
+# Overlay da stack de teste: adiciona o container de testes (perfil `app`) ao lado de docker-compose.e2e.yml.
+#
+#   docker compose -f docker-compose.e2e.yml -f docker-compose.app.yml --env-file supabase/e2e/stack.env --profile app run --rm tests
+#   docker compose -f docker-compose.e2e.yml -f docker-compose.app.yml --env-file supabase/e2e/stack.env down -v
+#
+# O container de testes compartilha o network namespace do gateway (network_mode), então a stack responde em
+# 127.0.0.1:8000 de dentro dele. Os testes de integração recusam URLs que não sejam localhost/127.0.0.1.
+services:
+  tests:
+    profiles: ['app']
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: test
+    image: autopro-app:test
+    container_name: autopro-e2e-tests
+    network_mode: 'service:gateway'
+    shm_size: '1gb' # Chromium
+    depends_on:
+      gateway:
+        condition: service_healthy
+    environment:
+      TEST_SUPABASE_URL: http://127.0.0.1:8000
+      TEST_SUPABASE_ANON_KEY: ${ANON_KEY}
+      TEST_SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+      E2E_SUPABASE_URL: http://127.0.0.1:8000
+      E2E_SUPABASE_ANON_KEY: ${ANON_KEY}
+      E2E_SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+      REQUIRE_API_TESTS: '1'

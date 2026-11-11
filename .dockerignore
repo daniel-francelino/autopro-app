@@ -1,0 +1,17 @@
+# Não copiar artefatos locais (node_modules do Windows quebra binários nativos no Linux), segredos ou saídas.
+node_modules
+.pnpm-store
+.nuxt
+.output
+.output.pre-baseline
+.data
+.test-output
+.git
+.claude
+.env
+.env.*
+!.env.example
+*.log
+graphify-out
+docs
+coverage
