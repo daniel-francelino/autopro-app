@@ -6,6 +6,32 @@
 # O container de testes compartilha o network namespace do gateway (network_mode), então a stack responde em
 # 127.0.0.1:8000 de dentro dele. Os testes de integração recusam URLs que não sejam localhost/127.0.0.1.
 services:
+  # App de produção (imagem `runtime`) apontando para a stack de teste. Acesso pelo navegador em
+  # http://127.0.0.1:${APP_PORT:-3300}. A porta 3100 fica livre: é a do servidor de teste do Playwright.
+  app:
+    profiles: ['app']
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: autopro-app:prod
+    container_name: autopro-e2e-app
+    depends_on:
+      gateway:
+        condition: service_healthy
+    ports:
+      - '127.0.0.1:${APP_PORT:-3300}:3000'
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: '3000'
+      SUPABASE_URL: http://gateway:8000
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+      STRIPE_SECRET_KEY: sk_test_e2e_placeholder
+      STRIPE_WEBHOOK_SECRET: whsec_e2e_placeholder
+      NUXT_PUBLIC_SITE_URL: http://127.0.0.1:${APP_PORT:-3300}
+
   tests:
     profiles: ['app']
     build:
