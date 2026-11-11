@@ -1,7 +1,73 @@
 # Organização da suíte de testes
 
 > Público: quem escreve e mantém testes do autopro-app.
-> Status: **proposta revisada** (revisão de arquitetura sobre o rascunho anterior). Nenhum arquivo de teste foi movido. A suíte **não foi executada**; tudo abaixo vem de leitura de código. Verificado em 2026-11-11.
+> Status: **implementado em grande parte** (ver §0). Verificado em 2026-11-11 por leitura do repo e do git. A suíte **não foi executada** nesta revisão; a imagem Docker de produção ainda não terminou o build.
+>
+> O texto de §1 a §8 é o **diagnóstico original** e usa os nomes antigos (`unit`, `api`, `helpers`, `NN-*.e2e.ts`). A estrutura atual está em `tests/README.md`. Decisões respondidas estão em §9; o que sobrou está em §0.
+
+## 0. Status da implementação (2026-11-11)
+
+Evidência = arquivo ou comando verificado no repo. "Não executado" = o comportamento não foi rodado nesta revisão.
+
+### 0.1 Fases
+
+| Fase | Situação | Evidência |
+|---|---|---|
+| 0(a) Linha de base de execução | **Não feita.** Nenhuma medição registrada; `tests-performance-measurements.md` não existe | — |
+| 0(b) Rótulos e documentação | **Feito** | `tests/README.md`; `docs/testing/test-plan.md:13` |
+| 0(c) Gerador do inventário de `docs/testing/domains/` | **Não localizado** (busca em `scripts/` sem resultado) | — |
+| 1 Apoio em `tests/support/` | **Feito.** Fixtures renomeados para `auth-fixtures.ts` e `order-fixtures.ts`; alias `h3` em `vitest.config.ts:10` | `tests/support/`, `tests/e2e/support/auth-fixtures.ts`, `tests/e2e/service-orders/support/order-fixtures.ts` |
+| 2 Mover por domínio | **Feito.** `fast/<domínio>/` (access, admin, audit, auth, commissions, financial, flows, lib, reports, service-orders, users). `db/` ficou plano (3 arquivos). `static/baselines/` mantido | `tests/fast/`, `tests/db/` |
+| 3 Projetos e nomes | **Feito.** Projetos `fast` e `db`; `api` virou alias em `scripts/test-stack.mjs:33`; numeração removida das E2E de OS | `vitest.config.ts:26,37`; `package.json:14-17` |
+| 4 Redundância | **Só o mapa** (rascunho, nenhuma asserção removida) | `docs/architecture/tests-redundancy-map.md` (não versionado) |
+
+### 0.2 Opções de desempenho (§10.3)
+
+| Opção | Situação | Evidência |
+|---|---|---|
+| 1 Medir antes | **Não feito** | — |
+| 2 Reutilizar `.output` com carimbo | **Feito** (sem validação por execução de invalidação) | `scripts/test-stack.mjs:57-101`; cache `.output` em `.github/workflows/ci.yml` |
+| 3 Rodar subconjunto | **Funciona** via `--grep`; tags `@mobile` e `@demo-seed` existem | `tests/e2e/service-orders/volume-seed-demo.e2e.ts:57` |
+| 4 Separar camadas por gatilho | **Já era assim no CI** (`static`, `api`, `e2e`) | `.github/workflows/ci.yml` |
+| 5 Stack reutilizável | **Feito**: `--keep` e `--reuse` | `scripts/test-stack.mjs:4-5` |
+| 6a Snapshot de banco com migrations | **Não feito** | — |
+| 6b Uma consulta de migrations aplicadas | **Feito** | `supabase/e2e/migrate.sh:20-28` |
+| 7 Esperas fixas por condição | **Feito**: nenhum `waitForTimeout` em `tests/` | `tests/e2e/support/settle.ts` |
+| 8 Paralelismo | **Não medido** | — |
+| 9 Regra `@mobile` | **Mantida** | `playwright.config.ts` |
+| 10 Cache no CI | **Parcial**: Chromium e `.output` feitos; imagens Docker não | `.github/workflows/ci.yml` (cache do Chromium e de `.output`) |
+| 11 Seed demo opcional | **Feito**: tag `@demo-seed` e `--with-demo-seed` | `scripts/test-stack.mjs:9,31,223` |
+| 12 Build de teste sem módulos | **Não feito** (não recomendado como primeira ação) | — |
+
+### 0.3 Docker (novo, fora do plano original)
+
+- `Dockerfile` com três alvos: `build` (pnpm + `nuxt build` com 8 GB de heap), `test` (build + Chromium do Playwright) e `runtime` (imagem de prod, só `.output`, usuário `node`, porta 3000).
+- `.dockerignore` exclui `node_modules`, `.nuxt`, `.output`, `.env*`, `docs` e demais saídas locais.
+- `docker-compose.app.yml` é um overlay do `docker-compose.e2e.yml`, com o serviço `tests` (perfil `app`, container `autopro-e2e-tests`). Ele usa `network_mode: service:gateway`, então enxerga a stack em `127.0.0.1:8000`, que é aceito pelo guard de `tests/support/global-setup.ts`.
+
+Comandos (ainda **não executados até o fim**):
+
+```bash
+# Imagem de produção
+docker build --target runtime -t autopro-app:prod .
+
+# Testes na stack Docker: db e E2E contra o build de produção (.output)
+docker compose -f docker-compose.e2e.yml -f docker-compose.app.yml --env-file supabase/e2e/stack.env --profile app run --rm tests
+
+# Derrubar a stack e apagar os dados
+docker compose -f docker-compose.e2e.yml -f docker-compose.app.yml --env-file supabase/e2e/stack.env down -v
+```
+
+Status: o build da imagem `runtime` foi iniciado e ainda não concluiu (`nuxt build` do servidor em andamento). O alvo `test` não foi executado.
+
+### 0.4 Pendências
+
+1. Rodar a imagem de prod e o alvo `test` até o fim; registrar o resultado aqui.
+2. Carregar o seed demo no fluxo de teste (decisão 4, §9). O ramo `/seed` de `supabase/e2e/migrate.sh:37` existe, mas nenhum compose monta `/seed`. Hoje `--with-demo-seed` roda `scripts/seed/load-demo.mjs` pelo host.
+3. Adicionar alvos ao `Makefile` para o container de testes e a imagem de prod (decisão 7, §9).
+4. Linha de base (0a) e medições de §10.5, agora possíveis pelo container.
+5. Snapshot de migrations (6a), cache de imagens Docker no CI (10) e verificação da ordem independente dos E2E de OS (P5, com `--workers=1` em ordem inversa).
+6. Fase 4: aprovação da matriz (§4) por `test-reviewer` antes de remover qualquer asserção.
 
 ## 1. Diagnóstico com evidências
 
@@ -135,8 +201,8 @@ Regra: um E2E não repete asserção de valor que um teste `fast/` já prova. **
 | `flows/undo-payment` | `fast/flows/` | profundidade muda (2 -> 3) |
 | `api/*` | `db/` (plano) | manter plano evita mudar profundidade |
 | `static/*` | `static/` | não mover `baselines/` |
-| `e2e/service-orders/NN-*` | sem numeração | atualizar `docs/testing/e2e-service-orders.md:63` |
-| `e2e/.../12-volume-seed-demo` | permanece, com tag `@demo-seed` | ver P6 |
+| `e2e/service-orders/NN-*` | **feito**: sem numeração (`listing.e2e.ts`, `creation.e2e.ts`…) | `docs/testing/e2e-service-orders.md:63` ainda cita os nomes numerados (pendente) |
+| `e2e/.../12-volume-seed-demo` | **feito**: `volume-seed-demo.e2e.ts`, tag `@demo-seed`, seed opcional via `--with-demo-seed` | ver P6 e §9 item 4 |
 
 ## 7. Fases
 
@@ -183,22 +249,17 @@ Para a Fase 4:
 - Gerador de inventário dos docs não localizado.
 - A contagem de domínios (35 arquivos em `docs/testing/domains/`, 34 `.md` de domínio mais README) é maior do que o necessário para as pastas de teste; usá-la como taxonomia completa criaria pastas vazias.
 
-## 9. Decisões pendentes (do usuário)
+## 9. Decisões (respondidas pelo usuário)
 
-1. **Escopo:** começar pela alternativa A (só rótulos/docs) e decidir depois, ou ir direto à B (mover por domínio)?
-- Pode fazer ambos
-2. **Renomear projetos Vitest** (`unit`->`fast`, `api`->`db`) ou manter nomes e corrigir só a documentação?
-- renomear é o idial.
-3. **Taxonomia:** pastas de domínio só com 2+ arquivos (recomendado) ou um domínio por pasta conforme `docs/testing/domains/`?
-- uma pasta por domain sem problemas
-4. **`12-volume-seed-demo`:** marcar com `@demo-seed` e manter (recomendado), mover ou excluir do runner padrão?
-- deveria ser um seeder para quando for rodar os tests com o playwright ter dados.
-5. **Códigos de cenário** no título + índice, ou só nos docs?
-- pode ficar no prefix o code do cenário
-6. **Execução:** uma PR por grupo/fase (recomendado) ou única?
-- Vai implementar tudo que depois eu vou abrir o PR
-7. **Quem roda a linha de base** com Docker (a sessão não executou nada).
-- Está disponível o docker, poderia até criar um arquivo para ajudar depois a usar o que os tests precisam, tipo, no linux normalmente tenho um "makefile" com o comando e descrições, e conjunto de comandos.
+| # | Decisão | Resposta | Situação |
+|---|---|---|---|
+| 1 | Escopo | Fazer A e B | Feito (fases 0 a 3, §0.1) |
+| 2 | Renomear projetos Vitest | Renomear (`fast`, `db`) | Feito; `api` é alias |
+| 3 | Taxonomia | Uma pasta por domínio | Feito em `tests/fast/`; `db/` plano |
+| 4 | `12-volume-seed-demo` | Deve ser seed para o Playwright ter dados | Tag `@demo-seed` e `--with-demo-seed` feitos. **Pendente:** seed dentro do container (§0.4, item 2) |
+| 5 | Códigos de cenário | Manter o código como prefixo do título | Regra de §5; índice opcional não criado |
+| 6 | Execução | Implementar tudo e depois abrir o PR | Em andamento; nada commitado por esta revisão |
+| 7 | Quem roda a linha de base com Docker | Docker disponível; quer ajuda via comandos (Makefile) | Imagens e overlay criados (§0.3); alvos do Makefile **pendentes** |
 
 ---
 
@@ -267,6 +328,8 @@ O que o dev esconde (conhecimento geral de Nuxt/Vite aplicado a este projeto; ne
 | 11 | **Marcar o seed de demo como opcional.** Marcar o spec 12 com `@demo-seed` e filtrar por tag; ele já pula sozinho sem seed (`:24-28`). A decisão do usuário (seção 9, item 4) é que o seed sirva para o Playwright ter dados: se for carregado na stack, medir o custo do loader e **carregar só quando o grep incluir `@demo-seed`**. | Evita pagar o seed nas execuções que não precisam. | Seed acoplado a uma org fixa (`demo.meta.json`); testes pulados silenciosamente (mostrar o motivo no relatório). | `playwright test --list --grep @demo-seed`. |
 | 12 | **Reduzir o custo do próprio build em teste** (avaliar com cuidado): desligar `sourcemap.client` (`nuxt.config.ts:136`) e módulos sem efeito nos testes (`nuxt-og-image`, `@nuxtjs/sitemap`, `@nuxtjs/robots`) por variável de ambiente só no build de teste. | Médio (a medir). | Alto: o build de teste deixa de ser o de produção e o ganho de precisão diminui. Só se a medição compensar; **não recomendado como primeira ação**. | Comparar o tempo de `nuxt build` com e sem a variável; manter ao menos um E2E contra o build completo no CI. |
 
+**Status (2026-11-11):** as opções 2, 5, 6b, 7, 10 (parcial), 11 estão implementadas (ver §0.2). A medição (1) e a linha de base não foram feitas, então H1 a H4 continuam sem confirmação. A 12 não foi implementada.
+
 ### 10.4 Recomendação de uso no dia a dia
 
 | Situação | Comando sugerido | Observação |
@@ -289,3 +352,9 @@ Antes de mudar qualquer coisa, registrar a duração de cada etapa em execução
 4. **Variação:** repetir 3 vezes cada medição e anotar mínimo/mediana; descartar a execução que baixa imagens.
 5. **Proposta (outra tarefa, fora do escopo desta análise):** acrescentar a `run()` de `scripts/test-stack.mjs` o registro de início/fim por etapa e um resumo final, publicado no CI (`$GITHUB_STEP_SUMMARY`). Só então escolher entre as opções de 10.3 pelos números.
 6. **Hipóteses a confirmar:** (H1) `nuxt build` > 40% do tempo total; (H2) `stack-up` (migrations) em segundo lugar; (H3) a suíte Playwright em produção é menor que as duas anteriores somadas; (H4) workers subutilizados. Se H1 e H2 se confirmarem, as opções 2, 5 e 6 são as prioritárias.
+
+### 10.6 Execução em container (novo, não medido)
+
+O container de testes evita depender do Windows para a linha de base: Linux, Chromium e Postgres da mesma stack do CI. Arquivos: `Dockerfile`, `.dockerignore`, `docker-compose.app.yml` (ver §0.3). Ainda não há medição nem validação de execução; os comandos estão em §0.3.
+
+O alvo `test` roda na ordem do CI (`vitest --project db` e depois `playwright --project=desktop` com `E2E_SERVER=prod`). Ele não cobre o projeto `fast` nem `static`, que rodam em `pnpm test` sem Docker.
