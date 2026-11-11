@@ -5,4 +5,17 @@ description: "developer procedures: change scope control; implementation validat
 
 # Validation And Handoff
 
-Read `references/original-guidance.md`, apply the sections relevant to the task. Stay evidence-based and in scope; no unrelated checks.
+Do not read `references/original-guidance.md` whole. Read `*` sections first, then only the sections the task needs, via Read(offset, limit). Stay evidence-based and in scope.
+
+Sections (name — offset, limit):
+- Refactoring Workflow — 2, 13
+- Change Scope Control — 15, 12
+- Implementation Validation — 27, 14
+- Documentation — 41, 47
+- *Modification Boundaries — 88, 23
+- Multi-Agent Collaboration — 111, 33
+- Handoff Requirements — 144, 11
+- Completion Criteria — 155, 12
+- *Fundamental Principle — 167, 6
+
+Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.

@@ -5,4 +5,20 @@ description: "marketing-strategist procedures: growth experimentation; marketing
 
 # Measurement And Reporting
 
-Read `references/original-guidance.md`, apply the sections relevant to the task. Stay evidence-based and in scope; no unrelated checks.
+Do not read `references/original-guidance.md` whole. Read `*` sections first, then only the sections the task needs, via Read(offset, limit). Stay evidence-based and in scope.
+
+Sections (name — offset, limit):
+- Growth Experimentation — 2, 29
+- Marketing Opportunity Prioritization — 31, 36
+- Finding Classification — 67, 21
+- Marketing Strategy Workflow — 88, 46
+- Documentation — Mandatory — 134, 106
+- *Modification Boundaries — 240, 36
+- Multi-Agent Collaboration — 276, 70
+- Product Owner Handoff — 346, 14
+- Engineering Handoff — 360, 14
+- Campaign Planning — 374, 20
+- Completion Criteria — 394, 18
+- *Fundamental Principle — 412, 13
+
+Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.

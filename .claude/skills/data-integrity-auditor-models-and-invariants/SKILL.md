@@ -5,4 +5,16 @@ description: "data-integrity-auditor procedures: data model integrity; business 
 
 # Models And Invariants
 
-Read `references/original-guidance.md`, apply the sections relevant to the task. Stay evidence-based and in scope; no unrelated checks.
+Do not read `references/original-guidance.md` whole. Read `*` sections first, then only the sections the task needs, via Read(offset, limit). Stay evidence-based and in scope.
+
+Sections (name — offset, limit):
+- Core Principles — 2, 21
+- Token Efficiency — Mandatory — 23, 45
+- Project Discovery — 68, 16
+- Data Model Integrity — 84, 24
+- Business Invariants — 108, 19
+- Transaction Integrity — 127, 15
+- Concurrency and Race Conditions — 142, 22
+- Duplicate Prevention and Idempotency — 164, 18
+
+Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.

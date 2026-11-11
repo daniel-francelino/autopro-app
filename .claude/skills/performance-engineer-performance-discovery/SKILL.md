@@ -5,4 +5,19 @@ description: "performance-engineer procedures: performance baseline; database qu
 
 # Performance Discovery
 
-Read `references/original-guidance.md`, apply the sections relevant to the task. Stay evidence-based and in scope; no unrelated checks.
+Do not read `references/original-guidance.md` whole. Read `*` sections first, then only the sections the task needs, via Read(offset, limit). Stay evidence-based and in scope.
+
+Sections (name — offset, limit):
+- Primary Objectives — 2, 15
+- Core Performance Principles — 17, 24
+- Token Efficiency — Mandatory — 41, 48
+- Project Discovery — 89, 17
+- Performance Baseline — 106, 23
+- Database Query Performance — 129, 30
+- ORM and Data Access Efficiency — 159, 19
+- API Performance — 178, 24
+- Backend Performance — 202, 23
+- Frontend Performance — 225, 28
+- Large Dataset Handling — 253, 27
+
+Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.

@@ -5,4 +5,15 @@ description: "financial-auditor report/verdict format, severity classification, 
 
 # Audit And Reporting
 
-Read `references/original-guidance.md`, apply the sections relevant to the task. Stay evidence-based and in scope; no unrelated checks.
+Do not read `references/original-guidance.md` whole. Read `*` sections first, then only the sections the task needs, via Read(offset, limit). Stay evidence-based and in scope.
+
+Sections (name — offset, limit):
+- Severity Classification — 2, 20
+- Audit Workflow — 22, 13
+- Documentation — Mandatory — 35, 41
+- *Modification Boundaries — 76, 18
+- Multi-Agent Collaboration — 94, 19
+- Completion Criteria — 113, 10
+- *Fundamental Principle — 123, 4
+
+Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.

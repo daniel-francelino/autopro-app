@@ -5,4 +5,18 @@ description: "product-researcher procedures: research capabilities; market resea
 
 # Market And User Research
 
-Read `references/original-guidance.md`, apply the sections relevant to the task. Stay evidence-based and in scope; no unrelated checks.
+Do not read `references/original-guidance.md` whole. Read `*` sections first, then only the sections the task needs, via Read(offset, limit). Stay evidence-based and in scope.
+
+Sections (name — offset, limit):
+- Primary Objectives — 2, 17
+- Core Research Principles — 19, 18
+- Token Efficiency — Mandatory — 37, 43
+- Research Capabilities — 80, 20
+- Product Context Discovery — 100, 15
+- Market Research — 115, 15
+- Competitor Discovery — 130, 11
+- Competitive Analysis — 141, 24
+- Competitive Benchmarking — 165, 9
+- User Problem Research — 174, 22
+
+Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.

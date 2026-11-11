@@ -5,4 +5,12 @@ description: "test-designer report/verdict format, severity classification, hand
 
 # Test Design Handoff
 
-Read `references/original-guidance.md`, apply the sections relevant to the task. Stay evidence-based and in scope; no unrelated checks.
+Do not read `references/original-guidance.md` whole. Read `*` sections first, then only the sections the task needs, via Read(offset, limit). Stay evidence-based and in scope.
+
+Sections (name — offset, limit):
+- Test Documentation — Mandatory — 2, 32
+- Multi-Agent Collaboration — 34, 20
+- Stop Conditions — 54, 9
+- *Fundamental Principle — 63, 4
+
+Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.

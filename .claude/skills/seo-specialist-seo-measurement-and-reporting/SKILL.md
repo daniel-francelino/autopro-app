@@ -5,4 +5,17 @@ description: "seo-specialist procedures: finding classification; engineering han
 
 # Seo Measurement And Reporting
 
-Read `references/original-guidance.md`, apply the sections relevant to the task. Stay evidence-based and in scope; no unrelated checks.
+Do not read `references/original-guidance.md` whole. Read `*` sections first, then only the sections the task needs, via Read(offset, limit). Stay evidence-based and in scope.
+
+Sections (name — offset, limit):
+- Finding Classification — 2, 21
+- SEO Audit Workflow — 23, 39
+- Documentation — Mandatory — 62, 80
+- *Modification Boundaries — 142, 29
+- Multi-Agent Collaboration — 171, 42
+- Engineering Handoff — 213, 14
+- Product and Marketing Handoff — 227, 15
+- Completion Criteria — 242, 15
+- *Fundamental Principle — 257, 10
+
+Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.

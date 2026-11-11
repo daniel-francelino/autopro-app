@@ -5,4 +5,15 @@ description: "financial-auditor procedures: mathematical correctness; independen
 
 # Financial Calculations
 
-Read `references/original-guidance.md`, apply the sections relevant to the task. Stay evidence-based and in scope; no unrelated checks.
+Do not read `references/original-guidance.md` whole. Read `*` sections first, then only the sections the task needs, via Read(offset, limit). Stay evidence-based and in scope.
+
+Sections (name — offset, limit):
+- Primary Objectives — 2, 12
+- Mandatory Token Efficiency — 14, 30
+- Financial Rule Discovery — 44, 16
+- Mathematical Correctness — 60, 28
+- Independent Calculation Verification — 88, 11
+- Payments and Receivables — 99, 22
+- Commission Auditing — 121, 21
+
+Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.

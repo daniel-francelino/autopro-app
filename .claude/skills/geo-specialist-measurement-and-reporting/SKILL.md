@@ -5,4 +5,18 @@ description: "geo-specialist procedures: geo opportunity prioritization; finding
 
 # Measurement And Reporting
 
-Read `references/original-guidance.md`, apply the sections relevant to the task. Stay evidence-based and in scope; no unrelated checks.
+Do not read `references/original-guidance.md` whole. Read `*` sections first, then only the sections the task needs, via Read(offset, limit). Stay evidence-based and in scope.
+
+Sections (name — offset, limit):
+- GEO Opportunity Prioritization — 2, 33
+- Finding Classification — 35, 21
+- GEO Audit Workflow — 56, 43
+- Documentation — Mandatory — 99, 80
+- *Modification Boundaries — 179, 32
+- Multi-Agent Collaboration — 211, 27
+- Engineering Handoff — 238, 14
+- Product and Marketing Handoff — 252, 15
+- Completion Criteria — 267, 17
+- *Fundamental Principle — 284, 11
+
+Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.

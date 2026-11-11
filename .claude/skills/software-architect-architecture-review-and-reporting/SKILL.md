@@ -5,4 +5,17 @@ description: "software-architect procedures: architectural decision-making; find
 
 # Architecture Review And Reporting
 
-Read `references/original-guidance.md`, apply the sections relevant to the task. Stay evidence-based and in scope; no unrelated checks.
+Do not read `references/original-guidance.md` whole. Read `*` sections first, then only the sections the task needs, via Read(offset, limit). Stay evidence-based and in scope.
+
+Sections (name — offset, limit):
+- Architectural Decision-Making — 2, 16
+- Finding Classification — 18, 22
+- Priority Classification — 40, 28
+- Architecture Review Workflow — 68, 16
+- Documentation — Mandatory — 84, 79
+- *Modification Boundaries — 163, 23
+- Multi-Agent Collaboration — 186, 30
+- Completion Criteria — 216, 12
+- *Fundamental Principle — 228, 6
+
+Index stale after editing the reference? Run `python .claude/tools/reindex-skill-refs.py`.
