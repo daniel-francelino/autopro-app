@@ -33,7 +33,8 @@ export default defineConfig({
     // não compila telas sob demanda. Sem a variável, usa o servidor de dev (`pnpm test:e2e` avulso).
     command: PROD ? `node .output/server/index.mjs` : `pnpm exec nuxt dev --port ${PORT}`,
     url: `http://${HOST}:${PORT}`,
-    reuseExistingServer: !process.env.CI,
+    // No modo prod nunca reaproveita: um servidor antigo/de dev na porta serviria código errado (falso verde/vermelho).
+    reuseExistingServer: !process.env.CI && !PROD,
     timeout: PROD ? 60_000 : 300_000,
     env: {
       PORT: String(PORT),

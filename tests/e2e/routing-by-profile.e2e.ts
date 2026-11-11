@@ -1,6 +1,6 @@
 // Fluxo: para onde cada tipo de usuário é levado (E2/E3 do plano). Regras de app/middleware/auth.global.ts.
 // Precisa do Supabase local (ver support/env.ts); sem ele o spec é pulado.
-import { expect, skipUnlessAuth, test, type UserKind } from './support/fixtures'
+import { expect, skipUnlessAuth, test, type UserKind } from './support/auth-fixtures'
 
 skipUnlessAuth(test)
 

@@ -4,7 +4,7 @@
 > Núcleo financeiro (OS, pagamentos, comissões, relatórios): ver também [financial-core-test-analysis.md](../financial-core-test-analysis.md).
 
 ## Resumo
-Protegido por `owner-guard` (middleware) + `requireOwner`. Fases 0a, 1, 3–5 implementadas e testadas (`owner-panel-security`, `admin-panel`, `admin-audit-logs`, `admin-panel-utils`, `tests/api/admin-panel`).
+Protegido por `owner-guard` (middleware) + `requireOwner`. Fases 0a, 1, 3–5 implementadas e testadas (`owner-panel-security`, `admin-panel`, `admin-audit-logs`, `admin-panel-utils`, `tests/db/admin-panel`).
 
 ## Cobertura atual
 - **39 rota(s)**; **25** com teste dedicado (citadas em `tests/`); **0** escrita(s) sem checagem de permissão (KF-09).
@@ -68,7 +68,7 @@ Protegido por `owner-guard` (middleware) + `requireOwner`. Fases 0a, 1, 3–5 im
 | ADM-05 | P2 | `invoices`/`subscriptions` charts: períodos vazios. |
 
 ## Padrão para escrever os testes
-- Handler real + `createFakeSupabase` (`tests/helpers`), como em `tests/unit/handlers/money-flows.test.ts`.
+- Handler real + `createFakeSupabase` (`tests/support`), como em `tests/fast/service-orders/money-flows.test.ts`.
 - Sempre incluir: **sem sessão (401)**, **outra organização (404 e nada muda)**, **corpo inválido (400)** e **repetição (idempotência)**.
-- O que depende de RPC, gatilho, índice único ou concorrência vai para `tests/api` (Supabase local).
+- O que depende de RPC, gatilho, índice único ou concorrência vai para `tests/db` (Supabase local).
 - Bug descoberto: escrever o teste do comportamento correto com `it.fails`, registrar `KF-nn` em `known-failures.md`.

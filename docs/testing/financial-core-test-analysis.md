@@ -109,7 +109,7 @@ Legenda: ✅ implementado · 🐞 falha conhecida (`it.fails`) · ⏳ precisa de
 | E20 | editar OS sem permissão de OS → 403 (ver bloco S) | ➕ (`service-orders/index.post.ts` está no baseline do KF-09) |
 | E21 | editar itens/custo da OS recalcula `total_cost_amount` e o lucro do relatório | ➕ (liga com R34) |
 
-### 4.2 Pagamentos (`service-order-payments.test.ts`, `money-flows.test.ts`, `flows/undo-payment.test.ts`)
+### 4.2 Pagamentos (`service-order-payments.test.ts`, `money-flows.test.ts`, `fast/flows/undo-payment.test.ts`)
 | ID | Cenário | Status |
 |---|---|---|
 | P1–P8 | sinal: saldo/extrato, status intocado, validações, org, numeração, reconciliação na conclusão | ✅ |

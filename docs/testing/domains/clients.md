@@ -33,7 +33,7 @@ Cadastro com importação em lote (`batch.post`). Aparece em devedores e relató
 | CLI-04 | P2 | Busca com acento e isolamento (KF-09). |
 
 ## Padrão para escrever os testes
-- Handler real + `createFakeSupabase` (`tests/helpers`), como em `tests/unit/handlers/money-flows.test.ts`.
+- Handler real + `createFakeSupabase` (`tests/support`), como em `tests/fast/service-orders/money-flows.test.ts`.
 - Sempre incluir: **sem sessão (401)**, **outra organização (404 e nada muda)**, **corpo inválido (400)** e **repetição (idempotência)**.
-- O que depende de RPC, gatilho, índice único ou concorrência vai para `tests/api` (Supabase local).
+- O que depende de RPC, gatilho, índice único ou concorrência vai para `tests/db` (Supabase local).
 - Bug descoberto: escrever o teste do comportamento correto com `it.fails`, registrar `KF-nn` em `known-failures.md`.

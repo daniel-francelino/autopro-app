@@ -8,7 +8,7 @@ on:
     - cron: '0 6 * * *' # noturno (09:00 BRT): E2E completo
 
 jobs:
-  # L0 + L1 + L2 + L3-lite: sem Docker, segundos.
+  # Projeto Vitest `fast` (tests/static + tests/fast): sem Docker, segundos.
   static:
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
@@ -34,13 +34,13 @@ jobs:
       - name: Typecheck
         run: pnpm run typecheck
 
-      - name: Tests (unit, static, handlers)
+      - name: Tests (fast: static, handlers, fluxos em memória)
         run: pnpm run test
 
   # Os dois jobs abaixo sobem a MESMA stack local (docker-compose.e2e.yml: Postgres + Auth + REST + Storage +
   # gateway, com as 100+ migrations aplicadas e chaves de teste fixas) pelo mesmo runner de `pnpm test:stack`.
 
-  # L3: testes contra Postgres real (tests/api). Todo push e PR; leva cerca de 2 min.
+  # Projeto Vitest `db`: testes contra Postgres real (tests/db). Todo push e PR; leva cerca de 2 min.
   api:
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
@@ -61,8 +61,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Stack + tests/api
-        run: pnpm run test:stack --only=api
+      - name: Stack + tests/db
+        run: pnpm run test:stack --only=db
 
       - name: Logs da stack (falha)
         if: failure()
@@ -89,8 +89,37 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      # Chromium do Playwright: cache pela versão de @playwright/test. Com cache, só as dependências do sistema.
+      - name: Playwright version
+        id: pw
+        run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Chromium
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+
       - name: Install Chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
         run: pnpm exec playwright install --with-deps chromium
+
+      - name: Install Chromium system deps
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install-deps chromium
+
+      # Build (.output): cache pelo carimbo do código + config + lockfile + variáveis de build (scripts/test-stack.mjs).
+      # O runner confere .output/build-stamp.json e só builda se não bater; chave incompleta = falso verde, por isso o hash cobre tudo.
+      - name: Build key
+        id: build-key
+        run: echo "key=$(node scripts/test-stack.mjs --print-build-key)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache build (.output)
+        uses: actions/cache@v4
+        with:
+          path: .output
+          key: nuxt-output-${{ runner.os }}-${{ steps.build-key.outputs.key }}
 
       - name: Stack + Playwright
         run: pnpm run test:stack --only=e2e --project=desktop

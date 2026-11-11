@@ -445,8 +445,8 @@ depende da Fase 1 do plano de métricas (atribuição de IA). A Fase 0 **não de
 | 5 | `/admin/system`: Supabase, Stripe, segredo do webhook, Focus NFe (taxa de sucesso 24 h), OneSignal, placas, partição padrão do `audit_logs`; versão; rotas que mais falham; owners com alerta de owner único | `server/api/admin/system.get.ts`, `server/utils/system-checks.ts` |
 | 0c | SQLs de revisão retroativa e guia | `scripts/retroactive-review.sql`, [retroactive-review.md](retroactive-review.md) |
 
-**Testes:** `tests/unit/handlers/admin-panel.test.ts` (52: toda rota nova é 401 sem sessão e 403 para usuário de oficina; suspensão, usuários, GEO),
-`tests/unit/server-utils/admin-panel-utils.test.ts` (16), e `tests/api/admin-panel.test.ts` contra **Postgres real** (10: embed `organizations(suspended_at)` do PostgREST,
+**Testes:** `tests/fast/admin/admin-panel.test.ts` (52: toda rota nova é 401 sem sessão e 403 para usuário de oficina; suspensão, usuários, GEO),
+`tests/fast/admin/admin-panel-utils.test.ts` (16), e `tests/db/admin-panel.test.ts` contra **Postgres real** (10: embed `organizations(suspended_at)` do PostgREST,
 idempotência do Stripe, `UNIQUE` e `CHECK` do GEO, tabelas novas ilegíveis para `anon`).
 
 **Limites conhecidos**
@@ -471,7 +471,7 @@ Feitos após a primeira revisão visual do preview.
 | Melhorar os estados vazios | `AdminEmptyState` (ícone, título, explicação e, quando útil, atalho) em Sistema, Cobrança, Feedbacks, Ficha da oficina e Métricas; textos novos nas tabelas | `app/components/admin/EmptyState.vue` |
 | SEO e GEO estático | `/admin/geo` passa a abrir com **diagnóstico técnico automático** do site (título, meta description, canonical, `og:image`, idioma, H1, JSON-LD, FAQPage, `robots.txt`, sitemap, `llms.txt`, robôs de IA bloqueados), sem nada para preencher. A bateria de 20 perguntas aparece como roteiro fixo. A medição manual (formulário e taxas) virou um bloco opcional, fechado por padrão | `app/pages/admin/geo.vue`, `server/api/admin/geo/site-check.get.ts`, `server/utils/site-check.ts` |
 
-**Testes:** `tests/unit/server-utils/site-check.test.ts` (12) e a matriz owner (`guard-matrix`) cobrem a rota nova automaticamente (401 sem sessão).
+**Testes:** `tests/fast/lib/site-check.test.ts` (12) e a matriz owner (`guard-matrix`) cobrem a rota nova automaticamente (401 sem sessão).
 
 **Mudança em relação ao §5.6:** a tela deixou de depender de registros manuais para ter conteúdo; `geo_probe_runs` continua existindo, mas é só o histórico opcional de medição nas IAs.
 

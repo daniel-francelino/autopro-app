@@ -25,7 +25,7 @@ Referências nos testes: procure por `KF-nn` no código.
 
 ### KF-14 · ✅ corrigido em 2026-11-09 (Fase 0a do painel do owner) · `POST /api/users/assign-organization` permite tomar uma oficina
 Qualquer usuário logado **sem organização** pode se vincular a **qualquer** `organization_id` com **qualquer** `role_id` (inclusive o papel `admin` dela). O handler só confere que `user_email == employee_email` (o próprio e-mail) e que o alvo ainda não tem organização. Não valida que o usuário tem permissão na oficina, nem que `role_id`/`employee_id` pertencem a ela.
-- Teste: `tests/unit/handlers/users-roles-security.test.ts` → *"usuário sem organização NÃO pode se vincular a uma oficina arbitrária como admin"*.
+- Teste: `tests/fast/users/users-roles-security.test.ts` → *"usuário sem organização NÃO pode se vincular a uma oficina arbitrária como admin"*.
 - Correção sugerida: remover a rota se não for mais usada (vínculo hoje nasce em `employees/:id/grant-access`); senão exigir `requireOrgPermission('employees.update')` e validar que `employee_id`/`role_id` são da organização de quem chama.
 
 ### KF-13 · ✅ corrigido em 2026-11-09 (Fase 0a do painel do owner) · `POST /api/users/update-fields` altera qualquer usuário
@@ -79,7 +79,7 @@ Lista em `tests/static/baselines/admin-client-without-org.json`. Muitos são leg
 
 ### KF-19 · ✅ corrigido em 2026-11-09 · Desfazer pagamento com várias parcelas na mesma conta deixa o saldo errado
 `DELETE /api/service-orders/:id/payment` (e `reverseServiceOrderReceipt`) restauram `current_balance = statement.previous_balance` **de cada extrato, em sequência**. Com 3 parcelas de R$ 100 (1000→1100→1200→1300), o saldo termina em 1200, não em 1000.
-- Teste: `tests/flows/undo-payment.test.ts` → *"3 parcelas pagas na mesma conta"*.
+- Teste: `tests/fast/flows/undo-payment.test.ts` → *"3 parcelas pagas na mesma conta"*.
 - Correção: subtrair o `amount` do saldo atual (`saldo - valor`) dentro de uma RPC transacional, em vez de gravar um saldo antigo (decisão D2 do plano).
 
 ### KF-02 · ✅ corrigido em 2026-11-09 · Estorno de recebimento sobrescreve movimentos posteriores
@@ -145,7 +145,7 @@ Células iniciando em `=`, `+`, `-` ou `@` são interpretadas pelo Excel/Planilh
 - **KF-39 · P0 · Aumentar o total de OS quitada mantém `payment_status='paid'`.** Re-derivar o status após a edição.
 
 ### Pagamentos fora da OS e cancelamento (2ª rodada, 2026-11-09)
-> Testes: `tests/unit/handlers/financial-payments.test.ts`. Os quatro primeiros (KF-40 a KF-42 e KF-44) têm `it.fails`; o KF-43 é só caracterização.
+> Testes: `tests/fast/financial/financial-payments.test.ts`. Os quatro primeiros (KF-40 a KF-42 e KF-44) têm `it.fails`; o KF-43 é só caracterização.
 
 - **KF-40 · P0 · `cancel` da OS apaga comissão já paga e estorna o dinheiro.** O laço de `cancel.post.ts` remove todo registro `commission` da OS (inclusive `paid`), reverte o extrato e apaga a despesa. Viola a invariante I3. Alcançável com `commission_release_mode='full'`, em que a comissão é paga antes de a OS receber algo. Correção: recusar (409) quando houver comissão paga, como o estorno de pagamento já faz.
 - **KF-41 · P2 · `pay-entries-bulk` soma o saldo em ponto flutuante** (sem `roundMoney`): 10 × R$ 0,10 dá 1001.0000000000002. Mesmo defeito do KF-30, em outro caminho. `pay-commissions-bulk` e `commissions/:id/pay` têm o mesmo padrão (`saldo − valor`).
@@ -160,7 +160,7 @@ Células iniciando em `=`, `+`, `-` ou `@` são interpretadas pelo Excel/Planilh
 - KF-35 (caracterização, sem `it.fails`): "Lucro pelas OS" sem filtro de status soma orçamento e cancelada. Decidir se o padrão deve ser só OS concluídas.
 
 ### KF-09, visão financeira (teste novo)
-- `tests/unit/handlers/financial-permissions.test.ts` prova que **10 rotas de dinheiro respondem 200 a um usuário sem nenhuma permissão**: `financial/:id/pay`, `pay-entries-bulk`, `pay-commissions-bulk`, `reports/commissions/:id/pay`, `down-payment`, `process-payment`, `receive-extra-payment`, `cancel`, `purchases/:id/pay` e `DELETE financial/:id`. São `it.fails` (um por rota) e mais uma varredura estática (26 escritas financeiras sem `requireOrgPermission`/`requireOwner`). Ao corrigir uma rota, troque o `it.fails` dela por `it`.
+- `tests/fast/access/financial-permissions.test.ts` prova que **10 rotas de dinheiro respondem 200 a um usuário sem nenhuma permissão**: `financial/:id/pay`, `pay-entries-bulk`, `pay-commissions-bulk`, `reports/commissions/:id/pay`, `down-payment`, `process-payment`, `receive-extra-payment`, `cancel`, `purchases/:id/pay` e `DELETE financial/:id`. São `it.fails` (um por rota) e mais uma varredura estática (26 escritas financeiras sem `requireOrgPermission`/`requireOwner`). Ao corrigir uma rota, troque o `it.fails` dela por `it`.
 
 ---
 
@@ -209,14 +209,14 @@ Células iniciando em `=`, `+`, `-` ou `@` são interpretadas pelo Excel/Planilh
 
 ## Infraestrutura de teste e CI
 
-### KF-00 · P1 (parcial: `supabase start` + `tests/api` rodam desde 2026-11-09; falta o resto das camadas L3/L4 e E2E autenticado) · Camadas L3/L4 contra Postgres real e E2E autenticado não foram executadas
+### KF-00 · P1 (parcial: `supabase start` + `tests/db` rodam desde 2026-11-09; falta o resto das camadas L3/L4 e E2E autenticado) · Camadas L3/L4 contra Postgres real e E2E autenticado não foram executadas
 - **Docker não estava em execução** no ambiente da implementação e **não existe `supabase/config.toml`** (decisão D1 do plano: a primeira tarefa da Fase 0 é `supabase init` e provar que as 97 migrations sobem em banco limpo — **não validado**).
-- Escritos mas **nunca rodados**: `tests/api/database.test.ts` (tabelas, RPC `next_service_order_number`, unicidade de OS e de parcela, assinatura única) e o job `api` do CI (fica desligado enquanto não houver `supabase/config.toml`).
+- Escritos mas **nunca rodados**: `tests/db/database.test.ts` (tabelas, RPC `next_service_order_number`, unicidade de OS e de parcela, assinatura única) e o job `api` do CI (fica desligado enquanto não houver `supabase/config.toml`).
 - Pendentes por depender de banco real: F1 (cadastro→Stripe→webhook), F5–F12, `describeEndpoint()` completo M2–M11 para as 248 rotas, relatórios com dataset golden, concorrência de `next-number`.
 - Playwright: E1 (visitante), E10 (sem rolagem horizontal, mobile) e E11 (páginas públicas, `robots.txt`, `sitemap.xml`) **rodam e passam**. E2–E9 e E12 exigem usuário logado + Supabase local.
   - **Fluxos logados escritos (2026-11-09), ainda não executados:** `auth-session`, `routing-by-profile` (E2/E3), `admin-panel`, `money-flows` (E6 pela API, contra Postgres real) e `app-smoke` em `tests/e2e/`. Rodam só com `E2E_SUPABASE_URL/ANON_KEY/SERVICE_ROLE_KEY` (Supabase local) e são pulados sem elas. Ao rodar pela primeira vez, esperar ajustes de seletor/payload. Seguem sem teste: E5 (criar cliente/veículo/OS pela tela), E6 pelo modal, E7 (funcionário com papel limitado: depende do KF-09), E8 (exportação baixa arquivo), E12 (Stripe).
-- Como rodar (2026-11-09): **`pnpm test:stack`** sobe `docker-compose.e2e.yml` (Postgres + Auth + REST + Storage + gateway, 102 migrations aplicadas, chaves de teste fixas), roda `tests/api` e o Playwright e derruba tudo. O CI usa o mesmo runner (jobs `api` e `e2e`). Manualmente: `pnpm stack:up` e exportar `TEST_SUPABASE_*`/`E2E_SUPABASE_*` (valores em `supabase/e2e/stack.env`). O `global-setup` **recusa** qualquer URL que não seja local.
-  - Validado na stack: `tests/api` (16 testes) e a migration 097 (13 testes de `audit-logs.sql.test.ts`).
+- Como rodar (2026-11-09): **`pnpm test:stack`** sobe `docker-compose.e2e.yml` (Postgres + Auth + REST + Storage + gateway, 102 migrations aplicadas, chaves de teste fixas), roda `tests/db` e o Playwright e derruba tudo. O CI usa o mesmo runner (jobs `api` e `e2e`). Manualmente: `pnpm stack:up` e exportar `TEST_SUPABASE_*`/`E2E_SUPABASE_*` (valores em `supabase/e2e/stack.env`). O `global-setup` **recusa** qualquer URL que não seja local.
+  - Validado na stack: `tests/db` (16 testes) e a migration 097 (13 testes de `audit-logs.sql.test.ts`).
 
 ### KF-23 · ✅ corrigido em 2026-11-09 · As migrations não rodavam em banco limpo
 `supabase start` falhava na `...012_create_clients.sql`: o FK `clients_employee_responsible_id_fkey` referenciava `public.employees`, criada só na `...013`. Correção (sem renomear arquivos, para não desalinhar bancos que já aplicaram o histórico): o FK saiu da 012 e foi criado no fim da 013 com `ALTER TABLE`. A `...094` (seed de uma oficina de produção) ganhou guarda `IF NOT EXISTS (organização)` e passou a ser no-op em banco novo. Resultado: as 98 migrations aplicam em banco limpo.

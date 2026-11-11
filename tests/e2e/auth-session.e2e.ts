@@ -1,6 +1,6 @@
 // Fluxo: sessão. Entrar pelo formulário, usar a área protegida, sair e provar que a sessão acabou.
 // Precisa do Supabase local (ver support/env.ts); sem ele o spec é pulado.
-import { expect, skipUnlessAuth, test } from './support/fixtures'
+import { expect, skipUnlessAuth, test } from './support/auth-fixtures'
 
 skipUnlessAuth(test)
 

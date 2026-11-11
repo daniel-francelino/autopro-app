@@ -1,4 +1,4 @@
-# Stack mínima do Supabase para testes de integração (tests/api) e E2E (Playwright).
+# Stack mínima do Supabase para testes de integração (tests/db) e E2E (Playwright).
 # Sobe só o que o app usa: Postgres, Auth (GoTrue), REST (PostgREST), Storage e um gateway.
 # Migrations aplicadas e chaves de teste fixas. Ephemeral: `down -v` apaga tudo.
 #

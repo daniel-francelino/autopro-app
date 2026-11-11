@@ -9,8 +9,8 @@
 > **Resultado:** a implementação revelou 23 itens (defeitos do produto e pendências de infraestrutura) (vários P0 de segurança e de saldo) — todos registrados lá, sem correção.
 > Como rodar: `tests/README.md`.
 >
-> **Objetivo:** que nenhuma funcionalidade quebre sem a gente perceber. Hoje o CI roda só `lint` e `typecheck`
-> (`.github/workflows/ci.yml`) e **o repositório não tem nenhum teste** (sem Vitest, Jest ou Playwright no `package.json`).
+> **Objetivo:** que nenhuma funcionalidade quebre sem a gente perceber. Quando este plano foi escrito o CI rodava só `lint` e `typecheck` e o repositório não tinha teste.
+> **Hoje existem** a suíte Vitest (projetos `fast` e `db`), o Playwright e o CI (`static`, `api` e `e2e` em `.github/workflows/ci.yml`); estrutura e comandos reais em `tests/README.md` e `docs/architecture/tests-organization.md`.
 >
 > **Método:** leitura de `server/api/**` (248 handlers), `server/utils/**`, `lib/utils`, `app/middleware`, `supabase/migrations`
 > e dos documentos em `docs/`. Os números abaixo são contagens do código atual.
@@ -87,39 +87,31 @@ oficinas é L3, não L1. Só o que depende de navegador (redirecionamento, modal
 > (§3.4). **Risco R8:** as 97 migrations nunca foram aplicadas em banco limpo de forma automatizada; a primeira execução pode
 > falhar e a correção disso é parte da Fase 0.
 
-### 3.2 Estrutura de pastas proposta
+### 3.2 Estrutura de pastas (a real; reorganizada conforme `docs/architecture/tests-organization.md`)
 
 ```
 tests/
-  setup/
-    global-setup.ts          # sobe/valida Supabase local, aplica migrations, roda seed
-    env.ts                   # variáveis de teste (nunca apontam para produção)
-    msw-handlers.ts          # Stripe, Focus NFe, OneSignal, placa, CEP
-  helpers/
-    factories.ts             # createOrg(), createUser({role}), createClient(), createOrder()...
-    auth.ts                  # loginAs(user) -> cookies prontos para $fetch
-    fake-supabase.ts         # fake de SupabaseClient para L2
-    db.ts                    # truncate/reset entre testes, queries de asserção direto no banco
-  static/                    # L0
-  unit/                      # L1 e L2
-    lib/  server-utils/
-  api/                       # L3 (uma pasta por domínio, igual a server/api)
-  flows/                     # L4
-  e2e/                       # L5 (Playwright)
+  static/                    # L0: lê o código-fonte (baselines/ = catracas)
+  fast/                      # projeto Vitest `fast`: sem Docker; L1, L2, L3-lite e fluxos em memória
+    access/ admin/ audit/ auth/ commissions/ financial/ reports/ service-orders/ users/   # uma pasta por domínio
+    flows/                   # jornadas multi-domínio (undo-payment)
+    lib/                     # utilitários sem domínio claro
+  db/                        # projeto Vitest `db`: Postgres real (stack Docker)
+  e2e/                       # Playwright (support/: env, world, auth-fixtures, settle; service-orders/support/: order-fixtures)
+  support/                   # fake-supabase, handler-harness, h3-stub, factories, db, source-scan, env, global-setup, fast-globals
 vitest.config.ts
 playwright.config.ts
 ```
 
-Convenção de nome: `*.test.ts` (Vitest) e `*.e2e.ts` (Playwright). Os testes de API espelham o caminho do handler:
-`server/api/clients/index.post.ts` → `tests/api/clients/index.post.test.ts`.
+Convenção de nome: `*.test.ts` (Vitest) e `*.e2e.ts` (Playwright). Código de cenário no título do `describe` (`[P45] …`). A proposta original (msw-handlers, `auth.ts`, `api/` espelhando `server/api`) não foi adotada.
 
 ### 3.3 Scripts (`package.json`)
 
 ```jsonc
-"test":          "vitest run --project unit",          // L0+L1+L2, sem Docker
-"test:api":      "vitest run --project api",           // L3+L4, exige Supabase local
+"test":          "vitest run --project fast",          // L0+L1+L2, sem Docker
+"test:api":      "vitest run --project db",           // L3+L4, exige Supabase local
 "test:all":      "vitest run",
-"test:watch":    "vitest --project unit",
+"test:watch":    "vitest --project fast",
 "test:coverage": "vitest run --coverage",
 "test:e2e":      "playwright test"
 ```
@@ -287,7 +279,7 @@ Prioridade: **P0** = antes de qualquer refatoração/lançamento · **P1** = log
 
 ## 8. Camada L4 — Testes de fluxo
 
-Cada fluxo é **um arquivo** em `tests/flows/`, executando as chamadas reais em sequência e conferindo o **estado do banco** no
+Cada fluxo é **um arquivo** em `tests/fast/flows/`, executando as chamadas reais em sequência e conferindo o **estado do banco** no
 fim (saldo, status, lançamentos, extrato), não só o status HTTP.
 
 ### F1 — Cadastro → assinatura → uso (a porta de entrada)
@@ -408,7 +400,7 @@ Cada fase termina com algo útil sozinho (o CI já protege parte do sistema).
 
 | Fase | Entrega | Depende de | Esforço* |
 |---|---|---|---|
-| **0 — Fundação** | Vitest + `@nuxt/test-utils` configurados; `supabase init` + `config.toml`; **migrations sobem em banco limpo** (corrigir o que quebrar); seed de referência; `tests/helpers` (factories, `loginAs`, reset); job `static` no CI com 1 teste de exemplo | — | 2–3 dias |
+| **0 — Fundação** | Vitest + `@nuxt/test-utils` configurados; `supabase init` + `config.toml`; **migrations sobem em banco limpo** (corrigir o que quebrar); seed de referência; `tests/support` (factories, `loginAs`, reset); job `static` no CI com 1 teste de exemplo | — | 2–3 dias |
 | **1 — Rede de segurança barata** | L0 inteira (matriz de guards, paridade de planos, arquivos vazios); L1 do **motor de comissão**, `bonuses`, `recurrence`, `report-helpers` | Fase 0 | 3–4 dias |
 | **2 — Segurança e isolamento** | Helper `describeEndpoint()` (M1–M11); testes P0 de `users`, `roles`, `admin`, `auth`, `consulta`; **F10** (isolamento mestre). Os que expõem falhas reais já nascem como `it.fails`/`todo` ligados ao item do plano de segurança e viram verdes conforme as correções entram | Fase 0 | 4–5 dias |
 | **3 — Dinheiro** | L2 de pagamento/estorno; L3 de `service-orders`, `financial`, `bank-accounts`, `commissions`; fluxos **F2–F5** e invariantes de saldo | Fases 0–2 | 5–7 dias |

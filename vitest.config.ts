@@ -7,7 +7,7 @@ process.env.TZ = process.env.TZ || 'America/Sao_Paulo'
 const root = (path: string) => fileURLToPath(new URL(path, import.meta.url))
 
 const alias = {
-  'h3': root('./tests/helpers/h3-stub.ts'),
+  'h3': root('./tests/support/h3-stub.ts'),
   '~~': root('.'),
   '~': root('./app'),
   '@': root('./app')
@@ -18,15 +18,15 @@ export default defineConfig({
   test: {
     // Saída mínima por padrão; VERBOSE=1 mostra o detalhe de cada teste.
     reporters: process.env.VERBOSE ? ['default'] : ['dot'],
-    // Dois "projects": o que roda sem Docker (unit) e o que exige Supabase local (api).
+    // Dois "projects": o que roda sem Docker (fast) e o que exige Supabase local (db).
     projects: [
       {
         resolve: { alias },
         test: {
-          name: 'unit',
+          name: 'fast',
           environment: 'node',
-          include: ['tests/static/**/*.test.ts', 'tests/unit/**/*.test.ts', 'tests/flows/**/*.test.ts'],
-          setupFiles: ['tests/setup/unit-globals.ts'],
+          include: ['tests/static/**/*.test.ts', 'tests/fast/**/*.test.ts'],
+          setupFiles: ['tests/support/fast-globals.ts'],
           // O 1º import de handlers pesados (date-fns, Stripe) é lento em máquina carregada.
           testTimeout: 30_000
         }
@@ -34,10 +34,10 @@ export default defineConfig({
       {
         resolve: { alias },
         test: {
-          name: 'api',
+          name: 'db',
           environment: 'node',
-          include: ['tests/api/**/*.test.ts'],
-          globalSetup: ['tests/setup/global-setup.ts'],
+          include: ['tests/db/**/*.test.ts'],
+          globalSetup: ['tests/support/global-setup.ts'],
           testTimeout: 30_000,
           hookTimeout: 60_000,
           fileParallelism: false

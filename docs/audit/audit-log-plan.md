@@ -552,11 +552,11 @@ A partir da Fase 1 cada reclamação nova já é investigável pelos SQLs do §9
 - **Escrita fora da API** (scripts em `scripts/`, SQL manual, migrations) não passa pela Camada 1. **Risco aceito**: o sistema é a única porta de alteração (Camada 3 descartada).
 - **`denied` raro hoje** — enquanto as permissões por papel não forem checadas no servidor (painel §2.2), uma ação proibida
   aparece como `success`. O log mostra **quem** fez, o que já resolve a investigação, mas não o bloqueio.
-  Para dinheiro isso está **provado por teste**: `tests/unit/handlers/financial-permissions.test.ts` mostra que 10 rotas de
+  Para dinheiro isso está **provado por teste**: `tests/fast/access/financial-permissions.test.ts` mostra que 10 rotas de
   pagamento, estorno e cancelamento respondem 200 a um usuário sem permissão (KF-09 em `docs/testing/known-failures.md`).
   Até o KF-09 ser corrigido, a auditoria é o único rastro de quem mexeu em dinheiro.
 - **Aliasing no banco de teste** — o fake em memória devolvia as próprias linhas por referência, o que faria "antes" mudar junto com
-  o `update`. Corrigido em `tests/helpers/fake-supabase.ts` (o `select` devolve cópias, como um banco real).
+  o `update`. Corrigido em `tests/support/fake-supabase.ts` (o `select` devolve cópias, como um banco real).
 
 ## 13. Testes de aceitação
 
@@ -564,12 +564,12 @@ A partir da Fase 1 cada reclamação nova já é investigável pelos SQLs do §9
 >
 > | Itens | Teste |
 > |---|---|
-> | 1–9, 13–15 | `tests/unit/audit/plugin.test.ts` e `build-and-record.test.ts` (plugin e linha montada, com Nitro/h3 simulados) |
+> | 1–9, 13–15 | `tests/fast/audit/plugin.test.ts` e `build-and-record.test.ts` (plugin e linha montada, com Nitro/h3 simulados) |
 > | 2 | também `derive-and-sanitize.test.ts` (overrides de `service-orders`) |
-> | 10, 11, 16 | `tests/api/audit-logs.sql.test.ts` em **Postgres real** (precisa de `AUDIT_PG_URL`; sem ele o teste é pulado) |
-> | 12 | `tests/unit/handlers/admin-audit-logs.test.ts` |
+> | 10, 11, 16 | `tests/db/audit-logs.sql.test.ts` em **Postgres real** (precisa de `AUDIT_PG_URL`; sem ele o teste é pulado) |
+> | 12 | `tests/fast/admin/admin-audit-logs.test.ts` |
 > | 17 | `build-and-record.test.ts` (linha de webhook a partir do contexto). O handler do Stripe preencher o contexto não tem teste próprio |
-> | 18 | `tests/unit/handlers/financial-payments.test.ts` → "Auditoria (Camada 2)" |
+> | 18 | `tests/fast/financial/financial-payments.test.ts` → "Auditoria (Camada 2)" |
 >
 > Os itens 10, 11 e 16 só são verificados quando o teste de Postgres roda; ver §14.
 
@@ -607,13 +607,13 @@ A partir da Fase 1 cada reclamação nova já é investigável pelos SQLs do §9
 | Histórico da OS lido de `audit_logs` (substitui `service_order_edit_logs`, que nunca foi gravada) | `server/api/service-orders/[id].get.ts` |
 | API do owner `GET /api/admin/audit-logs[/:id]` (filtros, máx. 31 dias, `audit.view`) e tela `/admin/audit` | `server/api/admin/audit-logs/*`, `app/pages/admin/audit.vue` |
 | Código do erro para o usuário (`X-Request-Id` → toast com "Copiar código") e `X-Client-Platform` sempre enviado | `app/composables/useApiErrorToast.ts`, `app/plugins/api-client.client.ts` |
-| Testes | `tests/unit/audit/*`, `tests/unit/handlers/admin-audit-logs.test.ts`, `tests/unit/handlers/financial-payments.test.ts` (Camada 2 em comissão e cancelamento), `tests/api/audit-logs.sql.test.ts` (Postgres real) |
+| Testes | `tests/fast/audit/*`, `tests/fast/admin/admin-audit-logs.test.ts`, `tests/fast/financial/financial-payments.test.ts` (Camada 2 em comissão e cancelamento), `tests/db/audit-logs.sql.test.ts` (Postgres real) |
 
 **Validado com o Nitro 2.13.1 em execução (Fase 0):** `X-Request-Id` sai em toda resposta `/api/**`; `matchedRoute` vem preenchido (`/api/clients`, `/api/auth/login`) e o catch-all do Nuxt aparece como `/**` (tratado como "sem rota"). **Correção ao plano (§5.1, item 1):** quando o handler lança `createError`, o Nitro responde sozinho e o h3 **não** chama `afterResponse` (`event.handled`). Por isso o erro é registrado no hook `error` (`ctx.logged` evita duplicar); `afterResponse` cobre só os sucessos.
 
 **Ainda não validado (precisa de ambiente)**
-- Migration 097 **validada isolada** em Postgres 17 real (imagem `supabase/postgres`): 13 testes em `tests/api/audit-logs.sql.test.ts` cobrem partições, append-only (inclusive service role), `TRUNCATE` negado, `anon`/`authenticated` sem acesso à tabela, às partições e às funções, constraints, `inet`, idempotência, retenção de 6 meses e o encaixe das linhas montadas por `buildAuditRow`.
-  **Schema completo (2026-11-09):** o impedimento (KF-23) foi corrigido e a 097 foi aplicada junto das outras 101 migrations na stack `docker-compose.e2e.yml`; os 13 testes de `tests/api/audit-logs.sql.test.ts` passam nesse Postgres (`pnpm test:stack --only=api`, que também roda no CI). O ramo `cron.schedule` (com `pg_cron` ligado) não foi exercitado.
+- Migration 097 **validada isolada** em Postgres 17 real (imagem `supabase/postgres`): 13 testes em `tests/db/audit-logs.sql.test.ts` cobrem partições, append-only (inclusive service role), `TRUNCATE` negado, `anon`/`authenticated` sem acesso à tabela, às partições e às funções, constraints, `inet`, idempotência, retenção de 6 meses e o encaixe das linhas montadas por `buildAuditRow`.
+  **Schema completo (2026-11-09):** o impedimento (KF-23) foi corrigido e a 097 foi aplicada junto das outras 101 migrations na stack `docker-compose.e2e.yml`; os 13 testes de `tests/db/audit-logs.sql.test.ts` passam nesse Postgres (`pnpm test:stack --only=api`, que também roda no CI). O ramo `cron.schedule` (com `pg_cron` ligado) não foi exercitado.
 - Leitura do corpo JSON em `afterResponse`/`error` com tráfego autenticado real (item 3 do §5.1) e o INSERT contra um banco de verdade: só foi exercitado até a tentativa de gravar.
 - `pg_cron` habilitado no projeto Supabase (§10.1) e o destino de deploy (§10.3). Sem `pg_cron`, agendar `SELECT public.audit_logs_maintain(2, 6)` antes do fim de cada mês.
 

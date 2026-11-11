@@ -2,7 +2,7 @@
 import { expect, type Locator, type Page } from '@playwright/test'
 import { clickUntil, type OrderForm, type OrdersPage } from './pages'
 import type { ProductRef } from './catalog'
-import type { Shop } from './fixtures'
+import type { Shop } from './order-fixtures'
 
 /** The card's status-advance buttons are icon-only (the tooltip only shows on hover). */
 const ADVANCE_ICON = { 'Abrir OS': 'circle-dot', 'Iniciar': 'wrench', 'Concluir': 'circle-check' } as const

@@ -32,7 +32,7 @@ CRUD e consulta de placa externa (`lookup-plate`, consome token pago).
 | VEH-03 | P2 | Exclusão com OS; isolamento (KF-09). |
 
 ## Padrão para escrever os testes
-- Handler real + `createFakeSupabase` (`tests/helpers`), como em `tests/unit/handlers/money-flows.test.ts`.
+- Handler real + `createFakeSupabase` (`tests/support`), como em `tests/fast/service-orders/money-flows.test.ts`.
 - Sempre incluir: **sem sessão (401)**, **outra organização (404 e nada muda)**, **corpo inválido (400)** e **repetição (idempotência)**.
-- O que depende de RPC, gatilho, índice único ou concorrência vai para `tests/api` (Supabase local).
+- O que depende de RPC, gatilho, índice único ou concorrência vai para `tests/db` (Supabase local).
 - Bug descoberto: escrever o teste do comportamento correto com `it.fails`, registrar `KF-nn` em `known-failures.md`.

@@ -2,7 +2,7 @@
 // O que os testes em memória não alcançam: RPC de numeração, índices únicos, gatilhos e o dado gravado de verdade.
 // Cada fluxo cria a própria conta bancária, cliente e OS, então não depende da ordem dos outros.
 // Precisa do Supabase local (ver support/env.ts); sem ele o spec é pulado.
-import { expect, skipUnlessAuth, test, type Api, type World } from './support/fixtures'
+import { expect, skipUnlessAuth, test, type Api, type World } from './support/auth-fixtures'
 
 skipUnlessAuth(test)
 

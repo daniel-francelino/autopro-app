@@ -87,7 +87,7 @@ test.describe('Flow: recover password (validation)', () => {
 })
 
 test.describe('Flow: API closed to guests', () => {
-  // Rotas de dinheiro e de dados: sem sessão, sempre 401 (a matriz completa está em tests/unit/handlers/guard-matrix).
+  // Rotas de dinheiro e de dados: sem sessão, sempre 401 (a matriz completa está em tests/fast/access/guard-matrix).
   const routes: Array<[string, string]> = [
     ['GET', '/api/service-orders'],
     ['POST', '/api/service-orders'],

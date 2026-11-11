@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { ANON_KEY, JWT_SECRET, SERVICE_ROLE_KEY } from '../../supabase/e2e/generate-keys.mjs'
-import { ROOT } from '../helpers/source-scan'
+import { ROOT } from '../support/source-scan'
 
 const read = (p: string) => readFileSync(join(ROOT, p), 'utf8')
 const env = Object.fromEntries(read('supabase/e2e/stack.env').split(/\r?\n/).filter(l => l && !l.startsWith('#')).map((l) => {

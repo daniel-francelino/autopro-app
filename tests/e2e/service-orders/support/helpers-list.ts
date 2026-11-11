@@ -2,7 +2,7 @@
 // Não editam pages.ts/fixtures.ts: só importam deles.
 import { expect, type Locator, type Page } from '@playwright/test'
 import { idOf, type ClientRef, type VehicleRef } from './catalog'
-import { test as base, type Shop, type World } from './fixtures'
+import { test as base, type Shop, type World } from './order-fixtures'
 import { clickUntil, OrdersPage } from './pages'
 
 export const NL = String.fromCharCode(10)

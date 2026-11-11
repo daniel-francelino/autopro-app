@@ -1,7 +1,7 @@
 // Helpers for the commission specs (OS-C and OS-I groups), built on the page objects in pages.ts.
 import { expect, type Locator } from '@playwright/test'
 import type { Catalog, EmployeeRef, ProductRef } from './catalog'
-import type { Shop } from './fixtures'
+import type { Shop } from './order-fixtures'
 import { OrderForm, OrdersPage, PaymentDialog, clickUntil, parseBRL } from './pages'
 
 export type ItemInput = ProductRef | { manual: true, qty?: number } | { p: ProductRef, qty: number }

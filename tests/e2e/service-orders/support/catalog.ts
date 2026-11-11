@@ -1,7 +1,7 @@
 // Catálogo fixo da suíte de Ordem de Serviço (docs/testing/e2e-service-orders.md §3).
 // Valores redondos, escolhidos para que cada funcionário tenha uma comissão DIFERENTE na mesma OS e dê para conferir à mão.
 // Criado por API na oficina A, uma vez por worker. Os testes só LEEM este catálogo.
-import { expect, type Api } from '../../support/fixtures'
+import { expect, type Api } from '../../support/auth-fixtures'
 
 export interface ProductRef {
   id: string

@@ -16,11 +16,17 @@ done
 
 "${PSQL[@]}" -c "CREATE TABLE IF NOT EXISTS public._e2e_migrations (name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())"
 
+# Uma única consulta traz as já aplicadas (em vez de um psql por arquivo).
+applied_names=$("${PSQL[@]}" -At -c "SELECT name FROM public._e2e_migrations")  # falha aqui derruba o script (set -e)
+declare -A already
+while IFS= read -r n; do
+  [ -n "$n" ] && already["$n"]=1
+done <<< "$applied_names"
+
 applied=0
 for file in /migrations/*.sql; do
   name=$(basename "$file")
-  done_already=$("${PSQL[@]}" -At -c "SELECT 1 FROM public._e2e_migrations WHERE name = '$name'")
-  [ -n "$done_already" ] && continue
+  [ -n "${already[$name]:-}" ] && continue
   echo "[migrate] $name"
   # Uma transação por arquivo, como o Supabase CLI (a 091 usa tabela temporária ON COMMIT DROP).
   "${PSQL[@]}" --single-transaction -f "$file" -c "INSERT INTO public._e2e_migrations (name) VALUES ('$name')"

@@ -1,7 +1,7 @@
 // Money helpers (OS-F, OS-G, OS-H): payment modal, installments card, down-payment/extra-payment modals,
 // API setup shortcuts and database reads. The tested ACTION is always done through the UI; the API only prepares state.
 import { expect, type Locator, type Page } from '@playwright/test'
-import { money, type Shop } from './fixtures'
+import { money, type Shop } from './order-fixtures'
 import { OrdersPage, OrderDetail, parseBRL } from './pages'
 
 export type MethodLabel = 'Pix' | 'Dinheiro' | 'Cartão de crédito' | 'Cartão de débito' | 'Boleto' | 'Transferência' | 'Cheque'

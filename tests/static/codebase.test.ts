@@ -14,7 +14,7 @@ import {
   read,
   walk,
   rel
-} from '../helpers/source-scan'
+} from '../support/source-scan'
 
 const handlers = listHandlers()
 

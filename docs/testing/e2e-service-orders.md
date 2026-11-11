@@ -420,5 +420,5 @@ Cenários que descobrirem comportamento diferente do esperado viram `test.fail()
 ## 7. O que **não** é E2E (já tem camada mais barata)
 
 - A conta da comissão em si (percentual, fixo, base, versão por mês, arredondamento) → **L1**, `employee-commission-engine`. O E2E só confere que a tela chama e mostra o que o motor calcula.
-- Soma de parcelas, estorno e idempotência no servidor → **L2/L3** (`tests/unit`, `tests/api`).
+- Soma de parcelas, estorno e idempotência no servidor → **L2/L3** (`tests/fast`, `tests/db`).
 - Numeração concorrente sem colisão → **L3** com Postgres real (RPC `next_service_order_number`).

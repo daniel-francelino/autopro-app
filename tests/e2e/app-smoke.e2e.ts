@@ -1,7 +1,7 @@
 // Fluxo: abrir cada tela principal do app logado. Pega página quebrada (erro de JS, API 5xx, redirecionamento
 // inesperado) depois de qualquer mudança, sem precisar de um teste por tela.
 // Precisa do Supabase local (ver support/env.ts); sem ele o spec é pulado.
-import { expect, skipUnlessAuth, test } from './support/fixtures'
+import { expect, skipUnlessAuth, test } from './support/auth-fixtures'
 
 skipUnlessAuth(test)
 

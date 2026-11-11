@@ -1,6 +1,6 @@
 // Fluxo: painel do dono da plataforma (/admin): menu agrupado, navegação entre as telas e menu do usuário.
 // Precisa do Supabase local (ver support/env.ts); sem ele o spec é pulado.
-import { expect, skipUnlessAuth, test } from './support/fixtures'
+import { expect, skipUnlessAuth, test } from './support/auth-fixtures'
 
 skipUnlessAuth(test)
 
