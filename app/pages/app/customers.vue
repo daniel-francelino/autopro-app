@@ -511,7 +511,7 @@ function openHistoryModal(client: Client) {
             @search-submit="submitSearch"
           >
             <template #toolbar-right>
-              <UTooltip text="Importar clientes">
+              <UTooltip v-if="canCreate" text="Importar clientes">
                 <UButton
                   icon="i-lucide-upload"
                   color="neutral"

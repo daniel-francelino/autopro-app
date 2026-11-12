@@ -1,5 +1,6 @@
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
+import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
 import { recordAudit } from '../../utils/audit/record'
 
@@ -8,6 +9,7 @@ const VALID_STATUSES = ['pending', 'completed']
 
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
+  await requireOrgPermission(authUser.id, 'returns.create', event)
   const supabase = getSupabaseAdminClient()
 
   const organizationId = await resolveOrganizationId(event, authUser.id)

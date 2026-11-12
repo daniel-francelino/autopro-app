@@ -1,5 +1,6 @@
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
+import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
 
 interface ClientRow {
@@ -22,6 +23,7 @@ interface ClientRow {
 
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
+  await requireOrgPermission(authUser.id, 'customers.create', event)
   const supabase = getSupabaseAdminClient()
 
   const organizationId = await resolveOrganizationId(event, authUser.id)

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Appointment } from '~/types/appointments'
+import { ActionCode } from '~/constants/action-codes'
 
 const props = defineProps<{
   open: boolean
@@ -50,6 +51,9 @@ async function loadOptions() {
 // ─── Form ─────────────────────────────────────────────────────────────────────
 const NO_PRIORITY = 'none'
 const isEditing = computed(() => props.appointment !== null)
+const workshop = useWorkshopPermissions()
+const canUpdate = computed(() => workshop.can(ActionCode.APPOINTMENTS_UPDATE))
+const canDelete = computed(() => workshop.can(ActionCode.APPOINTMENTS_DELETE))
 const title = computed(() => isEditing.value ? 'Editar agendamento' : 'Novo agendamento')
 
 const statusFormOptions = [
@@ -316,7 +320,7 @@ async function remove() {
     <template #footer>
       <div class="flex items-center justify-between gap-2">
         <UButton
-          v-if="isEditing"
+          v-if="isEditing && canDelete"
           label="Excluir"
           color="error"
           variant="ghost"
@@ -331,6 +335,7 @@ async function remove() {
             @click="emit('update:open', false)"
           />
           <UButton
+            v-if="!isEditing || canUpdate"
             label="Salvar"
             color="neutral"
             :loading="isSaving"

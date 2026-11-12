@@ -419,33 +419,15 @@ describe('Decisões de produto pendentes (it.todo)', () => {
 
 describe('PUR-06c / PUR-06e / PUR-06f: emp-sem must not write (KF-09, KF-61)', () => {
   beforeEach(() => loginAs('emp-sem'))
-  it('controle PUR-06c [caracteriza comportamento atual; decisão em G2-OQ-01 e KF-09]: emp-sem POST -> 200 e linha criada', async () => {
-    const res = await create(VALID)
-    expect(res.status).toBe(200)
-    expect(puWrites()).toHaveLength(1)
-    expect(purchases()).toHaveLength(SEED_SIZE + 1)
-  })
-  it('controle PUR-06e [caracteriza comportamento atual; decisão em G2-OQ-01 e KF-09]: emp-sem PUT -> 200 e notes gravado', async () => {
-    const res = await update('pu-p2', { notes: 'x' })
-    expect(res.status).toBe(200)
-    expect(row('pu-p2').notes).toBe('x')
-    expect(puWrites()).toHaveLength(1)
-  })
-  it('controle PUR-06f [caracteriza comportamento atual; decisão em G2-OQ-01 e KF-09]: emp-sem DELETE -> 200 e deleted_at gravado', async () => {
-    const res = await remove('pu-p2')
-    expect(res.status).toBe(200)
-    expect(row('pu-p2').deleted_at).toBeTruthy()
-    expect(puWrites()).toHaveLength(1)
-  })
-  it.fails('PUR-06c: POST as emp-sem -> 403 [KF-61]', async () => {
+  it('PUR-06c: POST as emp-sem -> 403 [KF-61]', async () => {
     const res = await create(VALID)
     expect(res.status).toBe(403)
   })
-  it.fails('PUR-06e: PUT as emp-sem -> 403 [KF-61]', async () => {
+  it('PUR-06e: PUT as emp-sem -> 403 [KF-61]', async () => {
     const res = await update('pu-p2', { notes: 'x' })
     expect(res.status).toBe(403)
   })
-  it.fails('PUR-06f: DELETE as emp-sem -> 403 [KF-61]', async () => {
+  it('PUR-06f: DELETE as emp-sem -> 403 [KF-61]', async () => {
     const res = await remove('pu-p2')
     expect(res.status).toBe(403)
   })

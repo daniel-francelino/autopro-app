@@ -334,13 +334,7 @@ describe('EMP-06d: PUT em funcionário de B logado em A', () => {
 
 describe('EMP-01c: PUT role_id de funcionário vinculado (G1-SD-05, KF-53; permissão KF-52/KF-09)', () => {
   // r-admin-b é o papel "admin" de sistema da org B.
-  it('controle [caracteriza comportamento atual; decisão em G1-OQ-01 e KF-09]: emp-sem PUT {role_id} em funcionário vinculado -> 200 e user_profiles é escrito', async () => {
-    loginAs('emp-sem')
-    const res = await update('e-a-link', { role_id: 'r-admin-b' })
-    expect(res.status).toBe(200)
-    expect(profileWrites().length).toBeGreaterThan(0)
-  })
-  it.fails('EMP-01c: PUT {role_id de B} por emp-sem -> 403 e nenhum user_profiles alterado [KF-52]', async () => {
+  it('EMP-01c: PUT {role_id de B} por emp-sem -> 403 e nenhum user_profiles alterado [KF-52]', async () => {
     loginAs('emp-sem')
     const profBefore = structuredClone(profiles())
     const res = await update('e-a-link', { role_id: 'r-admin-b' })
@@ -424,33 +418,15 @@ describe('EMP-03b / EMP-15 / EMP-06f: DELETE (soft)', () => {
 
 describe('EMP-06c / EMP-06e / EMP-06g: emp-sem não deveria escrever (KF-09, KF-52)', () => {
   beforeEach(() => loginAs('emp-sem'))
-  it('controle EMP-06c [caracteriza comportamento atual; decisão em G1-OQ-01 e KF-09]: emp-sem POST -> 200 e linha criada', async () => {
-    const res = await create(VALID)
-    expect(res.status).toBe(200)
-    expect(empWrites()).toHaveLength(1)
-    expect(employees()).toHaveLength(SEED_SIZE + 1)
-  })
-  it('controle EMP-06e [caracteriza comportamento atual; decisão em G1-OQ-01 e KF-09]: emp-sem PUT -> 200 e phone gravado', async () => {
-    const res = await update('e-a1', { phone: '11000001111' })
-    expect(res.status).toBe(200)
-    expect(row('e-a1').phone).toBe('11000001111')
-    expect(empWrites()).toHaveLength(1)
-  })
-  it('controle EMP-06g [caracteriza comportamento atual; decisão em G1-OQ-01 e KF-09]: emp-sem DELETE -> 200 e deleted_at gravado', async () => {
-    const res = await remove('e-a1')
-    expect(res.status).toBe(200)
-    expect(row('e-a1').deleted_at).toBeTruthy()
-    expect(empWrites()).toHaveLength(1)
-  })
-  it.fails('EMP-06c: POST como emp-sem -> 403 [KF-52]', async () => {
+  it('EMP-06c: POST como emp-sem -> 403 [KF-52]', async () => {
     const res = await create(VALID)
     expect(res.status).toBe(403)
   })
-  it.fails('EMP-06e: PUT como emp-sem -> 403 [KF-52]', async () => {
+  it('EMP-06e: PUT como emp-sem -> 403 [KF-52]', async () => {
     const res = await update('e-a1', { phone: '11000001111' })
     expect(res.status).toBe(403)
   })
-  it.fails('EMP-06g: DELETE como emp-sem -> 403 [KF-52]', async () => {
+  it('EMP-06g: DELETE como emp-sem -> 403 [KF-52]', async () => {
     const res = await remove('e-a1')
     expect(res.status).toBe(403)
   })

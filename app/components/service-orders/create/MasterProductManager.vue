@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ActionCode } from '~/constants/action-codes'
+
 interface MasterProductItem {
   id: string
   name: string
@@ -21,6 +23,10 @@ const emit = defineEmits<{
 }>()
 
 const toast = useToast()
+const workshop = useWorkshopPermissions()
+const canCreate = computed(() => workshop.can(ActionCode.ORDERS_CREATE))
+const canUpdate = computed(() => workshop.can(ActionCode.ORDERS_UPDATE))
+const canDelete = computed(() => workshop.can(ActionCode.ORDERS_DELETE))
 const search = ref('')
 const pendingDelete = ref<MasterProductItem | null>(null)
 const isDeleting = ref(false)
@@ -85,6 +91,7 @@ watch(() => props.open, (opened) => {
             class="w-full"
           />
           <UButton
+            v-if="canCreate"
             label="Novo"
             icon="i-lucide-plus"
             color="neutral"
@@ -130,6 +137,7 @@ watch(() => props.open, (opened) => {
                   @click="handleSelect(product.id)"
                 />
                 <UButton
+                  v-if="canUpdate"
                   icon="i-lucide-pencil"
                   color="neutral"
                   variant="ghost"
@@ -137,6 +145,7 @@ watch(() => props.open, (opened) => {
                   @click="emit('openEdit', product)"
                 />
                 <UButton
+                  v-if="canDelete"
                   icon="i-lucide-trash-2"
                   color="error"
                   variant="ghost"

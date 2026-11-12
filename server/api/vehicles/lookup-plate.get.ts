@@ -1,4 +1,5 @@
 import { requireAuthUser } from '../../utils/require-auth'
+import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
 
 // Plate lookup using wdapi2.com.br (or configurable env var)
@@ -42,6 +43,7 @@ function mapFuel(raw: string | undefined): string | undefined {
 export default defineEventHandler(async (event) => {
   // Consome a cota paga da API de placas: exige login e oficina (antes era público).
   const authUser = await requireAuthUser(event)
+  await requireOrgPermission(authUser.id, 'vehicles.read', event)
   await resolveOrganizationId(event, authUser.id)
 
   const { plate } = getQuery(event) as { plate?: string }

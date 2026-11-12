@@ -42,6 +42,10 @@ function seed() {
       { id: 'p1', user_id: 'u1', organization_id: 'org-a', role_id: 'r', is_owner: false, is_active: true, employee_id: null },
       { id: 'p2', user_id: 'u2', organization_id: 'org-b', role_id: 'r', is_owner: false, is_active: true, employee_id: null }
     ],
+    // role r com purchases.update (guard de purchases/:id/pay, Fase 4)
+    roles: [{ id: 'r', name: 'operador', is_system_role: false }],
+    actions: [{ id: 'act-pu', code: 'purchases.update', deleted_at: null }],
+    role_actions: [{ role_id: 'r', action_id: 'act-pu', is_granted: true }],
     bank_accounts: [
       { id: 'acc-a', organization_id: 'org-a', current_balance: 1000, is_active: true },
       { id: 'acc-b', organization_id: 'org-b', current_balance: 50, is_active: true }

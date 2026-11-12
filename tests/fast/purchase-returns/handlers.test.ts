@@ -392,33 +392,15 @@ describe('Decisões de produto pendentes (it.todo)', () => {
 
 describe('PRT-03d / PRT-03f / PRT-03g: emp-sem must not write (KF-09, KF-72)', () => {
   beforeEach(() => loginAs('emp-sem'))
-  it('controle PRT-03d [caracteriza comportamento atual; decisão em G2-OQ-01 e KF-09]: emp-sem POST -> 200 e linha criada', async () => {
-    const res = await create(VALID)
-    expect(res.status).toBe(200)
-    expect(prWrites()).toHaveLength(1)
-    expect(returns()).toHaveLength(SEED_SIZE + 1)
-  })
-  it('controle PRT-03f [caracteriza comportamento atual; decisão em G2-OQ-01 e KF-09]: emp-sem PUT -> 200 e notes gravado', async () => {
-    const res = await update('pr-r1', { notes: 'x' })
-    expect(res.status).toBe(200)
-    expect(row('pr-r1').notes).toBe('x')
-    expect(prWrites()).toHaveLength(1)
-  })
-  it('controle PRT-03g [caracteriza comportamento atual; decisão em G2-OQ-01 e KF-09]: emp-sem DELETE -> 200 e deleted_at gravado', async () => {
-    const res = await remove('pr-r1')
-    expect(res.status).toBe(200)
-    expect(row('pr-r1').deleted_at).toBeTruthy()
-    expect(prWrites()).toHaveLength(1)
-  })
-  it.fails('PRT-03d: POST as emp-sem -> 403 [KF-72]', async () => {
+  it('PRT-03d: POST as emp-sem -> 403 [KF-72]', async () => {
     const res = await create(VALID)
     expect(res.status).toBe(403)
   })
-  it.fails('PRT-03f: PUT as emp-sem -> 403 [KF-72]', async () => {
+  it('PRT-03f: PUT as emp-sem -> 403 [KF-72]', async () => {
     const res = await update('pr-r1', { notes: 'x' })
     expect(res.status).toBe(403)
   })
-  it.fails('PRT-03g: DELETE as emp-sem -> 403 [KF-72]', async () => {
+  it('PRT-03g: DELETE as emp-sem -> 403 [KF-72]', async () => {
     const res = await remove('pr-r1')
     expect(res.status).toBe(403)
   })

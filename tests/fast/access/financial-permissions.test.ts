@@ -105,12 +105,27 @@ describe('S1: financial routes are within matrix M1 (no login → 401)', () => {
 describe('S2 / KF-09: user without financial role does not touch money', () => {
   // Enquanto o KF-09 existir, cada rota abaixo responde 200 para um usuário sem nenhuma permissão.
   // Ao corrigir uma rota (requireOrgPermission), o Vitest acusa "unexpected pass": troque it.fails por it.
-  for (const r of MONEY_ROUTES) {
+  // purchases/:id/pay já tem guard (Fase 4): coberto por it normal logo abaixo, fora deste laço de it.fails.
+  for (const r of MONEY_ROUTES.filter(x => x.name !== 'purchases/:id/pay')) {
     it.fails(`${r.name} → 403 for role without permission`, async () => {
       const res = await run(r)
       expect(res.status, `${r.name} respondeu ${res.status} (${res.error?.message ?? 'ok'})`).toBe(403)
     })
   }
+  const PAY = MONEY_ROUTES.find(x => x.name === 'purchases/:id/pay')!
+  it('purchases/:id/pay -> 403 and no write for role without purchases.update', async () => {
+    const before = structuredClone(fake.tables)
+    const res = await run(PAY)
+    expect(res.status).toBe(403)
+    expect(fake.writes).toHaveLength(0)
+    expect(fake.tables).toEqual(before)
+  })
+  it('purchases/:id/pay -> 200 for role with purchases.update', async () => {
+    fake.tables.actions!.push({ id: 'act-pu', code: 'purchases.update', deleted_at: null })
+    fake.tables.role_actions!.push({ role_id: 'r-operador', action_id: 'act-pu', is_granted: true })
+    const res = await run(PAY)
+    expect(res.status).toBe(200)
+  })
   it('the workshop owner can still do it (control: permission must not be the only barrier to use)', async () => {
     seed('owner')
     const res = await run(MONEY_ROUTES[0]!)

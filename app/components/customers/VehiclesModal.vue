@@ -1,5 +1,6 @@
 <script setup lang='ts'>
 import type { Client } from '~/types/clients'
+import { ActionCode } from '~/constants/action-codes'
 
 type Vehicle = {
   id: string
@@ -25,6 +26,10 @@ const emit = defineEmits<{
 }>()
 
 const toast = useToast()
+const workshop = useWorkshopPermissions()
+const canCreate = computed(() => workshop.can(ActionCode.VEHICLES_CREATE))
+const canUpdate = computed(() => workshop.can(ActionCode.VEHICLES_UPDATE))
+const canDelete = computed(() => workshop.can(ActionCode.VEHICLES_DELETE))
 
 const isOpen = computed({
   get: () => props.open,
@@ -229,6 +234,7 @@ function vehicleLabel(v: Vehicle): string {
             </div>
             <div class="flex shrink-0 items-center gap-1">
               <UButton
+                v-if="canUpdate"
                 icon="i-lucide-pencil"
                 color="neutral"
                 variant="ghost"
@@ -236,6 +242,7 @@ function vehicleLabel(v: Vehicle): string {
                 @click="openEditVehicle(v)"
               />
               <UButton
+                v-if="canDelete"
                 icon="i-lucide-trash-2"
                 color="error"
                 variant="ghost"
@@ -342,6 +349,7 @@ function vehicleLabel(v: Vehicle): string {
         class="flex w-full items-center justify-end"
       >
         <UButton
+          v-if="canCreate"
           label="Adicionar veículo"
           icon="i-lucide-plus"
           color="neutral"

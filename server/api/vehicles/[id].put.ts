@@ -1,11 +1,13 @@
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
+import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
 
 const VALID_FUEL_TYPES = ['gasoline', 'ethanol', 'diesel', 'flex', 'cng', 'electric', 'hybrid']
 
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
+  await requireOrgPermission(authUser.id, 'vehicles.update', event)
   const supabase = getSupabaseAdminClient()
 
   const organizationId = await resolveOrganizationId(event, authUser.id)

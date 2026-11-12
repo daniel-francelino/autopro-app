@@ -461,33 +461,15 @@ describe('PRQ-01c / PRQ-01f: emp-sem must not authorize/reject (KF-09, KF-57, G2
 
 describe('PRQ-03c / PRQ-03e / PRQ-03f: emp-sem must not write (KF-09, KF-58)', () => {
   beforeEach(() => loginAs('emp-sem'))
-  it('controle PRQ-03c [caracteriza comportamento atual; decisão em G2-OQ-01 e KF-57/KF-58]: emp-sem POST -> 200 e linha criada', async () => {
-    const res = await create({ supplier_id: 'sup-a', items: ITEMS })
-    expect(res.status).toBe(200)
-    expect(prWrites()).toHaveLength(1)
-    expect(requests()).toHaveLength(6)
-  })
-  it('controle PRQ-03e [caracteriza comportamento atual; decisão em G2-OQ-01 e KF-57/KF-58]: emp-sem PUT -> 200 e notes gravado', async () => {
-    const res = await update('rq-w', { notes: 'x' })
-    expect(res.status).toBe(200)
-    expect(row('rq-w').notes).toBe('x')
-    expect(prWrites()).toHaveLength(1)
-  })
-  it('controle PRQ-03f [caracteriza comportamento atual; decisão em G2-OQ-01 e KF-57/KF-58]: emp-sem DELETE -> 200 e deleted_at gravado', async () => {
-    const res = await remove('rq-w')
-    expect(res.status).toBe(200)
-    expect(row('rq-w').deleted_at).toBeTruthy()
-    expect(prWrites()).toHaveLength(1)
-  })
-  it.fails('PRQ-03c: POST as emp-sem -> 403 [KF-58]', async () => {
+  it('PRQ-03c: POST as emp-sem -> 403 [KF-58]', async () => {
     const res = await create({ supplier_id: 'sup-a', items: ITEMS })
     expect(res.status).toBe(403)
   })
-  it.fails('PRQ-03e: PUT as emp-sem -> 403 [KF-58]', async () => {
+  it('PRQ-03e: PUT as emp-sem -> 403 [KF-58]', async () => {
     const res = await update('rq-w', { notes: 'x' })
     expect(res.status).toBe(403)
   })
-  it.fails('PRQ-03f: DELETE as emp-sem -> 403 [KF-58]', async () => {
+  it('PRQ-03f: DELETE as emp-sem -> 403 [KF-58]', async () => {
     const res = await remove('rq-w')
     expect(res.status).toBe(403)
   })
