@@ -303,7 +303,7 @@ const lineColumns = [
 
             <template #type-cell="{ row }">
               <UBadge
-                :label="TAX_TYPE_LABELS[row.original.type as string] ?? row.original.type"
+                :label="TAX_TYPE_LABELS[row.original.type as string] ?? (row.original.type as string | undefined)"
                 color="neutral"
                 variant="subtle"
                 size="sm"
@@ -352,7 +352,7 @@ const lineColumns = [
                           {{ tax.name }}
                         </h3>
                         <UBadge
-                          :label="TAX_TYPE_LABELS[tax.type as string] ?? tax.type"
+                          :label="TAX_TYPE_LABELS[tax.type as string] ?? tax.type ?? undefined"
                           color="neutral"
                           variant="subtle"
                           size="sm"

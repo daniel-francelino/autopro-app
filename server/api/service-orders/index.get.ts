@@ -9,6 +9,26 @@ import { normalizeSearchText as normalizeString } from '../../utils/search'
  * Lists service orders with filters, pagination and search.
  */
 
+type ResponsibleEmployee = { employee_id?: string | null }
+
+type ServiceOrderRow = {
+  id: string
+  number?: string | null
+  status?: string | null
+  payment_status?: string | null
+  is_installment?: boolean | null
+  installment_count?: number | null
+  client_id?: string | null
+  vehicle_id?: string | null
+  master_product_id?: string | null
+  employee_responsible_id?: string | null
+  responsible_employees?: ResponsibleEmployee[] | null
+  entry_date?: string | null
+  reported_defect?: string | null
+  total_amount?: number | null
+  commission_amount?: number | null
+}
+
 function safeParseDate(value: unknown) {
   if (!value) return null
   const raw = String(value)
@@ -79,7 +99,7 @@ export default defineEventHandler(async (event) => {
   const dateFrom = safeParseDate(query.dateFrom)
   const dateTo = safeParseDate(query.dateTo)
 
-  const filtered = orders.filter((order: any) => {
+  const filtered = orders.filter((order: ServiceOrderRow) => {
     if (exactNumber) {
       return normalizeString(order.number) === exactNumber.toLowerCase()
     }
@@ -95,7 +115,7 @@ export default defineEventHandler(async (event) => {
     let assigneeMatch = responsibleIdFilter === 'all'
     if (!assigneeMatch) {
       if (Array.isArray(order.responsible_employees)) {
-        assigneeMatch = order.responsible_employees.some((a: any) => a?.employee_id === responsibleIdFilter)
+        assigneeMatch = order.responsible_employees.some((a: ResponsibleEmployee) => a?.employee_id === responsibleIdFilter)
       } else if (order.employee_responsible_id) {
         assigneeMatch = order.employee_responsible_id === responsibleIdFilter
       }
@@ -125,7 +145,7 @@ export default defineEventHandler(async (event) => {
   const nextCursor = cursor + slice.length < totalFiltered ? cursor + slice.length : null
 
   // Check commissions for the current page
-  const orderIds = slice.map((o: any) => o.id).filter(Boolean)
+  const orderIds = slice.map((o: ServiceOrderRow) => o.id).filter(Boolean)
   let commissionsMap = new Map<string, boolean>()
 
   if (orderIds.length > 0) {
@@ -140,7 +160,7 @@ export default defineEventHandler(async (event) => {
     commissionsMap = new Map(orderIds.map(id => [id, commissionOrderIds.has(id)]))
   }
 
-  const items = slice.map((order: any) => {
+  const items = slice.map((order: ServiceOrderRow) => {
     const resolvedAssigneeId = order.employee_responsible_id
       || (Array.isArray(order.responsible_employees) && order.responsible_employees.length > 0
         ? order.responsible_employees[0]?.employee_id
@@ -162,7 +182,7 @@ export default defineEventHandler(async (event) => {
       employee_responsible_id: order.employee_responsible_id,
       responsible_name: resolvedAssigneeId ? employeeNameById.get(resolvedAssigneeId) || null : null,
       responsible_names: Array.isArray(order.responsible_employees) && order.responsible_employees.length > 0
-        ? order.responsible_employees.map((e: any) => employeeNameById.get(e.employee_id)).filter(Boolean)
+        ? order.responsible_employees.map((e: ResponsibleEmployee) => employeeNameById.get(e.employee_id as string)).filter(Boolean)
         : resolvedAssigneeId && employeeNameById.get(resolvedAssigneeId)
           ? [employeeNameById.get(resolvedAssigneeId)]
           : [],

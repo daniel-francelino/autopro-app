@@ -69,7 +69,7 @@ const {
 
 const form = reactive<Partial<Schema>>({})
 
-function fillForm(data: OrgData | null) {
+function fillForm(data: OrgData | null | undefined) {
   if (!data) return
   Object.assign(form, {
     name: data.name ?? '',

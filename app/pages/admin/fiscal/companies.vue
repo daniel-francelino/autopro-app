@@ -98,6 +98,7 @@ type FiscalCompany = {
   email?: string | null
   phone?: string | null
   nfse_enabled?: boolean | null
+  [key: string]: unknown
 }
 
 function defaultForm() {
@@ -347,7 +348,7 @@ function certificateColor(val: string | null) {
 
         <template #document-cell="{ row }">
           <span class="font-mono text-sm">{{
-            formatDocument(row.original)
+            formatDocument(row.original as FiscalCompany)
           }}</span>
         </template>
 

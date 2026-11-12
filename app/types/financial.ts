@@ -239,6 +239,7 @@ export interface BankAccount {
   preferred_payment_method?: string | null
   is_active?: boolean | null
   notes?: string | null
+  [key: string]: unknown
 }
 
 export interface PaymentTerminal {
@@ -247,6 +248,7 @@ export interface PaymentTerminal {
   provider_company?: string | null
   payment_receipt_days?: number | string | null
   is_active?: boolean | null
+  [key: string]: unknown
 }
 
 export interface Tax {
@@ -254,4 +256,5 @@ export interface Tax {
   name?: string | null
   type?: string | null
   rate?: number | string | null
+  [key: string]: unknown
 }

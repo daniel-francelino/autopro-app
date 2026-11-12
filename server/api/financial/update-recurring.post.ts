@@ -77,7 +77,7 @@ function resolveUpdatedDueDate(originalEntry: EntryRecord, currentEntry: EntryRe
   return currentEntry?.id === originalEntry?.id ? requestedDueDate : currentEntry?.due_date || requestedDueDate
 }
 
-async function registrarExtratoContaBancaria(supabase: SupabaseClient, organizationId: string, email: string, lancamento: EntryRecord | null) {
+async function registrarExtratoContaBancaria(supabase: SupabaseClient, organizationId: string, email: string | null, lancamento: EntryRecord | null) {
   if (!lancamento?.bank_account_id || lancamento?.status !== 'paid') return
 
   const { data: conta } = await supabase.from('bank_accounts').select('*').eq('id', lancamento.bank_account_id).eq('organization_id', organizationId).single()
