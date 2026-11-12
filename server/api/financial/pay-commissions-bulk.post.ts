@@ -68,7 +68,7 @@ export default defineEventHandler(async (event) => {
   const dataPagamento = normalizeIsoDateOrNull(body.dataPagamento) || today
   const dateStrategy = body.dateStrategy === 'reference_date' ? 'reference_date' : 'today'
 
-  let contaBancaria: any = null
+  let contaBancaria: { id?: string } | null = null
 
   if (requestedContaId) {
     const { data: conta } = await supabase.from('bank_accounts').select('*').eq('id', requestedContaId).eq('organization_id', organizationId).single()
@@ -84,7 +84,7 @@ export default defineEventHandler(async (event) => {
 
   const salariesCategory = await resolveDefaultCategoryId(supabase, organizationId, 'Salários', 'expense')
 
-  const results: any[] = []
+  const results: Record<string, unknown>[] = []
   let paidCount = 0, skippedCount = 0, failedCount = 0
 
   for (const registroId of registroIds) {
@@ -121,8 +121,8 @@ export default defineEventHandler(async (event) => {
       ? (registro?.reference_date || today)
       : dataPagamento
 
-    let lancamento: any = null
-    let extrato: any = null
+    let lancamento: { id?: string } | null = null
+    let extrato: { id?: string } | null = null
     let saldoAnterior: number | null = null
     let saldoPosterior: number | null = null
     let updatedConta = false
@@ -189,26 +189,31 @@ export default defineEventHandler(async (event) => {
 
       paidCount += 1
       results.push({ ...resultBase, status: 'paid', lancamentoId: lancamento?.id })
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = (error as { message?: string } | null)?.message || String(error)
       failedCount += 1
 
       // Best-effort rollback
-      try { if (extrato?.id) await supabase.from('bank_account_statements').delete().eq('id', extrato.id) } catch {}
-      try { if (updatedConta && saldoAnterior !== null) await supabase.from('bank_accounts').update({ current_balance: saldoAnterior, updated_by: authUser.email }).eq('id', contaId) } catch {}
+      try {
+        if (extrato?.id) await supabase.from('bank_account_statements').delete().eq('id', extrato.id)
+      } catch {}
+      try {
+        if (updatedConta && saldoAnterior !== null) await supabase.from('bank_accounts').update({ current_balance: saldoAnterior, updated_by: authUser.email }).eq('id', contaId)
+      } catch {}
       try {
         if (lancamento?.id) {
           await softDeleteFinancialTransaction({
             supabase,
             id: lancamento.id,
             organizationId,
-            reason: `Rollback automático: falha ao pagar comissão em lote (${error?.message || String(error)})`,
+            reason: `Rollback automático: falha ao pagar comissão em lote (${errorMessage})`,
             source: FINANCIAL_TRANSACTION_DELETION_SOURCES.PAY_COMMISSIONS_BULK_ROLLBACK,
             userEmail: authUser.email
           })
         }
       } catch {}
 
-      results.push({ ...resultBase, status: 'failed', message: error?.message || String(error) })
+      results.push({ ...resultBase, status: 'failed', message: errorMessage })
     }
   }
 

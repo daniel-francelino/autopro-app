@@ -3,8 +3,11 @@ import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
-import { parseDateRange, toNumber, qArr, paginate, sortFactor, normalizeReportStatus } from '../../utils/report-helpers'
+import { toNumber, qArr, paginate, sortFactor, normalizeReportStatus } from '../../utils/report-helpers'
 import { enforceReportAccess } from '../../utils/license'
+
+interface CustomerClientRow { id: string | number, name?: string | null }
+interface CustomerOrderRow { status?: string | null, payment_status?: unknown, entry_date?: string | null, client_id?: string | null, total_amount?: unknown }
 
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
@@ -27,21 +30,21 @@ export default defineEventHandler(async (event) => {
   const paymentStatusFilters = qArr(query.paymentStatusFilters)
 
   const [orders, clients] = await Promise.all([
-    fetchAllOrganizationRows(supabase, {
+    fetchAllOrganizationRows<CustomerOrderRow>(supabase, {
       table: 'service_orders',
       organizationId,
       nullColumns: ['deleted_at'],
       order: { column: 'created_at' }
     }),
-    fetchAllOrganizationRows(supabase, {
+    fetchAllOrganizationRows<CustomerClientRow>(supabase, {
       table: 'clients',
       organizationId,
       nullColumns: ['deleted_at']
     })
   ])
-  const clientsMap = new Map<string, any>(clients.map((c: any) => [String(c.id), c]))
+  const clientsMap = new Map<string, CustomerClientRow>(clients.map(c => [String(c.id), c]))
 
-  const filteredOrders = orders.filter((o: any) => {
+  const filteredOrders = orders.filter((o) => {
     if (o?.status === 'cancelled') return false
     if (orderStatusFilters.length > 0 && !orderStatusFilters.includes(String(o?.status || ''))) return false
     if (paymentStatusFilters.length > 0 && !paymentStatusFilters.includes(normalizeReportStatus(o?.payment_status))) return false
@@ -93,7 +96,13 @@ export default defineEventHandler(async (event) => {
 
   const { data: paginatedItems, pagination } = paginate(items, page, pageSize)
 
-  const result: Record<string, any> = {
+  const result: { data: {
+    items: typeof paginatedItems
+    pagination: typeof pagination
+    sort: { sortBy: string, sortOrder: 'asc' | 'desc' }
+    summary: typeof summary
+    selectedCustomerDetail?: unknown
+  } } = {
     data: {
       items: skipList ? [] : paginatedItems,
       pagination,
@@ -104,8 +113,8 @@ export default defineEventHandler(async (event) => {
 
   if (selectedClientId) {
     const client = clientsMap.get(selectedClientId)
-    const clientOrders = filteredOrders.filter((o: any) => String(o?.client_id) === selectedClientId)
-    const totalSpent = clientOrders.reduce((s: number, o: any) => s + toNumber(o?.total_amount, 0), 0)
+    const clientOrders = filteredOrders.filter(o => String(o?.client_id) === selectedClientId)
+    const totalSpent = clientOrders.reduce((s: number, o) => s + toNumber(o?.total_amount, 0), 0)
     result.data.selectedCustomerDetail = {
       client, orders: clientOrders,
       stats: { totalSpent, totalOrders: clientOrders.length, averageTicket: clientOrders.length > 0 ? totalSpent / clientOrders.length : 0 }

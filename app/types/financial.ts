@@ -226,3 +226,32 @@ export interface MonthlyComparison {
   previousMonthIncome: number
   previousMonthExpenses: number
 }
+
+export interface BankAccount {
+  id: string
+  account_name?: string | null
+  account_type?: string | null
+  bank_name?: string | null
+  branch?: string | null
+  account_number?: string | null
+  initial_balance?: number | string | null
+  current_balance?: number | string | null
+  preferred_payment_method?: string | null
+  is_active?: boolean | null
+  notes?: string | null
+}
+
+export interface PaymentTerminal {
+  id: string
+  terminal_name?: string | null
+  provider_company?: string | null
+  payment_receipt_days?: number | string | null
+  is_active?: boolean | null
+}
+
+export interface Tax {
+  id: string
+  name?: string | null
+  type?: string | null
+  rate?: number | string | null
+}

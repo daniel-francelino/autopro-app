@@ -6,7 +6,7 @@ const props = defineProps<{
   row: NfseRow | null
 }>()
 
-const emit = defineEmits<{
+defineEmits<{
   'update:open': [value: boolean]
   'cancel': [row: NfseRow]
   'email': [row: NfseRow]

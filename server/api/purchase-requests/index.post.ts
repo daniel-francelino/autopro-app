@@ -24,7 +24,7 @@ export default defineEventHandler(async (event) => {
   const nextNumber = String((count ?? 0) + 1).padStart(5, '0')
   const requestNumber = `SOL-${nextNumber}`
 
-  const totalAmount = body.items.reduce((sum: number, item: any) => sum + (parseFloat(item.estimated_total_price) || 0), 0)
+  const totalAmount = body.items.reduce((sum: number, item: { estimated_total_price?: string | number | null }) => sum + (parseFloat(String(item.estimated_total_price)) || 0), 0)
 
   const { data: item, error } = await supabase
     .from('purchase_requests')

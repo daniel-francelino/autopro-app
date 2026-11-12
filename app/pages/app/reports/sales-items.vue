@@ -197,7 +197,6 @@ const { data, status } = await useAsyncData(
 const report = computed(() => data.value?.data?.salesItemsReport)
 const summary = computed(() => report.value?.summary ?? {})
 const filters = computed(() => report.value?.filters ?? {})
-const topItemsChart = computed(() => report.value?.charts?.topItemsByQuantity ?? [])
 
 watch(data, (newData) => {
   const table = newData?.data?.salesItemsReport?.table
@@ -245,13 +244,6 @@ const columns = computed(() => (viewMode.value === 'os' ? orderColumns : itemCol
 
 function formatCurrency(v: number | string) {
   return parseFloat(String(v || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-}
-
-function formatDate(v: string | null | undefined) {
-  if (!v) return '—'
-  const [year, month, day] = v.split('-')
-  if (!year || !month || !day) return '—'
-  return `${day}/${month}/${year}`
 }
 
 function getInitials(name: string) {

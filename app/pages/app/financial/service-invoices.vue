@@ -10,7 +10,6 @@ definePageMeta({
 useSeoMeta({ title: 'NFS-e — Notas de Serviço' })
 
 const workshop = useWorkshopPermissions()
-const canCreate = computed(() => workshop.can(ActionCode.SERVICE_INVOICE_CREATE))
 const canDelete = computed(() => workshop.can(ActionCode.SERVICE_INVOICE_DELETE))
 
 // ─── Sync status ──────────────────────────────────────────────────────────────

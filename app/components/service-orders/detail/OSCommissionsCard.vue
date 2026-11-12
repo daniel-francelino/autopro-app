@@ -30,8 +30,6 @@ function isPending(commission: ServiceOrderCommission) {
   return s !== 'pago' && s !== 'paid'
 }
 
-const pendingCommissions = computed(() => props.commissions.filter(isPending))
-
 // ─── Pay single ────────────────────────────────────────────────────────────────
 
 const confirmingId = ref<string | null>(null)

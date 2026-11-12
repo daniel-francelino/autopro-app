@@ -16,7 +16,7 @@ const pageSize = 50
 const { data, status, refresh } = await useAsyncData('admin-fiscal-logs', () =>
   requestFetch<{
     success: boolean
-    data: any[]
+    data: Record<string, unknown>[]
     meta: { total: number, page: number, pageSize: number }
   }>('/api/admin/fiscal/logs', {
     headers: requestHeaders,

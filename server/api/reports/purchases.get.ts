@@ -3,7 +3,7 @@ import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
-import { parseDateRange, toNumber, qArr, paginate, sortFactor, formatDayLabel, getPurchasePaymentStatus } from '../../utils/report-helpers'
+import { toNumber, qArr, paginate, sortFactor, formatDayLabel, getPurchasePaymentStatus } from '../../utils/report-helpers'
 
 interface PurchaseRecord {
   supplier_id?: string | null

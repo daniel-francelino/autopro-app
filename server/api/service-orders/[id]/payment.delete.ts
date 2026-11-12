@@ -75,8 +75,8 @@ export default defineEventHandler(async (event) => {
         await revertStatementOnAccount({ supabase, organizationId, statement: stmt, userEmail: authUser.email })
         await supabase.from('bank_account_statements').delete().eq('id', stmt.id)
         deletedStatements++
-      } catch (err: any) {
-        warnings.push(`Failed to delete statement ${stmt.id}: ${err.message}`)
+      } catch (err: unknown) {
+        warnings.push(`Failed to delete statement ${stmt.id}: ${(err as Error).message}`)
       }
     }
   }

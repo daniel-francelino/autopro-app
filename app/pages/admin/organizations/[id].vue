@@ -1,5 +1,4 @@
 <script setup lang="ts">
-/* eslint-disable @typescript-eslint/no-explicit-any */
 definePageMeta({
   layout: 'admin',
   middleware: ['owner-only']
@@ -104,11 +103,61 @@ async function confirmUserDialog() {
   }
 }
 
-const users = computed(() => (loaded.users as { data: Array<Record<string, any>> } | undefined)?.data ?? [])
-const billing = computed(() => loaded.billing as { subscription: Record<string, any> | null, invoices: Array<Record<string, any>> } | undefined)
-const activity = computed(() => loaded.activity as { data: Array<Record<string, any>>, total: number } | undefined)
+type AdminUser = {
+  id: string
+  display_name: string | null
+  email: string | null
+  is_active?: boolean | null
+  last_seen_at?: string | null
+  role_name?: string | null
+}
+type AdminSubscription = {
+  cancellation_date?: string | null
+  monthly_amount?: number | null
+  next_payment_date?: string | null
+  plan_key?: string | null
+  plan_name?: string | null
+  status?: string | null
+}
+type AdminInvoice = {
+  id: string
+  invoice_number?: string | null
+  amount?: number | null
+  attempt_count?: number | null
+  due_date?: string | null
+  payment_date?: string | null
+  status?: string | null
+}
+type AdminActivityRow = {
+  id: string
+  action?: string | null
+  actor_email?: string | null
+  created_at: string
+  error_message?: string | null
+  outcome?: string | null
+  status_code?: number | null
+}
+type AdminFiscalSyncStatus = {
+  integration_status?: string | null
+  last_synced_at?: string | null
+  sync_error_code?: string | null
+  sync_error_message?: string | null
+  sync_status?: string | null
+}
+type AdminFiscalCall = {
+  id: string
+  created_at: string
+  error_message?: string | null
+  request_method?: string | null
+  request_path?: string | null
+  response_status?: number | null
+}
+
+const users = computed(() => (loaded.users as { data: AdminUser[] } | undefined)?.data ?? [])
+const billing = computed(() => loaded.billing as { subscription: AdminSubscription | null, invoices: AdminInvoice[] } | undefined)
+const activity = computed(() => loaded.activity as { data: AdminActivityRow[], total: number } | undefined)
 const usage = computed(() => loaded.usage as { service_orders_by_month: Array<{ month: string, total: number }>, modules: Array<{ label: string, total: number }>, last_action: { created_at: string, action: string } | null } | undefined)
-const fiscal = computed(() => loaded.fiscal as { sync_status: Record<string, any> | null, recent_calls: Array<Record<string, any>> } | undefined)
+const fiscal = computed(() => loaded.fiscal as { sync_status: AdminFiscalSyncStatus | null, recent_calls: AdminFiscalCall[] } | undefined)
 </script>
 
 <template>
@@ -327,7 +376,7 @@ const fiscal = computed(() => loaded.fiscal as { sync_status: Record<string, any
                     variant="ghost"
                     icon="i-lucide-user-x"
                     label="Desativar"
-                    @click="openUserDialog(user as any, 'deactivate')"
+                    @click="openUserDialog(user, 'deactivate')"
                   />
                   <UButton
                     v-else
@@ -336,7 +385,7 @@ const fiscal = computed(() => loaded.fiscal as { sync_status: Record<string, any
                     variant="ghost"
                     icon="i-lucide-user-check"
                     label="Reativar"
-                    @click="openUserDialog(user as any, 'reactivate')"
+                    @click="openUserDialog(user, 'reactivate')"
                   />
                 </td>
               </tr>

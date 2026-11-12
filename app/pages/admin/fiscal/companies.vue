@@ -20,7 +20,7 @@ const PAGE_SIZE = 50
 const { data, status, refresh } = await useAsyncData(
   'admin-focusnfe-companies',
   () =>
-    requestFetch<{ success: boolean, data: any[], total?: number }>(
+    requestFetch<{ success: boolean, data: FiscalCompany[], total?: number }>(
       '/api/admin/fiscal/companies',
       {
         headers: requestHeaders,
@@ -79,6 +79,27 @@ const STATE_OPTIONS = [
   'TO'
 ].map(s => ({ value: s, label: s }))
 
+type FiscalCompany = {
+  id: string
+  name?: string | null
+  trade_name?: string | null
+  business_id?: string | null
+  individual_id?: string | null
+  state_registration?: string | number | null
+  municipal_registration?: string | number | null
+  tax_regime?: string | number | null
+  street?: string | null
+  address_number?: string | number | null
+  complement?: string | null
+  neighborhood?: string | null
+  municipality?: string | null
+  state?: string | null
+  zip_code?: string | number | null
+  email?: string | null
+  phone?: string | null
+  nfse_enabled?: boolean | null
+}
+
 function defaultForm() {
   return {
     name: '',
@@ -104,7 +125,7 @@ function defaultForm() {
 // ─── Create / Edit modal ───────────────────────────────────────────────────────
 
 const showFormModal = ref(false)
-const editingCompany = ref<any>(null)
+const editingCompany = ref<FiscalCompany | null>(null)
 const formLoading = ref(false)
 const form = ref(defaultForm())
 
@@ -114,7 +135,7 @@ function openCreate() {
   showFormModal.value = true
 }
 
-function openEdit(company: any) {
+function openEdit(company: FiscalCompany) {
   editingCompany.value = company
   form.value = {
     name: company.name ?? '',
@@ -153,7 +174,7 @@ async function submitForm() {
 
   formLoading.value = true
   try {
-    const payload: Record<string, any> = {
+    const payload: Record<string, unknown> = {
       name: form.value.name,
       nfse_enabled: form.value.nfse_enabled
     }
@@ -202,7 +223,8 @@ async function submitForm() {
 
     showFormModal.value = false
     refresh()
-  } catch (e: any) {
+  } catch (err: unknown) {
+    const e = err as { data?: { data?: { error?: string }, message?: string }, message?: string } | null
     const detail
       = e?.data?.data?.error
         ?? e?.data?.message
@@ -221,10 +243,10 @@ async function submitForm() {
 // ─── Delete modal ──────────────────────────────────────────────────────────────
 
 const showDeleteModal = ref(false)
-const deletingCompany = ref<any>(null)
+const deletingCompany = ref<FiscalCompany | null>(null)
 const deleteLoading = ref(false)
 
-function openDelete(company: any) {
+function openDelete(company: FiscalCompany) {
   deletingCompany.value = company
   showDeleteModal.value = true
 }
@@ -240,7 +262,8 @@ async function confirmDelete() {
     showDeleteModal.value = false
     deletingCompany.value = null
     refresh()
-  } catch (e: any) {
+  } catch (err: unknown) {
+    const e = err as { data?: { data?: { error?: string }, message?: string }, message?: string } | null
     const detail
       = e?.data?.data?.error
         ?? e?.data?.message
@@ -272,7 +295,7 @@ const columns = [
   { id: 'actions', header: '', enableSorting: false }
 ]
 
-function formatDocument(company: any) {
+function formatDocument(company: FiscalCompany) {
   return company.business_id || company.individual_id || '—'
 }
 
@@ -356,7 +379,7 @@ function certificateColor(val: string | null) {
               size="xs"
               icon="i-lucide-pencil"
               aria-label="Editar empresa"
-              @click="openEdit(row.original)"
+              @click="openEdit(row.original as FiscalCompany)"
             />
             <UButton
               variant="ghost"
@@ -364,7 +387,7 @@ function certificateColor(val: string | null) {
               color="error"
               icon="i-lucide-trash-2"
               aria-label="Excluir empresa"
-              @click="openDelete(row.original)"
+              @click="openDelete(row.original as FiscalCompany)"
             />
           </div>
         </template>

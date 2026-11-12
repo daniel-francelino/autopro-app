@@ -45,7 +45,7 @@ export default defineEventHandler(async (event) => {
 
   // Filter vehicles for the order's client
   const clientVehicles = order.client_id
-    ? (vehiclesResult.data || []).filter((v: any) => v.client_id === order.client_id)
+    ? (vehiclesResult.data || []).filter((v: { client_id?: string | null }) => v.client_id === order.client_id)
     : vehiclesResult.data || []
 
   return {

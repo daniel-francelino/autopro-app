@@ -41,7 +41,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Fetch user counts per org
-  const orgIds = (data || []).map((o: any) => o.id)
+  const orgIds = (data || []).map((o: { id: string }) => o.id)
   const userCountMap: Record<string, number> = {}
 
   if (orgIds.length > 0) {
@@ -56,7 +56,7 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const items = (data || []).map((org: any) => ({
+  const items = (data || []).map((org: { id: string }) => ({
     ...org,
     user_count: userCountMap[org.id] || 0
   }))

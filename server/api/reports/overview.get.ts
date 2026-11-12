@@ -5,6 +5,11 @@ import { resolveOrganizationId } from '../../utils/organization'
 import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
 import { parseDateRange, toNumber, formatDateKey, formatDayLabel, normalizeReportStatus } from '../../utils/report-helpers'
 
+interface OverviewItem { description?: string, name?: string, quantity?: unknown }
+interface OverviewOrder { entry_date?: string | null, status?: string | null, total_amount?: unknown, total_cost_amount?: unknown, client_id?: string | null, items?: OverviewItem[] | null }
+interface OverviewClient { created_at?: string | null }
+interface OverviewTransaction { due_date?: string | null, type?: string | null, status?: unknown, amount?: unknown }
+
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
   const supabase = getSupabaseAdminClient()
@@ -23,19 +28,19 @@ export default defineEventHandler(async (event) => {
   const { dateFrom, dateTo } = parseDateRange(fromStr, toStr) as { dateFrom: Date, dateTo: Date }
 
   const [orders, clients, transactions] = await Promise.all([
-    fetchAllOrganizationRows(supabase, {
+    fetchAllOrganizationRows<OverviewOrder>(supabase, {
       table: 'service_orders',
       organizationId,
       nullColumns: ['deleted_at'],
       order: { column: 'created_at' }
     }),
-    fetchAllOrganizationRows(supabase, {
+    fetchAllOrganizationRows<OverviewClient>(supabase, {
       table: 'clients',
       organizationId,
       nullColumns: ['deleted_at'],
       order: { column: 'created_at' }
     }),
-    fetchAllOrganizationRows(supabase, {
+    fetchAllOrganizationRows<OverviewTransaction>(supabase, {
       table: 'financial_transactions',
       organizationId,
       nullColumns: ['deleted_at'],
@@ -43,30 +48,30 @@ export default defineEventHandler(async (event) => {
     })
   ])
 
-  const ordersInPeriod = orders.filter((o: any) => {
+  const ordersInPeriod = orders.filter((o) => {
     const entryDate = o?.entry_date ? new Date(`${o.entry_date}T00:00:00`) : null
     return entryDate && !Number.isNaN(entryDate.getTime()) && entryDate >= dateFrom && entryDate <= dateTo
   })
 
-  const newClientsCount = clients.filter((c: any) => {
+  const newClientsCount = clients.filter((c) => {
     const createdAt = c?.created_at ? new Date(c.created_at) : null
     return createdAt && !Number.isNaN(createdAt.getTime()) && createdAt >= dateFrom && createdAt <= dateTo
   }).length
 
-  const completedOrders = ordersInPeriod.filter((o: any) => o?.status === 'completed' || o?.status === 'invoiced' || o?.status === 'delivered')
+  const completedOrders = ordersInPeriod.filter(o => o?.status === 'completed' || o?.status === 'invoiced' || o?.status === 'delivered')
 
-  const costsInPeriod = transactions.filter((t: any) => {
+  const costsInPeriod = transactions.filter((t) => {
     const dueDate = t?.due_date ? new Date(`${t.due_date}T00:00:00`) : null
     return dueDate && !Number.isNaN(dueDate.getTime()) && t?.type === 'expense' && normalizeReportStatus(t?.status) === 'paid' && dueDate >= dateFrom && dueDate <= dateTo
   })
 
-  const grossRevenue = completedOrders.reduce((sum: number, o: any) => sum + toNumber(o?.total_amount, 0), 0)
-  const totalCosts = costsInPeriod.reduce((sum: number, t: any) => sum + toNumber(t?.amount, 0), 0)
-  const itemsCost = completedOrders.reduce((sum: number, o: any) => sum + toNumber(o?.total_cost_amount, 0), 0)
+  const grossRevenue = completedOrders.reduce((sum: number, o) => sum + toNumber(o?.total_amount, 0), 0)
+  const totalCosts = costsInPeriod.reduce((sum: number, t) => sum + toNumber(t?.amount, 0), 0)
+  const itemsCost = completedOrders.reduce((sum: number, o) => sum + toNumber(o?.total_cost_amount, 0), 0)
   const netProfit = grossRevenue - totalCosts
   const profitMargin = grossRevenue > 0 ? (netProfit / grossRevenue) * 100 : 0
   const averageTicket = completedOrders.length > 0 ? grossRevenue / completedOrders.length : 0
-  const activeClients = new Set(completedOrders.map((o: any) => String(o?.client_id || ''))).size
+  const activeClients = new Set(completedOrders.map(o => String(o?.client_id || ''))).size
 
   // Daily chart
   const dailyData: Record<string, { revenue: number, cost: number }> = {}

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ProductItem } from '~/types/products'
 
-const props = defineProps<{
+defineProps<{
   product: ProductItem
   canCreate?: boolean
   canUpdate?: boolean

@@ -6,7 +6,7 @@ interface MasterProductItem {
   notes: string | null
 }
 
-const props = defineProps<{
+defineProps<{
   modelValue: string
   selectedProduct: { name: string, description?: string | null } | null
 }>()

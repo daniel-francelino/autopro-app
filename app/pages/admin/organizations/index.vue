@@ -18,7 +18,7 @@ const { data, status, refresh } = await useAsyncData(
   'admin-organizations',
   () =>
     requestFetch<{
-      items: any[]
+      items: Record<string, unknown>[]
       total: number
       page: number
       page_size: number

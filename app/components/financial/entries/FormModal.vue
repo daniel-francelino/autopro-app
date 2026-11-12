@@ -111,11 +111,6 @@ interface Installment {
   status: string
 }
 
-const installmentCountOptions = Array.from({ length: 23 }, (_, i) => ({
-  label: `${i + 2}x`,
-  value: i + 2
-}))
-
 // Ceiling of 60 occurrences per call (creation or later extension) — 5 years
 // of monthly. See docs/finance/financial-recurrence-flow.md section 5.
 const recurrenceCountOptions = Array.from({ length: 59 }, (_, i) => ({

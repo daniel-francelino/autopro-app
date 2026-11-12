@@ -1,6 +1,6 @@
 export type PermissionMap = Record<string, boolean>
 
-export type WorkshopEntity = Record<string, any>
+export type WorkshopEntity = Record<string, unknown>
 
 export type WorkshopAction = {
   id: string

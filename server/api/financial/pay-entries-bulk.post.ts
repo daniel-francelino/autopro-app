@@ -57,11 +57,11 @@ export default defineEventHandler(async (event) => {
 
   const today = new Date().toISOString().split('T')[0]
 
-  const results: any[] = []
+  const results: Record<string, unknown>[] = []
   let paidCount = 0, skippedCount = 0, failedCount = 0, extratoSkippedCount = 0
 
   for (const entryId of entryIds) {
-    const baseResult: any = { entryId }
+    const baseResult: Record<string, unknown> = { entryId }
 
     const { data: lancamento } = await supabase.from('financial_transactions').select('*').eq('id', entryId).eq('organization_id', organizationId).is('deleted_at', null).single()
 
@@ -78,7 +78,7 @@ export default defineEventHandler(async (event) => {
     }
 
     const warnings: string[] = []
-    let createdExtrato: any = null
+    let createdExtrato: { id?: string } | null = null
     let saldoAnterior: number | null = null
     let contaId: string | null = normalizeId(lancamento?.bank_account_id)
 
@@ -140,14 +140,19 @@ export default defineEventHandler(async (event) => {
 
       paidCount += 1
       results.push({ ...baseResult, status: 'paid', warnings })
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = (error as { message?: string } | null)?.message || String(error)
       failedCount += 1
 
       // Best-effort rollback
-      try { if (createdExtrato?.id) await supabase.from('bank_account_statements').delete().eq('id', createdExtrato.id) } catch {}
-      try { if (contaId && saldoAnterior !== null) await supabase.from('bank_accounts').update({ current_balance: saldoAnterior, updated_by: authUser.email }).eq('id', contaId) } catch {}
+      try {
+        if (createdExtrato?.id) await supabase.from('bank_account_statements').delete().eq('id', createdExtrato.id)
+      } catch {}
+      try {
+        if (contaId && saldoAnterior !== null) await supabase.from('bank_accounts').update({ current_balance: saldoAnterior, updated_by: authUser.email }).eq('id', contaId)
+      } catch {}
 
-      results.push({ ...baseResult, status: 'failed', message: error?.message || String(error) })
+      results.push({ ...baseResult, status: 'failed', message: errorMessage })
     }
   }
 

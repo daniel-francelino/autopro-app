@@ -35,10 +35,11 @@ async function send() {
     toast.add({ title: 'E-mail reenviado com sucesso', color: 'success' })
     emit('update:open', false)
     emit('sent')
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const fetchError = err as { data?: { data?: { error?: string }, statusMessage?: string } } | null
     toast.add({
       title: 'Erro ao reenviar e-mail',
-      description: err?.data?.data?.error || err?.data?.statusMessage || 'Tente novamente.',
+      description: fetchError?.data?.data?.error || fetchError?.data?.statusMessage || 'Tente novamente.',
       color: 'error'
     })
   } finally {

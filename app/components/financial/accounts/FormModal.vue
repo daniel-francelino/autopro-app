@@ -1,5 +1,5 @@
 <script setup lang="ts">
-type BankAccount = Record<string, any>
+import type { BankAccount } from '~/types/financial'
 
 const props = defineProps<{
   open: boolean

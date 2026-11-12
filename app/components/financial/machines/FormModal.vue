@@ -1,5 +1,5 @@
 <script setup lang="ts">
-type Terminal = Record<string, any>
+import type { PaymentTerminal as Terminal } from '~/types/financial'
 
 const props = defineProps<{
   open: boolean

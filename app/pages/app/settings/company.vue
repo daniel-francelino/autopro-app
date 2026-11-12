@@ -18,7 +18,15 @@ const requestHeaders = import.meta.server
 const canView = computed(() => workshop.can(ActionCode.SETTINGS_VIEW))
 const canUpdate = computed(() => workshop.can(ActionCode.SETTINGS_UPDATE))
 
-type OrgData = Record<string, any>
+type ViaCepResponse = {
+  erro?: boolean | string
+  logradouro?: string
+  bairro?: string
+  localidade?: string
+  uf?: string
+}
+
+type OrgData = Record<string, unknown>
 
 const schema = z.object({
   name: z.string().min(2, 'Nome deve ter ao menos 2 caracteres'),
@@ -182,7 +190,7 @@ async function lookupCep() {
   if (cep.length !== 8) return
   isLoadingCep.value = true
   try {
-    const res = await $fetch<any>(`https://viacep.com.br/ws/${cep}/json/`)
+    const res = await $fetch<ViaCepResponse>(`https://viacep.com.br/ws/${cep}/json/`)
     if (res.erro) {
       toast.add({ title: 'CEP não encontrado', color: 'warning' })
       return

@@ -2,11 +2,11 @@
 import { watchDebounced } from '@vueuse/core'
 import type { RowSelectionState, SortingState } from '@tanstack/table-core'
 import { ActionCode } from '~/constants/action-codes'
+import type { Tax } from '~/types/financial'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Impostos' })
 
-type Tax = Record<string, any>
 type TaxesResponse = { items: Tax[], total: number, page: number, page_size: number }
 type ViewMode = 'table' | 'card'
 
@@ -106,7 +106,10 @@ watch(() => route.query, (query) => {
   const nextPage = parsePage(query.page)
   const nextPageSize = parsePageSize(query.pageSize)
   const nextView = parseView(query.view)
-  if (search.value !== nextSearch) { search.value = nextSearch; debouncedSearch.value = nextSearch }
+  if (search.value !== nextSearch) {
+    search.value = nextSearch
+    debouncedSearch.value = nextSearch
+  }
   if (page.value !== nextPage) page.value = nextPage
   if (pageSize.value !== nextPageSize) pageSize.value = nextPageSize
   if (viewMode.value !== nextView) viewMode.value = nextView
@@ -121,17 +124,32 @@ watch(() => route.query, (query) => {
   }
 })
 
-watchDebounced(search, async (val) => { debouncedSearch.value = val; page.value = 1; await syncQuery() }, { debounce: 300, maxWait: 800 })
-watch(page, async () => { if (page.value > totalPages.value && totalPages.value > 0) page.value = totalPages.value; await syncQuery() })
-watch(pageSize, async () => { page.value = 1; await syncQuery() })
+watchDebounced(search, async (val) => {
+  debouncedSearch.value = val
+  page.value = 1
+  await syncQuery()
+}, { debounce: 300, maxWait: 800 })
+watch(page, async () => {
+  if (page.value > totalPages.value && totalPages.value > 0) page.value = totalPages.value
+  await syncQuery()
+})
+watch(pageSize, async () => {
+  page.value = 1
+  await syncQuery()
+})
 watch(viewMode, syncQuery)
-watch(sorting, async () => { page.value = 1; await syncQuery() })
+watch(sorting, async () => {
+  page.value = 1
+  await syncQuery()
+})
 
 // ─── Row selection ───────────────────────────────────────────────────────────
 const rowSelection = ref<RowSelectionState>({})
 const selectedIds = computed(() => Object.entries(rowSelection.value).filter(([, v]) => v).map(([id]) => id))
 const selectedCount = computed(() => selectedIds.value.length)
-watch(viewMode, () => { rowSelection.value = {} })
+watch(viewMode, () => {
+  rowSelection.value = {}
+})
 
 // ─── Modal / CRUD ─────────────────────────────────────────────────────────────
 const showModal = ref(false)
@@ -142,8 +160,14 @@ const taxPendingDeletion = ref<Tax | null>(null)
 const showBulkDeleteModal = ref(false)
 const isBulkDeleting = ref(false)
 
-function openCreate() { selectedTax.value = null; showModal.value = true }
-function openEdit(t: Tax) { selectedTax.value = t; showModal.value = true }
+function openCreate() {
+  selectedTax.value = null
+  showModal.value = true
+}
+function openEdit(t: Tax) {
+  selectedTax.value = t
+  showModal.value = true
+}
 
 function requestRemove(t: Tax) {
   if (isDeleting.value) return

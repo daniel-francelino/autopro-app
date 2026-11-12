@@ -2,11 +2,11 @@
 import { watchDebounced } from '@vueuse/core'
 import type { RowSelectionState, SortingState } from '@tanstack/table-core'
 import { ActionCode } from '~/constants/action-codes'
+import type { BankAccount } from '~/types/financial'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Contas bancárias' })
 
-type BankAccount = Record<string, any>
 type AccountsResponse = {
   items: BankAccount[]
   total: number

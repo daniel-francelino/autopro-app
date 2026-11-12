@@ -27,14 +27,18 @@ function redactHeaders(headers: Record<string, string>) {
 }
 
 function safeJsonParse(text: string) {
-  try { return JSON.parse(text) } catch { return undefined }
+  try {
+    return JSON.parse(text)
+  } catch {
+    return undefined
+  }
 }
 
-function sanitizeSecrets(value: any): any {
+function sanitizeSecrets(value: unknown): unknown {
   const secretKeys = new Set(['authorization', 'token', 'api_token', 'apikey', 'api_key', 'password', 'senha', 'certificado', 'certificate', 'private_key', 'client_secret'])
   if (Array.isArray(value)) return value.map(sanitizeSecrets)
   if (value && typeof value === 'object') {
-    const out: Record<string, any> = {}
+    const out: Record<string, unknown> = {}
     for (const [k, v] of Object.entries(value)) {
       out[k] = secretKeys.has(k.toLowerCase()) ? '[REDACTED]' : sanitizeSecrets(v)
     }
@@ -84,7 +88,7 @@ export async function monitoredNuvemFiscalFetch(options: {
   } = options
 
   let response: Response | undefined
-  let fetchError: any
+  let fetchError: unknown
 
   try {
     response = await fetch(url, init)
@@ -95,7 +99,7 @@ export async function monitoredNuvemFiscalFetch(options: {
   const durationMs = Date.now() - startedAt
   const requestHeaders = redactHeaders(Object.fromEntries(Object.entries(init.headers || {})))
 
-  let requestBodySafe: any = null
+  let requestBodySafe: unknown = null
   if (init.body) {
     try {
       const raw = typeof init.body === 'string' ? init.body : JSON.stringify(init.body)
@@ -105,7 +109,7 @@ export async function monitoredNuvemFiscalFetch(options: {
   }
 
   let responseBodyRaw: string | null = null
-  let responseBodySafe: any = null
+  let responseBodySafe: unknown = null
 
   if (response && !fetchError) {
     const cloned = response.clone()
@@ -130,7 +134,7 @@ export async function monitoredNuvemFiscalFetch(options: {
     response_status: response?.status || null,
     response_body: responseBodySafe ? truncate(JSON.stringify(responseBodySafe), maxResponseBodyChars) : null,
     duration_ms: durationMs,
-    error_message: fetchError ? String(fetchError?.message || fetchError) : null,
+    error_message: fetchError ? String((fetchError as { message?: unknown } | null)?.message || fetchError) : null,
     created_at: new Date().toISOString()
   }
 

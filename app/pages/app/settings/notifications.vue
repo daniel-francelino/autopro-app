@@ -13,14 +13,9 @@ const toast = useToast()
 const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 const {
-  enableCurrentDevice,
-  disableCurrentDevice,
-  isEnabled: isOneSignalEnabled,
   isNative,
-  isSubscribed,
   refreshState,
-  state: oneSignalState,
-  syncCurrentDevice
+  state: oneSignalState
 } = useOneSignal()
 
 const { data, status, refresh } = await useAsyncData(
@@ -117,13 +112,6 @@ const topicFields: ToggleField[] = [
   }
 ]
 
-const currentDeviceLabel = computed(() => {
-  if (isNative.value)
-    return 'app'
-
-  return oneSignalState.value.appContext === 'pwa' ? 'PWA' : 'navegador'
-})
-
 const effectiveWebPermission = computed<NotificationPermission>(() => {
   return !isNative.value && oneSignalState.value.initialized && oneSignalState.value.permission !== 'unsupported'
     ? oneSignalState.value.permission
@@ -136,47 +124,7 @@ const effectiveMobilePermission = computed<NotificationPermission>(() => {
     : state.mobile_push_permission
 })
 
-const currentPermission = computed<NotificationPermission>(() => oneSignalState.value.permission)
-const currentPushChannel = computed(() => isNative.value ? 'mobile_push' : 'web_push')
-
-const permissionColor = computed(() => {
-  switch (currentPermission.value) {
-    case 'granted':
-      return 'success'
-    case 'denied':
-      return 'error'
-    case 'unsupported':
-      return 'warning'
-    default:
-      return 'neutral'
-  }
-})
-
-const permissionLabel = computed(() => {
-  switch (currentPermission.value) {
-    case 'granted':
-      return 'Permitido'
-    case 'denied':
-      return 'Negado'
-    case 'unsupported':
-      return 'Indisponível'
-    default:
-      return 'Pendente'
-  }
-})
-
 const isSaving = ref(false)
-const isUpdatingCurrentDevice = ref(false)
-
-function formatSubscriptionLastSeen(value: string) {
-  const date = new Date(value)
-
-  return `${date.toLocaleDateString('pt-BR', { timeZone: 'UTC' })} ${date.toLocaleTimeString('pt-BR', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'UTC'
-  })} UTC`
-}
 
 async function savePreferences(options: { silent?: boolean } = {}) {
   if (isSaving.value)
@@ -221,89 +169,6 @@ async function savePreferences(options: { silent?: boolean } = {}) {
 
 async function onToggleChange() {
   await savePreferences()
-}
-
-async function syncCurrentDeviceState() {
-  if (isUpdatingCurrentDevice.value)
-    return
-
-  isUpdatingCurrentDevice.value = true
-
-  try {
-    await refreshState()
-    await syncCurrentDevice()
-    await refresh()
-
-    toast.add({
-      title: 'Dispositivo sincronizado',
-      description: 'O status atual do OneSignal foi atualizado.',
-      color: 'success'
-    })
-  } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
-    const message = err?.data?.statusMessage || err?.statusMessage || 'Não foi possível sincronizar o dispositivo'
-    toast.add({ title: 'Erro', description: message, color: 'error' })
-  } finally {
-    isUpdatingCurrentDevice.value = false
-  }
-}
-
-async function enableCurrentDeviceNotifications() {
-  if (isUpdatingCurrentDevice.value)
-    return
-
-  isUpdatingCurrentDevice.value = true
-
-  try {
-    if (currentPushChannel.value === 'web_push' && !state.channel_web_push) {
-      state.channel_web_push = true
-      await savePreferences({ silent: true })
-    }
-
-    if (currentPushChannel.value === 'mobile_push' && !state.channel_mobile_push) {
-      state.channel_mobile_push = true
-      await savePreferences({ silent: true })
-    }
-
-    await enableCurrentDevice()
-    await refresh()
-
-    toast.add({
-      title: 'Canal ativado',
-      description: `As notificações foram ativadas neste ${currentDeviceLabel.value}.`,
-      color: 'success'
-    })
-  } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
-    const message = err?.data?.statusMessage || err?.statusMessage || 'Não foi possível ativar as notificações neste dispositivo'
-    toast.add({ title: 'Erro', description: message, color: 'error' })
-  } finally {
-    isUpdatingCurrentDevice.value = false
-  }
-}
-
-async function disableCurrentDeviceNotifications() {
-  if (isUpdatingCurrentDevice.value)
-    return
-
-  isUpdatingCurrentDevice.value = true
-
-  try {
-    await disableCurrentDevice()
-    await refresh()
-
-    toast.add({
-      title: 'Canal desativado',
-      description: `As notificações foram desativadas neste ${currentDeviceLabel.value}.`,
-      color: 'success'
-    })
-  } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
-    const message = err?.data?.statusMessage || err?.statusMessage || 'Não foi possível desativar as notificações neste dispositivo'
-    toast.add({ title: 'Erro', description: message, color: 'error' })
-  } finally {
-    isUpdatingCurrentDevice.value = false
-  }
 }
 
 onMounted(() => {

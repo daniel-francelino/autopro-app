@@ -51,8 +51,8 @@ export default defineEventHandler(async (event) => {
         }
       }
     }))
-  } catch (err: any) {
-    throw createError({ statusCode: 502, message: `Erro ao conectar com a Focus NFe: ${err?.message ?? 'falha de rede'}` })
+  } catch (err: unknown) {
+    throw createError({ statusCode: 502, message: `Erro ao conectar com a Focus NFe: ${(err as { message?: string } | null)?.message ?? 'falha de rede'}` })
   }
 
   if (!response.ok) {

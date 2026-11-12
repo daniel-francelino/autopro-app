@@ -49,7 +49,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 500, statusMessage: 'Erro ao listar faturas' })
   }
 
-  const orgIds = [...new Set((data || []).map((inv: any) => inv.organization_id).filter(Boolean))]
+  const orgIds = [...new Set((data || []).map((inv: { organization_id?: string | null }) => inv.organization_id).filter(Boolean))]
   const orgNameMap: Record<string, string> = {}
 
   if (orgIds.length > 0) {
@@ -63,9 +63,9 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const items = (data || []).map((inv: any) => ({
+  const items = (data || []).map((inv: { organization_id?: string | null }) => ({
     ...inv,
-    organization_name: orgNameMap[inv.organization_id] ?? '—'
+    organization_name: orgNameMap[inv.organization_id as string] ?? '—'
   }))
 
   return { items, total: count ?? items.length, page, page_size: pageSize }

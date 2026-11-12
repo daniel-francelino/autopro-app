@@ -87,9 +87,15 @@ const tableSorting = ref<SortingState>(props.sorting)
 const tableRowSelection = ref<RowSelectionState>(props.rowSelection)
 const internalSearchTerm = ref(props.searchTerm)
 
-watch(() => props.sorting, (v) => { tableSorting.value = v }, { deep: true })
-watch(() => props.rowSelection, (v) => { tableRowSelection.value = v }, { deep: true })
-watch(() => props.searchTerm, (v) => { internalSearchTerm.value = v })
+watch(() => props.sorting, (v) => {
+  tableSorting.value = v
+}, { deep: true })
+watch(() => props.rowSelection, (v) => {
+  tableRowSelection.value = v
+}, { deep: true })
+watch(() => props.searchTerm, (v) => {
+  internalSearchTerm.value = v
+})
 
 const currentSearchTerm = computed({
   get: () => props.searchTerm ?? internalSearchTerm.value,
@@ -123,9 +129,17 @@ function formatColumnLabel(value: string) {
     .replace(/\b\w/g, char => char.toUpperCase())
 }
 
+type ColumnClassMeta = {
+  class?: {
+    th?: string | ((ctx: unknown) => string)
+    td?: string | ((ctx: unknown) => string)
+  }
+}
+
 function getColumnKey(column: DataTableColumn): string | undefined {
   if (typeof column.id === 'string') return column.id
-  if (typeof (column as any).accessorKey === 'string') return (column as any).accessorKey
+  const accessorKey = (column as { accessorKey?: unknown }).accessorKey
+  if (typeof accessorKey === 'string') return accessorKey
   return undefined
 }
 
@@ -212,7 +226,7 @@ function normalizeColumn(column: DataTableColumn): DataTableColumn {
   const actionsCol = isActionsColumn(column)
   const sortable = typeof column.enableSorting === 'boolean'
     ? column.enableSorting
-    : Boolean(typeof (column as any).accessorKey === 'string' && !actionsCol)
+    : Boolean(typeof (column as { accessorKey?: unknown }).accessorKey === 'string' && !actionsCol)
 
   const meta = (column.meta ?? {}) as { class?: { th?: string, td?: string } }
 
@@ -340,12 +354,12 @@ const hasToolbar = computed(() =>
 const colSpan = computed(() => normalizedColumns.value.length)
 
 function getThClass(header: ReturnType<typeof table.getHeaderGroups>[0]['headers'][0]) {
-  const meta = (header.column.columnDef.meta as any)?.class?.th
+  const meta = (header.column.columnDef.meta as ColumnClassMeta | undefined)?.class?.th
   return typeof meta === 'function' ? meta(header.getContext()) : (meta ?? '')
 }
 
 function getTdClass(cell: ReturnType<typeof rows.value[0]['getVisibleCells']>[0]) {
-  const meta = (cell.column.columnDef.meta as any)?.class?.td
+  const meta = (cell.column.columnDef.meta as ColumnClassMeta | undefined)?.class?.td
   return typeof meta === 'function' ? meta(cell.getContext()) : (meta ?? '')
 }
 </script>

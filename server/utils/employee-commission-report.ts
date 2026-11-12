@@ -1,5 +1,6 @@
 import { normalizeReportStatus, parseDateEnd, parseDateStart, roundMoney, toNumber } from './report-helpers'
-import { fetchAllOrganizationRows } from './supabase-pagination'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { fetchAllOrganizationRows, type SupabaseClientLike } from './supabase-pagination'
 
 interface EmployeeRecord {
   id: string
@@ -183,7 +184,7 @@ export async function getEmployeeCommissionReport({
   dateFrom,
   dateTo
 }: {
-  supabase: any
+  supabase: SupabaseClient
   organizationId: string
   employeeId: string
   dateFrom?: string | null
@@ -207,7 +208,7 @@ export async function getEmployeeCommissionReport({
 
   const employee = employeeRecord as EmployeeRecord
 
-  const rawRecordsData = await fetchAllOrganizationRows<EmployeeFinancialRecord>(supabase, {
+  const rawRecordsData = await fetchAllOrganizationRows<EmployeeFinancialRecord>(supabase as unknown as SupabaseClientLike, {
     table: 'employee_financial_records',
     organizationId,
     eq: { employee_id: normalizedEmployeeId },
@@ -226,7 +227,7 @@ export async function getEmployeeCommissionReport({
 
   const [ordersData, clientsData] = await Promise.all([
     serviceOrderIds.length > 0
-      ? fetchAllOrganizationRows<ServiceOrderRecord>(supabase, {
+      ? fetchAllOrganizationRows<ServiceOrderRecord>(supabase as unknown as SupabaseClientLike, {
           table: 'service_orders',
           organizationId,
           columns: 'id, number, status, payment_status, entry_date, client_id',
@@ -234,7 +235,7 @@ export async function getEmployeeCommissionReport({
         }).then(orders => orders.filter(order => serviceOrderIds.includes(String(order.id))))
       : Promise.resolve([] as ServiceOrderRecord[]),
     serviceOrderIds.length > 0
-      ? fetchAllOrganizationRows<ClientRecord>(supabase, {
+      ? fetchAllOrganizationRows<ClientRecord>(supabase as unknown as SupabaseClientLike, {
           table: 'clients',
           organizationId,
           columns: 'id, name',

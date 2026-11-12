@@ -284,10 +284,6 @@ async function confirmBulkDelete() {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function getVehicleInitial(vehicle: Vehicle): string {
-  return (vehicle.brand ?? vehicle.model ?? 'V').trim().charAt(0).toUpperCase()
-}
-
 function getVehicleTitle(vehicle: Vehicle): string {
   return [vehicle.brand, vehicle.model].filter(Boolean).join(' ') || 'Veículo'
 }

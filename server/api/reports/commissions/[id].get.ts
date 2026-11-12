@@ -31,15 +31,78 @@ function normalizeCommissionBase(value: unknown) {
   return base || null
 }
 
-function getItemName(item: any, index: number) {
+interface ItemCommissionEntry {
+  employee_id?: unknown
+  amount?: unknown
+  type?: unknown
+  base?: unknown
+  percentage?: unknown
+}
+
+interface OrderItemRow {
+  name?: unknown
+  description?: unknown
+  quantity?: unknown
+  total_amount?: unknown
+  total_price?: unknown
+  sale_price?: unknown
+  unit_price?: unknown
+  cost_amount?: unknown
+  cost_price?: unknown
+  commissions?: ItemCommissionEntry[] | null
+}
+
+interface ResponsibleEmployee {
+  employee_id?: unknown
+}
+
+interface VehicleLabelSource {
+  brand?: unknown
+  model?: unknown
+  license_plate?: unknown
+}
+
+interface EmployeeRow {
+  id?: unknown
+  name?: string | null
+  role?: string | null
+}
+
+interface RelatedCommissionRecord {
+  id?: unknown
+  employee_id?: unknown
+  item_name?: unknown
+  amount?: unknown
+  status?: unknown
+  reference_date?: string | null
+  date?: string | null
+  payment_date?: string | null
+}
+
+interface BreakdownRow {
+  itemKey: string
+  itemName: string
+  quantity: number
+  unitPrice: number
+  saleAmount: number
+  costAmount: number
+  profitAmount: number
+  commissionAmount: number
+  commissionType: string | null
+  commissionBase: string | null
+  commissionPercentage: number | null
+  isCurrentRecord: boolean
+}
+
+function getItemName(item: OrderItemRow | null | undefined, index: number) {
   return String(item?.name || item?.description || `Item ${index + 1}`)
 }
 
-function getItemQuantity(item: any) {
+function getItemQuantity(item: OrderItemRow | null | undefined) {
   return Math.max(1, toNumber(item?.quantity, 1))
 }
 
-function getItemSaleAmount(item: any, quantity: number) {
+function getItemSaleAmount(item: OrderItemRow | null | undefined, quantity: number) {
   const totalAmount = toNumber(item?.total_amount, Number.NaN)
   if (Number.isFinite(totalAmount) && totalAmount > 0)
     return roundMoney(totalAmount)
@@ -56,7 +119,7 @@ function getItemSaleAmount(item: any, quantity: number) {
   return roundMoney(unitPrice * quantity)
 }
 
-function getItemCostAmount(item: any, quantity: number) {
+function getItemCostAmount(item: OrderItemRow | null | undefined, quantity: number) {
   const totalCost = toNumber(item?.cost_amount, Number.NaN)
   if (Number.isFinite(totalCost) && totalCost > 0)
     return roundMoney(totalCost)
@@ -65,7 +128,7 @@ function getItemCostAmount(item: any, quantity: number) {
   return roundMoney(unitCost * quantity)
 }
 
-function getVehicleLabel(vehicle: any) {
+function getVehicleLabel(vehicle: VehicleLabelSource | null | undefined) {
   if (!vehicle)
     return null
 
@@ -156,16 +219,16 @@ export default defineEventHandler(async (event) => {
 
   const employeesMap = new Map(
     (employees || [])
-      .map((employee: any) => [normalizeId(employee.id), employee] as const)
-      .filter((entry): entry is [string, any] => Boolean(entry[0]))
+      .map((employee: EmployeeRow) => [normalizeId(employee.id), employee] as const)
+      .filter((entry): entry is [string, EmployeeRow] => Boolean(entry[0]))
   )
   const currentEmployee = commissionEmployeeId ? employeesMap.get(commissionEmployeeId) ?? null : null
 
-  const items = Array.isArray(order?.items) ? order.items : []
-  let breakdown: any[] = items
-    .map((item: any, index: number) => {
-      const itemCommissions = Array.isArray(item?.commissions) ? item.commissions : []
-      const matchedCommission = itemCommissions.find((entry: any) => normalizeId(entry?.employee_id) === commissionEmployeeId)
+  const items: OrderItemRow[] = Array.isArray(order?.items) ? order.items : []
+  let breakdown: BreakdownRow[] = items
+    .map((item: OrderItemRow, index: number) => {
+      const itemCommissions: ItemCommissionEntry[] = Array.isArray(item?.commissions) ? item.commissions : []
+      const matchedCommission = itemCommissions.find((entry: ItemCommissionEntry) => normalizeId(entry?.employee_id) === commissionEmployeeId)
 
       if (!matchedCommission)
         return null
@@ -196,7 +259,7 @@ export default defineEventHandler(async (event) => {
           && Math.abs(commissionAmount - toNumber(commission.amount, 0)) < 0.01
       }
     })
-    .filter(Boolean)
+    .filter((row): row is BreakdownRow => row !== null)
 
   if (breakdown.length === 0) {
     const fallbackAmount = roundMoney(toNumber(commission.item_amount, 0))
@@ -218,8 +281,8 @@ export default defineEventHandler(async (event) => {
         : null,
       isCurrentRecord: true
     }]
-  } else if (!breakdown.some((item: any) => item.isCurrentRecord)) {
-    const sameName = breakdown.find((item: any) => normalizeText(item.itemName) === normalizeText(commission.item_name))
+  } else if (!breakdown.some(item => item.isCurrentRecord)) {
+    const sameName = breakdown.find(item => normalizeText(item.itemName) === normalizeText(commission.item_name))
     if (sameName) {
       sameName.isCurrentRecord = true
     } else if (breakdown.length === 1) {
@@ -227,8 +290,8 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const currentBreakdown = breakdown.find((item: any) => item.isCurrentRecord) || breakdown[0]
-  const relatedCommissions = (orderCommissionsResult.data || []).map((record: any) => ({
+  const currentBreakdown = breakdown.find(item => item.isCurrentRecord) || breakdown[0]
+  const relatedCommissions = ((orderCommissionsResult.data || []) as RelatedCommissionRecord[]).map(record => ({
     id: String(record.id),
     employeeId: normalizeId(record.employee_id),
     employeeName: String(employeesMap.get(normalizeId(record.employee_id) || '')?.name || 'Funcionário'),
@@ -241,7 +304,7 @@ export default defineEventHandler(async (event) => {
   }))
 
   const responsibleNames = (Array.isArray(order?.responsible_employees) ? order.responsible_employees : [])
-    .map((responsible: any) => {
+    .map((responsible: ResponsibleEmployee) => {
       const employeeId = normalizeId(responsible?.employee_id)
       return String((employeeId ? employeesMap.get(employeeId)?.name : '') || '').trim()
     })
@@ -311,12 +374,12 @@ export default defineEventHandler(async (event) => {
               : null),
           breakdown,
           employeeOrderTotal: roundMoney(relatedCommissions
-            .filter((record: any) => record.employeeId === commissionEmployeeId)
-            .reduce((sum: number, record: any) => sum + toNumber(record.amount, 0), 0)),
+            .filter(record => record.employeeId === commissionEmployeeId)
+            .reduce((sum: number, record) => sum + toNumber(record.amount, 0), 0)),
           orderCommissionTotal: roundMoney(
             order?.commission_amount != null
               ? toNumber(order.commission_amount, 0)
-              : relatedCommissions.reduce((sum: number, record: any) => sum + toNumber(record.amount, 0), 0)
+              : relatedCommissions.reduce((sum: number, record) => sum + toNumber(record.amount, 0), 0)
           )
         },
         relatedCommissions

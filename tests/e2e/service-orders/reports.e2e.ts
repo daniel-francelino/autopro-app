@@ -8,7 +8,7 @@ import { OrdersPage, parseBRL } from './support/pages'
 skipUnlessAuth(test)
 test.describe.configure({ timeout: 180_000 })
 
-const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace(/ /g, ' ')
+const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }).replace(/\u00A0/g, ' ')
 const today = () => new Date().toISOString().slice(0, 10)
 const monthBounds = () => {
   const now = new Date()

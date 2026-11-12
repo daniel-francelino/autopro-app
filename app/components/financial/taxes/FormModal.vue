@@ -1,5 +1,5 @@
 <script setup lang="ts">
-type Tax = Record<string, any>
+import type { Tax } from '~/types/financial'
 
 const props = defineProps<{
   open: boolean

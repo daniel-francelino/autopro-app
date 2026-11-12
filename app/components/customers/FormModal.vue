@@ -25,11 +25,11 @@ const employeeToAdd = ref<Employee | null>(null)
 const errors = reactive<Record<string, string>>({})
 
 function clearError(field: string) {
-  delete errors[field]
+  Reflect.deleteProperty(errors, field)
 }
 
 function validate() {
-  Object.keys(errors).forEach(k => delete errors[k])
+  Object.keys(errors).forEach(k => Reflect.deleteProperty(errors, k))
 
   if (!form.name.trim())
     errors.name = 'Nome é obrigatório'
@@ -193,7 +193,7 @@ watch(
   (opened) => {
     if (!opened) return
 
-    Object.keys(errors).forEach(k => delete errors[k])
+    Object.keys(errors).forEach(k => Reflect.deleteProperty(errors, k))
     loadEmployees()
 
     if (props.client) {

@@ -116,11 +116,11 @@ async function lookupPlate() {
 const errors = reactive<Record<string, string>>({})
 
 function clearError(field: string) {
-  delete errors[field]
+  Reflect.deleteProperty(errors, field)
 }
 
 function validate() {
-  Object.keys(errors).forEach(k => delete errors[k])
+  Object.keys(errors).forEach(k => Reflect.deleteProperty(errors, k))
   if (!form.client_id)
     errors.client_id = 'Selecione o cliente proprietário'
   return Object.keys(errors).length === 0
@@ -151,7 +151,7 @@ watch(
   () => props.open,
   (opened) => {
     if (!opened) return
-    Object.keys(errors).forEach(k => delete errors[k])
+    Object.keys(errors).forEach(k => Reflect.deleteProperty(errors, k))
     loadClients()
 
     if (props.vehicle) {

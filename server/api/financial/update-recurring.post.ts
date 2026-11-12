@@ -3,6 +3,7 @@ import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 import { recordAudit } from '../../utils/audit/record'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { addMonths, addYears, differenceInCalendarMonths, differenceInCalendarYears, format } from 'date-fns'
 
 /**
@@ -10,6 +11,18 @@ import { addMonths, addYears, differenceInCalendarMonths, differenceInCalendarYe
  * Updates recurring series entries from a base date forward.
  * Migrated from: supabase/functions/updateRecurringFinanceEntries
  */
+
+type EntryRecord = {
+  id?: string
+  bank_account_id?: string | null
+  status?: string | null
+  type?: string | null
+  amount?: number | string | null
+  due_date?: string | null
+  recurrence?: string | null
+  description?: string | null
+  [key: string]: unknown
+}
 
 function parseDateOnly(value?: string | null) {
   if (!value) return null
@@ -27,13 +40,13 @@ function normalizeComparableValue(value: unknown) {
   return value
 }
 
-function hasEntryChanges(currentEntry: Record<string, any>, updateData: Record<string, any>) {
+function hasEntryChanges(currentEntry: EntryRecord, updateData: EntryRecord) {
   return Object.entries(updateData).some(([key, value]) =>
     normalizeComparableValue(currentEntry?.[key]) !== normalizeComparableValue(value)
   )
 }
 
-function summarizeEntry(entry: Record<string, any>) {
+function summarizeEntry(entry: EntryRecord | null | undefined) {
   return {
     id: entry?.id || null,
     amount: Number(entry?.amount || 0),
@@ -42,7 +55,7 @@ function summarizeEntry(entry: Record<string, any>) {
   }
 }
 
-function resolveUpdatedDueDate(originalEntry: Record<string, any>, currentEntry: Record<string, any>, requestedDueDate?: string) {
+function resolveUpdatedDueDate(originalEntry: EntryRecord, currentEntry: EntryRecord, requestedDueDate?: string) {
   if (!requestedDueDate) return currentEntry?.due_date || null
   const requestedDate = parseDateOnly(requestedDueDate)
   if (!requestedDate) return currentEntry?.due_date || requestedDueDate
@@ -64,7 +77,7 @@ function resolveUpdatedDueDate(originalEntry: Record<string, any>, currentEntry:
   return currentEntry?.id === originalEntry?.id ? requestedDueDate : currentEntry?.due_date || requestedDueDate
 }
 
-async function registrarExtratoContaBancaria(supabase: any, organizationId: string, email: string, lancamento: any) {
+async function registrarExtratoContaBancaria(supabase: SupabaseClient, organizationId: string, email: string, lancamento: EntryRecord | null) {
   if (!lancamento?.bank_account_id || lancamento?.status !== 'paid') return
 
   const { data: conta } = await supabase.from('bank_accounts').select('*').eq('id', lancamento.bank_account_id).eq('organization_id', organizationId).single()
@@ -91,7 +104,7 @@ async function registrarExtratoContaBancaria(supabase: any, organizationId: stri
   await supabase.from('bank_accounts').update({ current_balance: saldoPosterior }).eq('id', conta.id)
 }
 
-async function reverterExtrato(supabase: any, organizationId: string, lancamento: any) {
+async function reverterExtrato(supabase: SupabaseClient, organizationId: string, lancamento: EntryRecord | null) {
   if (!lancamento?.bank_account_id || lancamento?.status !== 'paid') return
 
   const { data: extratoEntries } = await supabase.from('bank_account_statements').select('*').eq('bank_account_id', lancamento.bank_account_id).eq('financial_transaction_id', lancamento.id).eq('organization_id', organizationId)
@@ -143,7 +156,7 @@ export default defineEventHandler(async (event) => {
   const allSeriesEntries = [...(rootResult.data || []), ...(childResult.data || [])]
   const seen = new Set<string>()
   const entriesToUpdate = allSeriesEntries
-    .filter((entry: any) => {
+    .filter((entry: EntryRecord) => {
       const id = String(entry?.id || '')
       if (!id || seen.has(id)) return false
       seen.add(id)
@@ -152,7 +165,7 @@ export default defineEventHandler(async (event) => {
       if (entry?.status === 'paid') return false
       return String(entry?.due_date || '') >= baseDate
     })
-    .sort((a: any, b: any) => String(a?.due_date || '').localeCompare(String(b?.due_date || '')))
+    .sort((a: EntryRecord, b: EntryRecord) => String(a?.due_date || '').localeCompare(String(b?.due_date || '')))
 
   if (entriesToUpdate.length === 0) {
     return { data: { updatedCount: 0, updatedEntries: [] } }
@@ -165,7 +178,7 @@ export default defineEventHandler(async (event) => {
   } = inputUpdateData
 
   let updatedCount = 0
-  const updatedEntries: any[] = []
+  const updatedEntries: Array<Record<string, unknown>> = []
 
   for (const entry of entriesToUpdate) {
     const nextDueDate = resolveUpdatedDueDate(originalEntry, entry, sharedUpdateData.due_date)

@@ -64,20 +64,6 @@ const MANAGED_QUERY_KEYS = [
   'sortOrder'
 ] as const
 
-const PART_TECHNICAL_CATEGORY_OPTIONS = [
-  { label: 'Todas as categorias', value: 'all' },
-  { label: 'Freios', value: 'brakes' },
-  { label: 'Motor', value: 'engine' },
-  { label: 'Suspensão', value: 'suspension' },
-  { label: 'Transmissão', value: 'transmission' },
-  { label: 'Elétrica', value: 'electrical' },
-  { label: 'Funilaria', value: 'body' },
-  { label: 'Filtros', value: 'filters' },
-  { label: 'Óleos', value: 'oils' },
-  { label: 'Pneus', value: 'tires' },
-  { label: 'Outros', value: 'other' }
-]
-
 const toast = useToast()
 const workshop = useWorkshopPermissions()
 const requestFetch = useRequestFetch()
@@ -410,14 +396,6 @@ const form = reactive({
 
 const selectedProductOption = computed(() =>
   (productsData.value.items ?? []).find(product => product.id === form.product_id) ?? null
-)
-
-const selectedProductCategoryName = computed(() =>
-  selectedProductOption.value?.product_categories?.name || 'Sem categoria do catálogo'
-)
-
-const selectedProductTypeLabel = computed(() =>
-  selectedProductOption.value?.type === 'group' ? 'Grupo' : 'Unitário'
 )
 
 function handleProductSelect(productId: string | null) {

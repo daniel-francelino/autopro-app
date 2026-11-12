@@ -4,7 +4,7 @@ import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
 import type { SupabaseClientLike } from '../../utils/supabase-pagination'
-import { parseDateRange, toNumber, roundMoney, paginate, sortFactor, normalizeReportStatus, formatStatusLabel, normalizeId } from '../../utils/report-helpers'
+import { toNumber, roundMoney, paginate, sortFactor, normalizeReportStatus, formatStatusLabel, normalizeId } from '../../utils/report-helpers'
 import { enforceReportAccess } from '../../utils/license'
 import {
   normalizeNumber,

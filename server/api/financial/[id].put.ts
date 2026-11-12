@@ -36,7 +36,7 @@ export default defineEventHandler(async (event) => {
   const resultingRecurrence = 'recurrence' in body ? body.recurrence : existing.recurrence
   assertNotInstallmentAndRecurring(resultingIsInstallment, resultingRecurrence)
 
-  const updates: Record<string, any> = { updated_by: authUser.email }
+  const updates: Record<string, unknown> = { updated_by: authUser.email }
   const allowed = ['description', 'amount', 'due_date', 'type', 'status', 'recurrence', 'recurrence_end_date', 'is_installment', 'installment_count', 'current_installment', 'bank_account_id', 'notes']
   for (const key of allowed) {
     if (key in body) updates[key] = body[key]

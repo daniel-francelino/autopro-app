@@ -1,9 +1,9 @@
 // OS-G — Down payment, extra payment and installments (docs/testing/e2e-service-orders.md §4).
 // The installment plan is prepared via API; what the scenario tests (pay, edit, delete, undo) is done through the UI.
-import { expect, skipUnlessAuth, test, today } from './support/order-fixtures'
+import { expect, skipUnlessAuth, test } from './support/order-fixtures'
 import { settleAfter } from '../support/settle'
 import {
-  InstallmentsCard, apiDownPayment, apiProcessPayment, expectPaymentBadge, fillCashModal, installmentsOf, openHeaderModal, openOrder, orderInOtherShop, paidSetup, payInFull, sum, transactions
+  InstallmentsCard, apiProcessPayment, expectPaymentBadge, fillCashModal, installmentsOf, openHeaderModal, openOrder, orderInOtherShop, paidSetup, payInFull, sum, transactions
 } from './support/helpers-money'
 
 skipUnlessAuth(test)

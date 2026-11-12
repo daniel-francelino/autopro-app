@@ -83,8 +83,8 @@ export default eventHandler(async (event) => {
     }
   }
 
-  let roleActions: Record<string, any>[] = []
-  let actions: Record<string, any>[] = []
+  let roleActions: { is_granted?: boolean | null, action_id?: string | null }[] = []
+  let actions: { id?: string, code?: string | null }[] = []
 
   if (profile.role_id) {
     const [roleActionsResult, actionsResult] = await Promise.all([

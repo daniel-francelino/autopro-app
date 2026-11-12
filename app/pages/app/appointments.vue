@@ -31,7 +31,7 @@ const visibleRange = computed(() => {
   switch (calendarView.value) {
     case 'month': return getMonthRange(currentDate.value)
     case 'week': return getWeekRange(currentDate.value)
-    case 'day': return getDayRange(currentDate.value)
+    default: return getDayRange(currentDate.value)
   }
 })
 
