@@ -38,6 +38,43 @@ export async function ensureUserProvisioned(
   const normalizedEmail = input.email?.trim().toLowerCase() || null
   const normalizedName = input.displayName?.trim() || null
 
+  // Atribuir uma role não pode sobrescrever o acesso que o usuário já tem: perfil existente com
+  // outra role, ou admin/owner, é recusado (o upsert abaixo trocaria o role_id em silêncio).
+  if (input.roleId) {
+    const checkFailed = () => createError({
+      statusCode: 503,
+      statusMessage: 'Não foi possível verificar o acesso atual do usuário. Nada foi alterado.'
+    })
+
+    const { data: existing, error: existingError } = await supabase
+      .from('user_profiles')
+      .select('role_id, is_owner')
+      .eq('user_id', input.userId)
+      .maybeSingle()
+
+    if (existingError) throw checkFailed()
+
+    if (existing) {
+      let isAdminRole = false
+      if (existing.role_id) {
+        const { data: existingRole, error: roleError } = await supabase
+          .from('roles')
+          .select('name, is_system_role')
+          .eq('id', existing.role_id)
+          .maybeSingle()
+        if (roleError) throw checkFailed()
+        isAdminRole = existingRole?.name === 'admin' && existingRole?.is_system_role === true
+      }
+
+      if (existing.is_owner === true || isAdminRole || (existing.role_id && existing.role_id !== input.roleId)) {
+        throw createError({
+          statusCode: 409,
+          statusMessage: 'Este usuário já possui outro papel ou é administrador da organização. O acesso não foi alterado.'
+        })
+      }
+    }
+  }
+
   const profilePayload = {
     user_id: input.userId,
     email: normalizedEmail,

@@ -286,21 +286,21 @@ describe('PAY-01 / PAY-02b: terminals referenced by installments (decisão de pr
 
 describe('PAY-03c / PAY-03e / PAY-03g: emp-sem must not write (KF-09, KF-70)', () => {
   beforeEach(() => loginAs('emp-sem'))
-  it.fails('PAY-03c: POST as emp-sem -> 403 [KF-70]', async () => {
+  it('PAY-03c: POST as emp-sem -> 403 [KF-70]', async () => {
     const res = await create({ terminal_name: 'Nova' })
     expect(res.status).toBe(403)
   })
-  it.fails('PAY-03e: PUT as emp-sem -> 403 [KF-70]', async () => {
+  it('PAY-03e: PUT as emp-sem -> 403 [KF-70]', async () => {
     const res = await update('pt1', { is_active: false })
     expect(res.status).toBe(403)
   })
-  it.fails('PAY-03g: DELETE as emp-sem -> 403 [KF-70]', async () => {
+  it('PAY-03g: DELETE as emp-sem -> 403 [KF-70]', async () => {
     const res = await remove('pt1')
     expect(res.status).toBe(403)
   })
 })
 
-// Verificado por grep em server/api/payment-terminals: nenhum handler chama requireOrgPermission (KF-09, KF-70).
+// Fase 3 do plano de acesso: POST/PUT/DELETE exigem payment_machines.update (KF-70 corrigido); GET fica só org (D1).
 // action-codes.ts só define payment_machines.view e payment_machines.update (não há create/delete). A página
 // app/pages/app/financial/machines.vue usa payment_machines.update para criar/editar/excluir; por isso a mesma
 // chave é usada nas três rotas de escrita. Limitação: a equivalência rota->chave vem do front, não de um guarda no servidor.

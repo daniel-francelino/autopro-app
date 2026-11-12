@@ -1,5 +1,6 @@
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
+import { requireOrgPermission } from '../../utils/require-org-permission'
 import { getStripe } from '../../utils/stripe'
 import { resolveOrganizationId } from '../../utils/organization'
 import { deleteFocusNfeCompanyForOrg } from '../../utils/focus-nfe'
@@ -11,6 +12,7 @@ import { deleteFocusNfeCompanyForOrg } from '../../utils/focus-nfe'
  */
 export default eventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
+  await requireOrgPermission(authUser.id, 'subscription.manage', event)
   const supabase = getSupabaseAdminClient()
   const stripe = getStripe()
   const organizationId = await resolveOrganizationId(event, authUser.id)

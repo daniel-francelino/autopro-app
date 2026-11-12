@@ -110,6 +110,7 @@ export function createFakeSupabase(seed: Record<string, Row[]> = {}): FakeSupaba
       order(col: string, opts?: { ascending?: boolean }) { orderBy = { col, asc: opts?.ascending !== false }; return builder },
       limit(n: number) { limitN = n; return builder },
       range(from: number, to: number) { limitN = to - from + 1; return builder },
+      returns() { return builder },
       maybeSingle() {
         const res = run()
         const data = Array.isArray(res.data) ? (res.data[0] ?? null) : res.data

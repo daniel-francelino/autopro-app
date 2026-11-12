@@ -16,6 +16,7 @@ const canRead = computed(() => workshop.can(ActionCode.EMPLOYEES_READ))
 const canCreate = computed(() => workshop.can(ActionCode.EMPLOYEES_CREATE))
 const canUpdate = computed(() => workshop.can(ActionCode.EMPLOYEES_UPDATE))
 const canDelete = computed(() => workshop.can(ActionCode.EMPLOYEES_DELETE))
+const canInvite = computed(() => workshop.can(ActionCode.MEMBERS_INVITE))
 
 type Employee = Record<string, unknown>
 
@@ -709,7 +710,7 @@ const columns = [
               @click="openDetails(row.original)"
             />
           </UTooltip>
-          <UTooltip v-if="row.original.email" text="Gerenciar acesso">
+          <UTooltip v-if="row.original.email && canInvite" text="Gerenciar acesso">
             <UButton
               icon="i-lucide-key-round"
               color="neutral"

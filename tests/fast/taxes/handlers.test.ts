@@ -356,21 +356,21 @@ describe('TAX-01d: PUT empty name/type (KF-66, G3-SD-02)', () => {
 
 describe('TAX-11 / TAX-14 / TAX-17: emp-sem must not write (KF-09, KF-67)', () => {
   beforeEach(() => loginAs('emp-sem'))
-  it.fails('TAX-11: POST as emp-sem -> 403 [KF-67]', async () => {
+  it('TAX-11: POST as emp-sem -> 403 [KF-67]', async () => {
     const res = await create({ name: 'ISS3', type: 'municipal', rate: 2 })
     expect(res.status).toBe(403)
   })
-  it.fails('TAX-14: PUT as emp-sem -> 403 [KF-67]', async () => {
+  it('TAX-14: PUT as emp-sem -> 403 [KF-67]', async () => {
     const res = await update('t1', { rate: 8 })
     expect(res.status).toBe(403)
   })
-  it.fails('TAX-17: DELETE as emp-sem -> 403 [KF-67]', async () => {
+  it('TAX-17: DELETE as emp-sem -> 403 [KF-67]', async () => {
     const res = await remove('t1')
     expect(res.status).toBe(403)
   })
 })
 
-// Verificado por grep em server/api/taxes: nenhum handler chama requireOrgPermission (KF-09, KF-67).
+// Fase 3 do plano de acesso: POST/PUT/DELETE exigem taxes.update (KF-67 corrigido); GET fica só org (D1).
 // action-codes.ts define só taxes.view e taxes.update; a página app/pages/app/financial/taxes.vue usa taxes.update
 // para criar/editar/excluir, então a mesma chave é usada nas três rotas. A equivalência vem do front, não de um guarda no servidor.
 describe('TAX-11 / TAX-14 / TAX-17: emp-com (taxes.update) -> 200', () => {

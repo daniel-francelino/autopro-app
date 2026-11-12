@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useAuth } from '~/composables/useAuth'
+import { ActionCode } from '~/constants/action-codes'
 
 type PricingPage = {
   title: string
@@ -44,6 +45,13 @@ const items = ref([
 const toast = useToast()
 const { track } = useAnalytics()
 const auth = useAuth()
+const workshop = useWorkshopPermissions()
+
+// Membro de organização sem subscription.manage não contrata (o servidor responde 403).
+// Quem ainda não tem organização (primeira assinatura) continua livre.
+const checkoutBlocked = computed(() =>
+  Boolean(workshop.organizationId.value) && !workshop.can(ActionCode.SUBSCRIPTION_MANAGE)
+)
 
 async function startCheckout(priceId: string) {
   await auth.ensureReady()
@@ -51,6 +59,11 @@ async function startCheckout(priceId: string) {
   if (!auth.isAuthenticated.value) {
     track('pricing_login_redirected')
     await navigateTo('/login')
+    return
+  }
+
+  if (checkoutBlocked.value) {
+    toast.add({ title: 'Sem permissão', description: 'Apenas quem gerencia a assinatura pode contratar um plano. Fale com o administrador da oficina.', color: 'warning' })
     return
   }
 
@@ -68,7 +81,10 @@ async function startCheckout(priceId: string) {
     await navigateTo(url, { external: true })
   } catch (error: unknown) {
     const err = error as FetchErrorLike
-    const message = err?.data?.statusMessage || err?.statusMessage || 'Não foi possível iniciar o checkout'
+    const status = (error as { status?: number, statusCode?: number })?.statusCode || (error as { status?: number })?.status
+    const message = status === 403
+      ? 'Você não tem permissão para contratar um plano. Fale com o administrador da oficina.'
+      : err?.data?.statusMessage || err?.statusMessage || 'Não foi possível iniciar o checkout'
     toast.add({ title: 'Erro', description: message, color: 'error' })
   }
 }
@@ -85,6 +101,7 @@ const plansWithActions = computed(() => {
       ...plan,
       button: {
         ...(plan.button || {}),
+        disabled: checkoutBlocked.value,
         onClick: () => startCheckout(priceId)
       }
     }

@@ -21,16 +21,19 @@ const links = computed<NavigationMenuItem[][]>(() => {
       exact: true
     },
     {
-      label: 'Assinatura',
-      icon: 'i-lucide-credit-card',
-      to: '/app/settings/subscription'
-    },
-    {
       label: 'Notificações',
       icon: 'i-lucide-bell',
       to: '/app/settings/notifications'
     }
   ]
+
+  if (workshop.can(ActionCode.SUBSCRIPTION_VIEW)) {
+    items.push({
+      label: 'Assinatura',
+      icon: 'i-lucide-credit-card',
+      to: '/app/settings/subscription'
+    })
+  }
 
   if (workshop.can(ActionCode.SETTINGS_VIEW)) {
     items.push({

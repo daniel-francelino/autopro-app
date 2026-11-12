@@ -3,8 +3,6 @@
   "server/api/auth/avatar.post.ts",
   "server/api/auth/password.put.ts",
   "server/api/auth/profile.put.ts",
-  "server/api/billing/checkout.post.ts",
-  "server/api/billing/portal.post.ts",
   "server/api/feedback/[id].delete.ts",
   "server/api/feedback/[id].get.ts",
   "server/api/feedback/[id].responses.get.ts",

@@ -1,8 +1,7 @@
 // Handler de POST /api/employees/:id/grant-access contra o fake em memória.
 // Cenários: docs/testing/endpoint-scenarios-g1.md, seção 4 (EMP-01a, 01b, 01d, 01e, 01f, 06n). EMP-01c (PUT role_id) está em crud.test.ts.
 //  - 401 sem sessão já é provado por guard-matrix.test.ts; não se repete aqui.
-//  - it.fails = comportamento correto ainda não implementado (docs/testing/known-failures.md, KF-52; faceta do KF-09).
-//    Ao corrigir o handler o Vitest acusa "unexpected pass": troque it.fails por it.
+//  - EMP-01b: guarda members.invite aplicada na Fase 3 do plano de acesso.
 //  - Mocks: o handler usa `supabase.auth.admin.createUser` (cliente admin) e `supabaseAnon.auth.resetPasswordForEmail`.
 //    O fake de tabelas não tem `auth`; aqui o cliente admin é o fake + `auth.admin.createUser` (vi.fn), e o anon ganha `resetPasswordForEmail`.
 //  - Limitações do fake: `upsert` sempre insere (não resolve onConflict 'user_id'), então "1 perfil por e-mail" não se prova contando linhas
@@ -222,28 +221,45 @@ describe('EMP-06n: funcionário de B logado em A', () => {
   })
 })
 
-describe('EMP-01b: emp-sem não deveria conceder acesso (KF-09, KF-52)', () => {
-  beforeEach(() => loginAs('emp-sem'))
-  it('controle [caracteriza comportamento atual; decisão em G1-OQ-01 e KF-09]: emp-sem POST -> 200, usuário criado e papel concedido é sempre o "employee" da org', async () => {
-    const res = await grant('e-a1')
-    expect(res.status).toBe(200)
-    expect(createUser).toHaveBeenCalledTimes(1)
-    const profile = profilesByEmail('ana@a.com')[0]!
-    expect(profile).toMatchObject({ organization_id: 'org-a', employee_id: 'e-a1', role_id: 'r-employee', created_by: 'emp@a.com' })
-    expect(profile.is_owner).toBeUndefined()
-    // o papel concedido é o de sistema "employee": nunca o papel de quem concede nem um admin
-    expect(table('roles').find(r => r.id === profile.role_id)).toMatchObject({ name: 'employee', is_system_role: true })
-    expect(profile.role_id).not.toBe('r-operador')
+describe('EMP-01b: grant-access exige members.invite (Fase 3, KF-52)', () => {
+  beforeEach(() => {
+    // members.invite existe no catálogo (migração 105); só r-com recebe a concessão.
+    table('actions').push({ id: 'act-members-invite', code: 'members.invite', deleted_at: null })
+    table('role_actions').push({ role_id: 'r-com', action_id: 'act-members-invite', is_granted: true })
+    table('roles').push({ id: 'r-admin-a', name: 'admin', is_system_role: true, organization_id: 'org-a' })
+    table('user_profiles').push({ id: 'p-admin', user_id: 'u-admin', organization_id: 'org-a', role_id: 'r-admin-a', is_owner: false, is_active: true, employee_id: null, email: 'admin@a.com' })
   })
-  it.fails('EMP-01b: POST como emp-sem -> 403 e nenhum usuário criado [KF-52]', async () => {
+
+  it('EMP-01b: emp-sem (sem members.invite) -> 403, nenhum usuário criado, nenhuma escrita, nenhum e-mail', async () => {
+    loginAs('emp-sem')
+    const before = structuredClone(fake.tables)
     const res = await grant('e-a1')
     expect(res.status).toBe(403)
     expect(createUser).not.toHaveBeenCalled()
-    expect(table('user_profiles')).toHaveLength(SEED_PROFILES)
+    expect(auth.resetPasswordForEmail).not.toHaveBeenCalled()
+    expect(fake.writes).toHaveLength(0)
+    expect(fake.tables).toEqual(before)
+  })
+
+  it('emp-com (com members.invite) -> 200 e papel employee da org', async () => {
+    loginAs('emp-com')
+    const res = await grant('e-a1')
+    expect(res.status).toBe(200)
+    expect(profilesByEmail('ana@a.com')[0]).toMatchObject({ role_id: 'r-employee', created_by: 'empcom@a.com' })
+  })
+
+  it('admin da org (sem concessão em role_actions) -> 200', async () => {
+    auth.getUser.mockReset().mockResolvedValue({ data: { user: { id: 'u-admin', email: 'admin@a.com' } }, error: null })
+    const res = await grant('e-a1')
+    expect(res.status).toBe(200)
+  })
+
+  it('owner -> 200 (coberto por EMP-01a)', async () => {
+    const res = await grant('e-a1')
+    expect(res.status).toBe(200)
   })
 })
 
 describe('Decisões de produto pendentes (it.todo)', () => {
   it.todo('EMP-01d: org no limite de usuários do plano -> grant-access respeita o limite. Aguarda G1-OQ-11 (G1-SD-07 não confirmado); não é it.fails')
-  it.todo('EMP-01b emp-com: POST 200 com a permissão de gestão de funcionários. Sem chave equivalente em action-codes.ts: não há employees.grant_access e o botão "Gerenciar acesso" da página não é gateado por ActionCode (usar employees.update seria inventar o mapeamento). Aguarda G1-OQ-01')
 })

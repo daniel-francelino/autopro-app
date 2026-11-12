@@ -1,5 +1,6 @@
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
+import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
 import { getStripe } from '../../utils/stripe'
 
@@ -11,6 +12,7 @@ type SubscriptionRow = {
 
 export default eventHandler(async (event) => {
   const user = await requireAuthUser(event)
+  await requireOrgPermission(user.id, 'subscription.manage', event)
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, user.id)
 

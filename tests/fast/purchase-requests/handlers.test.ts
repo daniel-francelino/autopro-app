@@ -445,25 +445,17 @@ describe('Decisões de produto pendentes (it.todo)', () => {
 
 describe('PRQ-01c / PRQ-01f: emp-sem must not authorize/reject (KF-09, KF-57, G2-SD-06)', () => {
   beforeEach(() => loginAs('emp-sem'))
-  it('controle PRQ-01c [caracteriza comportamento atual; decisão em G2-OQ-01 e KF-57/KF-58]: emp-sem authorize -> 200 e escrita acontece', async () => {
-    const res = await authorize('rq-w')
-    expect(res.status).toBe(200)
-    expect(row('rq-w')).toMatchObject({ status: 'authorized', authorized_by: 'emp@a.com' })
-    expect(prWrites()).toHaveLength(1)
-  })
-  it('controle PRQ-01f [caracteriza comportamento atual; decisão em G2-OQ-01 e KF-57/KF-58]: emp-sem reject -> 200 e escrita acontece', async () => {
-    const res = await reject('rq-w', { rejection_reason: 'x' })
-    expect(res.status).toBe(200)
-    expect(row('rq-w')).toMatchObject({ status: 'rejected', rejection_reason: 'x' })
-    expect(prWrites()).toHaveLength(1)
-  })
-  it.fails('PRQ-01c: authorize as emp-sem -> 403 [KF-57]', async () => {
+  it('PRQ-01c: authorize as emp-sem -> 403 [KF-57]', async () => {
     const res = await authorize('rq-w')
     expect(res.status).toBe(403)
+    expect(prWrites()).toHaveLength(0)
+    expect(row('rq-w').status).toBe('waiting')
   })
-  it.fails('PRQ-01f: reject as emp-sem -> 403 [KF-57]', async () => {
+  it('PRQ-01f: reject as emp-sem -> 403 [KF-57]', async () => {
     const res = await reject('rq-w', { rejection_reason: 'x' })
     expect(res.status).toBe(403)
+    expect(prWrites()).toHaveLength(0)
+    expect(row('rq-w').status).toBe('waiting')
   })
 })
 

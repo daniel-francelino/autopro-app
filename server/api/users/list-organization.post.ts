@@ -1,5 +1,6 @@
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
+import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
 
 /**
@@ -9,6 +10,7 @@ import { resolveOrganizationId } from '../../utils/organization'
  */
 export default eventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
+  await requireOrgPermission(authUser.id, 'members.view', event)
   const supabase = getSupabaseAdminClient()
 
   const organizationId = await resolveOrganizationId(event, authUser.id)

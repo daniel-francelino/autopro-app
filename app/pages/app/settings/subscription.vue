@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ActionCode } from '~/constants/action-codes'
+
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Assinatura' })
 
@@ -6,6 +8,15 @@ const toast = useToast()
 const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 const { getPlanByPriceId } = usePlans()
+const workshop = useWorkshopPermissions()
+const canManage = computed(() => workshop.can(ActionCode.SUBSCRIPTION_MANAGE))
+
+function actionErrorMessage(error: unknown, fallback: string): string {
+  const err = error as { status?: number, statusCode?: number, data?: { statusMessage?: string }, statusMessage?: string }
+  if ((err?.statusCode || err?.status) === 403)
+    return 'Você não tem permissão para gerenciar a assinatura. Fale com o administrador da oficina.'
+  return err?.data?.statusMessage || err?.statusMessage || fallback
+}
 
 // ─── Subscription ─────────────────────────────────────────
 type Subscription = {
@@ -63,8 +74,7 @@ async function cancelAtPeriodEnd() {
       await new Promise(r => setTimeout(r, 1000))
     }
   } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
-    toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível cancelar', color: 'error' })
+    toast.add({ title: 'Erro', description: actionErrorMessage(error, 'Não foi possível cancelar'), color: 'error' })
   } finally {
     isCancelling.value = false
   }
@@ -111,8 +121,7 @@ async function openPortal() {
     const { url } = await $fetch<{ url: string }>('/api/billing/portal', { method: 'POST' })
     await navigateTo(url, { external: true })
   } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
-    toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível abrir o portal', color: 'error' })
+    toast.add({ title: 'Erro', description: actionErrorMessage(error, 'Não foi possível abrir o portal'), color: 'error' })
   }
 }
 
@@ -294,7 +303,7 @@ async function openInvoice(url: string | null) {
       <USeparator />
 
       <!-- Ações -->
-      <div class="flex flex-wrap items-center gap-2">
+      <div v-if="canManage" class="flex flex-wrap items-center gap-2">
         <UButton
           label="Gerenciar assinatura"
           color="neutral"

@@ -2,6 +2,7 @@ import { getRequestURL, getRouterParam } from 'h3'
 import { getSupabaseAdminClient } from '../../../utils/supabase'
 import { getSupabaseAnonClient } from '../../../utils/supabase-anon'
 import { requireAuthUser } from '../../../utils/require-auth'
+import { requireOrgPermission } from '../../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../../utils/organization'
 import { ensureUserProvisioned } from '../../../utils/user-provisioning'
 
@@ -15,6 +16,7 @@ import { ensureUserProvisioned } from '../../../utils/user-provisioning'
  */
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
+  await requireOrgPermission(authUser.id, 'members.invite', event)
   const supabase = getSupabaseAdminClient()
   const supabaseAnon = getSupabaseAnonClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)

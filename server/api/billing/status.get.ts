@@ -1,5 +1,6 @@
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
+import { requireOrgPermissionIfMember } from '../../utils/require-org-permission-if-member'
 import { resolveOrganizationId } from '../../utils/organization'
 import { getStripe } from '../../utils/stripe'
 
@@ -24,6 +25,7 @@ function mapStatus(s: string | null): string {
 
 export default eventHandler(async (event) => {
   const user = await requireAuthUser(event)
+  await requireOrgPermissionIfMember(user.id, 'subscription.view', event)
   const supabase = getSupabaseAdminClient()
 
   const organizationId = await resolveOrganizationId(event, user.id)

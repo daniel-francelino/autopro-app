@@ -1,6 +1,7 @@
 import { getRequestHeader } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
+import { requireOrgPermissionIfMember } from '../../utils/require-org-permission-if-member'
 import { getAllowedStripePriceIds, getStripe } from '../../utils/stripe'
 import { getOrCreateStripeCustomer } from '../../utils/stripe-customer'
 
@@ -13,6 +14,7 @@ import { getOrCreateStripeCustomer } from '../../utils/stripe-customer'
  */
 export default eventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
+  await requireOrgPermissionIfMember(authUser.id, 'subscription.manage', event)
   const supabase = getSupabaseAdminClient()
   const stripe = getStripe()
 

@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { getRequestURL } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
+import { requireOrgPermissionIfMember } from '../../utils/require-org-permission-if-member'
 import { getAllowedStripePriceIds, getStripe } from '../../utils/stripe'
 import { getOrCreateStripeCustomer } from '../../utils/stripe-customer'
 
@@ -14,6 +15,7 @@ const schema = z.object({
 
 export default eventHandler(async (event) => {
   const user = await requireAuthUser(event)
+  await requireOrgPermissionIfMember(user.id, 'subscription.manage', event)
   const body = await readBody(event)
   const parsed = schema.safeParse(body)
 

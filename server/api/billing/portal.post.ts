@@ -1,10 +1,12 @@
 import { getRequestURL } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
+import { requireOrgPermission } from '../../utils/require-org-permission'
 import { getStripe } from '../../utils/stripe'
 
 export default eventHandler(async (event) => {
   const user = await requireAuthUser(event)
+  await requireOrgPermission(user.id, 'subscription.manage', event)
   const supabase = getSupabaseAdminClient()
 
   const { data: existingCustomer, error } = await supabase
