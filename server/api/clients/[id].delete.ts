@@ -32,6 +32,7 @@ export default defineEventHandler(async (event) => {
       deleted_by: authUser.email
     })
     .eq('id', id)
+    .eq('organization_id', organizationId)
 
   if (error)
     throw createError({ statusCode: 500, statusMessage: error.message })

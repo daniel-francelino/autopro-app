@@ -36,6 +36,7 @@ export default eventHandler(async (event) => {
     .from('user_profiles')
     .select('id, user_id, is_active, role_id')
     .eq('employee_id', employee_id)
+    .eq('organization_id', organizationId)
     .limit(1)
 
   if (users && users.length > 0) {
@@ -72,6 +73,7 @@ export default eventHandler(async (event) => {
         .from('user_profiles')
         .update({ employee_id })
         .eq('id', profileByEmail.id)
+        .eq('organization_id', organizationId)
     }
 
     return {

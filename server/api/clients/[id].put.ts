@@ -50,6 +50,7 @@ export default defineEventHandler(async (event) => {
     .from('clients')
     .update(updates)
     .eq('id', id)
+    .eq('organization_id', organizationId)
     .select()
     .single()
 

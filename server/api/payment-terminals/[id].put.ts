@@ -38,6 +38,7 @@ export default defineEventHandler(async (event) => {
       updated_by: authUser.email
     })
     .eq('id', id)
+    .eq('organization_id', organizationId)
     .select()
     .single()
 

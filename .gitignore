@@ -37,3 +37,4 @@ logs
 
 # Backups locais de otimização (gerados, não versionados)
 /.claude/backups/
+./docs/*/*.txt
