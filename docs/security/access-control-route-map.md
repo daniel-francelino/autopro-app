@@ -179,10 +179,10 @@ Observação **V16** (tipo A condicional, Verificado): `financial/bonuses/[id].v
 | GET `financial` | `financial/index.vue:184,274` | `financial.read` | `financial.read` | M |
 | GET `financial/summary` | `financial/index.vue:196` | `financial.read` | `financial.read` | M |
 | GET `financial/:id` | `entries/DetailSlideover.vue:70` | `financial.read` (tela) | `financial.read` | M |
-| GET `financial/categories` | `financial/categories.vue:40`; `financial/index.vue:307`; `entries/FormModal.vue:84` | `financial.read` (tela de categorias); lista usada no formulário de lançamento | `financial.read` ou org-only (lista auxiliar do formulário, D1): **decidir** | M |
+| GET `financial/categories` | `financial/categories.vue:40`; `financial/index.vue:307`; `entries/FormModal.vue:84` | `financial.read` (tela de categorias); lista usada no formulário de lançamento | `financial.read` (decidido na Fase 7: todos os chamadores estão sob `financial/index.vue` e `financial/categories.vue`, ambas com `canRead`; nenhuma tela de OS chama) | M |
 | POST `service-orders/export-csv` | **sem tela identificada** | n/a | `orders.read` | A, M |
 | POST `reports/export-commissions` | `reports/commissions.vue:380` | menu `reports.commissions` | `reports.commissions` | A, M |
-| POST `reports/export-employees` | `reports/employees/EmployeesAccordionPanel.vue:250`; **`settings/employees/[id].vue:475`** | `reports.employees` (menu) / `employees.read` (detalhe) | `reports.employees` -> **V2** | nenhum (M sem `reports.employees`) |
+| POST `reports/export-employees` | `reports/employees/EmployeesAccordionPanel.vue:250`; **`settings/employees/[id].vue:475`** | `reports.employees` (menu); no detalhe do funcionário o front passou a esconder relatório e exportar sem `reports.employees` (D12/D16, Fase 7) | `reports.employees` -> **V2** | nenhum (M sem `reports.employees`) |
 | POST `reports/export-purchases` | `reports/purchases.vue:174` | `reports.purchases` (menu) | `reports.purchases` | M |
 | POST `reports/export-sales-items` | `reports/sales-items.vue:309` | `reports.sales` (menu; plano Pro) | `reports.sales` | M |
 | POST `employees/:id/export-commissions` | **sem tela identificada** | n/a | `employees.read` | M |

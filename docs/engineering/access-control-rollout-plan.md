@@ -1,6 +1,6 @@
 # Plano faseado de implantação: controle de acesso
 
-Status: **revisado em 2026-11-12 com leitura de produção e decisões D1 a D11 tomadas**. Pendências na seção 11.
+Status: **concluído em 2026-11-12 (Fases 0 a 7 implementadas, revisadas e commitadas, decisões D1 a D16).** A Fase 8, as decisões em aberto, a ordem de deploy e as lacunas conhecidas estão em [access-control-pending.md](access-control-pending.md).
 Fonte: `docs/security/access-control-audit-2026-11-12.md`. Este plano não altera código, migração, baseline nem banco.
 
 O sistema está em produção e é usado todo dia por perfis não-admin. Cada fase é um lançamento independente, reversível sozinho.
@@ -87,6 +87,7 @@ Consultas somente GET com a service role. Nenhuma escrita.
 | D13 | `reports/dashboard-stats` (home, V3) | Só organização. | Nenhum |
 | D14 | `roles` GET (V15) | `GET /api/roles` (lista de nomes) só organização (R4). `GET /roles/:id` e `/roles/:id/actions` exigem `roles.read`. | Nenhum |
 | D15 | `feedback/[id].responses` get/post | TODO, fora do escopo (seção 9). | Nenhum |
+| D16 | Relatório do funcionário (2026-11-12) | Proposta de refatoração ("ficha do funcionário", [employee-data-access-refactor.md](employee-data-access-refactor.md)) **adiada por decisão do responsável**: o modelo atual (quem acessa as telas de funcionário vê todos, não só o próprio) fica como está. **D12 continua valendo** para `GET reports/employees` (`reports.employees`), `GET reports/commissions/:id` (`reports.commissions`), `POST reports/export-employees` (`reports.employees`) e `POST employees/:id/export-commissions` (`employees.read`). | `marcineia` perde, no detalhe do funcionário, o relatório e a exportação de funcionário (tem `employees.read` e não tem `reports.employees`), como já previsto em D12 |
 
 Já decididas antes: Q2 (`subscription.manage` na cobrança), Q3 (`members.invite` no `grant-access`), Q12 (`product_invoice.*` é resíduo), Q15 (não unificar prefixos de OS).
 
@@ -104,7 +105,7 @@ Aplicadas por R3 (paridade com o front), sem decisão nova: comissões com `fina
 | 5 | Guards de financeiro, contas e comissões | ninguém | reverter commit |
 | 6 | Guards de OS | ninguém | reverter commit |
 | 7 | Guards de leitura em telas próprias | ninguém | reverter commit |
-| 8 | TODO: decisões de cadastro, fora do escopo atual (D11) | ninguém | n/a |
+| 8 | **Pendente, fora do escopo (D11):** decisões de cadastro. Ver [access-control-pending.md](access-control-pending.md), seção 1 | ninguém | n/a |
 
 "Quem perde acesso" considera os perfis de 2026-11-12. As fases 5 e 6 tocam o trabalho diário dos dois operadores: por R5 ficam por último entre os guards de escrita.
 
@@ -137,6 +138,14 @@ Dependências: 1 é independente e pode sair a qualquer momento. 3 a 7 exigem 2 
 - Pós-deploy: acompanhar 404 nessas rotas por 48 h.
 
 ## 7. Fase 2: catálogo e concessões
+
+**Status: implementada no working tree, revisada e executada em Postgres local, não commitada (2026-11-12).**
+- Migrações: `104` reduzida (só `bank_accounts.create/delete`), `105` (103 actions de produção, `created_by` normalizado para `'migration'` para não levar e-mail pessoal ao repositório), `106` (concessão R2 a quem tem `bank_accounts.update`, ignorando roles deletadas, marcador `migration-104`), `107` (`roles.manage_permissions` e `roles.manage_members`, sem concessão). A concessão ficou na 106 e não na 104 porque a 104 roda antes de a 105 criar `bank_accounts.update` em banco novo.
+- Enum alinhado ao banco (D2, D6) e usos atualizados em 5 arquivos do front. Baseline `action-codes-not-seeded.json` vazia.
+- Testes: `tests/static/action-catalog.test.ts` (105 contra fixture campo a campo, sem `@`, sem escrita em `role_actions` nas 104/105/107, 106 limitada a create/delete). `npm test` 1551 passando; `tests/static` 50 passando.
+- Prova de execução: 106 migrações aplicadas do zero em Postgres local sem erro; simulação da 106 em transação com rollback (3 roles com `update` mais uma deletada, uma negada e uma sem `update`): 6 linhas, idempotente, nada fora do esperado; `npm run test:db`: 16 passando. Ainda não existe teste de banco permanente para a 106 (o `supabase-js` não executa SQL arbitrário).
+- Observação: a migração 100 já semeia `roles.view`, que a produção não tem; em banco novo ele fica como código inerte ao lado de `roles.read`.
+- Contagens esperadas em produção após aplicar: `actions` 103 para 107 (`bank_accounts.create/delete`, `roles.manage_permissions/manage_members`), `role_actions` 284 para 290.
 
 Pré-requisito de todos os guards. Uma única entrega com três partes, na ordem.
 
@@ -172,7 +181,7 @@ Comunicar à `marcineia` que o menu aparece.
 
 **Validação em produção (leitura)**
 ```sql
-SELECT count(*) FROM public.actions;                         -- 103 antes; 105 depois
+SELECT count(*) FROM public.actions;                         -- 103 antes; 107 depois
 SELECT r.name, a.code FROM public.role_actions ra
 JOIN public.roles r ON r.id = ra.role_id JOIN public.actions a ON a.id = ra.action_id
 WHERE ra.created_by = 'migration-104';                       -- admin, manager, marcineia x create, delete = 6 linhas
@@ -195,6 +204,11 @@ Comum a todas:
 
 ### Fase 3: configuração e cobrança
 
+**Status: implementada, revisada e commitada (2026-11-12).** Guard em 22 handlers (códigos da tabela abaixo); `GET /roles` da lista, `GET` de impostos e de maquininhas ficam só org (D1, D14). Helper `server/utils/require-org-permission-if-member.ts`: sem perfil ou sem organização (e sem erro) passa, preservando a primeira assinatura; erro de consulta lança 503 (corrigido na revisão, antes liberava). `user-provisioning.ts` recusa (409) perfil existente com outra role, admin ou owner quando há `roleId`, e lança 503 se a checagem falhar, sem escrever. Front: item Assinatura só com `SUBSCRIPTION_VIEW`; cancelar e portal só com `SUBSCRIPTION_MANAGE`; contratar desabilitado para membro sem `subscription.manage`; botão "Gerenciar acesso" só com `MEMBERS_INVITE`. Testes: `tests/fast/access/phase3-config-guards.test.ts` (14 rotas), `tests/fast/billing/permission-guard.test.ts`, `require-org-permission-if-member.test.ts`, `user-provisioning.test.ts`; os `it.fails` de KF-09 das três rotas viraram `it`. `write-routes-without-permission.json` encolheu 16 rotas; ficam `billing/checkout` e `stripe/checkout` (o scanner estático não reconhece o helper condicional; não remover da lista sem trocar o scanner) e `organizations/complete-onboarding` (só org, por decisão). `typecheck`: 444 erros, idêntico ao baseline por arquivo e código.
+- **Quem perde acesso:** `anderson` e `marcineia` perdem a página Assinatura e o botão de contratar em `/pricing` e `/app/subscribe`. Mais ninguém conhecido.
+- **Verificação manual antes de subir** (o front só foi verificado por leitura): com `anderson` ou `marcineia`, o menu não mostra Assinatura e `/pricing` está desabilitado; com admin e com usuário sem organização, tudo funciona; abrir a página de funcionários com a `marcineia` e conferir que "Gerenciar acesso" some.
+- **Ressalva já existente:** o front trata qualquer role de sistema (`is_system_role`) como admin, enquanto o servidor consulta `role_actions` (initial-data.post.ts). `manager` e `employee`, sem perfis hoje, veriam Assinatura e levariam 403. Tratar na Fase 8 (8.1).
+
 | Rota | Código | Quem tem (não-admin) | Impacto |
 |---|---|---|---|
 | `billing/cancel`, `billing/checkout`, `billing/portal`, `stripe/cancel-subscription`, `stripe/checkout` | `subscription.manage` | ninguém | nenhum uso observado. **Exceção:** usuário sem organização mantém `stripe/checkout` e `billing/checkout` (primeira assinatura). Front: esconder cancelar e portal em `subscription.vue` sem `SUBSCRIPTION_MANAGE`. |
@@ -209,6 +223,14 @@ Comum a todas:
 | `taxes` POST/PUT/DELETE | `taxes.update` | `anderson`, `marcineia`, `manager` | nenhum |
 
 ### Fase 4: escrita em cadastros
+
+**Status: implementada no working tree e revisada, não commitada (2026-11-12). As Fases 0 a 3 já foram commitadas.**
+- 38 handlers guardados, +2 linhas cada (import e `requireOrgPermission` logo após `requireAuthUser`), sem outra mudança; os filtros de organização da Fase 1 ficaram intactos. Códigos exatamente como na tabela abaixo; `purchases/[id]/pay` exige `purchases.update` (é o que `purchases.vue` usa), `suppliers/import` e `products/import` e `clients/batch` exigem o `create` do domínio. `POST service-orders` não foi tocado (D10). As listas `GET` (clients, vehicles, products, parts, master-products) ficam só org (D1).
+- Front: botão "Importar clientes" só com `customers.create`; `VehiclesModal` (criar, editar, excluir) com `vehicles.*`; `MasterProductManager` (novo, editar, excluir) com `orders.*`; `appointments/FormModal` (salvar na edição, excluir) com `appointments.update/delete`.
+- **Falha encontrada na revisão e corrigida:** três componentes usavam `ActionCode.` sem importá-lo; o Nuxt não importa `app/constants` sozinho, então abrir esses modais daria `ActionCode is not defined`. ESLint e testes de handler não detectam. Corrigido e coberto por `tests/static/action-code-imports.test.ts` (todo arquivo de `app/` que usa `ActionCode.` precisa importá-lo).
+- Testes: `tests/fast/access/phase4a-registry-guards.test.ts` (20 rotas) e `phase4b-registry-guards.test.ts` (18 rotas e 5 listas GET), 4 cenários por rota; 13 `it.fails` de KF-09 viraram `it` e 13 testes que afirmavam "sem guard = 200" foram removidos; ajustados `financial-permissions.test.ts` e `financial-payments.test.ts` por causa de `purchases/:id/pay`. Baseline `write-routes-without-permission.json`: 93 para 56 rotas, nenhuma entrou; sobram `employees/[id]/export-commissions`, `reports/export-employees` e `reports/export-purchases`, que são da Fase 7. `npm test`: 1890 passando.
+- **Quem perde acesso:** só `anderson`, e só criar veículo (também em `/app/vehicles`). `anderson` e `marcineia` não usavam compras, devoluções, fornecedores, agendamentos nem funcionários (a `marcineia` perde `employees.delete`, que o front já escondia). Verificação manual antes de subir: abrir o modal de agendamento, o modal de veículos em Clientes e o gerenciador de produto-mestre dentro da criação de OS, com `anderson` e com admin.
+- Lacuna baixa conhecida: em `BasicInfoCard.vue` os botões "Novo produto master" e "Gerenciar" não têm gate; só afetariam quem tem `orders.read` sem `orders.create` (ninguém hoje).
 
 | Rotas (POST/PUT/DELETE e import) | Código | `anderson` | `marcineia` |
 |---|---|---|---|
@@ -232,6 +254,19 @@ Verificado (2026-11-12):
 
 ### Fase 5: financeiro, contas bancárias e comissões
 
+**Status: implementada no working tree e revisada, não commitada (2026-11-12).**
+- 17 handlers guardados, +2 linhas cada (import e `requireOrgPermission` logo após `requireAuthUser`); a lógica de pagamento e o bug de rollback (`pending-bulk-payment-rollback.md`) não foram tocados; os filtros de organização da Fase 1 em `bank-accounts` foram preservados.
+  - `financial.create`: `financial/index.post` e `[id]/extend-recurrence.post` (o front usa create para estender recorrência; a tabela abaixo dizia "create/update").
+  - `financial.update`: `[id].put`, `[id]/pay`, `pay-entries-bulk`, `pay-commissions-bulk`, `update-recurring`, categorias (criar, editar, migrar, V10) e `reports/commissions/[id]/pay`.
+  - `financial.delete`: `[id].delete`, `categories/[id].delete` e `reports/commissions/[id].delete`.
+  - `bank_accounts.create/update/delete` em `bank-accounts` POST/PUT/DELETE (o saldo continua editável com `bank_accounts.update`, D3). `GET` de `bank-accounts` segue só org (D1).
+- Front: `accounts/FormModal` (Salvar com `create` ao criar e `update` ao editar); `OSCommissionsCard` (Pagar exige também `financial.update`, V1); `bonuses/[id].vue` (Pagar exige `bonuses.update` e `financial.update`, V16); `entries/FormModal` (botão "Gerenciar categorias" só com `financial.update`).
+- Testes: `phase5a-financial-guards.test.ts` (12 rotas), `phase5b-bank-commission-guards.test.ts` (5 rotas e o GET); `financial-permissions.test.ts` (conjunto `GUARDED`), `financial-payments.test.ts`, `bank-accounts/handlers.test.ts` e `service-orders/money-flows.test.ts` ajustados com a concessão necessária; os `it.fails` de KF-09 das rotas guardadas viraram `it`. Baseline `write-routes-without-permission.json`: 56 para 39 rotas, nenhuma entrou; ficam `financial/export` (Fase 7) e a exclusão de lançamento de OS (Fase 6). `npm test`: 1985 passando.
+- **ORDEM DE DEPLOY (obrigatória):** aplicar as migrações 104 a 107 em produção ANTES de subir o código da Fase 5. Sem a 106, `bank_accounts.create` e `bank_accounts.delete` não existem no catálogo e a `marcineia` recebe 403 "Permissão não reconhecida" ao criar ou excluir conta (editar conta e saldo continuam funcionando). O front esconde os botões, mas o servidor recusa.
+- **Quem perde acesso:** a `marcineia` não perde nada. O `anderson` perde só o botão "Pagar" comissão no card da OS (nunca usou). `employee` (sem perfis) passa a receber 403 nas rotas financeiras.
+- Lacunas baixas conhecidas: o botão de excluir categoria dentro de `entries/CategoryModal.vue` não tem gate próprio (quem tem `financial.update` sem `financial.delete` leva 403 com toast; o servidor protege); os testes de guard cobrem a org-a e concessão `true`/ausente, não `is_granted=false` nem outra organização.
+- Verificação manual antes de subir, com a `marcineia` (ou um perfil com as mesmas concessões): lançar, pagar e excluir lançamento; pagar comissão em `/app/reports/commissions`; pagar comissão pela tela de bônus; abrir o card de comissões de uma OS; editar uma conta e seu saldo; e, depois da migração 106, criar e excluir conta.
+
 | Rotas | Código | `anderson` | `marcineia` |
 |---|---|---|---|
 | `financial/*` criar, pagar, estornar, lote, recorrência | `financial.create/update` | não tem (0 lançamentos) | tem |
@@ -243,6 +278,17 @@ Verificado (2026-11-12):
 Antes desta fase: o bug de rollback silencioso do pagamento em lote (`docs/engineering/pending-bulk-payment-rollback.md`) continua fora do escopo de acesso.
 
 ### Fase 6: OS
+
+**Status: implementada no working tree e revisada, não commitada (2026-11-12).**
+- 12 handlers de escrita de `server/api/service-orders` guardados (só `export-csv` fica, Fase 7); `requireOrgPermission` logo após `requireAuthUser`, antes de qualquer leitura do body ou escrita. `orders.pay`: `process-payment`, `down-payment`, `receive-extra-payment`, `installments/*/pay` (D4). `orders.cancel`: `cancel`, `payment.delete` (estorno) e `financial-transactions/*.delete` (desfazer recebimento) (D5, V6). `orders.delete`: `[id].delete`. `orders.update`: `installments/*.patch` e `generate-commissions`. `financial.delete`: `installments/*.delete` (V7, é o que o front já usava). `POST service-orders` (V9): `orders.update` quando vem `orderId`, senão `orders.create`; o `readBody` passou a ser lido antes do guard, uma única vez; o agendamento interno não exige `appointments.create` (D10).
+- `orders.correct` não é exigido em nenhuma rota (não existe rota "corrigir OS"; exigi-lo bloquearia o `anderson`).
+- D5 feito: `cancel` e `[id].delete` gravam em `extra.removed` do `recordAudit` as comissões, parcelas e lançamentos removidos (ids, valores, status); sem mudança de cálculo, tabela ou migração; `recordAudit` não lança.
+- Front: botões de receber (pagar, entrada, extra, parcela) só com `orders.pay` além do gate antigo; "Cancelar pagamento" e "Desfazer recebimento" só com `orders.cancel`; props `canReceive` e `canCancel` passadas por `service-orders.vue`, `Modal`, `OSHeader`, `OSInstallmentsCard`, `OrderCard` e pelo demo da landing.
+- Testes: `phase6a-os-payment-guards.test.ts` e `phase6b-os-guards.test.ts` (4 cenários por rota; criar e editar pelo mesmo POST; 2 testes de D5); seeds ajustados em `money-flows`, `service-order-payments`, `service-order-edit`, `flows/undo-payment` e `financial-payments`; `financial-permissions.test.ts` converteu 4 rotas de OS para `it`. Baseline `write-routes-without-permission.json`: 39 para 27 rotas, nenhuma entrou. `npm test`: 2057 passando.
+- **Quem perde acesso:** `anderson` e `marcineia` não perdem nada (ambos têm `orders.create/update/delete/cancel/pay`). `employee` (sem perfis) perde cancelar, estornar e excluir, que o front já escondia.
+- Achado baixo: `NfseIssueModal` marca a OS como faturada com um `POST` que agora exige `orders.update`; quem tem `service_invoice.create` e `orders.create` sem `orders.update` leva 403, que o modal engole, e a OS fica sem o status "faturada". Não afeta os dois usuários conhecidos.
+- Lacunas baixas conhecidas: os testes de sucesso conferem só o status 200; os de D5 não cobrem `financial_transaction_ids` nem valores de parcelas; faltam casos de outra organização, `is_granted=false` e 401 nas rotas novas.
+- **Verificação manual antes de subir** (a mais importante de todas as fases): com o `anderson` e com a `marcineia`, criar uma OS, editar e avançar o status, receber pagamento, dar entrada, receber parcela, cancelar uma OS sem pagamento, estornar um pagamento e, só com um perfil de teste, excluir uma OS. Com o `anderson`, abrir o gerenciador de produto-mestre dentro da criação de OS.
 
 Maior superfície e uso diário dos dois operadores. Um PR para recebimento, outro para o restante.
 
@@ -257,6 +303,16 @@ Maior superfície e uso diário dos dois operadores. Um PR para recebimento, out
 D5: o cancelamento e a exclusão passam a gravar na auditoria os lançamentos e comissões removidos.
 
 ### Fase 7: leitura em telas próprias
+
+**Status: implementada e revisada (2026-11-12); código commitado em `4355cce`.**
+- 7 exportações `POST` e 17 `GET` guardados, +2 linhas cada, logo após `requireAuthUser`. Exportações: `financial/export` (`financial.read`), `reports/export-commissions` (`reports.commissions`), `export-purchases` (`reports.purchases`), `export-sales-items` (`reports.sales`), `export-employees` (`reports.employees`), `employees/:id/export-commissions` (`employees.read`), `service-orders/export-csv` (`orders.read`). `GET`: `financial` (lista, `summary`, `:id`, `categories`) com `financial.read`; `reports/commissions` e `commissions/:id` com `reports.commissions`; `costs-profit` (`reports.costs`), `customers`, `debtors`, `employees` (`reports.employees`), `overview` (`reports.view`), `profit-by-order` e `profit-cash-flow` (`reports.profit`), `purchases`, `sales-items` (`reports.sales`), `suppliers`; `employees/:id/commissions` (`employees.read`). O guard por permissão se soma ao gate de plano (`enforceReportAccess`) e vem antes dele.
+- Ficam só org: `reports/dashboard-stats` (D13), listas de employees, clients, vehicles, products, bank-accounts, payment-terminals, taxes, master-products e roles (D1/D14). Revisão: o único handler em `reports/*` e `financial/*` sem guard é `dashboard-stats`.
+- Front: o detalhe do funcionário (`settings/employees/[id].vue`) esconde relatório e exportar sem `reports.employees` e o olho de comissão sem `reports.commissions` (D12/D16); botões de exportar de comissões, compras e itens vendidos com gate; o fetch de categorias em `financial/index.vue` só com `financial.read`. O menu "Relatórios" leva ao primeiro relatório permitido; o `anderson` (sem `reports.view`) não cai na "Visão geral".
+- Baseline `write-routes-without-permission.json`: 27 para 20 rotas, nenhuma entrou. O `it.fails` de KF-09 (S6) em `financial-permissions.test.ts` virou `it`: toda escrita financeira tem permissão. `npm test`: 2181 passando.
+- **Quem perde acesso:** `anderson`: nada visível (abrir `/app/reports` por URL direta dá 403, pois não tem `reports.view`). `marcineia`: o relatório e a exportação de funcionário na ficha do funcionário (previsto em D12; ela tem `employees.read` e não tem `reports.employees`). `manager`: o mesmo (sem perfis).
+- Observação (anterior às Fases deste plano, não é regressão): na ficha do funcionário, `employees/:id/bonuses` e `commission-plans` já exigiam `bonuses.read` e `commissions.read`; a `marcineia` não tem `commissions.*`, então a lista de planos já aparecia vazia para ela.
+- Lacunas baixas conhecidas dos testes: o 403 não confere a mensagem (não distingue permissão de plano) e não há teste de plano `starter`; os `GET` só org conferem "não é 403"; faltam casos de `is_granted=false`, outra organização e 401 nas rotas novas.
+- **Verificação manual antes de subir:** com a `marcineia`, abrir cada relatório que ela usa e a ficha de um funcionário (renderiza sem o relatório, sem tela quebrada); com o `anderson`, abrir Comissões e Clientes em Relatórios e a home. Com admin, conferir que nada mudou.
 
 Só GET que alimentam a própria tela do domínio. Listas auxiliares ficam só org (D1).
 
