@@ -20,9 +20,15 @@ Os cinco planos abaixo dependem uns dos outros. Ordem recomendada (revisada em 2
 
 - [Plano do painel do owner (estado atual, segurança e telas)](admin/owner-panel-plan.md)
 
+## Pendências
+
+- [Pendências do projeto (vários temas: controle de acesso, financeiro, qualidade, layout, documentação)](engineering/pending.md)
+
 ## Segurança
 
 - [Auditoria de chaves, permissões e rotas da API (2026-11-12)](security/access-control-audit-2026-11-12.md)
+- [Plano faseado de implantação do controle de acesso (concluído)](engineering/access-control-rollout-plan.md)
+- [Mapa de rotas e permissões](security/access-control-route-map.md)
 
 ## Testes
 

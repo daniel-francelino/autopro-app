@@ -1,6 +1,6 @@
 # Plano faseado de implantação: controle de acesso
 
-Status: **concluído em 2026-11-12 (Fases 0 a 7 implementadas, revisadas e commitadas, decisões D1 a D16).** A Fase 8, as decisões em aberto, a ordem de deploy e as lacunas conhecidas estão em [access-control-pending.md](access-control-pending.md).
+Status: **concluído em 2026-11-12 (Fases 0 a 7 implementadas, revisadas e commitadas, decisões D1 a D16).** A Fase 8, as decisões em aberto, a ordem de deploy e as lacunas conhecidas estão em [pending.md](pending.md), seção AC.
 Fonte: `docs/security/access-control-audit-2026-11-12.md`. Este plano não altera código, migração, baseline nem banco.
 
 O sistema está em produção e é usado todo dia por perfis não-admin. Cada fase é um lançamento independente, reversível sozinho.
@@ -105,7 +105,7 @@ Aplicadas por R3 (paridade com o front), sem decisão nova: comissões com `fina
 | 5 | Guards de financeiro, contas e comissões | ninguém | reverter commit |
 | 6 | Guards de OS | ninguém | reverter commit |
 | 7 | Guards de leitura em telas próprias | ninguém | reverter commit |
-| 8 | **Pendente, fora do escopo (D11):** decisões de cadastro. Ver [access-control-pending.md](access-control-pending.md), seção 1 | ninguém | n/a |
+| 8 | **Pendente, fora do escopo (D11):** decisões de cadastro. Ver [pending.md](pending.md), seção AC-8 | ninguém | n/a |
 
 "Quem perde acesso" considera os perfis de 2026-11-12. As fases 5 e 6 tocam o trabalho diário dos dois operadores: por R5 ficam por último entre os guards de escrita.
 
