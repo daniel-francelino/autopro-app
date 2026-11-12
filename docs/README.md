@@ -20,6 +20,10 @@ Os cinco planos abaixo dependem uns dos outros. Ordem recomendada (revisada em 2
 
 - [Plano do painel do owner (estado atual, segurança e telas)](admin/owner-panel-plan.md)
 
+## Segurança
+
+- [Auditoria de chaves, permissões e rotas da API (2026-11-12)](security/access-control-audit-2026-11-12.md)
+
 ## Testes
 
 - [Plano de testes automatizados (unidade, endpoints, fluxos e E2E)](testing/test-plan.md)

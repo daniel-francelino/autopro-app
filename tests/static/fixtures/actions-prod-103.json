@@ -1,0 +1,826 @@
+[
+ {
+  "code": "appointments.create",
+  "name": "Criar Agendamentos",
+  "resource": "appointments",
+  "action_type": "create",
+  "description": "Criar Agendamentos",
+  "created_by": "migration"
+ },
+ {
+  "code": "appointments.delete",
+  "name": "Excluir Agendamentos",
+  "resource": "appointments",
+  "action_type": "delete",
+  "description": "Excluir Agendamentos",
+  "created_by": "migration"
+ },
+ {
+  "code": "appointments.read",
+  "name": "Visualizar Agendamentos",
+  "resource": "appointments",
+  "action_type": "read",
+  "description": "Visualizar Agendamentos",
+  "created_by": "migration"
+ },
+ {
+  "code": "appointments.update",
+  "name": "Atualizar Agendamentos",
+  "resource": "appointments",
+  "action_type": "update",
+  "description": "Atualizar Agendamentos",
+  "created_by": "migration"
+ },
+ {
+  "code": "authorizations.approve",
+  "name": "Aprovar Autorizações",
+  "resource": "authorizations",
+  "action_type": "update",
+  "description": "Aprovar Autorizações",
+  "created_by": "migration"
+ },
+ {
+  "code": "authorizations.create",
+  "name": "Criar Autorizações",
+  "resource": "authorizations",
+  "action_type": "create",
+  "description": "Criar Autorizações",
+  "created_by": "migration"
+ },
+ {
+  "code": "authorizations.delete",
+  "name": "Excluir Autorizações",
+  "resource": "authorizations",
+  "action_type": "delete",
+  "description": "Excluir Autorizações",
+  "created_by": "migration"
+ },
+ {
+  "code": "authorizations.read",
+  "name": "Visualizar Autorizações",
+  "resource": "authorizations",
+  "action_type": "read",
+  "description": "Visualizar Autorizações",
+  "created_by": "migration"
+ },
+ {
+  "code": "authorizations.update",
+  "name": "Atualizar Autorizações",
+  "resource": "authorizations",
+  "action_type": "update",
+  "description": "Atualizar Autorizações",
+  "created_by": "migration"
+ },
+ {
+  "code": "bank_accounts.update",
+  "name": "Atualizar Contas Bancárias",
+  "resource": "bank_accounts",
+  "action_type": "update",
+  "description": "Atualizar Contas Bancárias",
+  "created_by": "migration"
+ },
+ {
+  "code": "bank_accounts.view",
+  "name": "Visualizar Contas Bancárias",
+  "resource": "bank_accounts",
+  "action_type": "read",
+  "description": "Visualizar Contas Bancárias",
+  "created_by": "migration"
+ },
+ {
+  "code": "bonuses.create",
+  "name": "Criar bônus",
+  "resource": "bonuses",
+  "action_type": "create",
+  "description": "Permite criar novos bônus.",
+  "created_by": "migration"
+ },
+ {
+  "code": "bonuses.delete",
+  "name": "Excluir bônus",
+  "resource": "bonuses",
+  "action_type": "delete",
+  "description": "Permite excluir bônus.",
+  "created_by": "migration"
+ },
+ {
+  "code": "bonuses.read",
+  "name": "Visualizar bônus",
+  "resource": "bonuses",
+  "action_type": "read",
+  "description": "Permite visualizar bônus, seu progresso e histórico de valores.",
+  "created_by": "migration"
+ },
+ {
+  "code": "bonuses.update",
+  "name": "Editar bônus",
+  "resource": "bonuses",
+  "action_type": "update",
+  "description": "Permite editar bônus, alterar valores, atribuir/remover funcionários e gerar registros do mês.",
+  "created_by": "migration"
+ },
+ {
+  "code": "commissions.create",
+  "name": "Criar comissões",
+  "resource": "commissions",
+  "action_type": "create",
+  "description": "Permite criar novas configurações de comissão.",
+  "created_by": "migration"
+ },
+ {
+  "code": "commissions.delete",
+  "name": "Excluir comissões",
+  "resource": "commissions",
+  "action_type": "delete",
+  "description": "Permite excluir configurações de comissão.",
+  "created_by": "migration"
+ },
+ {
+  "code": "commissions.read",
+  "name": "Visualizar comissões",
+  "resource": "commissions",
+  "action_type": "read",
+  "description": "Permite visualizar configurações de comissão, regras, versões e funcionários atribuídos.",
+  "created_by": "migration"
+ },
+ {
+  "code": "commissions.update",
+  "name": "Editar comissões",
+  "resource": "commissions",
+  "action_type": "update",
+  "description": "Permite editar configurações de comissão, criar novas versões de regras e atribuir/remover funcionários.",
+  "created_by": "migration"
+ },
+ {
+  "code": "consultation.use",
+  "name": "Usar Consultoria IA",
+  "resource": "consultation",
+  "action_type": "create",
+  "description": "Usar Consultoria IA",
+  "created_by": "migration"
+ },
+ {
+  "code": "consultation.view",
+  "name": "Visualizar Consultorias",
+  "resource": "consultation",
+  "action_type": "read",
+  "description": "Visualizar Consultorias",
+  "created_by": "migration"
+ },
+ {
+  "code": "customers.create",
+  "name": "Criar Clientes",
+  "resource": "customers",
+  "action_type": "create",
+  "description": "Criar Clientes",
+  "created_by": "migration"
+ },
+ {
+  "code": "customers.delete",
+  "name": "Excluir Clientes",
+  "resource": "customers",
+  "action_type": "delete",
+  "description": "Excluir Clientes",
+  "created_by": "migration"
+ },
+ {
+  "code": "customers.read",
+  "name": "Visualizar Clientes",
+  "resource": "customers",
+  "action_type": "read",
+  "description": "Visualizar Clientes",
+  "created_by": "migration"
+ },
+ {
+  "code": "customers.update",
+  "name": "Atualizar Clientes",
+  "resource": "customers",
+  "action_type": "update",
+  "description": "Atualizar Clientes",
+  "created_by": "migration"
+ },
+ {
+  "code": "employees.create",
+  "name": "Criar Funcionários",
+  "resource": "employees",
+  "action_type": "create",
+  "description": "Criar Funcionários",
+  "created_by": "migration"
+ },
+ {
+  "code": "employees.delete",
+  "name": "Excluir Funcionários",
+  "resource": "employees",
+  "action_type": "delete",
+  "description": "Excluir Funcionários",
+  "created_by": "migration"
+ },
+ {
+  "code": "employees.pay",
+  "name": "Pagar Funcionários",
+  "resource": "employees",
+  "action_type": "update",
+  "description": "Pagar Funcionários",
+  "created_by": "migration"
+ },
+ {
+  "code": "employees.read",
+  "name": "Visualizar Funcionários",
+  "resource": "employees",
+  "action_type": "read",
+  "description": "Visualizar Funcionários",
+  "created_by": "migration"
+ },
+ {
+  "code": "employees.update",
+  "name": "Atualizar Funcionários",
+  "resource": "employees",
+  "action_type": "update",
+  "description": "Atualizar Funcionários",
+  "created_by": "migration"
+ },
+ {
+  "code": "financial.create",
+  "name": "Criar Registros Financeiros",
+  "resource": "financial",
+  "action_type": "create",
+  "description": "Criar Registros Financeiros",
+  "created_by": "migration"
+ },
+ {
+  "code": "financial.delete",
+  "name": "Excluir Registros Financeiros",
+  "resource": "financial",
+  "action_type": "delete",
+  "description": "Excluir Registros Financeiros",
+  "created_by": "migration"
+ },
+ {
+  "code": "financial.read",
+  "name": "Visualizar Financeiro",
+  "resource": "financial",
+  "action_type": "read",
+  "description": "Visualizar Financeiro",
+  "created_by": "migration"
+ },
+ {
+  "code": "financial.update",
+  "name": "Atualizar Registros Financeiros",
+  "resource": "financial",
+  "action_type": "update",
+  "description": "Atualizar Registros Financeiros",
+  "created_by": "migration"
+ },
+ {
+  "code": "fiscal.manage",
+  "name": "Gerenciamento Fiscal",
+  "resource": "settings",
+  "action_type": "manage",
+  "description": "Gerenciamento Fiscal",
+  "created_by": "migration"
+ },
+ {
+  "code": "inventory.create",
+  "name": "Criar Itens de Estoque",
+  "resource": "inventory",
+  "action_type": "create",
+  "description": "Criar Itens de Estoque",
+  "created_by": "migration"
+ },
+ {
+  "code": "inventory.delete",
+  "name": "Excluir Itens de Estoque",
+  "resource": "inventory",
+  "action_type": "delete",
+  "description": "Excluir Itens de Estoque",
+  "created_by": "migration"
+ },
+ {
+  "code": "inventory.read",
+  "name": "Visualizar Estoque",
+  "resource": "inventory",
+  "action_type": "read",
+  "description": "Visualizar Estoque",
+  "created_by": "migration"
+ },
+ {
+  "code": "inventory.update",
+  "name": "Atualizar Estoque",
+  "resource": "inventory",
+  "action_type": "update",
+  "description": "Atualizar Estoque",
+  "created_by": "migration"
+ },
+ {
+  "code": "members.delete",
+  "name": "Excluir Membros",
+  "resource": "members",
+  "action_type": "delete",
+  "description": "Excluir Membros",
+  "created_by": "migration"
+ },
+ {
+  "code": "members.invite",
+  "name": "Convidar Membros",
+  "resource": "members",
+  "action_type": "create",
+  "description": "Convidar Membros",
+  "created_by": "migration"
+ },
+ {
+  "code": "members.update",
+  "name": "Atualizar Membros",
+  "resource": "members",
+  "action_type": "update",
+  "description": "Atualizar Membros",
+  "created_by": "migration"
+ },
+ {
+  "code": "members.view",
+  "name": "Visualizar Membros",
+  "resource": "members",
+  "action_type": "read",
+  "description": "Visualizar Membros",
+  "created_by": "migration"
+ },
+ {
+  "code": "orders.cancel",
+  "name": "Cancelar Ordens de Serviço",
+  "resource": "orders",
+  "action_type": "update",
+  "description": "Cancelar Ordens de Serviço",
+  "created_by": "migration"
+ },
+ {
+  "code": "orders.correct",
+  "name": "Corrigir Ordem de Serviço",
+  "resource": "orders",
+  "action_type": "update",
+  "description": "Corrigir Ordem de Serviço",
+  "created_by": "migration"
+ },
+ {
+  "code": "orders.create",
+  "name": "Criar Ordens de Serviço",
+  "resource": "orders",
+  "action_type": "create",
+  "description": "Criar Ordens de Serviço",
+  "created_by": "migration"
+ },
+ {
+  "code": "orders.delete",
+  "name": "Excluir Ordens de Serviço",
+  "resource": "orders",
+  "action_type": "delete",
+  "description": "Excluir Ordens de Serviço",
+  "created_by": "migration"
+ },
+ {
+  "code": "orders.pay",
+  "name": "Pagar Ordens de Serviço",
+  "resource": "orders",
+  "action_type": "update",
+  "description": "Pagar Ordens de Serviço",
+  "created_by": "migration"
+ },
+ {
+  "code": "orders.read",
+  "name": "Visualizar Ordens de Serviço",
+  "resource": "orders",
+  "action_type": "read",
+  "description": "Visualizar Ordens de Serviço",
+  "created_by": "migration"
+ },
+ {
+  "code": "orders.update",
+  "name": "Atualizar Ordens de Serviço",
+  "resource": "orders",
+  "action_type": "update",
+  "description": "Atualizar Ordens de Serviço",
+  "created_by": "migration"
+ },
+ {
+  "code": "organization.update",
+  "name": "Update Organization",
+  "resource": "organization",
+  "action_type": "update",
+  "description": "Update Organization",
+  "created_by": "migration"
+ },
+ {
+  "code": "organization.view",
+  "name": "Visualizar Organização",
+  "resource": "organization",
+  "action_type": "read",
+  "description": "Visualizar Organização",
+  "created_by": "migration"
+ },
+ {
+  "code": "payment_machines.update",
+  "name": "Atualizar Maquininhas",
+  "resource": "payment_machines",
+  "action_type": "update",
+  "description": "Atualizar Maquininhas",
+  "created_by": "migration"
+ },
+ {
+  "code": "payment_machines.view",
+  "name": "Visualizar Maquininhas",
+  "resource": "payment_machines",
+  "action_type": "read",
+  "description": "Visualizar Maquininhas",
+  "created_by": "migration"
+ },
+ {
+  "code": "product_categories.create",
+  "name": "Criar categorias de produtos",
+  "resource": "product_categories",
+  "action_type": "create",
+  "description": "Permite criar novas categorias de produtos.",
+  "created_by": "migration"
+ },
+ {
+  "code": "product_categories.delete",
+  "name": "Excluir categorias de produtos",
+  "resource": "product_categories",
+  "action_type": "delete",
+  "description": "Permite excluir categorias de produtos.",
+  "created_by": "migration"
+ },
+ {
+  "code": "product_categories.read",
+  "name": "Visualizar categorias de produtos",
+  "resource": "product_categories",
+  "action_type": "read",
+  "description": "Permite visualizar as categorias de produtos.",
+  "created_by": "migration"
+ },
+ {
+  "code": "product_categories.update",
+  "name": "Editar categorias de produtos",
+  "resource": "product_categories",
+  "action_type": "update",
+  "description": "Permite editar categorias de produtos existentes.",
+  "created_by": "migration"
+ },
+ {
+  "code": "products.create",
+  "name": "Criar Produtos",
+  "resource": "products",
+  "action_type": "create",
+  "description": "Criar Produtos",
+  "created_by": "migration"
+ },
+ {
+  "code": "products.delete",
+  "name": "Excluir Produtos",
+  "resource": "products",
+  "action_type": "delete",
+  "description": "Excluir Produtos",
+  "created_by": "migration"
+ },
+ {
+  "code": "products.read",
+  "name": "Visualizar Produtos",
+  "resource": "products",
+  "action_type": "read",
+  "description": "Visualizar Produtos",
+  "created_by": "migration"
+ },
+ {
+  "code": "products.update",
+  "name": "Atualizar Produtos",
+  "resource": "products",
+  "action_type": "update",
+  "description": "Atualizar Produtos",
+  "created_by": "migration"
+ },
+ {
+  "code": "purchases.create",
+  "name": "Criar Compras",
+  "resource": "purchases",
+  "action_type": "create",
+  "description": "Criar Compras",
+  "created_by": "migration"
+ },
+ {
+  "code": "purchases.delete",
+  "name": "Excluir Compras",
+  "resource": "purchases",
+  "action_type": "delete",
+  "description": "Excluir Compras",
+  "created_by": "migration"
+ },
+ {
+  "code": "purchases.read",
+  "name": "Visualizar Compras",
+  "resource": "purchases",
+  "action_type": "read",
+  "description": "Visualizar Compras",
+  "created_by": "migration"
+ },
+ {
+  "code": "purchases.update",
+  "name": "Atualizar Compras",
+  "resource": "purchases",
+  "action_type": "update",
+  "description": "Atualizar Compras",
+  "created_by": "migration"
+ },
+ {
+  "code": "reports.commissions",
+  "name": "Visualizar Relatórios de Comissões",
+  "resource": "reports",
+  "action_type": "read",
+  "description": "Visualizar Relatórios de Comissões",
+  "created_by": "migration"
+ },
+ {
+  "code": "reports.costs",
+  "name": "Visualizar Relatórios de Custos",
+  "resource": "reports",
+  "action_type": "read",
+  "description": "Visualizar Relatórios de Custos",
+  "created_by": "migration"
+ },
+ {
+  "code": "reports.customers",
+  "name": "Visualizar Relatórios de Clientes",
+  "resource": "reports",
+  "action_type": "read",
+  "description": "Visualizar Relatórios de Clientes",
+  "created_by": "migration"
+ },
+ {
+  "code": "reports.debtors",
+  "name": "Visualizar Relatórios de Devedores",
+  "resource": "reports",
+  "action_type": "read",
+  "description": "Visualizar Relatórios de Devedores",
+  "created_by": "migration"
+ },
+ {
+  "code": "reports.employees",
+  "name": "Relatório de Funcionários",
+  "resource": "reports",
+  "action_type": "view",
+  "description": "Permite visualizar o relatório por funcionário (OS trabalhadas, comissões e itens vendidos).",
+  "created_by": "migration"
+ },
+ {
+  "code": "reports.financial",
+  "name": "Visualizar Relatórios Financeiros",
+  "resource": "reports",
+  "action_type": "read",
+  "description": "Visualizar Relatórios Financeiros",
+  "created_by": "migration"
+ },
+ {
+  "code": "reports.profit",
+  "name": "Visualizar Relatórios de Lucro",
+  "resource": "reports",
+  "action_type": "read",
+  "description": "Visualizar Relatórios de Lucro",
+  "created_by": "migration"
+ },
+ {
+  "code": "reports.purchases",
+  "name": "Visualizar Relatórios de Compras",
+  "resource": "reports",
+  "action_type": "read",
+  "description": "Visualizar Relatórios de Compras",
+  "created_by": "migration"
+ },
+ {
+  "code": "reports.sales",
+  "name": "Visualizar Relatórios de Vendas",
+  "resource": "reports",
+  "action_type": "read",
+  "description": "Visualizar Relatórios de Vendas",
+  "created_by": "migration"
+ },
+ {
+  "code": "reports.suppliers",
+  "name": "Visualizar Relatórios de Fornecedores",
+  "resource": "reports",
+  "action_type": "read",
+  "description": "Visualizar Relatórios de Fornecedores",
+  "created_by": "migration"
+ },
+ {
+  "code": "reports.view",
+  "name": "Visualizar Relatórios",
+  "resource": "reports",
+  "action_type": "read",
+  "description": "Visualizar Relatórios",
+  "created_by": "migration"
+ },
+ {
+  "code": "returns.create",
+  "name": "Criar Devoluções",
+  "resource": "returns",
+  "action_type": "create",
+  "description": "Criar Devoluções",
+  "created_by": "migration"
+ },
+ {
+  "code": "returns.delete",
+  "name": "Excluir Devoluções",
+  "resource": "returns",
+  "action_type": "delete",
+  "description": "Excluir Devoluções",
+  "created_by": "migration"
+ },
+ {
+  "code": "returns.read",
+  "name": "Visualizar Devoluções",
+  "resource": "returns",
+  "action_type": "read",
+  "description": "Visualizar Devoluções",
+  "created_by": "migration"
+ },
+ {
+  "code": "returns.update",
+  "name": "Atualizar Devoluções",
+  "resource": "returns",
+  "action_type": "update",
+  "description": "Atualizar Devoluções",
+  "created_by": "migration"
+ },
+ {
+  "code": "roles.create",
+  "name": "Criar Funções",
+  "resource": "roles",
+  "action_type": "create",
+  "description": "Criar Funções",
+  "created_by": "migration"
+ },
+ {
+  "code": "roles.delete",
+  "name": "Excluir Funções",
+  "resource": "roles",
+  "action_type": "delete",
+  "description": "Excluir Funções",
+  "created_by": "migration"
+ },
+ {
+  "code": "roles.read",
+  "name": "Visualizar Funções",
+  "resource": "roles",
+  "action_type": "read",
+  "description": "Visualizar Funções",
+  "created_by": "migration"
+ },
+ {
+  "code": "roles.update",
+  "name": "Atualizar Funções",
+  "resource": "roles",
+  "action_type": "update",
+  "description": "Atualizar Funções",
+  "created_by": "migration"
+ },
+ {
+  "code": "service_invoice.create",
+  "name": "Emitir NFS-e",
+  "resource": "service_invoice",
+  "action_type": "create",
+  "description": "Permite emitir notas fiscais de serviço.",
+  "created_by": "migration"
+ },
+ {
+  "code": "service_invoice.delete",
+  "name": "Cancelar NFS-e",
+  "resource": "service_invoice",
+  "action_type": "delete",
+  "description": "Permite cancelar notas fiscais de serviço.",
+  "created_by": "migration"
+ },
+ {
+  "code": "service_invoice.read",
+  "name": "Visualizar NFS-e",
+  "resource": "service_invoice",
+  "action_type": "read",
+  "description": "Permite visualizar notas fiscais de serviço emitidas.",
+  "created_by": "migration"
+ },
+ {
+  "code": "service_invoice.update",
+  "name": "Editar NFS-e",
+  "resource": "service_invoice",
+  "action_type": "update",
+  "description": "Permite editar/corrigir notas fiscais de serviço.",
+  "created_by": "migration"
+ },
+ {
+  "code": "settings.update",
+  "name": "Atualizar Configurações",
+  "resource": "settings",
+  "action_type": "update",
+  "description": "Atualizar Configurações",
+  "created_by": "migration"
+ },
+ {
+  "code": "settings.view",
+  "name": "Visualizar Configurações",
+  "resource": "settings",
+  "action_type": "read",
+  "description": "Visualizar Configurações",
+  "created_by": "migration"
+ },
+ {
+  "code": "subscription.manage",
+  "name": "Gerenciar Assinatura",
+  "resource": "subscription",
+  "action_type": "manage",
+  "description": "Gerenciar Assinatura",
+  "created_by": "migration"
+ },
+ {
+  "code": "subscription.view",
+  "name": "Visualizar Assinatura",
+  "resource": "subscription",
+  "action_type": "read",
+  "description": "Visualizar Assinatura",
+  "created_by": "migration"
+ },
+ {
+  "code": "suppliers.create",
+  "name": "Criar Fornecedores",
+  "resource": "suppliers",
+  "action_type": "create",
+  "description": "Criar Fornecedores",
+  "created_by": "migration"
+ },
+ {
+  "code": "suppliers.delete",
+  "name": "Excluir Fornecedores",
+  "resource": "suppliers",
+  "action_type": "delete",
+  "description": "Excluir Fornecedores",
+  "created_by": "migration"
+ },
+ {
+  "code": "suppliers.read",
+  "name": "Visualizar Fornecedores",
+  "resource": "suppliers",
+  "action_type": "read",
+  "description": "Visualizar Fornecedores",
+  "created_by": "migration"
+ },
+ {
+  "code": "suppliers.update",
+  "name": "Atualizar Fornecedores",
+  "resource": "suppliers",
+  "action_type": "update",
+  "description": "Atualizar Fornecedores",
+  "created_by": "migration"
+ },
+ {
+  "code": "taxes.update",
+  "name": "Atualizar Impostos",
+  "resource": "taxes",
+  "action_type": "update",
+  "description": "Atualizar Impostos",
+  "created_by": "migration"
+ },
+ {
+  "code": "taxes.view",
+  "name": "Visualizar Impostos",
+  "resource": "taxes",
+  "action_type": "read",
+  "description": "Visualizar Impostos",
+  "created_by": "migration"
+ },
+ {
+  "code": "vehicles.create",
+  "name": "Criar Veículos",
+  "resource": "vehicles",
+  "action_type": "create",
+  "description": "Criar Veículos",
+  "created_by": "migration"
+ },
+ {
+  "code": "vehicles.delete",
+  "name": "Excluir Veículos",
+  "resource": "vehicles",
+  "action_type": "delete",
+  "description": "Excluir Veículos",
+  "created_by": "migration"
+ },
+ {
+  "code": "vehicles.read",
+  "name": "Visualizar Veículos",
+  "resource": "vehicles",
+  "action_type": "read",
+  "description": "Visualizar Veículos",
+  "created_by": "migration"
+ },
+ {
+  "code": "vehicles.update",
+  "name": "Atualizar Veículos",
+  "resource": "vehicles",
+  "action_type": "update",
+  "description": "Atualizar Veículos",
+  "created_by": "migration"
+ }
+]

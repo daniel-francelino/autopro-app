@@ -43,7 +43,7 @@ const requestHeaders = import.meta.server
 const route = useRoute()
 const router = useRouter()
 
-const canRead = computed(() => workshop.can(ActionCode.BANK_ACCOUNTS_READ))
+const canRead = computed(() => workshop.can(ActionCode.BANK_ACCOUNTS_VIEW))
 const canCreate = computed(() => workshop.can(ActionCode.BANK_ACCOUNTS_CREATE))
 const canUpdate = computed(() => workshop.can(ActionCode.BANK_ACCOUNTS_UPDATE))
 const canDelete = computed(() => workshop.can(ActionCode.BANK_ACCOUNTS_DELETE))

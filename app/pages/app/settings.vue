@@ -48,7 +48,7 @@ const links = computed<NavigationMenuItem[][]>(() => {
     })
   }
 
-  if (workshop.can(ActionCode.ROLES_VIEW)) {
+  if (workshop.can(ActionCode.ROLES_READ)) {
     items.push({
       label: 'Permissões',
       icon: 'i-lucide-shield-check',

@@ -117,7 +117,7 @@ const links = computed<NavigationMenuItem[][]>(() => {
   if (workshop.can(ActionCode.FINANCIAL_READ))
     financeChildren.push(item('Categorias', 'i-lucide-tag', '/app/financial/categories'))
 
-  if (workshop.can(ActionCode.BANK_ACCOUNTS_READ))
+  if (workshop.can(ActionCode.BANK_ACCOUNTS_VIEW))
     financeChildren.push(item('Contas bancárias', 'i-lucide-landmark', '/app/financial/accounts'))
 
   if (workshop.can(ActionCode.TAXES_VIEW))
@@ -166,7 +166,7 @@ const links = computed<NavigationMenuItem[][]>(() => {
   if (workshop.can(ActionCode.EMPLOYEES_READ))
     settingsChildren.splice(Math.min(settingsChildren.length, 2), 0, item('Funcionários', 'i-lucide-users-round', '/app/settings/employees'))
 
-  if (workshop.can(ActionCode.ROLES_VIEW))
+  if (workshop.can(ActionCode.ROLES_READ))
     settingsChildren.splice(Math.min(settingsChildren.length, 3), 0, item('Permissões', 'i-lucide-shield-check', '/app/settings/roles'))
 
   const settings: NavigationMenuItem[] = [{

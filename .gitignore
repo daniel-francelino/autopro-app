@@ -37,4 +37,4 @@ logs
 
 # Backups locais de otimização (gerados, não versionados)
 /.claude/backups/
-./docs/*/*.txt
+types-typecheck-baseline.raw.txt

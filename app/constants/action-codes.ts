@@ -13,9 +13,9 @@ export enum ActionCode {
   ORDERS_READ = 'orders.read',
   ORDERS_UPDATE = 'orders.update',
   ORDERS_DELETE = 'orders.delete',
-  ORDERS_FINISH = 'orders.finish',
   ORDERS_CANCEL = 'orders.cancel',
   ORDERS_CORRECT = 'orders.correct',
+  ORDERS_PAY = 'orders.pay',
 
   PRODUCTS_CREATE = 'products.create',
   PRODUCTS_READ = 'products.read',
@@ -31,7 +31,6 @@ export enum ActionCode {
   INVENTORY_READ = 'inventory.read',
   INVENTORY_UPDATE = 'inventory.update',
   INVENTORY_DELETE = 'inventory.delete',
-  INVENTORY_ADJUST = 'inventory.adjust',
 
   SUPPLIERS_CREATE = 'suppliers.create',
   SUPPLIERS_READ = 'suppliers.read',
@@ -42,7 +41,6 @@ export enum ActionCode {
   PURCHASES_READ = 'purchases.read',
   PURCHASES_UPDATE = 'purchases.update',
   PURCHASES_DELETE = 'purchases.delete',
-  PURCHASES_AUTHORIZE = 'purchases.authorize',
 
   RETURNS_CREATE = 'returns.create',
   RETURNS_READ = 'returns.read',
@@ -55,7 +53,7 @@ export enum ActionCode {
   FINANCIAL_DELETE = 'financial.delete',
 
   BANK_ACCOUNTS_CREATE = 'bank_accounts.create',
-  BANK_ACCOUNTS_READ = 'bank_accounts.read',
+  BANK_ACCOUNTS_VIEW = 'bank_accounts.view',
   BANK_ACCOUNTS_UPDATE = 'bank_accounts.update',
   BANK_ACCOUNTS_DELETE = 'bank_accounts.delete',
 
@@ -68,6 +66,7 @@ export enum ActionCode {
   EMPLOYEES_READ = 'employees.read',
   EMPLOYEES_UPDATE = 'employees.update',
   EMPLOYEES_DELETE = 'employees.delete',
+  EMPLOYEES_PAY = 'employees.pay',
 
   BONUSES_CREATE = 'bonuses.create',
   BONUSES_READ = 'bonuses.read',
@@ -100,9 +99,9 @@ export enum ActionCode {
   MEMBERS_VIEW = 'members.view',
   MEMBERS_INVITE = 'members.invite',
   MEMBERS_UPDATE = 'members.update',
-  MEMBERS_REMOVE = 'members.remove',
+  MEMBERS_DELETE = 'members.delete',
 
-  ROLES_VIEW = 'roles.view',
+  ROLES_READ = 'roles.read',
   ROLES_CREATE = 'roles.create',
   ROLES_UPDATE = 'roles.update',
   ROLES_DELETE = 'roles.delete',
@@ -110,6 +109,9 @@ export enum ActionCode {
   ROLES_MANAGE_MEMBERS = 'roles.manage_members',
 
   SUBSCRIPTION_VIEW = 'subscription.view',
+  SUBSCRIPTION_MANAGE = 'subscription.manage',
+
+  FISCAL_MANAGE = 'fiscal.manage',
 
   TAXES_VIEW = 'taxes.view',
   TAXES_UPDATE = 'taxes.update',

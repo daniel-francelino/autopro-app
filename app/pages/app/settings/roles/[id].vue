@@ -80,7 +80,7 @@ const requestHeaders = import.meta.server
   ? useRequestHeaders(['cookie'])
   : undefined
 
-const canView = computed(() => workshop.can(ActionCode.ROLES_VIEW))
+const canView = computed(() => workshop.can(ActionCode.ROLES_READ))
 const canUpdate = computed(() => workshop.can(ActionCode.ROLES_UPDATE))
 const canManagePermissions = computed(() =>
   workshop.can(ActionCode.ROLES_MANAGE_PERMISSIONS)
