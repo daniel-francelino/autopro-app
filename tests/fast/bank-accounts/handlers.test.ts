@@ -275,7 +275,7 @@ describe('BAN-04b / BAN-04c / BAN-04d: tenant isolation (A logged in, B owns the
   })
 })
 
-// KF-09: verificado por grep em server/api/bank-accounts: nenhum handler chama requireOrgPermission. Enquanto isso, emp-sem recebe 200.
+// Fase 5B: os handlers de escrita de bank-accounts agora chamam requireOrgPermission (create/update/delete); emp-sem recebe 403.
 // Chaves definidas em action-codes.ts: bank_accounts.create/update/delete (ActionCode.BANK_ACCOUNTS_*). emp-com (role com a chave concedida)
 // é controle positivo: o 200 acontece hoje com ou sem a chave. Quando o guarda existir, emp-com continua 200 e emp-sem vira 403.
 describe('BAN-05a / BAN-05b / BAN-05c: role matrix on writes (KF-09, KF-47)', () => {
@@ -293,12 +293,12 @@ describe('BAN-05a / BAN-05b / BAN-05c: role matrix on writes (KF-09, KF-47)', ()
         expect(res.status).toBe(200)
       })
     }
-    it.fails(`${op.id}: emp-sem -> 403 [KF-09, KF-47]`, async () => {
+    it(`${op.id}: emp-sem -> 403 [KF-09, KF-47]`, async () => {
       loginAs('emp-sem')
       const res = await op.run('emp-sem')
       expect(res.status, `respondeu ${res.status}`).toBe(403)
     })
-    it(`${op.id}: emp-com -> 200 (caracteriza comportamento atual; chave ${op.key} definida em action-codes.ts, handler sem guarda (KF-09))`, async () => {
+    it(`${op.id}: emp-com -> 200 (role com a chave ${op.key} concedida; guarda da Fase 5B)`, async () => {
       loginAs('emp-com')
       const res = await op.run('emp-com')
       expect(res.status).toBe(200)

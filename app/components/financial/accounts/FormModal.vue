@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { BankAccount } from '~/types/financial'
+import { ActionCode } from '~/constants/action-codes'
 
 const props = defineProps<{
   open: boolean
@@ -12,9 +13,14 @@ const emit = defineEmits<{
 }>()
 
 const toast = useToast()
+const workshop = useWorkshopPermissions()
 const isSaving = ref(false)
 
 const isEditing = computed(() => !!props.account?.id)
+// Criar exige bank_accounts.create; editar exige bank_accounts.update.
+const canSave = computed(() =>
+  workshop.can(isEditing.value ? ActionCode.BANK_ACCOUNTS_UPDATE : ActionCode.BANK_ACCOUNTS_CREATE)
+)
 
 const form = reactive({
   account_name: '',
@@ -62,7 +68,7 @@ watch(
 )
 
 async function save() {
-  if (isSaving.value) return
+  if (isSaving.value || !canSave.value) return
   if (!form.account_name.trim()) {
     toast.add({ title: 'Nome da conta é obrigatório', color: 'warning' })
     return
@@ -167,6 +173,7 @@ const accountTypeOptions = [
           @click="emit('update:open', false)"
         />
         <UButton
+          v-if="canSave"
           label="Salvar"
           color="neutral"
           :loading="isSaving"

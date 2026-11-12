@@ -44,8 +44,17 @@ function seed() {
     ],
     // role r com purchases.update (guard de purchases/:id/pay, Fase 4)
     roles: [{ id: 'r', name: 'operador', is_system_role: false }],
-    actions: [{ id: 'act-pu', code: 'purchases.update', deleted_at: null }],
-    role_actions: [{ role_id: 'r', action_id: 'act-pu', is_granted: true }],
+    // financial.update/delete: exigidos pelas rotas financeiras guardadas na Fase 5
+    actions: [
+      { id: 'act-pu', code: 'purchases.update', deleted_at: null },
+      { id: 'act-fu', code: 'financial.update', deleted_at: null },
+      { id: 'act-fd', code: 'financial.delete', deleted_at: null }
+    ],
+    role_actions: [
+      { role_id: 'r', action_id: 'act-pu', is_granted: true },
+      { role_id: 'r', action_id: 'act-fu', is_granted: true },
+      { role_id: 'r', action_id: 'act-fd', is_granted: true }
+    ],
     bank_accounts: [
       { id: 'acc-a', organization_id: 'org-a', current_balance: 1000, is_active: true },
       { id: 'acc-b', organization_id: 'org-b', current_balance: 50, is_active: true }

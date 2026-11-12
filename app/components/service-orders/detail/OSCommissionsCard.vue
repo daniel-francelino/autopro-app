@@ -4,6 +4,7 @@ import type {
   ServiceOrderEmployee
 } from '~/types/service-orders'
 import { formatCurrency, formatDate } from '~/utils/service-orders'
+import { ActionCode } from '~/constants/action-codes'
 
 const props = defineProps<{
   commissions: ServiceOrderCommission[]
@@ -15,6 +16,9 @@ const props = defineProps<{
 const emit = defineEmits<{ paid: [] }>()
 
 const toast = useToast()
+const workshop = useWorkshopPermissions()
+// Pagar comissão move saldo bancário: exige financial.update além de orders.update (D12/V1).
+const canPay = computed(() => !!props.canUpdate && workshop.can(ActionCode.FINANCIAL_UPDATE))
 
 const employeeNameById = computed(
   () => new Map(props.employees.map(e => [e.id, e.name]))
@@ -130,7 +134,7 @@ async function confirmPaySingle() {
 
         <!-- Pay button -->
         <UButton
-          v-if="canUpdate && isPending(commission)"
+          v-if="canPay && isPending(commission)"
           size="xs"
           color="success"
           variant="soft"

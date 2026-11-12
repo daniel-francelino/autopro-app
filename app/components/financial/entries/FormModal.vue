@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { addMonths, addYears, format, parseISO } from 'date-fns'
 import { formatCategoryName } from '~/utils/financial-category-options'
+import { ActionCode } from '~/constants/action-codes'
 
 type Entry = Record<string, unknown>
 type BankAccountItem = {
@@ -29,6 +30,7 @@ const emit = defineEmits<{
 const toast = useToast()
 const isSaving = ref(false)
 const showCategoryModal = ref(false)
+const workshop = useWorkshopPermissions()
 const showRecurringDialog = ref(false)
 const pendingPayload = ref<Record<string, unknown> | null>(null)
 const activeTab = ref<'general' | 'recurrence' | 'installments'>('general')
@@ -768,7 +770,7 @@ function formatCurrency(value: number) {
                     :loading="categoriesLoading"
                     class="flex-1"
                   />
-                  <UTooltip text="Gerenciar categorias">
+                  <UTooltip v-if="workshop.can(ActionCode.FINANCIAL_UPDATE)" text="Gerenciar categorias">
                     <UButton
                       icon="i-lucide-settings-2"
                       color="neutral"

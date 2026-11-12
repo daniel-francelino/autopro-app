@@ -74,6 +74,8 @@ const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : unde
 
 const canRead = computed(() => workshop.can(ActionCode.BONUSES_READ))
 const canUpdate = computed(() => workshop.can(ActionCode.BONUSES_UPDATE))
+// Pagar comissão (reports/commissions/:id/pay) exige também financial.update (D12/V16).
+const canPayCommission = computed(() => canUpdate.value && workshop.can(ActionCode.FINANCIAL_UPDATE))
 const canDelete = computed(() => workshop.can(ActionCode.BONUSES_DELETE))
 
 const bonusId = computed(() => String(route.params.id || ''))
@@ -837,7 +839,7 @@ async function requestReprocess(item: ProgressItem) {
 
                 <div class="flex shrink-0 items-center gap-2">
                   <UButton
-                    v-if="canUpdate && record.status === 'pending'"
+                    v-if="canPayCommission && record.status === 'pending'"
                     label="Pagar"
                     icon="i-lucide-banknote"
                     color="neutral"

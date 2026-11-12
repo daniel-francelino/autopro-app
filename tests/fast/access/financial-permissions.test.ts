@@ -103,11 +103,19 @@ describe('S1: financial routes are within matrix M1 (no login → 401)', () => {
 })
 
 describe('S2 / KF-09: user without financial role does not touch money', () => {
-  // Enquanto o KF-09 existir, cada rota abaixo responde 200 para um usuário sem nenhuma permissão.
-  // Ao corrigir uma rota (requireOrgPermission), o Vitest acusa "unexpected pass": troque it.fails por it.
-  // purchases/:id/pay já tem guard (Fase 4): coberto por it normal logo abaixo, fora deste laço de it.fails.
+  // Rotas já guardadas (Fases 4 e 5) viram it normal; as demais ainda respondem 200 para um usuário sem permissão (it.fails).
+  // Ao guardar uma rota, o Vitest acusa "unexpected pass": adicione-a a GUARDED.
+  // purchases/:id/pay (Fase 4) tem cenários próprios logo abaixo, fora deste laço.
+  const GUARDED = new Set([
+    'financial/:id/pay',
+    'financial/pay-entries-bulk',
+    'financial/pay-commissions-bulk',
+    'reports/commissions/:id/pay',
+    'financial/:id (excluir)'
+  ])
   for (const r of MONEY_ROUTES.filter(x => x.name !== 'purchases/:id/pay')) {
-    it.fails(`${r.name} → 403 for role without permission`, async () => {
+    const test = GUARDED.has(r.name) ? it : it.fails
+    test(`${r.name} → 403 for role without permission`, async () => {
       const res = await run(r)
       expect(res.status, `${r.name} respondeu ${res.status} (${res.error?.message ?? 'ok'})`).toBe(403)
     })
@@ -135,6 +143,9 @@ describe('S2 / KF-09: user without financial role does not touch money', () => {
 
 describe('S3: organization_id coming from the client is ignored', () => {
   it('query ?organization_id=org-b does not grant access to an entry from the other workshop (404)', async () => {
+    // a rota exige financial.update (Fase 5): o papel de teste recebe o código para chegar à checagem de organização
+    fake.tables.actions!.push({ id: 'act-fu', code: 'financial.update', deleted_at: null })
+    fake.tables.role_actions!.push({ role_id: 'r-operador', action_id: 'act-fu', is_granted: true })
     const res = await callHandler('server/api/financial/[id]/pay.post.ts', fakeEvent({ method: 'POST', cookies, params: { id: 'exp-b' }, query: { organization_id: 'org-b' } }))
     expect(res.status).toBe(404)
     expect(balanceB()).toBe(50)
@@ -148,6 +159,8 @@ describe('S3: organization_id coming from the client is ignored', () => {
     expect(balanceB()).toBe(50)
   })
   it('body.organization_id in the batch commission payment does not pay a record from the other workshop', async () => {
+    fake.tables.actions!.push({ id: 'act-fu', code: 'financial.update', deleted_at: null })
+    fake.tables.role_actions!.push({ role_id: 'r-operador', action_id: 'act-fu', is_granted: true })
     const res = await callHandler('server/api/financial/pay-commissions-bulk.post.ts', fakeEvent({ method: 'POST', cookies, body: { registroIds: ['cm-b'], organization_id: 'org-b' } }))
     expect((res.body as any).data).toMatchObject({ paidCount: 0, failedCount: 1 })
     expect(fake.tables.employee_financial_records!.find(r => r.id === 'cm-b')!.status).toBe('pending')
