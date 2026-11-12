@@ -25,10 +25,11 @@ const CREATE = 'server/api/payment-terminals/index.post.ts'
 const UPDATE = 'server/api/payment-terminals/[id].put.ts'
 const REMOVE = 'server/api/payment-terminals/[id].delete.ts'
 
-type Persona = 'owner' | 'emp-sem'
+type Persona = 'owner' | 'emp-sem' | 'emp-com'
 const USERS: Record<Persona, { id: string, email: string }> = {
   owner: { id: 'u-owner', email: 'owner@a.com' },
-  'emp-sem': { id: 'u-emp', email: 'emp@a.com' }
+  'emp-sem': { id: 'u-emp', email: 'emp@a.com' },
+  'emp-com': { id: 'u-empcom', email: 'empcom@a.com' }
 }
 
 function loginAs(persona: Persona) {
@@ -43,11 +44,16 @@ function seed() {
   fake = createFakeSupabase({
     user_profiles: [
       { id: 'p-owner', user_id: 'u-owner', organization_id: 'org-a', role_id: null, is_owner: true, is_active: true, employee_id: null },
-      { id: 'p-emp', user_id: 'u-emp', organization_id: 'org-a', role_id: 'r-operador', is_owner: false, is_active: true, employee_id: null }
+      { id: 'p-emp', user_id: 'u-emp', organization_id: 'org-a', role_id: 'r-operador', is_owner: false, is_active: true, employee_id: null },
+      { id: 'p-empcom', user_id: 'u-empcom', organization_id: 'org-a', role_id: 'r-com', is_owner: false, is_active: true, employee_id: null }
     ],
-    roles: [{ id: 'r-operador', name: 'operador', is_system_role: false }],
-    actions: [],
-    role_actions: [],
+    roles: [
+      { id: 'r-operador', name: 'operador', is_system_role: false },
+      { id: 'r-com', name: 'com-permissao', is_system_role: false }
+    ],
+    // emp-com: role da org A com payment_machines.update concedida (ActionCode.PAYMENT_MACHINES_UPDATE).
+    actions: [{ id: 'act-pm-update', code: 'payment_machines.update', deleted_at: null }],
+    role_actions: [{ role_id: 'r-com', action_id: 'act-pm-update', is_granted: true }],
     bank_accounts: [
       { id: 'ba-a', organization_id: 'org-a', account_name: 'Conta A', deleted_at: null },
       { id: 'ba-b', organization_id: 'org-b', account_name: 'Conta B', deleted_at: null }
@@ -292,5 +298,25 @@ describe('PAY-03c / PAY-03e / PAY-03g: emp-sem must not write (KF-09, KF-70)', (
     const res = await remove('pt1')
     expect(res.status).toBe(403)
   })
-  it.todo('PAY-03c/e/g: emp-com 200 e chave de permissão. Aguarda G1-OQ-01')
+})
+
+// Verificado por grep em server/api/payment-terminals: nenhum handler chama requireOrgPermission (KF-09, KF-70).
+// action-codes.ts só define payment_machines.view e payment_machines.update (não há create/delete). A página
+// app/pages/app/financial/machines.vue usa payment_machines.update para criar/editar/excluir; por isso a mesma
+// chave é usada nas três rotas de escrita. Limitação: a equivalência rota->chave vem do front, não de um guarda no servidor.
+describe('PAY-03c / PAY-03e / PAY-03g: emp-com (payment_machines.update) -> 200', () => {
+  beforeEach(() => loginAs('emp-com'))
+  const T = 'caracteriza comportamento atual; chave payment_machines.update definida em action-codes.ts, handler sem guarda (KF-09)'
+  it(`PAY-03c: POST como emp-com -> 200 (${T})`, async () => {
+    const res = await create({ terminal_name: 'Nova', provider_company: 'X', bank_account_id: 'ba-a', payment_receipt_days: 5 })
+    expect(res.status).toBe(200)
+  })
+  it(`PAY-03e: PUT como emp-com -> 200 (${T})`, async () => {
+    const res = await update('pt1', { is_active: false })
+    expect(res.status).toBe(200)
+  })
+  it(`PAY-03g: DELETE como emp-com -> 200 (${T})`, async () => {
+    const res = await remove('pt1')
+    expect(res.status).toBe(200)
+  })
 })

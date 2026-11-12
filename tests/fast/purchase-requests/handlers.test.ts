@@ -29,10 +29,11 @@ const REMOVE = 'server/api/purchase-requests/[id].delete.ts'
 const AUTHORIZE = 'server/api/purchase-requests/[id]/authorize.post.ts'
 const REJECT = 'server/api/purchase-requests/[id]/reject.post.ts'
 
-type Persona = 'owner' | 'emp-sem'
+type Persona = 'owner' | 'emp-sem' | 'emp-com'
 const USERS: Record<Persona, { id: string, email: string }> = {
   owner: { id: 'u-owner', email: 'owner@a.com' },
-  'emp-sem': { id: 'u-emp', email: 'emp@a.com' }
+  'emp-sem': { id: 'u-emp', email: 'emp@a.com' },
+  'emp-com': { id: 'u-empcom', email: 'empcom@a.com' }
 }
 
 function loginAs(persona: Persona) {
@@ -64,11 +65,26 @@ function seed(rows: Array<Record<string, any>> = ALL_ROWS()) {
   fake = createFakeSupabase({
     user_profiles: [
       { id: 'p-owner', user_id: 'u-owner', organization_id: 'org-a', role_id: null, is_owner: true, is_active: true, employee_id: null },
-      { id: 'p-emp', user_id: 'u-emp', organization_id: 'org-a', role_id: 'r-operador', is_owner: false, is_active: true, employee_id: null }
+      { id: 'p-emp', user_id: 'u-emp', organization_id: 'org-a', role_id: 'r-operador', is_owner: false, is_active: true, employee_id: null },
+      { id: 'p-empcom', user_id: 'u-empcom', organization_id: 'org-a', role_id: 'r-com', is_owner: false, is_active: true, employee_id: null }
     ],
-    roles: [{ id: 'r-operador', name: 'operador', is_system_role: false }],
-    actions: [],
-    role_actions: [],
+    roles: [
+      { id: 'r-operador', name: 'operador', is_system_role: false },
+      { id: 'r-com', name: 'com-permissao', is_system_role: false }
+    ],
+    // emp-com: role da org A com as chaves da página de solicitações (ActionCode.AUTHORIZATIONS_*).
+    actions: [
+      { id: 'act-0', code: 'authorizations.create', deleted_at: null },
+      { id: 'act-1', code: 'authorizations.update', deleted_at: null },
+      { id: 'act-2', code: 'authorizations.delete', deleted_at: null },
+      { id: 'act-3', code: 'authorizations.approve', deleted_at: null }
+    ],
+    role_actions: [
+      { role_id: 'r-com', action_id: 'act-0', is_granted: true },
+      { role_id: 'r-com', action_id: 'act-1', is_granted: true },
+      { role_id: 'r-com', action_id: 'act-2', is_granted: true },
+      { role_id: 'r-com', action_id: 'act-3', is_granted: true }
+    ],
     suppliers: [
       { id: 'sup-a', organization_id: 'org-a', name: 'Fornecedor A', deleted_at: null },
       { id: 'sup-b', organization_id: 'org-b', name: 'Fornecedor B', deleted_at: null }
@@ -425,8 +441,6 @@ describe('Decisões de produto pendentes (it.todo)', () => {
   it.todo('PRQ-11c: POST com total_request_amount diferente da soma dos itens (handler usa body.total_request_amount ?? soma). Aguarda G2-OQ-11')
   it.todo('PRQ-15: PUT items/total_request_amount em solicitação authorized/rejected (edição em estado terminal, recálculo do total). Aguarda G2-OQ-09, G2-SD-11 e G2-SD-12')
   it.todo('PRQ-02: authorize gera compra uma única vez (hoje nada é gerado, G2-SD-07). Aguarda G2-OQ-07; o 400 do segundo authorize já está em PRQ-01b')
-  it.todo('PRQ-01c/PRQ-01f: emp-com 200 e chave de permissão de authorize/reject. Aguarda G2-OQ-01')
-  it.todo('PRQ-03c/e/f: emp-com 200 e chave de permissão de POST/PUT/DELETE. Aguarda G2-OQ-01')
 })
 
 describe('PRQ-01c / PRQ-01f: emp-sem must not authorize/reject (KF-09, KF-57, G2-SD-06)', () => {
@@ -484,5 +498,39 @@ describe('PRQ-03c / PRQ-03e / PRQ-03f: emp-sem must not write (KF-09, KF-58)', (
   it.fails('PRQ-03f: DELETE as emp-sem -> 403 [KF-58]', async () => {
     const res = await remove('rq-w')
     expect(res.status).toBe(403)
+  })
+})
+
+// Verificado por grep em server/api/purchase-requests: nenhum handler (index, [id], authorize, reject) chama requireOrgPermission (KF-09, KF-57, KF-58).
+// Chave: a rota é de solicitação, não de compra. A página app/pages/app/products/purchase-requests.vue usa
+// ActionCode.AUTHORIZATIONS_CREATE/UPDATE/DELETE/APPROVE (authorizations.*); authorize e reject compartilham authorizations.approve
+// (não há chave separada para recusar). Não se usa purchases.* aqui. A equivalência rota->chave vem do front, não de um guarda no servidor.
+describe('PRQ-01c / PRQ-01f / PRQ-03c / PRQ-03e / PRQ-03f: emp-com -> 200', () => {
+  beforeEach(() => loginAs('emp-com'))
+  const T = (k: string) => `caracteriza comportamento atual; chave ${k} definida em action-codes.ts, handler sem guarda (KF-09)`
+  it(`PRQ-01c: authorize como emp-com -> 200 (${T('authorizations.approve')})`, async () => {
+    const res = await authorize('rq-w')
+    expect(res.status).toBe(200)
+    expect(row('rq-w')).toMatchObject({ status: 'authorized', authorized_by: 'empcom@a.com' })
+  })
+  it(`PRQ-01f: reject como emp-com -> 200 (${T('authorizations.approve')})`, async () => {
+    const res = await reject('rq-w', { rejection_reason: 'x' })
+    expect(res.status).toBe(200)
+    expect(row('rq-w')).toMatchObject({ status: 'rejected', rejection_reason: 'x' })
+  })
+  it(`PRQ-03c: POST como emp-com -> 200 (${T('authorizations.create')})`, async () => {
+    const res = await create({ supplier_id: 'sup-a', items: ITEMS })
+    expect(res.status).toBe(200)
+    expect(requests()).toHaveLength(6)
+  })
+  it(`PRQ-03e: PUT como emp-com -> 200 (${T('authorizations.update')})`, async () => {
+    const res = await update('rq-w', { notes: 'x' })
+    expect(res.status).toBe(200)
+    expect(row('rq-w').notes).toBe('x')
+  })
+  it(`PRQ-03f: DELETE como emp-com -> 200 (${T('authorizations.delete')})`, async () => {
+    const res = await remove('rq-w')
+    expect(res.status).toBe(200)
+    expect(row('rq-w').deleted_at).toBeTruthy()
   })
 })

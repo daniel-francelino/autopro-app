@@ -29,11 +29,12 @@ const CREATE = 'server/api/purchases/index.post.ts'
 const UPDATE = 'server/api/purchases/[id].put.ts'
 const REMOVE = 'server/api/purchases/[id].delete.ts'
 
-type Persona = 'owner' | 'admin' | 'emp-sem'
+type Persona = 'owner' | 'admin' | 'emp-sem' | 'emp-com'
 const USERS: Record<Persona, { id: string, email: string }> = {
   owner: { id: 'u-owner', email: 'owner@a.com' },
   admin: { id: 'u-admin', email: 'admin@a.com' },
-  'emp-sem': { id: 'u-emp', email: 'emp@a.com' }
+  'emp-sem': { id: 'u-emp', email: 'emp@a.com' },
+  'emp-com': { id: 'u-empcom', email: 'empcom@a.com' }
 }
 
 function loginAs(persona: Persona) {
@@ -67,14 +68,25 @@ function seed(rows: Array<Record<string, any>> = ALL_ROWS()) {
     user_profiles: [
       { id: 'p-owner', user_id: 'u-owner', organization_id: 'org-a', role_id: null, is_owner: true, is_active: true, employee_id: null },
       { id: 'p-admin', user_id: 'u-admin', organization_id: 'org-a', role_id: 'r-admin', is_owner: false, is_active: true, employee_id: null },
-      { id: 'p-emp', user_id: 'u-emp', organization_id: 'org-a', role_id: 'r-operador', is_owner: false, is_active: true, employee_id: null }
+      { id: 'p-emp', user_id: 'u-emp', organization_id: 'org-a', role_id: 'r-operador', is_owner: false, is_active: true, employee_id: null },
+      { id: 'p-empcom', user_id: 'u-empcom', organization_id: 'org-a', role_id: 'r-com', is_owner: false, is_active: true, employee_id: null }
     ],
     roles: [
       { id: 'r-admin', name: 'admin', is_system_role: true },
-      { id: 'r-operador', name: 'operador', is_system_role: false }
+      { id: 'r-operador', name: 'operador', is_system_role: false },
+      { id: 'r-com', name: 'com-permissao', is_system_role: false }
     ],
-    actions: [],
-    role_actions: [],
+    // emp-com: role da org A com as chaves de escrita concedidas (ActionCode.PURCHASES_*).
+    actions: [
+      { id: 'act-0', code: 'purchases.create', deleted_at: null },
+      { id: 'act-1', code: 'purchases.update', deleted_at: null },
+      { id: 'act-2', code: 'purchases.delete', deleted_at: null }
+    ],
+    role_actions: [
+      { role_id: 'r-com', action_id: 'act-0', is_granted: true },
+      { role_id: 'r-com', action_id: 'act-1', is_granted: true },
+      { role_id: 'r-com', action_id: 'act-2', is_granted: true }
+    ],
     suppliers: [
       { id: 'sup-a', organization_id: 'org-a', name: 'Fornecedor A', deleted_at: null },
       { id: 'sup-b', organization_id: 'org-b', name: 'Fornecedor B', deleted_at: null }
@@ -403,8 +415,6 @@ describe('Decisões de produto pendentes (it.todo)', () => {
   it.todo('PUR-15b: PUT de total_amount/items em compra paga. Aguarda G2-OQ-02')
   it.todo('PUR-01e: pay lança despesa, extrato e baixa saldo (KF-43 documenta o comportamento atual). Aguarda G2-OQ-02')
   it.todo('PUR-01g: payment_date inválida ou futura no pay. Aguarda G2-OQ-10')
-  it.todo('PUR-06c emp-com: POST 200 com a permissão. Aguarda G2-OQ-01 (chave de permissão indefinida)')
-  it.todo('PUR-06e/PUR-06f emp-com: PUT/DELETE 200 com a permissão. Aguarda G2-OQ-01')
 })
 
 describe('PUR-06c / PUR-06e / PUR-06f: emp-sem must not write (KF-09, KF-61)', () => {
@@ -438,5 +448,26 @@ describe('PUR-06c / PUR-06e / PUR-06f: emp-sem must not write (KF-09, KF-61)', (
   it.fails('PUR-06f: DELETE as emp-sem -> 403 [KF-61]', async () => {
     const res = await remove('pu-p2')
     expect(res.status).toBe(403)
+  })
+})
+
+// Verificado por grep em server/api/purchases: nenhum handler chama requireOrgPermission (KF-09, KF-61).
+// Chaves definidas em action-codes.ts: purchases.create/update/delete. emp-com é controle positivo: o 200 vale hoje com ou sem a chave.
+describe('PUR-06c / PUR-06e / PUR-06f: emp-com -> 200', () => {
+  beforeEach(() => loginAs('emp-com'))
+  it('PUR-06c: POST como emp-com -> 200 (caracteriza comportamento atual; chave purchases.create definida em action-codes.ts, handler sem guarda (KF-09))', async () => {
+    const res = await create(VALID)
+    expect(res.status).toBe(200)
+    expect(purchases()).toHaveLength(SEED_SIZE + 1)
+  })
+  it('PUR-06e: PUT como emp-com -> 200 (caracteriza comportamento atual; chave purchases.update definida em action-codes.ts, handler sem guarda (KF-09))', async () => {
+    const res = await update('pu-p2', { notes: 'x' })
+    expect(res.status).toBe(200)
+    expect(row('pu-p2').notes).toBe('x')
+  })
+  it('PUR-06f: DELETE como emp-com -> 200 (caracteriza comportamento atual; chave purchases.delete definida em action-codes.ts, handler sem guarda (KF-09))', async () => {
+    const res = await remove('pu-p2')
+    expect(res.status).toBe(200)
+    expect(row('pu-p2').deleted_at).toBeTruthy()
   })
 })

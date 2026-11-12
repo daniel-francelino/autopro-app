@@ -25,10 +25,11 @@ const CREATE = 'server/api/taxes/index.post.ts'
 const UPDATE = 'server/api/taxes/[id].put.ts'
 const REMOVE = 'server/api/taxes/[id].delete.ts'
 
-type Persona = 'owner' | 'emp-sem'
+type Persona = 'owner' | 'emp-sem' | 'emp-com'
 const USERS: Record<Persona, { id: string, email: string }> = {
   owner: { id: 'u-owner', email: 'owner@a.com' },
-  'emp-sem': { id: 'u-emp', email: 'emp@a.com' }
+  'emp-sem': { id: 'u-emp', email: 'emp@a.com' },
+  'emp-com': { id: 'u-empcom', email: 'empcom@a.com' }
 }
 
 function loginAs(persona: Persona) {
@@ -42,11 +43,20 @@ function seed() {
   fake = createFakeSupabase({
     user_profiles: [
       { id: 'p-owner', user_id: 'u-owner', organization_id: 'org-a', role_id: null, is_owner: true, is_active: true, employee_id: null },
-      { id: 'p-emp', user_id: 'u-emp', organization_id: 'org-a', role_id: 'r-operador', is_owner: false, is_active: true, employee_id: null }
+      { id: 'p-emp', user_id: 'u-emp', organization_id: 'org-a', role_id: 'r-operador', is_owner: false, is_active: true, employee_id: null },
+      { id: 'p-empcom', user_id: 'u-empcom', organization_id: 'org-a', role_id: 'r-com', is_owner: false, is_active: true, employee_id: null }
     ],
-    roles: [{ id: 'r-operador', name: 'operador', is_system_role: false }],
-    actions: [],
-    role_actions: [],
+    roles: [
+      { id: 'r-operador', name: 'operador', is_system_role: false },
+      { id: 'r-com', name: 'com-permissao', is_system_role: false }
+    ],
+    // emp-com: role da org A com taxes.update concedida (ActionCode.TAXES_UPDATE).
+    actions: [
+      { id: 'act-0', code: 'taxes.update', deleted_at: null }
+    ],
+    role_actions: [
+      { role_id: 'r-com', action_id: 'act-0', is_granted: true }
+    ],
     taxes: [
       { id: 't1', organization_id: 'org-a', name: 'ISS', type: 'municipal', rate: 5, created_at: '2026-01-01', created_by: 'x@a.com', deleted_at: null },
       { id: 't2', organization_id: 'org-a', name: 'PIS', type: 'federal', rate: 1.65, created_at: '2026-01-02', created_by: 'x@a.com', deleted_at: null },
@@ -159,7 +169,6 @@ describe('TAX-05 / TAX-06 / TAX-10 / TAX-02b / TAX-18: not asserted', () => {
   it.todo('TAX-18: DELETE with failing update -> 500, nothing marked (limitação do fake: failNext falha a pré-checagem, não o update; vira 404)')
   it.todo('TAX-01a (\'5\' numeric string): accept or reject. Awaiting G3-OQ-02')
   it.todo('TAX-01b (type outside valid set): Awaiting G3-OQ-03')
-  it.todo('TAX-11/14/17 emp-com 200 and permission key map: Awaiting G3-OQ-01')
 })
 
 describe('TAX-07: POST creates the tax', () => {
@@ -358,5 +367,25 @@ describe('TAX-11 / TAX-14 / TAX-17: emp-sem must not write (KF-09, KF-67)', () =
   it.fails('TAX-17: DELETE as emp-sem -> 403 [KF-67]', async () => {
     const res = await remove('t1')
     expect(res.status).toBe(403)
+  })
+})
+
+// Verificado por grep em server/api/taxes: nenhum handler chama requireOrgPermission (KF-09, KF-67).
+// action-codes.ts define só taxes.view e taxes.update; a página app/pages/app/financial/taxes.vue usa taxes.update
+// para criar/editar/excluir, então a mesma chave é usada nas três rotas. A equivalência vem do front, não de um guarda no servidor.
+describe('TAX-11 / TAX-14 / TAX-17: emp-com (taxes.update) -> 200', () => {
+  beforeEach(() => loginAs('emp-com'))
+  const T = 'caracteriza comportamento atual; chave taxes.update definida em action-codes.ts, handler sem guarda (KF-09)'
+  it(`TAX-11: POST como emp-com -> 200 (${T})`, async () => {
+    const res = await create({ name: 'ISS3', type: 'municipal', rate: 2 })
+    expect(res.status).toBe(200)
+  })
+  it(`TAX-14: PUT como emp-com -> 200 (${T})`, async () => {
+    const res = await update('t1', { rate: 8 })
+    expect(res.status).toBe(200)
+  })
+  it(`TAX-17: DELETE como emp-com -> 200 (${T})`, async () => {
+    const res = await remove('t1')
+    expect(res.status).toBe(200)
   })
 })

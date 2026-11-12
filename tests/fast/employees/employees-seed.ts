@@ -6,7 +6,7 @@ export type Persona = 'owner' | 'emp-sem' | 'emp-com'
 export const USERS: Record<Persona, { id: string, email: string }> = {
   owner: { id: 'u-owner', email: 'owner@a.com' },
   'emp-sem': { id: 'u-emp', email: 'emp@a.com' },
-  // tem commissions.read e bonuses.read concedidos (controle positivo das leituras com permissão)
+  // tem commissions.read, bonuses.read e employees.create/update/delete concedidos (controle positivo com permissão)
   'emp-com': { id: 'u-empcom', email: 'empcom@a.com' }
 }
 
@@ -43,11 +43,17 @@ export function employeesSeed(): Record<string, Row[]> {
     // As ações existem de verdade: o 403 é "Acesso negado" (sem grant), não "Permissão não reconhecida".
     actions: [
       { id: 'act-comm-read', code: 'commissions.read', deleted_at: null },
-      { id: 'act-bon-read', code: 'bonuses.read', deleted_at: null }
+      { id: 'act-bon-read', code: 'bonuses.read', deleted_at: null },
+      { id: 'act-emp-create', code: 'employees.create', deleted_at: null },
+      { id: 'act-emp-update', code: 'employees.update', deleted_at: null },
+      { id: 'act-emp-delete', code: 'employees.delete', deleted_at: null }
     ],
     role_actions: [
       { role_id: 'r-com', action_id: 'act-comm-read', is_granted: true },
-      { role_id: 'r-com', action_id: 'act-bon-read', is_granted: true }
+      { role_id: 'r-com', action_id: 'act-bon-read', is_granted: true },
+      { role_id: 'r-com', action_id: 'act-emp-create', is_granted: true },
+      { role_id: 'r-com', action_id: 'act-emp-update', is_granted: true },
+      { role_id: 'r-com', action_id: 'act-emp-delete', is_granted: true }
     ],
     // Org A em plano pro (limite 10); B sem assinatura não é usada em escrita.
     subscriptions: [

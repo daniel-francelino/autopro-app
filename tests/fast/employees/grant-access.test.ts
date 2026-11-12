@@ -245,5 +245,5 @@ describe('EMP-01b: emp-sem não deveria conceder acesso (KF-09, KF-52)', () => {
 
 describe('Decisões de produto pendentes (it.todo)', () => {
   it.todo('EMP-01d: org no limite de usuários do plano -> grant-access respeita o limite. Aguarda G1-OQ-11 (G1-SD-07 não confirmado); não é it.fails')
-  it.todo('EMP-01b emp-com: POST 200 com a permissão de gestão de funcionários. Aguarda G1-OQ-01 (chave de permissão indefinida)')
+  it.todo('EMP-01b emp-com: POST 200 com a permissão de gestão de funcionários. Sem chave equivalente em action-codes.ts: não há employees.grant_access e o botão "Gerenciar acesso" da página não é gateado por ActionCode (usar employees.update seria inventar o mapeamento). Aguarda G1-OQ-01')
 })

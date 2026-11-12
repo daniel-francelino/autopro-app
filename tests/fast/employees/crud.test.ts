@@ -459,5 +459,26 @@ describe('EMP-06c / EMP-06e / EMP-06g: emp-sem não deveria escrever (KF-09, KF-
 describe('Decisões de produto pendentes (it.todo)', () => {
   it.todo('EMP-11: POST com tax_id já existente na org (duplicado). Aguarda G1-OQ-09 (a regra de duplicidade não está definida; sem constraint única no fake)')
   it.todo('EMP-04a: DELETE de funcionário com comissão pendente e paga e bônus atribuído: efeito em comissões pendentes e atribuições. Aguarda G1-OQ-10 (G1-SD-10)')
-  it.todo('EMP-06c/06e/06g emp-com: POST/PUT/DELETE 200 com a permissão. Aguarda G1-OQ-01 (chave de permissão indefinida)')
+})
+
+// Verificado por grep em server/api/employees: index.post, [id].put e [id].delete não chamam requireOrgPermission (KF-09, KF-52).
+// Chaves definidas em action-codes.ts: employees.create/update/delete (ActionCode.EMPLOYEES_*), usadas pela página de funcionários.
+// emp-com (role r-com do seed, com as 3 chaves concedidas) é controle positivo: o 200 vale hoje com ou sem a chave.
+describe('EMP-06c / EMP-06e / EMP-06g: emp-com -> 200', () => {
+  beforeEach(() => loginAs('emp-com'))
+  it('EMP-06c: POST como emp-com -> 200 (caracteriza comportamento atual; chave employees.create definida em action-codes.ts, handler sem guarda (KF-09))', async () => {
+    const res = await create(VALID)
+    expect(res.status).toBe(200)
+    expect(employees()).toHaveLength(SEED_SIZE + 1)
+  })
+  it('EMP-06e: PUT como emp-com -> 200 (caracteriza comportamento atual; chave employees.update definida em action-codes.ts, handler sem guarda (KF-09))', async () => {
+    const res = await update('e-a1', { phone: '11000001111' })
+    expect(res.status).toBe(200)
+    expect(row('e-a1').phone).toBe('11000001111')
+  })
+  it('EMP-06g: DELETE como emp-com -> 200 (caracteriza comportamento atual; chave employees.delete definida em action-codes.ts, handler sem guarda (KF-09))', async () => {
+    const res = await remove('e-a1')
+    expect(res.status).toBe(200)
+    expect(row('e-a1').deleted_at).toBeTruthy()
+  })
 })

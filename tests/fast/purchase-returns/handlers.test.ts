@@ -28,10 +28,11 @@ const CREATE = 'server/api/purchase-returns/index.post.ts'
 const UPDATE = 'server/api/purchase-returns/[id].put.ts'
 const REMOVE = 'server/api/purchase-returns/[id].delete.ts'
 
-type Persona = 'owner' | 'emp-sem'
+type Persona = 'owner' | 'emp-sem' | 'emp-com'
 const USERS: Record<Persona, { id: string, email: string }> = {
   owner: { id: 'u-owner', email: 'owner@a.com' },
-  'emp-sem': { id: 'u-emp', email: 'emp@a.com' }
+  'emp-sem': { id: 'u-emp', email: 'emp@a.com' },
+  'emp-com': { id: 'u-empcom', email: 'empcom@a.com' }
 }
 
 function loginAs(persona: Persona) {
@@ -64,11 +65,24 @@ function seed(rows: Array<Record<string, any>> = ALL_ROWS()) {
   fake = createFakeSupabase({
     user_profiles: [
       { id: 'p-owner', user_id: 'u-owner', organization_id: 'org-a', role_id: null, is_owner: true, is_active: true, employee_id: null },
-      { id: 'p-emp', user_id: 'u-emp', organization_id: 'org-a', role_id: 'r-operador', is_owner: false, is_active: true, employee_id: null }
+      { id: 'p-emp', user_id: 'u-emp', organization_id: 'org-a', role_id: 'r-operador', is_owner: false, is_active: true, employee_id: null },
+      { id: 'p-empcom', user_id: 'u-empcom', organization_id: 'org-a', role_id: 'r-com', is_owner: false, is_active: true, employee_id: null }
     ],
-    roles: [{ id: 'r-operador', name: 'operador', is_system_role: false }],
-    actions: [],
-    role_actions: [],
+    roles: [
+      { id: 'r-operador', name: 'operador', is_system_role: false },
+      { id: 'r-com', name: 'com-permissao', is_system_role: false }
+    ],
+    // emp-com: role da org A com as chaves de escrita concedidas (ActionCode.RETURNS_*).
+    actions: [
+      { id: 'act-0', code: 'returns.create', deleted_at: null },
+      { id: 'act-1', code: 'returns.update', deleted_at: null },
+      { id: 'act-2', code: 'returns.delete', deleted_at: null }
+    ],
+    role_actions: [
+      { role_id: 'r-com', action_id: 'act-0', is_granted: true },
+      { role_id: 'r-com', action_id: 'act-1', is_granted: true },
+      { role_id: 'r-com', action_id: 'act-2', is_granted: true }
+    ],
     suppliers: [
       { id: 'sup-a', organization_id: 'org-a', name: 'Fornecedor A', deleted_at: null },
       { id: 'sup-b', organization_id: 'org-b', name: 'Fornecedor B', deleted_at: null }
@@ -374,7 +388,6 @@ describe('Decisões de produto pendentes (it.todo)', () => {
   it.todo('PRT-13: PUT com reason e status completed -> efeito de completar. Aguarda G2-OQ-02')
   it.todo('PRT-15: PUT em devolução completed alterando total_returned_amount, returned_items, purchase_id, status de volta. Aguarda G2-OQ-09 e G2-OQ-02')
   it.todo('PRT-16b (completed): DELETE de devolução completed -> estorno ou recusa. Aguarda G2-OQ-02 e G2-OQ-09')
-  it.todo('PRT-03d/PRT-03f/PRT-03g emp-com: POST/PUT/DELETE 200 com a permissão. Aguarda G2-OQ-01 (chave de permissão indefinida)')
 })
 
 describe('PRT-03d / PRT-03f / PRT-03g: emp-sem must not write (KF-09, KF-72)', () => {
@@ -408,5 +421,26 @@ describe('PRT-03d / PRT-03f / PRT-03g: emp-sem must not write (KF-09, KF-72)', (
   it.fails('PRT-03g: DELETE as emp-sem -> 403 [KF-72]', async () => {
     const res = await remove('pr-r1')
     expect(res.status).toBe(403)
+  })
+})
+
+// Verificado por grep em server/api/purchase-returns: nenhum handler chama requireOrgPermission (KF-09, KF-72).
+// Chaves definidas em action-codes.ts: returns.create/update/delete. emp-com é controle positivo: o 200 vale hoje com ou sem a chave.
+describe('PRT-03d / PRT-03f / PRT-03g: emp-com -> 200', () => {
+  beforeEach(() => loginAs('emp-com'))
+  it('PRT-03d: POST como emp-com -> 200 (caracteriza comportamento atual; chave returns.create definida em action-codes.ts, handler sem guarda (KF-09))', async () => {
+    const res = await create(VALID)
+    expect(res.status).toBe(200)
+    expect(returns()).toHaveLength(SEED_SIZE + 1)
+  })
+  it('PRT-03f: PUT como emp-com -> 200 (caracteriza comportamento atual; chave returns.update definida em action-codes.ts, handler sem guarda (KF-09))', async () => {
+    const res = await update('pr-r1', { notes: 'x' })
+    expect(res.status).toBe(200)
+    expect(row('pr-r1').notes).toBe('x')
+  })
+  it('PRT-03g: DELETE como emp-com -> 200 (caracteriza comportamento atual; chave returns.delete definida em action-codes.ts, handler sem guarda (KF-09))', async () => {
+    const res = await remove('pr-r1')
+    expect(res.status).toBe(200)
+    expect(row('pr-r1').deleted_at).toBeTruthy()
   })
 })

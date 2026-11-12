@@ -191,5 +191,5 @@ describe('EMP-06m: emp-sem não deveria exportar (KF-09, KF-52)', () => {
 })
 
 describe('Decisões de produto pendentes (it.todo)', () => {
-  it.todo('EMP-06m emp-com: POST 200 com a permissão de exportar. Aguarda G1-OQ-01 (chave de permissão indefinida)')
+  it.todo('EMP-06m emp-com: POST 200 com a permissão de exportar. Sem chave equivalente em action-codes.ts: não há employees.export; reports.employees pertence a /api/reports/export-employees (outra rota) e a página do funcionário não gateia esta rota. Aguarda G1-OQ-01')
 })

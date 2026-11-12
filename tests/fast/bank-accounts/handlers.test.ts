@@ -24,11 +24,12 @@ const CREATE = 'server/api/bank-accounts/index.post.ts'
 const UPDATE = 'server/api/bank-accounts/[id].put.ts'
 const REMOVE = 'server/api/bank-accounts/[id].delete.ts'
 
-type Persona = 'owner' | 'admin' | 'emp-sem'
+type Persona = 'owner' | 'admin' | 'emp-sem' | 'emp-com'
 const USERS: Record<Persona, { id: string, email: string }> = {
   owner: { id: 'u-owner', email: 'owner@a.com' },
   admin: { id: 'u-admin', email: 'admin@a.com' },
-  'emp-sem': { id: 'u-emp', email: 'emp@a.com' }
+  'emp-sem': { id: 'u-emp', email: 'emp@a.com' },
+  'emp-com': { id: 'u-empcom', email: 'empcom@a.com' }
 }
 
 function loginAs(persona: Persona) {
@@ -41,14 +42,25 @@ function seed() {
     user_profiles: [
       { id: 'p-owner', user_id: 'u-owner', organization_id: 'org-a', role_id: null, is_owner: true, is_active: true, employee_id: null },
       { id: 'p-admin', user_id: 'u-admin', organization_id: 'org-a', role_id: 'r-admin', is_owner: false, is_active: true, employee_id: null },
-      { id: 'p-emp', user_id: 'u-emp', organization_id: 'org-a', role_id: 'r-operador', is_owner: false, is_active: true, employee_id: null }
+      { id: 'p-emp', user_id: 'u-emp', organization_id: 'org-a', role_id: 'r-operador', is_owner: false, is_active: true, employee_id: null },
+      { id: 'p-empcom', user_id: 'u-empcom', organization_id: 'org-a', role_id: 'r-com', is_owner: false, is_active: true, employee_id: null }
     ],
     roles: [
       { id: 'r-admin', name: 'admin', is_system_role: true },
-      { id: 'r-operador', name: 'operador', is_system_role: false }
+      { id: 'r-operador', name: 'operador', is_system_role: false },
+      { id: 'r-com', name: 'com-permissao', is_system_role: false }
     ],
-    actions: [],
-    role_actions: [],
+    // emp-com: role da org A com as 3 chaves de escrita concedidas (ActionCode.BANK_ACCOUNTS_*).
+    actions: [
+      { id: 'act-create', code: 'bank_accounts.create', deleted_at: null },
+      { id: 'act-update', code: 'bank_accounts.update', deleted_at: null },
+      { id: 'act-delete', code: 'bank_accounts.delete', deleted_at: null }
+    ],
+    role_actions: [
+      { role_id: 'r-com', action_id: 'act-create', is_granted: true },
+      { role_id: 'r-com', action_id: 'act-update', is_granted: true },
+      { role_id: 'r-com', action_id: 'act-delete', is_granted: true }
+    ],
     bank_accounts: [
       { id: 'a1', organization_id: 'org-a', account_name: 'Caixa', account_type: 'checking', bank_name: 'Banco X', initial_balance: 0, current_balance: 100, is_active: true, deleted_at: null, notes: null },
       { id: 'a2', organization_id: 'org-a', account_name: 'Reserva', account_type: 'savings', bank_name: 'Banco Y', initial_balance: 0, current_balance: 0, is_active: false, deleted_at: null, notes: null },
@@ -263,14 +275,15 @@ describe('BAN-04b / BAN-04c / BAN-04d: tenant isolation (A logged in, B owns the
   })
 })
 
-// KF-09: nenhuma escrita de bank-accounts chama requireOrgPermission. Enquanto isso, emp-sem recebe 200.
-// A chave de permissão ainda não existe (G1-OQ-01); o teste só exige "403 para quem não tem permissão nenhuma".
+// KF-09: verificado por grep em server/api/bank-accounts: nenhum handler chama requireOrgPermission. Enquanto isso, emp-sem recebe 200.
+// Chaves definidas em action-codes.ts: bank_accounts.create/update/delete (ActionCode.BANK_ACCOUNTS_*). emp-com (role com a chave concedida)
+// é controle positivo: o 200 acontece hoje com ou sem a chave. Quando o guarda existir, emp-com continua 200 e emp-sem vira 403.
 describe('BAN-05a / BAN-05b / BAN-05c: role matrix on writes (KF-09, KF-47)', () => {
-  type Op = { id: string, run: (persona: Persona) => ReturnType<typeof create> }
+  type Op = { id: string, key: string, run: (persona: Persona) => ReturnType<typeof create> }
   const OPS: Op[] = [
-    { id: 'BAN-05a', run: () => create({ account_name: 'Nova', account_type: 'checking' }) },
-    { id: 'BAN-05b', run: () => update('a1', { notes: 'x' }) },
-    { id: 'BAN-05c', run: () => remove('a2') }
+    { id: 'BAN-05a', key: 'bank_accounts.create', run: () => create({ account_name: 'Nova', account_type: 'checking' }) },
+    { id: 'BAN-05b', key: 'bank_accounts.update', run: () => update('a1', { notes: 'x' }) },
+    { id: 'BAN-05c', key: 'bank_accounts.delete', run: () => remove('a2') }
   ]
   for (const op of OPS) {
     for (const persona of ['owner', 'admin'] as const) {
@@ -285,6 +298,10 @@ describe('BAN-05a / BAN-05b / BAN-05c: role matrix on writes (KF-09, KF-47)', ()
       const res = await op.run('emp-sem')
       expect(res.status, `respondeu ${res.status}`).toBe(403)
     })
-    it.todo(`${op.id}: emp-com -> 200 (no permission key exists to model "com permissão"; awaiting G1-OQ-01)`)
+    it(`${op.id}: emp-com -> 200 (caracteriza comportamento atual; chave ${op.key} definida em action-codes.ts, handler sem guarda (KF-09))`, async () => {
+      loginAs('emp-com')
+      const res = await op.run('emp-com')
+      expect(res.status).toBe(200)
+    })
   }
 })
