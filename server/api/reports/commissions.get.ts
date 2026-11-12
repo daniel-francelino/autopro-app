@@ -19,6 +19,7 @@ interface ServiceOrderRecord {
   entry_date?: string | null
   completion_date?: string | null
   total_amount?: number | string | null
+  payment_method?: string | null
 }
 
 interface EmployeeFinancialRecord {

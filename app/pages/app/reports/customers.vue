@@ -16,8 +16,8 @@ const page = useReportQueryParam('page', 1)
 const pageSize = 20
 
 // Sorting
-const sortByParam = useReportQueryParam('sortBy', 'totalSpent')
-const sortOrderParam = useReportQueryParam('sortOrder', 'desc')
+const sortByParam = useReportQueryParam<string>('sortBy', 'totalSpent')
+const sortOrderParam = useReportQueryParam<string>('sortOrder', 'desc')
 const sorting = computed<SortingState>({
   get: () => [{ id: sortByParam.value, desc: sortOrderParam.value !== 'asc' }],
   set: (val) => {

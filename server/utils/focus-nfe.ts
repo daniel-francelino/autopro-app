@@ -93,7 +93,7 @@ export async function deleteFocusNfeCompanyForOrg(organizationId: string): Promi
       `${apiBaseUrl}/v2/empresas/${encodeURIComponent(taxId)}`,
       {
         method: 'DELETE',
-        headers: { 'Authorization': authHeader }
+        headers: { Authorization: authHeader }
       }
     )
 

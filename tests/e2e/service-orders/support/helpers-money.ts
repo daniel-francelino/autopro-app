@@ -7,7 +7,7 @@ import { OrdersPage, OrderDetail, parseBRL } from './pages'
 export type MethodLabel = 'Pix' | 'Dinheiro' | 'Cartão de crédito' | 'Cartão de débito' | 'Boleto' | 'Transferência' | 'Cheque'
 /** Label shown on screen → value stored in the database. */
 export const METHOD_VALUE: Record<MethodLabel, string> = {
-  Pix: 'pix', Dinheiro: 'cash', 'Cartão de crédito': 'credit_card', 'Cartão de débito': 'debit_card', Boleto: 'bank_slip', Transferência: 'transfer', Cheque: 'check'
+  'Pix': 'pix', 'Dinheiro': 'cash', 'Cartão de crédito': 'credit_card', 'Cartão de débito': 'debit_card', 'Boleto': 'bank_slip', 'Transferência': 'transfer', 'Cheque': 'check'
 }
 
 /** Clicks until the dialog is visible, but never re-clicks while it is already open (the dev server can be slow to render modals). */
@@ -58,10 +58,12 @@ export class PayModal {
   async setInstallmentCount(n: number) {
     await choose(this.page, this.popups().filter({ hasText: /parcelas?$/ }).first(), n === 1 ? '1 parcela' : `${n} parcelas`)
   }
+
   async toggleDownPayment(amount: number) {
     await this.dialog.getByRole('switch', { name: 'Receber entrada' }).click()
     await this.dialog.getByLabel('Valor da entrada').fill(brl(amount))
   }
+
   releaseFull() { return this.dialog.getByRole('switch', { name: 'Liberar 100% da comissão' }) }
 
   /** Plan line: 'entrada' (down payment) or the installment number (1, 2, 3...). */
@@ -69,6 +71,7 @@ export class PayModal {
     const text = n === 'entrada' ? /Entrada/ : new RegExp(`${n}ª parcela`)
     return this.dialog.locator('div.border-b').filter({ hasText: text })
   }
+
   private rowPopups(n: number | 'entrada') { return this.row(n).getByRole('button', { name: 'Show popup' }) }
   async setRowAmount(n: number | 'entrada', value: number) { await this.row(n).getByRole('textbox').first().fill(brl(value)) }
   async rowAmount(n: number | 'entrada') { return parseBRL(await this.row(n).getByRole('textbox').first().inputValue()) }
@@ -125,11 +128,13 @@ export class InstallmentsCard {
     await openUntilVisible(() => this.card(label).locator('button:has([class~="i-lucide:trash-2"])').click(), dlg)
     return dlg
   }
+
   async openEdit(label: string) {
     const dlg = this.page.getByRole('dialog', { name: 'Editar parcela' })
     await openUntilVisible(() => this.card(label).locator('button:has([class~="i-lucide:pencil"])').click(), dlg)
     return dlg
   }
+
   async openUndo(label: string) {
     const dlg = this.page.getByRole('dialog', { name: 'Cancelar recebimento' })
     const card = this.card(label)

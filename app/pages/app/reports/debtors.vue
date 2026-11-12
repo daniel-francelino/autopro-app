@@ -111,8 +111,8 @@ const selectionSummary = computed(() => {
   return { total, overdue, current }
 })
 
-const sortByParam = useReportQueryParam('sortBy', 'earliestDue')
-const sortOrderParam = useReportQueryParam('sortOrder', 'asc')
+const sortByParam = useReportQueryParam<string>('sortBy', 'earliestDue')
+const sortOrderParam = useReportQueryParam<string>('sortOrder', 'asc')
 const sorting = computed<SortingState>({
   get: () => [{ id: sortByParam.value, desc: sortOrderParam.value !== 'asc' }],
   set: (val) => {

@@ -143,11 +143,26 @@ watch(
 
 async function save() {
   if (isSaving.value) return
-  if (!form.client_id) { toast.add({ title: 'Cliente obrigatório', color: 'warning' }); return }
-  if (!form.vehicle_id) { toast.add({ title: 'Veículo obrigatório', color: 'warning' }); return }
-  if (!form.appointment_date) { toast.add({ title: 'Data obrigatória', color: 'warning' }); return }
-  if (!form.time) { toast.add({ title: 'Horário obrigatório', color: 'warning' }); return }
-  if (!form.service_type) { toast.add({ title: 'Tipo de serviço obrigatório', color: 'warning' }); return }
+  if (!form.client_id) {
+    toast.add({ title: 'Cliente obrigatório', color: 'warning' })
+    return
+  }
+  if (!form.vehicle_id) {
+    toast.add({ title: 'Veículo obrigatório', color: 'warning' })
+    return
+  }
+  if (!form.appointment_date) {
+    toast.add({ title: 'Data obrigatória', color: 'warning' })
+    return
+  }
+  if (!form.time) {
+    toast.add({ title: 'Horário obrigatório', color: 'warning' })
+    return
+  }
+  if (!form.service_type) {
+    toast.add({ title: 'Tipo de serviço obrigatório', color: 'warning' })
+    return
+  }
 
   isSaving.value = true
   try {

@@ -53,8 +53,12 @@ const STATUS_COLOR: Record<string, 'success' | 'warning' | 'error' | 'neutral'> 
   cancelled: 'neutral'
 }
 
-function statusLabel(s: string) { return STATUS_LABEL[s] ?? s }
-function statusColor(s: string) { return STATUS_COLOR[s] ?? 'neutral' as const }
+function statusLabel(s: string) {
+  return STATUS_LABEL[s] ?? s
+}
+function statusColor(s: string) {
+  return STATUS_COLOR[s] ?? 'neutral' as const
+}
 function formatDate(val: string | null) {
   if (!val) return '—'
   return new Date(val).toLocaleDateString('pt-BR')

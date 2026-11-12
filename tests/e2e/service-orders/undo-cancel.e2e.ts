@@ -178,4 +178,3 @@ test.describe('OS-H: undoing and cancelling', () => {
     await shop.expectCashConsistent(acc.id, acc.balance)
   })
 })
-

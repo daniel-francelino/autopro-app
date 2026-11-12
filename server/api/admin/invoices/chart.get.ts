@@ -51,11 +51,11 @@ export default defineEventHandler(async (event) => {
     const amount = Number(inv.amount) || 0
 
     if (inv.status === 'paid') {
-      if (key in paidByMonth) paidByMonth[key] += amount
+      if (key in paidByMonth) paidByMonth[key] = (paidByMonth[key] ?? 0) + amount
     } else if (inv.status === 'pending') {
-      if (key in pendingByMonth) pendingByMonth[key] += amount
+      if (key in pendingByMonth) pendingByMonth[key] = (pendingByMonth[key] ?? 0) + amount
     } else if (inv.status === 'failed') {
-      if (key in failedByMonth) failedByMonth[key] += amount
+      if (key in failedByMonth) failedByMonth[key] = (failedByMonth[key] ?? 0) + amount
     }
   }
 

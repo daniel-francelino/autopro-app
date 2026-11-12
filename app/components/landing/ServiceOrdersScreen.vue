@@ -37,24 +37,57 @@ const items = [
 <template>
   <div class="lp-real-screen" inert aria-hidden="true">
     <aside class="lp-real-sidebar">
-      <div class="lp-real-team"><AppLogo size="sm" /></div>
-      <div class="lp-real-search"><UButton label="Pesquisar..." icon="i-lucide-search" color="neutral" variant="outline" block /></div>
+      <div class="lp-real-team">
+        <AppLogo size="sm" />
+      </div>
+      <div class="lp-real-search">
+        <UButton
+          label="Pesquisar..."
+          icon="i-lucide-search"
+          color="neutral"
+          variant="outline"
+          block
+        />
+      </div>
       <UNavigationMenu :items="items" orientation="vertical" class="px-3" />
       <div class="lp-real-sidebar-bottom">
         <UNavigationMenu :items="[{ label: 'Suporte', icon: 'i-lucide-message-circle' }, { label: 'Ajuda', icon: 'i-lucide-info' }]" orientation="vertical" class="px-3" />
-        <div class="lp-real-user"><UAvatar text="OD" size="sm" /><span>Oficina demonstração</span><UIcon name="i-lucide-chevrons-up-down" /></div>
+        <div class="lp-real-user">
+          <UAvatar text="OD" size="sm" /><span>Oficina demonstração</span><UIcon name="i-lucide-chevrons-up-down" />
+        </div>
       </div>
     </aside>
     <div class="lp-real-content">
-      <div class="lp-real-navbar"><UIcon name="i-lucide-panel-left-close" /><strong>Ordens de Serviço</strong><UIcon name="i-lucide-bell" /></div>
+      <div class="lp-real-navbar">
+        <UIcon name="i-lucide-panel-left-close" /><strong>Ordens de Serviço</strong><UIcon name="i-lucide-bell" />
+      </div>
       <div class="lp-real-panel">
         <div class="lp-real-toolbar">
           <UInput placeholder="Buscar por número ou cliente..." icon="i-lucide-search" class="w-72" />
-          <UButton label="Filtros" icon="i-lucide-sliders-horizontal" color="neutral" variant="outline" size="sm" />
-          <UButton label="Nova OS" icon="i-lucide-plus" size="sm" class="ml-auto" />
+          <UButton
+            label="Filtros"
+            icon="i-lucide-sliders-horizontal"
+            color="neutral"
+            variant="outline"
+            size="sm"
+          />
+          <UButton
+            label="Nova OS"
+            icon="i-lucide-plus"
+            size="sm"
+            class="ml-auto"
+          />
         </div>
         <div class="lp-real-orders">
-          <OrderCard v-for="order in orders" :key="order.id" :order="order" can-create can-update can-cancel can-delete />
+          <OrderCard
+            v-for="order in orders"
+            :key="order.id"
+            :order="order"
+            can-create
+            can-update
+            can-cancel
+            can-delete
+          />
         </div>
       </div>
     </div>

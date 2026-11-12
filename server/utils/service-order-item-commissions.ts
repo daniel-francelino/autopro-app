@@ -52,7 +52,11 @@ export function computeServiceOrderItemsWithCommissionSnapshots({
   totalTaxesAmount: unknown
   rulesByEmployeeId: Map<string, ResolvedCommissionRule[]>
 }) {
-  const itemEntries = items.map(item => ({
+  const itemEntries = items.map((item): ServiceOrderCommissionItem & {
+    commission_total: number
+    total_commission: number
+    commissions: Record<string, unknown>[]
+  } => ({
     ...item,
     commission_total: 0,
     total_commission: 0,

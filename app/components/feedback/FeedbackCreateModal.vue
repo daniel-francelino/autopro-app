@@ -39,7 +39,9 @@ const state = reactive<Schema>({
 
 const selectedType = ref(FeedbackType.Bug)
 
-watch(selectedType, (val) => { state.type = val })
+watch(selectedType, (val) => {
+  state.type = val
+})
 
 const saving = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
@@ -113,7 +115,9 @@ function resetForm() {
   selectedType.value = FeedbackType.Bug
   state.title = ''
   state.description = ''
-  selectedFiles.value.forEach((f) => { if (f.preview) URL.revokeObjectURL(f.preview) })
+  selectedFiles.value.forEach((f) => {
+    if (f.preview) URL.revokeObjectURL(f.preview)
+  })
   selectedFiles.value = []
 }
 

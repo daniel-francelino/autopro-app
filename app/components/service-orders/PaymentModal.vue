@@ -467,168 +467,168 @@ async function save() {
               Carregando contas e maquininhas...
             </div>
 
-          <div class="rounded-xl border border-default p-4 space-y-4">
-            <p class="text-sm font-medium text-highlighted">
-              Valores padrão das linhas
-            </p>
-            <p class="text-xs text-muted">
-              Usados ao gerar a entrada e as parcelas — cada linha pode ser ajustada individualmente depois.
-            </p>
-
-            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <UFormField label="Conta bancária" required>
-                <USelectMenu
-                  v-model="form.bankAccountId"
-                  :items="bankAccountOptions"
-                  value-key="value"
-                  placeholder="Selecione a conta bancária"
-                  class="w-full"
-                />
-              </UFormField>
-
-              <UFormField label="Data do pagamento" required>
-                <UiDatePicker v-model="form.paymentDate" class="w-full" />
-              </UFormField>
-            </div>
-
-            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <UFormField label="Forma de pagamento" required>
-                <USelectMenu
-                  v-model="form.paymentMethod"
-                  :items="PAYMENT_METHOD_OPTIONS"
-                  value-key="value"
-                  label-key="label"
-                  class="w-full"
-                />
-              </UFormField>
-
-              <UFormField v-if="showTerminalField" label="Maquininha">
-                <USelectMenu
-                  v-model="form.paymentTerminalId"
-                  :items="paymentTerminalOptions"
-                  value-key="value"
-                  placeholder="Selecionar maquininha"
-                  class="w-full"
-                />
-              </UFormField>
-            </div>
-          </div>
-
-          <div class="rounded-xl border border-default p-4 space-y-4">
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p class="text-sm font-medium text-highlighted">
-                  Entrada
-                </p>
-                <p class="text-xs text-muted">
-                  Valor recebido agora, antes de parcelar o restante.
-                </p>
-              </div>
-              <USwitch v-model="form.hasDownPayment" label="Receber entrada" />
-            </div>
-
-            <UFormField v-if="form.hasDownPayment" label="Valor da entrada" required>
-              <UiCurrencyInput v-model="form.downPaymentAmount" class="w-full" />
-            </UFormField>
-          </div>
-
-          <div v-if="remainingAmount > 0" class="rounded-xl border border-default p-4 space-y-4">
-            <div>
+            <div class="rounded-xl border border-default p-4 space-y-4">
               <p class="text-sm font-medium text-highlighted">
-                Parcelamento do restante
+                Valores padrão das linhas
               </p>
               <p class="text-xs text-muted">
-                {{ formatCurrency(remainingAmount) }} a dividir.
+                Usados ao gerar a entrada e as parcelas — cada linha pode ser ajustada individualmente depois.
               </p>
-            </div>
 
-            <UFormField label="Número de parcelas" required>
-              <USelectMenu
-                v-model="form.installmentCount"
-                :items="INSTALLMENT_COUNT_OPTIONS"
-                value-key="value"
-                class="w-full max-w-xs"
-              />
-            </UFormField>
-          </div>
+              <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <UFormField label="Conta bancária" required>
+                  <USelectMenu
+                    v-model="form.bankAccountId"
+                    :items="bankAccountOptions"
+                    value-key="value"
+                    placeholder="Selecione a conta bancária"
+                    class="w-full"
+                  />
+                </UFormField>
 
-          <div class="rounded-xl border border-default p-4 space-y-4">
-            <div
-              class="flex flex-wrap items-center justify-between gap-3 rounded-xl border px-3 py-2 text-sm"
-              :class="rowsMatch ? 'border-success/30 bg-success/5' : 'border-error/30 bg-error/5'"
-            >
-              <div class="flex flex-wrap items-center gap-4">
-                <span class="text-muted">Saldo a receber: <strong class="text-highlighted">{{ formatCurrency(balanceDue) }}</strong></span>
-                <span class="text-muted">Total das linhas: <strong :class="rowsMatch ? 'text-success' : 'text-error'">{{ formatCurrency(rowsTotal) }}</strong></span>
-                <span class="text-muted">Pago agora: <strong class="text-highlighted">{{ paidRowsCount }}</strong></span>
+                <UFormField label="Data do pagamento" required>
+                  <UiDatePicker v-model="form.paymentDate" class="w-full" />
+                </UFormField>
               </div>
-              <UIcon
-                :name="rowsMatch ? 'i-lucide-circle-check-big' : 'i-lucide-circle-alert'"
-                class="size-4 shrink-0"
-                :class="rowsMatch ? 'text-success' : 'text-error'"
-              />
+
+              <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <UFormField label="Forma de pagamento" required>
+                  <USelectMenu
+                    v-model="form.paymentMethod"
+                    :items="PAYMENT_METHOD_OPTIONS"
+                    value-key="value"
+                    label-key="label"
+                    class="w-full"
+                  />
+                </UFormField>
+
+                <UFormField v-if="showTerminalField" label="Maquininha">
+                  <USelectMenu
+                    v-model="form.paymentTerminalId"
+                    :items="paymentTerminalOptions"
+                    value-key="value"
+                    placeholder="Selecionar maquininha"
+                    class="w-full"
+                  />
+                </UFormField>
+              </div>
             </div>
 
-            <div class="space-y-2">
-              <p class="text-xs font-medium uppercase tracking-wide text-muted">
-                Linhas do plano de pagamento
-              </p>
-              <div class="overflow-hidden rounded-xl border border-default">
-                <div
-                  v-for="row in rows"
-                  :key="`${row.kind}-${row.number}`"
-                  class="space-y-2 border-b border-default p-3 last:border-b-0"
-                >
-                  <div class="grid grid-cols-1 gap-2 md:grid-cols-[110px_minmax(0,1fr)_minmax(0,1fr)_140px]">
-                    <div class="flex items-center gap-2 text-sm font-medium text-highlighted">
-                      <UIcon :name="row.kind === 'down_payment' ? 'i-lucide-hand-coins' : 'i-lucide-hash'" class="size-4 text-primary" />
-                      {{ row.kind === 'down_payment' ? 'Entrada' : `${row.number}ª parcela` }}
-                    </div>
-
-                    <UiCurrencyInput v-model="row.amount" class="w-full" />
-
-                    <UiDatePicker v-model="row.due_date" class="w-full" />
-
-                    <USelectMenu
-                      v-if="row.kind === 'installment'"
-                      v-model="row.status"
-                      :items="INSTALLMENT_STATUS_OPTIONS"
-                      value-key="value"
-                      class="w-full"
-                    />
-                  </div>
-
-                  <div class="grid grid-cols-1 gap-2 md:grid-cols-3">
-                    <USelectMenu
-                      v-model="row.paymentMethod"
-                      :items="PAYMENT_METHOD_OPTIONS"
-                      value-key="value"
-                      label-key="label"
-                      class="w-full"
-                    />
-                    <USelectMenu
-                      v-model="row.bankAccountId"
-                      :items="bankAccountOptions"
-                      value-key="value"
-                      placeholder="Conta bancária"
-                      class="w-full"
-                    />
-                    <USelectMenu
-                      v-if="rowShowsTerminal(row)"
-                      v-model="row.paymentTerminalId"
-                      :items="paymentTerminalOptions"
-                      value-key="value"
-                      placeholder="Maquininha"
-                      class="w-full"
-                    />
-                  </div>
+            <div class="rounded-xl border border-default p-4 space-y-4">
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p class="text-sm font-medium text-highlighted">
+                    Entrada
+                  </p>
+                  <p class="text-xs text-muted">
+                    Valor recebido agora, antes de parcelar o restante.
+                  </p>
                 </div>
-                <p v-if="rows.length === 0" class="p-4 text-sm text-muted">
-                  Defina uma entrada ou um número de parcelas para montar o plano de pagamento.
+                <USwitch v-model="form.hasDownPayment" label="Receber entrada" />
+              </div>
+
+              <UFormField v-if="form.hasDownPayment" label="Valor da entrada" required>
+                <UiCurrencyInput v-model="form.downPaymentAmount" class="w-full" />
+              </UFormField>
+            </div>
+
+            <div v-if="remainingAmount > 0" class="rounded-xl border border-default p-4 space-y-4">
+              <div>
+                <p class="text-sm font-medium text-highlighted">
+                  Parcelamento do restante
+                </p>
+                <p class="text-xs text-muted">
+                  {{ formatCurrency(remainingAmount) }} a dividir.
                 </p>
               </div>
+
+              <UFormField label="Número de parcelas" required>
+                <USelectMenu
+                  v-model="form.installmentCount"
+                  :items="INSTALLMENT_COUNT_OPTIONS"
+                  value-key="value"
+                  class="w-full max-w-xs"
+                />
+              </UFormField>
             </div>
-          </div>
+
+            <div class="rounded-xl border border-default p-4 space-y-4">
+              <div
+                class="flex flex-wrap items-center justify-between gap-3 rounded-xl border px-3 py-2 text-sm"
+                :class="rowsMatch ? 'border-success/30 bg-success/5' : 'border-error/30 bg-error/5'"
+              >
+                <div class="flex flex-wrap items-center gap-4">
+                  <span class="text-muted">Saldo a receber: <strong class="text-highlighted">{{ formatCurrency(balanceDue) }}</strong></span>
+                  <span class="text-muted">Total das linhas: <strong :class="rowsMatch ? 'text-success' : 'text-error'">{{ formatCurrency(rowsTotal) }}</strong></span>
+                  <span class="text-muted">Pago agora: <strong class="text-highlighted">{{ paidRowsCount }}</strong></span>
+                </div>
+                <UIcon
+                  :name="rowsMatch ? 'i-lucide-circle-check-big' : 'i-lucide-circle-alert'"
+                  class="size-4 shrink-0"
+                  :class="rowsMatch ? 'text-success' : 'text-error'"
+                />
+              </div>
+
+              <div class="space-y-2">
+                <p class="text-xs font-medium uppercase tracking-wide text-muted">
+                  Linhas do plano de pagamento
+                </p>
+                <div class="overflow-hidden rounded-xl border border-default">
+                  <div
+                    v-for="row in rows"
+                    :key="`${row.kind}-${row.number}`"
+                    class="space-y-2 border-b border-default p-3 last:border-b-0"
+                  >
+                    <div class="grid grid-cols-1 gap-2 md:grid-cols-[110px_minmax(0,1fr)_minmax(0,1fr)_140px]">
+                      <div class="flex items-center gap-2 text-sm font-medium text-highlighted">
+                        <UIcon :name="row.kind === 'down_payment' ? 'i-lucide-hand-coins' : 'i-lucide-hash'" class="size-4 text-primary" />
+                        {{ row.kind === 'down_payment' ? 'Entrada' : `${row.number}ª parcela` }}
+                      </div>
+
+                      <UiCurrencyInput v-model="row.amount" class="w-full" />
+
+                      <UiDatePicker v-model="row.due_date" class="w-full" />
+
+                      <USelectMenu
+                        v-if="row.kind === 'installment'"
+                        v-model="row.status"
+                        :items="INSTALLMENT_STATUS_OPTIONS"
+                        value-key="value"
+                        class="w-full"
+                      />
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-2 md:grid-cols-3">
+                      <USelectMenu
+                        v-model="row.paymentMethod"
+                        :items="PAYMENT_METHOD_OPTIONS"
+                        value-key="value"
+                        label-key="label"
+                        class="w-full"
+                      />
+                      <USelectMenu
+                        v-model="row.bankAccountId"
+                        :items="bankAccountOptions"
+                        value-key="value"
+                        placeholder="Conta bancária"
+                        class="w-full"
+                      />
+                      <USelectMenu
+                        v-if="rowShowsTerminal(row)"
+                        v-model="row.paymentTerminalId"
+                        :items="paymentTerminalOptions"
+                        value-key="value"
+                        placeholder="Maquininha"
+                        class="w-full"
+                      />
+                    </div>
+                  </div>
+                  <p v-if="rows.length === 0" class="p-4 text-sm text-muted">
+                    Defina uma entrada ou um número de parcelas para montar o plano de pagamento.
+                  </p>
+                </div>
+              </div>
+            </div>
           </template>
         </template>
       </div>

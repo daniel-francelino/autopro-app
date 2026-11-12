@@ -201,8 +201,9 @@ const canManageUserLinks = computed(() =>
 const availableUsers = computed(() => {
   if (!role.value) return []
 
+  const currentRoleId = role.value.id
   return organizationUsers.value.filter(
-    user => user.role_id !== role.value.id
+    user => user.role_id !== currentRoleId
   )
 })
 
@@ -337,6 +338,7 @@ async function removeUserLink(userId: string) {
 async function saveRole() {
   if (isSaveDisabled.value || !role.value) return
 
+  const roleId = role.value.id
   isSaving.value = true
 
   try {
@@ -359,7 +361,7 @@ async function saveRole() {
 
       await Promise.all(
         changedActions.map(action =>
-          $fetch(`/api/roles/${role.value.id}/actions`, {
+          $fetch(`/api/roles/${roleId}/actions`, {
             method: 'POST',
             body: {
               action_id: action.id,

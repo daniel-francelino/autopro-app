@@ -340,7 +340,12 @@ function linkedEntryStatus(status: string) {
                 Categoria
               </dt>
               <dd class="mt-0.5 flex items-center gap-1.5 text-sm text-highlighted">
-                <UIcon :name="categoryIcon" class="size-3.5" :class="!categoryIconStyle && 'text-muted'" :style="categoryIconStyle" />
+                <UIcon
+                  :name="categoryIcon"
+                  class="size-3.5"
+                  :class="!categoryIconStyle && 'text-muted'"
+                  :style="categoryIconStyle"
+                />
                 {{ categoryLabel }}
               </dd>
             </div>

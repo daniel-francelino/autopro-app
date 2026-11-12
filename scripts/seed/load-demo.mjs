@@ -19,7 +19,7 @@ if (!existsSync(join(dir, 'demo.sql.gz'))) {
   process.exit(1)
 }
 
-const env = Object.fromEntries(readFileSync(envFile, 'utf8').split(String.fromCharCode(10)).filter((l) => /^[A-Z_]+=/.test(l)).map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1).trim()]))
+const env = Object.fromEntries(readFileSync(envFile, 'utf8').split(String.fromCharCode(10)).filter(l => /^[A-Z_]+=/.test(l)).map(l => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1).trim()]))
 const GATEWAY = `http://127.0.0.1:${env.GATEWAY_PORT}`
 const meta = JSON.parse(readFileSync(join(dir, 'demo.meta.json'), 'utf8'))
 const orgId = meta.organizationId
@@ -40,7 +40,10 @@ if (psql.status !== 0) {
 }
 
 const db = createClient(GATEWAY, env.SERVICE_ROLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } })
-const must = (r, what) => { if (r.error) throw new Error(`${what}: ${r.error.message}`); return r.data }
+const must = (r, what) => {
+  if (r.error) throw new Error(`${what}: ${r.error.message}`)
+  return r.data
+}
 
 // Papel "admin" de sistema (é o que o servidor reconhece como administrador da oficina).
 let admin = (await db.from('roles').select('id').eq('organization_id', orgId).eq('name', 'admin').maybeSingle()).data
@@ -54,12 +57,15 @@ const users = [
 ]
 for (const u of users) {
   const list = await db.auth.admin.listUsers({ perPage: 1000 })
-  const old = list.data?.users.find((x) => x.email === u.email)
-  if (old) { await db.from('user_profiles').delete().eq('user_id', old.id); await db.auth.admin.deleteUser(old.id) }
+  const old = list.data?.users.find(x => x.email === u.email)
+  if (old) {
+    await db.from('user_profiles').delete().eq('user_id', old.id)
+    await db.auth.admin.deleteUser(old.id)
+  }
   const created = await db.auth.admin.createUser({ email: u.email, password: PASSWORD, email_confirm: true, user_metadata: { name: u.name } })
   if (created.error) throw new Error(`usuário ${u.email}: ${created.error.message}`)
   must(await db.from('user_profiles').insert({ user_id: created.data.user.id, organization_id: orgId, role_id: u.roleId, display_name: u.name, is_active: true }).select('id').single(), `perfil ${u.email}`)
 }
 
 console.log(`Pronto. Oficina demo: ${orgId}`)
-console.table(users.map((u) => ({ login: u.email, senha: PASSWORD, papel: u.roleId === admin.id ? 'admin' : limited?.name })))
+console.table(users.map(u => ({ login: u.email, senha: PASSWORD, papel: u.roleId === admin.id ? 'admin' : limited?.name })))

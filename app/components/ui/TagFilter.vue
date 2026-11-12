@@ -85,7 +85,12 @@ const unresolvedSelectionCount = computed(() => props.modelValue.length - select
             size="xs"
             class="gap-1"
           >
-            <UIcon v-if="opt.icon" :name="opt.icon" class="size-3" :style="isHexColor(opt.color) ? { color: opt.color } : undefined" />
+            <UIcon
+              v-if="opt.icon"
+              :name="opt.icon"
+              class="size-3"
+              :style="isHexColor(opt.color) ? { color: opt.color } : undefined"
+            />
             {{ opt.label }}
           </UBadge>
         </template>
@@ -141,7 +146,12 @@ const unresolvedSelectionCount = computed(() => props.modelValue.length - select
             size="sm"
             class="gap-1 shrink-0"
           >
-            <UIcon v-if="opt.icon" :name="opt.icon" class="size-3" :style="isHexColor(opt.color) ? { color: opt.color } : undefined" />
+            <UIcon
+              v-if="opt.icon"
+              :name="opt.icon"
+              class="size-3"
+              :style="isHexColor(opt.color) ? { color: opt.color } : undefined"
+            />
             {{ opt.label }}
           </UBadge>
           <UIcon

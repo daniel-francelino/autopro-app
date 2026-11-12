@@ -59,7 +59,9 @@ const paginatedCategories = computed(() => {
   return filteredCategories.value.slice(start, start + pageSize.value)
 })
 
-watch(search, () => { page.value = 1 })
+watch(search, () => {
+  page.value = 1
+})
 
 const typeLabel: Record<Category['type'], string> = { income: 'Entrada', expense: 'Saída' }
 const typeIcon: Record<Category['type'], string> = { income: 'i-lucide-trending-up', expense: 'i-lucide-trending-down' }

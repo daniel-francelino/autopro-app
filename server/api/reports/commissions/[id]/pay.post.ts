@@ -49,7 +49,7 @@ export default defineEventHandler(async (event) => {
   const requestedAccountId = body?.bankAccountId ? String(body.bankAccountId) : null
   const paymentDate = normalizeIsoDateOrNull(body?.paymentDate) || new Date().toISOString().split('T')[0]
 
-  let bankAccount: { id: string, current_balance: number | string | null } | null = null
+  let bankAccount: { id: string, current_balance: number | string | null }
 
   if (requestedAccountId) {
     const { data: account } = await supabase

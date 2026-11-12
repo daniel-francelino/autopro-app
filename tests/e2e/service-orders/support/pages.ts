@@ -122,6 +122,7 @@ export class OrderForm {
     const box = this.row(index).getByRole('textbox').nth(field === 'sale' ? 1 : 2)
     await box.fill(value.toFixed(2).replace('.', ','))
   }
+
   async removeItem(index: number) { await this.row(index).locator('button:has([class~="i-lucide:trash-2"])').click() }
 
   async addResponsible(employee: EmployeeRef) {
@@ -139,6 +140,7 @@ export class OrderForm {
     await p.waitFor({ timeout: 10_000 })
     return parseBRL(await p.locator('xpath=following::p[1]').textContent({ timeout: 10_000 }))
   }
+
   async margin(): Promise<number> { return parseBRL(await this.dialog.getByRole('textbox', { name: 'Margem estimada' }).inputValue()) }
 
   async submit() { await this.submitButton().click() }

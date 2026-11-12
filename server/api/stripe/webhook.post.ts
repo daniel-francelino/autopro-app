@@ -203,7 +203,7 @@ async function handleCheckoutCompleted(
       return
     }
 
-    organizationId = org.id
+    organizationId = org.id as string
     track('org_created', { userId: profile.user_id as string, organizationId: org.id })
   }
 

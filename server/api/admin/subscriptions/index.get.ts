@@ -47,7 +47,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 500, statusMessage: 'Erro ao listar assinaturas' })
   }
 
-  const orgIds = [...new Set((data || []).map((s: { organization_id: string | null }) => s.organization_id).filter(Boolean))]
+  const orgIds = [...new Set((data || []).map((s: { organization_id: string | null }) => s.organization_id).filter(Boolean) as string[])]
   const orgNameMap: Record<string, string> = {}
 
   if (orgIds.length > 0) {

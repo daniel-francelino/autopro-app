@@ -11,7 +11,7 @@ import { requireAuthUser } from '../../utils/require-auth'
 
 const schema = z.object({
   name: z.string().min(2, 'Razão social deve ter ao menos 2 caracteres'),
-  person_type: z.enum(['pf', 'pj'], { errorMap: () => ({ message: 'Selecione pessoa física ou jurídica' }) }),
+  person_type: z.enum(['pf', 'pj'], { error: 'Selecione pessoa física ou jurídica' }),
   tax_id: z.string().optional().nullable(),
   phone: z.string().min(8, 'Telefone inválido'),
   whatsapp: z.string().optional().nullable(),
@@ -34,7 +34,7 @@ export default defineEventHandler(async (event) => {
   if (!parsed.success) {
     throw createError({
       statusCode: 400,
-      statusMessage: parsed.error.errors[0]?.message || 'Dados inválidos'
+      statusMessage: parsed.error.issues[0]?.message || 'Dados inválidos'
     })
   }
 

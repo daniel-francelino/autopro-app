@@ -71,8 +71,8 @@ const detailLoading = ref(false)
 const detailData = ref<CostCategoryDetailData | null>(null)
 const selectedCategory = ref('')
 
-const sortByParam = useReportQueryParam('sortBy', 'amount')
-const sortOrderParam = useReportQueryParam('sortOrder', 'desc')
+const sortByParam = useReportQueryParam<string>('sortBy', 'amount')
+const sortOrderParam = useReportQueryParam<string>('sortOrder', 'desc')
 const sorting = computed<SortingState>({
   get: () => [{ id: sortByParam.value, desc: sortOrderParam.value !== 'asc' }],
   set: (val) => {

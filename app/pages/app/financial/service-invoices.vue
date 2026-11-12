@@ -101,7 +101,10 @@ async function syncQuery() {
 
 watch(() => route.query, (q) => {
   const ns = typeof q.search === 'string' ? q.search : ''
-  if (search.value !== ns) { search.value = ns; debouncedSearch.value = ns }
+  if (search.value !== ns) {
+    search.value = ns
+    debouncedSearch.value = ns
+  }
   const np = parsePage(q.page)
   if (page.value !== np) page.value = np
   const nps = parsePageSize(q.pageSize)
@@ -120,8 +123,14 @@ watch(page, async () => {
   if (page.value > totalPages.value && totalPages.value > 0) page.value = totalPages.value
   await syncQuery()
 })
-watch(pageSize, async () => { page.value = 1; await syncQuery() })
-watch(statusFilter, async () => { page.value = 1; await syncQuery() })
+watch(pageSize, async () => {
+  page.value = 1
+  await syncQuery()
+})
+watch(statusFilter, async () => {
+  page.value = 1
+  await syncQuery()
+})
 
 async function submitSearch(value: string) {
   search.value = value
@@ -156,8 +165,12 @@ const STATUS_OPTIONS = [
   { label: 'Cancelada', value: 'cancelled' }
 ]
 
-function statusLabel(s: string) { return STATUS_LABEL[s] ?? s }
-function statusColor(s: string): BadgeColor { return STATUS_COLOR[s] ?? 'neutral' }
+function statusLabel(s: string) {
+  return STATUS_LABEL[s] ?? s
+}
+function statusColor(s: string): BadgeColor {
+  return STATUS_COLOR[s] ?? 'neutral'
+}
 
 function formatDate(val: string | null) {
   if (!val) return '—'
@@ -338,6 +351,4 @@ function requestEmail(row: NfseRow) {
     :nfse="nfseForEmail"
     @update:open="(v) => { showEmailModal = v; if (!v) nfseForEmail = null }"
   />
-
-
 </template>

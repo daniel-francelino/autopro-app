@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
   const dateTo = parseDateEnd(query.dateTo as string)
   const categoryRaw = query.category && query.category !== 'all' ? String(query.category) : null
   const categoryIdsFromParam = categoryRaw && categoryRaw.includes(',') ? categoryRaw.split(',').map((v: string) => v.trim()).filter(Boolean) : []
-  const categoryIds = qArr(query.categoryIds)
+  const categoryIds = qArr(query.categoryIds as string | string[] | undefined)
   const combinedCategoryIds = categoryIds.length > 0 ? categoryIds : categoryIdsFromParam
   const categoryFilter = combinedCategoryIds.length === 0 && categoryRaw ? categoryRaw : null
   const statusFilters = normalizeStatusFilters(query.status)

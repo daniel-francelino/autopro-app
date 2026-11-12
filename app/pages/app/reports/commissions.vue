@@ -51,8 +51,8 @@ const commissionStatus = useReportQueryParam('commissionStatus', [] as string[])
 const recordType = useReportQueryParam('recordType', [] as string[])
 
 // Pagination / sorting
-const sortByParam = useReportQueryParam('sortBy', 'reference_date')
-const sortOrderParam = useReportQueryParam('sortOrder', 'desc')
+const sortByParam = useReportQueryParam<string>('sortBy', 'reference_date')
+const sortOrderParam = useReportQueryParam<string>('sortOrder', 'desc')
 const sorting = computed<SortingState>({
   get: () => [{ id: sortByParam.value, desc: sortOrderParam.value !== 'asc' }],
   set: (val) => {

@@ -91,7 +91,7 @@ export function buildTimeSlots(): string[] {
  */
 export function minuteFromStart(time: string): number {
   const [hh, mm] = time.split(':').map(Number)
-  const totalMinutes = hh * 60 + (mm ?? 0)
+  const totalMinutes = (hh ?? 0) * 60 + (mm ?? 0)
   return (totalMinutes / SLOT_MINUTES) * SLOT_HEIGHT_PX
 }
 

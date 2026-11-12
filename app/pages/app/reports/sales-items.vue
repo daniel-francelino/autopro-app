@@ -117,8 +117,8 @@ const exportItems = computed(() => [[
   }
 ]])
 
-const sortByParam = useReportQueryParam('sortBy', 'totalValue')
-const sortOrderParam = useReportQueryParam('sortOrder', 'desc')
+const sortByParam = useReportQueryParam<string>('sortBy', 'totalValue')
+const sortOrderParam = useReportQueryParam<string>('sortOrder', 'desc')
 const sorting = computed<SortingState>({
   get: () => [{ id: sortByParam.value, desc: sortOrderParam.value !== 'asc' }],
   set: (val) => {

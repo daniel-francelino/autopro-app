@@ -7,7 +7,12 @@ const scale = computed(() => width.value / 1120)
 </script>
 
 <template>
-  <div ref="viewport" class="lp-preview-viewport" role="img" aria-label="Prévia da tela de Ordens de Serviço: menu lateral, busca, filtros e cartões com cliente, veículo, status, pagamento, responsáveis e valor. Todos os dados são fictícios.">
+  <div
+    ref="viewport"
+    class="lp-preview-viewport"
+    role="img"
+    aria-label="Prévia da tela de Ordens de Serviço: menu lateral, busca, filtros e cartões com cliente, veículo, status, pagamento, responsáveis e valor. Todos os dados são fictícios."
+  >
     <div class="lp-preview-canvas" :style="{ transform: `scale(${scale})` }">
       <LandingServiceOrdersScreen />
     </div>

@@ -3,7 +3,8 @@
 import { expect, type Locator, type Page } from '@playwright/test'
 import { idOf, type ClientRef, type VehicleRef } from './catalog'
 import { test as base, type Shop, type World } from './order-fixtures'
-import { clickUntil, OrdersPage } from './pages'
+import type { OrdersPage } from './pages'
+import { clickUntil } from './pages'
 
 export const NL = String.fromCharCode(10)
 let seq = 0
@@ -36,7 +37,7 @@ export async function expectCards(page: Page, expected: string[]) {
 }
 
 export type AdvanceKind = 'Abrir OS' | 'Iniciar' | 'Concluir'
-const ADVANCE_ICON: Record<AdvanceKind, string> = { 'Abrir OS': 'circle-dot', Iniciar: 'wrench', Concluir: 'circle-check' }
+const ADVANCE_ICON: Record<AdvanceKind, string> = { 'Abrir OS': 'circle-dot', 'Iniciar': 'wrench', 'Concluir': 'circle-check' }
 /** Botão de avançar status do card (só ícone). */
 export function advanceButton(orders: OrdersPage, number: string, kind: AdvanceKind): Locator {
   return orders.card(number).locator(`button:has([class~="i-lucide:${ADVANCE_ICON[kind]}"])`)
@@ -45,8 +46,8 @@ export function advanceButton(orders: OrdersPage, number: string, kind: AdvanceK
 const STATUS_LABEL = ['Orçamento', 'Aberta', 'Em andamento', 'Aguard. peça', 'Concluída', 'Faturada', 'Entregue', 'Cancelada'] as const
 export type StatusLabel = typeof STATUS_LABEL[number]
 export const STATUS_BY_LABEL: Record<StatusLabel, string> = {
-  Orçamento: 'estimate', Aberta: 'open', 'Em andamento': 'in_progress', 'Aguard. peça': 'waiting_for_part',
-  Concluída: 'completed', Faturada: 'invoiced', Entregue: 'delivered', Cancelada: 'cancelled'
+  'Orçamento': 'estimate', 'Aberta': 'open', 'Em andamento': 'in_progress', 'Aguard. peça': 'waiting_for_part',
+  'Concluída': 'completed', 'Faturada': 'invoiced', 'Entregue': 'delivered', 'Cancelada': 'cancelled'
 }
 export const ALL_STATUS_LABELS = [...STATUS_LABEL]
 
@@ -69,12 +70,14 @@ export class ListFilters {
     await this.selectOf('Status').click()
     await this.page.getByRole('option', { name: label, exact: true }).click()
   }
+
   async chooseSearchable(field: 'Cliente' | 'Veículo' | 'Responsável', search: string, optionName: string | RegExp) {
     await this.open()
     await this.selectOf(field).click()
     await this.page.getByRole('textbox').last().fill(search)
     await this.page.getByRole('option', { name: optionName }).first().click()
   }
+
   async clear() {
     await this.open()
     await this.page.getByRole('button', { name: 'Limpar' }).click()

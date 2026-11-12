@@ -12,7 +12,9 @@ const props = withDefaults(defineProps<{
 const open = ref(false)
 const hexInput = ref(modelValue.value)
 
-watch(modelValue, (value) => { hexInput.value = value })
+watch(modelValue, (value) => {
+  hexInput.value = value
+})
 
 function applyHexInput() {
   const value = hexInput.value.trim()

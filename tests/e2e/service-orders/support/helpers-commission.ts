@@ -2,7 +2,8 @@
 import { expect, type Locator } from '@playwright/test'
 import type { Catalog, EmployeeRef, ProductRef } from './catalog'
 import type { Shop } from './order-fixtures'
-import { OrderForm, OrdersPage, PaymentDialog, clickUntil, parseBRL } from './pages'
+import type { OrderForm, OrdersPage } from './pages'
+import { PaymentDialog, clickUntil, parseBRL } from './pages'
 
 export type ItemInput = ProductRef | { manual: true, qty?: number } | { p: ProductRef, qty: number }
 export type CommissionNote = 'Por regra/categoria' | 'Sem itens elegíveis' | 'Sem comissão'
@@ -85,7 +86,6 @@ export function snapshotCommission(row: Record<string, any>, employee: EmployeeR
 }
 
 // ── payment helpers (OS-I): the receipt is always made through the screen ──────────────────────────────────
-
 
 /**
  * Opens the order detail, clicks "Receber" and confirms the payment plan.

@@ -31,7 +31,7 @@ export default defineEventHandler(async (event) => {
   } = body
 
   const productCode = code === undefined ? undefined : Number(code)
-  if (code !== undefined && (!Number.isSafeInteger(productCode) || productCode <= 0))
+  if (code !== undefined && (!Number.isSafeInteger(productCode) || productCode! <= 0))
     throw createError({ statusCode: 400, statusMessage: 'O código do produto deve ser um número inteiro positivo' })
 
   const { data: item, error } = await supabase

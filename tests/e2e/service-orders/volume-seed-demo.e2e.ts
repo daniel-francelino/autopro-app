@@ -3,8 +3,8 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { E2E } from '../support/env'
-import { authSkipReason } from '../support/env'
+import { E2E, authSkipReason } from '../support/env'
+
 import { loginViaApi, type TestUser } from '../support/auth-fixtures'
 import { cardNumbers, expect, ListFilters, test } from './support/helpers-list'
 import { OrdersPage, parseBRL } from './support/pages'

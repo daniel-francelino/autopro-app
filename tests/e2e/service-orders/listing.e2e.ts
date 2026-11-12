@@ -193,7 +193,7 @@ test.describe('OS-A: list, search and filters', () => {
     await slowExpect.poll(async () => (await cardNumbers(page)).includes(b.number)).toBe(true)
   })
 
-  test("OS-A-09 client name search ignores accents and case (José d'Ávila); by plate and phone finds nothing (characterization)", async ({ page, loginAs, shop }) => {
+  test('OS-A-09 client name search ignores accents and case (José d\'Ávila); by plate and phone finds nothing (characterization)', async ({ page, loginAs, shop }) => {
     const c = shop.catalog
     const order = await shop.createOrder({ client: c.clients.c3, vehicle: null, items: [{ p: c.products.S2 }] })
     const withPlate = await shop.createOrder({ client: c.clients.c1, vehicle: c.vehicles.v1, items: [{ p: c.products.S2 }] })
@@ -207,7 +207,7 @@ test.describe('OS-A: list, search and filters', () => {
     await slowExpect.poll(async () => (await cardNumbers(page)).includes(order.number)).toBe(true)
     await buscar(c.clients.c3.name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')) // sem acento e minúsculo
     await slowExpect.poll(async () => (await cardNumbers(page)).includes(order.number)).toBe(true)
-    await buscar("d'avila")
+    await buscar('d\'avila')
     await slowExpect.poll(async () => (await cardNumbers(page)).includes(order.number)).toBe(true)
     // caracterização: a busca da lista cobre só número e nome do cliente
     await buscar(c.vehicles.v1.plate)
@@ -223,7 +223,7 @@ test.describe('OS-A: list, search and filters', () => {
     const orders = new OrdersPage(page)
     await orders.open()
     const statuses: number[] = []
-    for (const termo of ['%', '_', ',', ')', '(', '"', '*', '\\', "'; drop table service_orders; --", '.*']) {
+    for (const termo of ['%', '_', ',', ')', '(', '"', '*', '\\', '\'; drop table service_orders; --', '.*']) {
       const [response] = await Promise.all([
         page.waitForResponse(r => r.url().includes('/api/service-orders') && r.request().method() === 'GET' && r.url().includes('searchTerm='), { timeout: 45_000 }),
         orders.search().fill(termo)
