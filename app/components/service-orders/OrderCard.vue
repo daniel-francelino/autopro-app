@@ -8,6 +8,8 @@ const props = defineProps<{
   canDelete?: boolean
   canCreate?: boolean
   canUpdate?: boolean
+  /** receber dinheiro (parcela, entrada, extra): exige orders.pay (D4) */
+  canReceive?: boolean
   isAdvancing?: boolean
   isEditing?: boolean
   isDuplicating?: boolean
@@ -99,6 +101,7 @@ const canEdit = computed(() =>
 )
 const canPay = computed(() =>
   props.canUpdate
+  && props.canReceive
   && props.order.payment_status === 'pending'
   && props.order.status === 'completed'
   && !props.order.installments_progress
@@ -106,6 +109,7 @@ const canPay = computed(() =>
 
 const canReceiveDownPayment = computed(() =>
   props.canUpdate
+  && props.canReceive
   && ['open', 'in_progress', 'waiting_for_part'].includes(props.order.status)
 )
 

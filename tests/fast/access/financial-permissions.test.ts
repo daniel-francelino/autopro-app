@@ -111,7 +111,12 @@ describe('S2 / KF-09: user without financial role does not touch money', () => {
     'financial/pay-entries-bulk',
     'financial/pay-commissions-bulk',
     'reports/commissions/:id/pay',
-    'financial/:id (excluir)'
+    'financial/:id (excluir)',
+    // Fase 6: recebimento exige orders.pay; cancelar exige orders.cancel
+    'service-orders/:id/down-payment',
+    'service-orders/:id/process-payment',
+    'service-orders/:id/receive-extra-payment',
+    'service-orders/:id/cancel'
   ])
   for (const r of MONEY_ROUTES.filter(x => x.name !== 'purchases/:id/pay')) {
     const test = GUARDED.has(r.name) ? it : it.fails
@@ -151,6 +156,9 @@ describe('S3: organization_id coming from the client is ignored', () => {
     expect(balanceB()).toBe(50)
   })
   it('body.organization_id=org-b in the one-off receipt is stored in the session org A', async () => {
+    // a rota exige orders.pay (Fase 6): o papel de teste recebe o código para chegar à regra de organização
+    fake.tables.actions!.push({ id: 'act-op', code: 'orders.pay', deleted_at: null })
+    fake.tables.role_actions!.push({ role_id: 'r-operador', action_id: 'act-op', is_granted: true })
     const res = await callHandler(`${SO}/receive-extra-payment.post.ts`, fakeEvent({ method: 'POST', cookies, params: { id: 'o1' }, body: { amount: 10, bankAccountId: 'acc-a', paymentMethod: 'pix', organization_id: 'org-b' } }))
     expect(res.status).toBe(200)
     const created = [...fake.tables.service_order_installments!, ...fake.tables.financial_transactions!.filter(t => t.service_order_id === 'o1')]

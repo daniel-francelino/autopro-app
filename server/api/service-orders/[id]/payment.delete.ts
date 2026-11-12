@@ -3,6 +3,7 @@ import { getSupabaseAdminClient } from '../../../utils/supabase'
 import { revertStatementOnAccount } from '../../../utils/bank-balance'
 import { requireAuthUser } from '../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../utils/organization'
+import { requireOrgPermission } from '../../../utils/require-org-permission'
 import { recordAudit } from '../../../utils/audit/record'
 import { recalculateServiceOrderPaymentStatus } from '../../../utils/service-order-payment-status'
 import { softDeleteFinancialTransaction, FINANCIAL_TRANSACTION_DELETION_SOURCES } from '../../../utils/financial-transaction-deletion'
@@ -13,6 +14,7 @@ import { softDeleteFinancialTransaction, FINANCIAL_TRANSACTION_DELETION_SOURCES 
  */
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
+  await requireOrgPermission(authUser.id, 'orders.cancel', event)
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 

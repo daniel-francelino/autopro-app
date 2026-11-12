@@ -3,6 +3,7 @@ import { getSupabaseAdminClient } from '../../utils/supabase'
 import { revertStatementOnAccount } from '../../utils/bank-balance'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
+import { requireOrgPermission } from '../../utils/require-org-permission'
 import { recordAudit } from '../../utils/audit/record'
 import { softDeleteFinancialTransaction, FINANCIAL_TRANSACTION_DELETION_SOURCES } from '../../utils/financial-transaction-deletion'
 
@@ -12,6 +13,7 @@ import { softDeleteFinancialTransaction, FINANCIAL_TRANSACTION_DELETION_SOURCES 
  */
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
+  await requireOrgPermission(authUser.id, 'orders.delete', event)
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
@@ -68,7 +70,19 @@ export default defineEventHandler(async (event) => {
     .eq('record_type', 'commission')
     .eq('organization_id', organizationId)
 
+  // D5: ids/valores removidos, gravados na auditoria da requisição.
+  const removedCommissions: Array<Record<string, unknown>> = []
+  const removedInstallments: Array<Record<string, unknown>> = []
+  const removedTransactions: Array<Record<string, unknown>> = []
+
   for (const commission of commissions || []) {
+    removedCommissions.push({
+      id: commission.id,
+      employee_id: commission.employee_id ?? null,
+      amount: commission.amount ?? null,
+      status: commission.status ?? null,
+      financial_transaction_id: commission.financial_transaction_id ?? null
+    })
     if (commission.financial_transaction_id) {
       await deleteStatementsAndRevert(commission.financial_transaction_id)
       const { error } = await softDeleteFinancialTransaction({
@@ -79,7 +93,10 @@ export default defineEventHandler(async (event) => {
         source: FINANCIAL_TRANSACTION_DELETION_SOURCES.SERVICE_ORDER_DELETE,
         userEmail: authUser.email
       })
-      if (!error) deletedTransactions++
+      if (!error) {
+        deletedTransactions++
+        removedTransactions.push({ id: commission.financial_transaction_id, origin: 'commission' })
+      }
     }
     await supabase.from('employee_financial_records').delete().eq('id', commission.id)
     deletedCommissions++
@@ -93,6 +110,12 @@ export default defineEventHandler(async (event) => {
     .eq('organization_id', organizationId)
 
   for (const installment of installments || []) {
+    removedInstallments.push({
+      id: installment.id,
+      amount: installment.amount ?? null,
+      status: installment.status ?? null,
+      financial_transaction_id: installment.financial_transaction_id ?? null
+    })
     if (installment.financial_transaction_id) {
       await deleteStatementsAndRevert(installment.financial_transaction_id)
       const { error } = await softDeleteFinancialTransaction({
@@ -103,7 +126,10 @@ export default defineEventHandler(async (event) => {
         source: FINANCIAL_TRANSACTION_DELETION_SOURCES.SERVICE_ORDER_DELETE,
         userEmail: authUser.email
       })
-      if (!error) deletedTransactions++
+      if (!error) {
+        deletedTransactions++
+        removedTransactions.push({ id: installment.financial_transaction_id, origin: 'installment' })
+      }
     }
     await supabase.from('service_order_installments').delete().eq('id', installment.id)
     deletedInstallments++
@@ -112,7 +138,7 @@ export default defineEventHandler(async (event) => {
   // 3. Delete financial entries directly linked to the order
   const { data: directTransactions } = await supabase
     .from('financial_transactions')
-    .select('id')
+    .select('id, amount, type')
     .eq('service_order_id', orderId)
     .eq('organization_id', organizationId)
     .is('deleted_at', null)
@@ -127,7 +153,10 @@ export default defineEventHandler(async (event) => {
       source: FINANCIAL_TRANSACTION_DELETION_SOURCES.SERVICE_ORDER_DELETE,
       userEmail: authUser.email
     })
-    if (!error) deletedTransactions++
+    if (!error) {
+      deletedTransactions++
+      removedTransactions.push({ id: tx.id, amount: tx.amount ?? null, type: tx.type ?? null, origin: 'direct' })
+    }
   }
 
   // 4. Soft-delete the order
@@ -143,7 +172,10 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 500, statusMessage: `Failed to delete service order: ${deleteError.message}` })
   }
 
-  recordAudit(event, { before: order as Record<string, unknown>, extra: { deleted: { statements: deletedStatements, transactions: deletedTransactions, commissions: deletedCommissions, installments: deletedInstallments } } })
+  recordAudit(event, { before: order as Record<string, unknown>, extra: {
+    deleted: { statements: deletedStatements, transactions: deletedTransactions, commissions: deletedCommissions, installments: deletedInstallments },
+    removed: { commissions: removedCommissions, installments: removedInstallments, financial_transactions: removedTransactions }
+  } })
 
   return {
     data: {

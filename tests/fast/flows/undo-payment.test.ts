@@ -25,6 +25,16 @@ const UNDO = 'server/api/service-orders/[id]/payment.delete.ts'
 beforeEach(() => {
   fake = createFakeSupabase({
     user_profiles: [{ id: 'p1', user_id: 'u1', organization_id: 'org-a', role_id: 'r', is_owner: false, is_active: true, employee_id: null }],
+    // role r com orders.pay (process-payment) e orders.cancel (payment.delete, financial-transactions/*.delete): guards da Fase 6
+    roles: [{ id: 'r', name: 'operador', is_system_role: false }],
+    actions: [
+      { id: 'act-op', code: 'orders.pay', deleted_at: null },
+      { id: 'act-oc', code: 'orders.cancel', deleted_at: null }
+    ],
+    role_actions: [
+      { role_id: 'r', action_id: 'act-op', is_granted: true },
+      { role_id: 'r', action_id: 'act-oc', is_granted: true }
+    ],
     service_orders: [{ id: 'o1', organization_id: 'org-a', number: 'OS1', status: 'completed', total_amount: 300, payment_status: 'pending', deleted_at: null }],
     service_order_installments: [],
     bank_accounts: [{ id: 'acc', organization_id: 'org-a', current_balance: 1000 }],

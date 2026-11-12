@@ -28,10 +28,16 @@ function seed() {
       { id: 'p1', user_id: 'u1', organization_id: 'org-a', role_id: 'r', is_owner: false, is_active: true, employee_id: null },
       { id: 'p2', user_id: 'u2', organization_id: 'org-b', role_id: 'r', is_owner: false, is_active: true, employee_id: null }
     ],
-    // role r com financial.update: exigido por financial/:id/pay (guard da Fase 5)
+    // role r com financial.update (financial/:id/pay, Fase 5) e orders.pay (process-payment, Fase 6)
     roles: [{ id: 'r', name: 'operador', is_system_role: false }],
-    actions: [{ id: 'act-fu', code: 'financial.update', deleted_at: null }],
-    role_actions: [{ role_id: 'r', action_id: 'act-fu', is_granted: true }],
+    actions: [
+      { id: 'act-fu', code: 'financial.update', deleted_at: null },
+      { id: 'act-op', code: 'orders.pay', deleted_at: null }
+    ],
+    role_actions: [
+      { role_id: 'r', action_id: 'act-fu', is_granted: true },
+      { role_id: 'r', action_id: 'act-op', is_granted: true }
+    ],
     service_orders: [
       { id: 'o1', organization_id: 'org-a', number: 'OS1', status: 'completed', total_amount: 300, payment_status: 'pending', deleted_at: null },
       { id: 'o-open', organization_id: 'org-a', number: 'OS2', status: 'open', total_amount: 100, payment_status: 'pending', deleted_at: null },
@@ -158,8 +164,7 @@ describe('process-payment: validations and isolation', () => {
     const r = await callHandler(PROCESS, fakeEvent({ method: 'POST', params: { id: 'o1' }, body }))
     expect(r.status).toBe(401)
   })
-  it.fails('M4: employee without OS permission should not receive payment (R2)', async () => {
-    // Hoje o handler só usa resolveOrganizationId; não chama requireOrgPermission.
+  it('M4: employee without OS permission should not receive payment (R2)', async () => {
     fake.tables.user_profiles![0]!.role_id = null
     fake.tables.user_profiles![0]!.is_owner = false
     const r = await processPayment('o1', body)

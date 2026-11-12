@@ -2,6 +2,7 @@ import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../../../utils/supabase'
 import { requireAuthUser } from '../../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../../utils/organization'
+import { requireOrgPermission } from '../../../../utils/require-org-permission'
 import { recordAudit } from '../../../../utils/audit/record'
 import { FINANCIAL_TRANSACTION_DELETION_SOURCES } from '../../../../utils/financial-transaction-deletion'
 import { reverseServiceOrderReceipt } from '../../../../utils/service-order-receipt-reversal'
@@ -18,6 +19,7 @@ import { reverseServiceOrderReceipt } from '../../../../utils/service-order-rece
  */
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
+  await requireOrgPermission(authUser.id, 'orders.cancel', event)
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 

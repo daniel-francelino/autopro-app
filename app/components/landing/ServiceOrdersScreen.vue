@@ -85,6 +85,7 @@ const items = [
             :order="order"
             can-create
             can-update
+            can-receive
             can-cancel
             can-delete
           />

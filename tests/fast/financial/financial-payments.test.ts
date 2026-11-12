@@ -48,12 +48,19 @@ function seed() {
     actions: [
       { id: 'act-pu', code: 'purchases.update', deleted_at: null },
       { id: 'act-fu', code: 'financial.update', deleted_at: null },
-      { id: 'act-fd', code: 'financial.delete', deleted_at: null }
+      { id: 'act-fd', code: 'financial.delete', deleted_at: null },
+      // Fase 6: cancel.post (orders.cancel), generate-commissions e PATCH de parcela (orders.update), pay de parcela (orders.pay)
+      { id: 'act-oc', code: 'orders.cancel', deleted_at: null },
+      { id: 'act-ou', code: 'orders.update', deleted_at: null },
+      { id: 'act-op', code: 'orders.pay', deleted_at: null }
     ],
     role_actions: [
       { role_id: 'r', action_id: 'act-pu', is_granted: true },
       { role_id: 'r', action_id: 'act-fu', is_granted: true },
-      { role_id: 'r', action_id: 'act-fd', is_granted: true }
+      { role_id: 'r', action_id: 'act-fd', is_granted: true },
+      { role_id: 'r', action_id: 'act-oc', is_granted: true },
+      { role_id: 'r', action_id: 'act-ou', is_granted: true },
+      { role_id: 'r', action_id: 'act-op', is_granted: true }
     ],
     bank_accounts: [
       { id: 'acc-a', organization_id: 'org-a', current_balance: 1000, is_active: true },

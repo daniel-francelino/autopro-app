@@ -7,6 +7,8 @@ const props = defineProps<{
   open: boolean
   order: ServiceOrder | null
   canUpdate?: boolean
+  /** receber dinheiro (parcela, entrada, extra): exige orders.pay (D4) */
+  canReceive?: boolean
   canCancel?: boolean
   canDelete?: boolean
   canCreate?: boolean
@@ -375,6 +377,7 @@ defineExpose({ refreshNfseCard })
         :responsible-names="detail.responsibleNames"
         :employees="detail.employees"
         :can-update="canUpdate"
+        :can-receive="canReceive"
         :can-cancel="canCancel"
         :can-delete="canDelete"
         :can-create="canCreate"
@@ -439,6 +442,8 @@ defineExpose({ refreshNfseCard })
           :installments="detail.installments"
           :order-id="detail.order.id"
           :can-update="canUpdate"
+          :can-receive="canReceive"
+          :can-cancel="canCancel"
           :can-delete-installment="canDeleteInstallment"
           @changed="() => { loadDetail(); emit('updated') }"
         />

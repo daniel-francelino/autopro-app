@@ -2,6 +2,7 @@ import { defineEventHandler, readBody, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
+import { requireOrgPermission } from '../../utils/require-org-permission'
 import { recordAudit } from '../../utils/audit/record'
 import { normalizeOsNumber } from '../../utils/service-order-number'
 import {
@@ -24,10 +25,15 @@ import {
 
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
+
+  // V9: o mesmo POST cria e edita (com orderId = edição, inclusive avançar status e NFS-e).
+  // O guard escolhe o código pelo mesmo critério do handler (isUpdate = !!orderId) e roda antes de qualquer leitura/escrita.
+  const body = await readBody(event)
+  await requireOrgPermission(authUser.id, body?.orderId ? 'orders.update' : 'orders.create', event)
+
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
-  const body = await readBody(event)
   const orderId = body?.orderId || null
   const orderData = body?.orderData || null
   const appointmentData = body?.appointmentData || null

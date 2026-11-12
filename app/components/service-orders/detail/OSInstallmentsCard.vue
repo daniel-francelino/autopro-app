@@ -10,6 +10,9 @@ const props = defineProps<{
   installments: ServiceOrderInstallment[]
   orderId: string
   canUpdate?: boolean
+  /** receber dinheiro (parcela, entrada, extra): exige orders.pay (D4) */
+  canReceive?: boolean
+  canCancel?: boolean
   canDeleteInstallment?: boolean
 }>()
 
@@ -337,7 +340,7 @@ async function confirmUndoReceipt() {
           </div>
 
           <div
-            v-if="canUpdate && installment.status !== 'paid'"
+            v-if="canUpdate && canReceive && installment.status !== 'paid'"
             class="mt-3 flex items-center justify-end"
           >
             <UButton
@@ -399,7 +402,7 @@ async function confirmUndoReceipt() {
                   {{ formatDate(receipt.due_date) }} · {{ paymentMethodLabel[receipt.payment_method || ''] || receipt.payment_method || '—' }}
                 </p>
               </div>
-              <UTooltip v-if="canUpdate" text="Desfazer este recebimento">
+              <UTooltip v-if="canCancel" text="Desfazer este recebimento">
                 <UButton
                   icon="i-lucide-undo-2"
                   color="error"

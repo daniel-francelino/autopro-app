@@ -3,6 +3,7 @@ import { getSupabaseAdminClient } from '../../../../utils/supabase'
 import { revertStatementOnAccount } from '../../../../utils/bank-balance'
 import { requireAuthUser } from '../../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../../utils/organization'
+import { requireOrgPermission } from '../../../../utils/require-org-permission'
 import { recordAudit } from '../../../../utils/audit/record'
 import { recalculateServiceOrderPaymentStatus } from '../../../../utils/service-order-payment-status'
 import { releaseServiceOrderCommissions } from '../../../../utils/service-order-commissions'
@@ -28,6 +29,8 @@ import { softDeleteFinancialTransaction, FINANCIAL_TRANSACTION_DELETION_SOURCES 
  */
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
+  // V7: o front libera o botão com financial.delete (service-orders.vue), então o servidor exige o mesmo (R3).
+  await requireOrgPermission(authUser.id, 'financial.delete', event)
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 

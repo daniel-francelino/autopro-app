@@ -1,6 +1,7 @@
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../../utils/supabase'
 import { requireAuthUser } from '../../../utils/require-auth'
+import { requireOrgPermission } from '../../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../../utils/organization'
 import { recordAudit } from '../../../utils/audit/record'
 import { createIncomeTransaction } from '../../../utils/financial-income'
@@ -19,6 +20,7 @@ const ORDER_STATUSES_THAT_CAN_RECEIVE_A_DOWN_PAYMENT = ['open', 'in_progress', '
  */
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
+  await requireOrgPermission(authUser.id, 'orders.pay', event)
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 

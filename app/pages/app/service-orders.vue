@@ -29,6 +29,7 @@ const router = useRouter()
 const canRead = computed(() => workshop.can(ActionCode.ORDERS_READ))
 const canCreate = computed(() => workshop.can(ActionCode.ORDERS_CREATE))
 const canUpdate = computed(() => workshop.can(ActionCode.ORDERS_UPDATE))
+const canReceive = computed(() => workshop.can(ActionCode.ORDERS_PAY))
 const canDelete = computed(() => workshop.can(ActionCode.ORDERS_DELETE))
 const canCancel = computed(() => workshop.can(ActionCode.ORDERS_CANCEL))
 const canDeleteInstallment = computed(() => workshop.can(ActionCode.FINANCIAL_DELETE))
@@ -560,6 +561,7 @@ function onNfseIssued() {
                 :can-delete="canDelete"
                 :can-create="canCreate"
                 :can-update="canUpdate"
+                :can-receive="canReceive"
                 :is-advancing="advancingIds.has(order.id)"
                 :is-editing="editingIds.has(order.id)"
                 :is-duplicating="duplicatingIds.has(order.id)"
@@ -650,6 +652,7 @@ function onNfseIssued() {
     v-model:open="showDetail"
     :order="selectedOrder"
     :can-update="canUpdate"
+    :can-receive="canReceive"
     :can-cancel="canCancel"
     :can-delete="canDelete"
     :can-create="canCreate"

@@ -2,6 +2,7 @@ import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../../utils/supabase'
 import { requireAuthUser } from '../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../utils/organization'
+import { requireOrgPermission } from '../../../utils/require-org-permission'
 import { releaseServiceOrderCommissions } from '../../../utils/service-order-commissions'
 import { recordAudit } from '../../../utils/audit/record'
 
@@ -27,6 +28,7 @@ import { recordAudit } from '../../../utils/audit/record'
  */
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
+  await requireOrgPermission(authUser.id, 'orders.update', event)
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 

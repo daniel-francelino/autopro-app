@@ -18,6 +18,8 @@ const props = defineProps<{
   responsibleNames?: ServiceOrderDetailFull['responsibleNames']
   employees?: ServiceOrderEmployee[]
   canUpdate?: boolean
+  /** receber dinheiro (parcela, entrada, extra): exige orders.pay (D4) */
+  canReceive?: boolean
   canCancel?: boolean
   canDelete?: boolean
   canCreate?: boolean
@@ -47,24 +49,27 @@ const isEstimate = computed(() => props.order.status === 'estimate')
 
 const canPay = computed(() =>
   props.canUpdate
+  && props.canReceive
   && props.order.payment_status === 'pending'
   && props.order.status === 'completed'
   && !props.order.installment_count
 )
 
+// Estornar pagamento exige orders.cancel (D5, V6): mesmo código do servidor.
 const canCancelPayment = computed(() =>
-  props.canUpdate
+  props.canCancel
   && (props.order.payment_status === 'paid' || props.order.payment_status === 'partial')
   && !isCancelled.value
 )
 
 const canReceiveDownPayment = computed(() =>
   props.canUpdate
+  && props.canReceive
   && ['open', 'in_progress', 'waiting_for_part'].includes(props.order.status)
 )
 
 const canReceiveExtraPayment = computed(() =>
-  props.canUpdate && props.order.status === 'completed'
+  props.canUpdate && props.canReceive && props.order.status === 'completed'
 )
 
 const canAdvance = computed(() =>

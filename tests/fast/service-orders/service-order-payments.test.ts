@@ -37,6 +37,17 @@ function seed(orderOverrides: Record<string, unknown> = {}) {
       { id: 'p1', user_id: 'u1', organization_id: 'org-a', role_id: 'r', is_owner: false, is_active: true, employee_id: null },
       { id: 'p2', user_id: 'u2', organization_id: 'org-b', role_id: 'r', is_owner: false, is_active: true, employee_id: null }
     ],
+    // Fase 6 (metade A): role r com orders.pay (recebimento). Concessões de cancelar/excluir/editar: outro agente.
+    roles: [{ id: 'r', name: 'operador', is_system_role: false }],
+    // Fase 6 (metade B): orders.cancel (estorno de pagamento, payment.delete)
+    actions: [
+      { id: 'act-op', code: 'orders.pay', deleted_at: null },
+      { id: 'act-oc', code: 'orders.cancel', deleted_at: null }
+    ],
+    role_actions: [
+      { role_id: 'r', action_id: 'act-op', is_granted: true },
+      { role_id: 'r', action_id: 'act-oc', is_granted: true }
+    ],
     service_orders: [
       {
         id: 'o1', organization_id: 'org-a', number: '100', status: 'completed', entry_date: '2026-03-10', total_amount: 1000,

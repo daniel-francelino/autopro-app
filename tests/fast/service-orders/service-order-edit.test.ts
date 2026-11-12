@@ -33,6 +33,16 @@ function seed(over: Record<string, unknown> = {}) {
       { id: 'p1', user_id: 'u1', organization_id: 'org-a', role_id: 'r', is_owner: false, is_active: true, employee_id: null },
       { id: 'p2', user_id: 'u2', organization_id: 'org-b', role_id: 'r', is_owner: false, is_active: true, employee_id: null }
     ],
+    // Fase 6 (metade A): role r com orders.pay (recebimento). Concessões de cancelar/excluir/editar: outro agente.
+    roles: [{ id: 'r', name: 'operador', is_system_role: false }],
+    // Fase 6 (metade B): orders.create/orders.update (POST service-orders) e financial.delete (excluir parcela)
+    actions: [
+      { id: 'act-op', code: 'orders.pay', deleted_at: null },
+      { id: 'act-oc', code: 'orders.create', deleted_at: null },
+      { id: 'act-ou', code: 'orders.update', deleted_at: null },
+      { id: 'act-fd', code: 'financial.delete', deleted_at: null }
+    ],
+    role_actions: ['act-op', 'act-oc', 'act-ou', 'act-fd'].map(action_id => ({ role_id: 'r', action_id, is_granted: true })),
     service_orders: [
       {
         id: 'o1', organization_id: 'org-a', number: 'OS100', status: 'completed', entry_date: '2026-03-10', total_amount: 1000,
