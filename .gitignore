@@ -38,3 +38,6 @@ logs
 # Backups locais de otimização (gerados, não versionados)
 /.claude/backups/
 types-typecheck-baseline.raw.txt
+
+# design-audit (screenshots, relatórios e sessões de login locais; nunca versionar)
+/.design-audit/

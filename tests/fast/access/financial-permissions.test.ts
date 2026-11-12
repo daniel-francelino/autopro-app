@@ -215,8 +215,8 @@ describe('S6: static scan of financial writes', () => {
     const leaky = moneyWriters.filter(h => /(body|query)\??\.(organization_id|organizationId)\b/.test(h.source)).map(h => h.file)
     expect(leaky, `Confia no organization_id do cliente:\n${leaky.join('\n')}`).toEqual([])
   })
-  // Mesma causa do KF-09, visão focada em dinheiro: lista o que ainda não pede permissão por papel.
-  it.fails('KF-09 (financial focus): every write that touches money requires requireOrgPermission/requireOwner', () => {
+  // KF-09, visão focada em dinheiro: toda escrita que mexe em dinheiro pede permissão por papel (Fases 4 a 7 do controle de acesso).
+  it('KF-09 (financial focus): every write that touches money requires requireOrgPermission/requireOwner', () => {
     const open = moneyWriters.filter(h => !PERMISSION_GUARDS.test(h.source)).map(h => h.file)
     expect(open, `Sem permissão por papel (${open.length}):\n${open.join('\n')}`).toEqual([])
   })

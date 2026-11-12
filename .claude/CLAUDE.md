@@ -41,7 +41,7 @@ Agents are defined in `.claude/agents/`. The main Claude Code session coordinate
 
 - **Leadership:** `product-owner` (requirements, priorities, backlog, roadmap); `product-researcher` (market, competitors, opportunities); `tech-lead` (complex planning, coordination, delivery).
 - **Engineering:** `business-analyst` (business rules, workflows); `software-architect` (architecture, significant design decisions); `developer` (implementation, refactoring); `code-reviewer` (independent code review); `test-designer` (scenarios, acceptance criteria); `test-engineer` (test implementation and execution); `test-reviewer` (independent test quality review).
-- **Specialists:** `security-analyst`, `financial-auditor`, `data-integrity-auditor`, `reporting-analyst`, `performance-engineer`, `geo-specialist`, `marketing-strategist`, `seo-specialist`, `customer-success-specialist`.
+- **Specialists:** `security-analyst`, `financial-auditor`, `data-integrity-auditor`, `reporting-analyst`, `performance-engineer`, `geo-specialist`, `marketing-strategist`, `seo-specialist`, `customer-success-specialist`, `ux-ui-designer` (layout and refactor plans; skill `ui-ux-pro-max`; `/design-plan`), `design-review` (reviews a running screen in a browser; `/design-review`).
 
 Delegation rules:
 
