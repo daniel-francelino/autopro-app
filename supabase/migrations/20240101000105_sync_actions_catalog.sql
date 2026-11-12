@@ -1,0 +1,127 @@
+-- =============================================================================
+-- Migration: 20240101000105_sync_actions_catalog
+-- Description:
+--   Synchronises the global actions catalogue (public.actions) with the 103
+--   rows that exist in production (read on 2026-11-12), so that a brand-new
+--   environment reproduces the same catalogue. Before this migration almost
+--   all of these rows had been inserted by hand, not by a migration.
+--
+--   - Mirrors production in code, name, resource, action_type and description.
+--     created_by was normalised to 'migration' (production holds a personal
+--     e-mail address there, which must not live in the repository).
+--   - In production this changes nothing: every code already exists and
+--     INSERT ... ON CONFLICT (code) DO NOTHING skips it.
+--   - In new environments, earlier migrations (e.g. 20240101000100) seed first
+--     and may carry different text for the same code (fiscal.manage,
+--     roles.manage_*); ON CONFLICT keeps those rows. roles.view, seeded by
+--     20240101000100, stays as an inert code that production does not have.
+--   - It grants nothing to any role. Grants are done by explicit migrations.
+--   - Re-running is safe.
+-- =============================================================================
+
+INSERT INTO public.actions (code, name, resource, action_type, description, created_by)
+VALUES
+  ('appointments.create', 'Criar Agendamentos', 'appointments', 'create', 'Criar Agendamentos', 'migration'),
+  ('appointments.delete', 'Excluir Agendamentos', 'appointments', 'delete', 'Excluir Agendamentos', 'migration'),
+  ('appointments.read', 'Visualizar Agendamentos', 'appointments', 'read', 'Visualizar Agendamentos', 'migration'),
+  ('appointments.update', 'Atualizar Agendamentos', 'appointments', 'update', 'Atualizar Agendamentos', 'migration'),
+  ('authorizations.approve', 'Aprovar Autorizações', 'authorizations', 'update', 'Aprovar Autorizações', 'migration'),
+  ('authorizations.create', 'Criar Autorizações', 'authorizations', 'create', 'Criar Autorizações', 'migration'),
+  ('authorizations.delete', 'Excluir Autorizações', 'authorizations', 'delete', 'Excluir Autorizações', 'migration'),
+  ('authorizations.read', 'Visualizar Autorizações', 'authorizations', 'read', 'Visualizar Autorizações', 'migration'),
+  ('authorizations.update', 'Atualizar Autorizações', 'authorizations', 'update', 'Atualizar Autorizações', 'migration'),
+  ('bank_accounts.update', 'Atualizar Contas Bancárias', 'bank_accounts', 'update', 'Atualizar Contas Bancárias', 'migration'),
+  ('bank_accounts.view', 'Visualizar Contas Bancárias', 'bank_accounts', 'read', 'Visualizar Contas Bancárias', 'migration'),
+  ('bonuses.create', 'Criar bônus', 'bonuses', 'create', 'Permite criar novos bônus.', 'migration'),
+  ('bonuses.delete', 'Excluir bônus', 'bonuses', 'delete', 'Permite excluir bônus.', 'migration'),
+  ('bonuses.read', 'Visualizar bônus', 'bonuses', 'read', 'Permite visualizar bônus, seu progresso e histórico de valores.', 'migration'),
+  ('bonuses.update', 'Editar bônus', 'bonuses', 'update', 'Permite editar bônus, alterar valores, atribuir/remover funcionários e gerar registros do mês.', 'migration'),
+  ('commissions.create', 'Criar comissões', 'commissions', 'create', 'Permite criar novas configurações de comissão.', 'migration'),
+  ('commissions.delete', 'Excluir comissões', 'commissions', 'delete', 'Permite excluir configurações de comissão.', 'migration'),
+  ('commissions.read', 'Visualizar comissões', 'commissions', 'read', 'Permite visualizar configurações de comissão, regras, versões e funcionários atribuídos.', 'migration'),
+  ('commissions.update', 'Editar comissões', 'commissions', 'update', 'Permite editar configurações de comissão, criar novas versões de regras e atribuir/remover funcionários.', 'migration'),
+  ('consultation.use', 'Usar Consultoria IA', 'consultation', 'create', 'Usar Consultoria IA', 'migration'),
+  ('consultation.view', 'Visualizar Consultorias', 'consultation', 'read', 'Visualizar Consultorias', 'migration'),
+  ('customers.create', 'Criar Clientes', 'customers', 'create', 'Criar Clientes', 'migration'),
+  ('customers.delete', 'Excluir Clientes', 'customers', 'delete', 'Excluir Clientes', 'migration'),
+  ('customers.read', 'Visualizar Clientes', 'customers', 'read', 'Visualizar Clientes', 'migration'),
+  ('customers.update', 'Atualizar Clientes', 'customers', 'update', 'Atualizar Clientes', 'migration'),
+  ('employees.create', 'Criar Funcionários', 'employees', 'create', 'Criar Funcionários', 'migration'),
+  ('employees.delete', 'Excluir Funcionários', 'employees', 'delete', 'Excluir Funcionários', 'migration'),
+  ('employees.pay', 'Pagar Funcionários', 'employees', 'update', 'Pagar Funcionários', 'migration'),
+  ('employees.read', 'Visualizar Funcionários', 'employees', 'read', 'Visualizar Funcionários', 'migration'),
+  ('employees.update', 'Atualizar Funcionários', 'employees', 'update', 'Atualizar Funcionários', 'migration'),
+  ('financial.create', 'Criar Registros Financeiros', 'financial', 'create', 'Criar Registros Financeiros', 'migration'),
+  ('financial.delete', 'Excluir Registros Financeiros', 'financial', 'delete', 'Excluir Registros Financeiros', 'migration'),
+  ('financial.read', 'Visualizar Financeiro', 'financial', 'read', 'Visualizar Financeiro', 'migration'),
+  ('financial.update', 'Atualizar Registros Financeiros', 'financial', 'update', 'Atualizar Registros Financeiros', 'migration'),
+  ('fiscal.manage', 'Gerenciamento Fiscal', 'settings', 'manage', 'Gerenciamento Fiscal', 'migration'),
+  ('inventory.create', 'Criar Itens de Estoque', 'inventory', 'create', 'Criar Itens de Estoque', 'migration'),
+  ('inventory.delete', 'Excluir Itens de Estoque', 'inventory', 'delete', 'Excluir Itens de Estoque', 'migration'),
+  ('inventory.read', 'Visualizar Estoque', 'inventory', 'read', 'Visualizar Estoque', 'migration'),
+  ('inventory.update', 'Atualizar Estoque', 'inventory', 'update', 'Atualizar Estoque', 'migration'),
+  ('members.delete', 'Excluir Membros', 'members', 'delete', 'Excluir Membros', 'migration'),
+  ('members.invite', 'Convidar Membros', 'members', 'create', 'Convidar Membros', 'migration'),
+  ('members.update', 'Atualizar Membros', 'members', 'update', 'Atualizar Membros', 'migration'),
+  ('members.view', 'Visualizar Membros', 'members', 'read', 'Visualizar Membros', 'migration'),
+  ('orders.cancel', 'Cancelar Ordens de Serviço', 'orders', 'update', 'Cancelar Ordens de Serviço', 'migration'),
+  ('orders.correct', 'Corrigir Ordem de Serviço', 'orders', 'update', 'Corrigir Ordem de Serviço', 'migration'),
+  ('orders.create', 'Criar Ordens de Serviço', 'orders', 'create', 'Criar Ordens de Serviço', 'migration'),
+  ('orders.delete', 'Excluir Ordens de Serviço', 'orders', 'delete', 'Excluir Ordens de Serviço', 'migration'),
+  ('orders.pay', 'Pagar Ordens de Serviço', 'orders', 'update', 'Pagar Ordens de Serviço', 'migration'),
+  ('orders.read', 'Visualizar Ordens de Serviço', 'orders', 'read', 'Visualizar Ordens de Serviço', 'migration'),
+  ('orders.update', 'Atualizar Ordens de Serviço', 'orders', 'update', 'Atualizar Ordens de Serviço', 'migration'),
+  ('organization.update', 'Update Organization', 'organization', 'update', 'Update Organization', 'migration'),
+  ('organization.view', 'Visualizar Organização', 'organization', 'read', 'Visualizar Organização', 'migration'),
+  ('payment_machines.update', 'Atualizar Maquininhas', 'payment_machines', 'update', 'Atualizar Maquininhas', 'migration'),
+  ('payment_machines.view', 'Visualizar Maquininhas', 'payment_machines', 'read', 'Visualizar Maquininhas', 'migration'),
+  ('product_categories.create', 'Criar categorias de produtos', 'product_categories', 'create', 'Permite criar novas categorias de produtos.', 'migration'),
+  ('product_categories.delete', 'Excluir categorias de produtos', 'product_categories', 'delete', 'Permite excluir categorias de produtos.', 'migration'),
+  ('product_categories.read', 'Visualizar categorias de produtos', 'product_categories', 'read', 'Permite visualizar as categorias de produtos.', 'migration'),
+  ('product_categories.update', 'Editar categorias de produtos', 'product_categories', 'update', 'Permite editar categorias de produtos existentes.', 'migration'),
+  ('products.create', 'Criar Produtos', 'products', 'create', 'Criar Produtos', 'migration'),
+  ('products.delete', 'Excluir Produtos', 'products', 'delete', 'Excluir Produtos', 'migration'),
+  ('products.read', 'Visualizar Produtos', 'products', 'read', 'Visualizar Produtos', 'migration'),
+  ('products.update', 'Atualizar Produtos', 'products', 'update', 'Atualizar Produtos', 'migration'),
+  ('purchases.create', 'Criar Compras', 'purchases', 'create', 'Criar Compras', 'migration'),
+  ('purchases.delete', 'Excluir Compras', 'purchases', 'delete', 'Excluir Compras', 'migration'),
+  ('purchases.read', 'Visualizar Compras', 'purchases', 'read', 'Visualizar Compras', 'migration'),
+  ('purchases.update', 'Atualizar Compras', 'purchases', 'update', 'Atualizar Compras', 'migration'),
+  ('reports.commissions', 'Visualizar Relatórios de Comissões', 'reports', 'read', 'Visualizar Relatórios de Comissões', 'migration'),
+  ('reports.costs', 'Visualizar Relatórios de Custos', 'reports', 'read', 'Visualizar Relatórios de Custos', 'migration'),
+  ('reports.customers', 'Visualizar Relatórios de Clientes', 'reports', 'read', 'Visualizar Relatórios de Clientes', 'migration'),
+  ('reports.debtors', 'Visualizar Relatórios de Devedores', 'reports', 'read', 'Visualizar Relatórios de Devedores', 'migration'),
+  ('reports.employees', 'Relatório de Funcionários', 'reports', 'view', 'Permite visualizar o relatório por funcionário (OS trabalhadas, comissões e itens vendidos).', 'migration'),
+  ('reports.financial', 'Visualizar Relatórios Financeiros', 'reports', 'read', 'Visualizar Relatórios Financeiros', 'migration'),
+  ('reports.profit', 'Visualizar Relatórios de Lucro', 'reports', 'read', 'Visualizar Relatórios de Lucro', 'migration'),
+  ('reports.purchases', 'Visualizar Relatórios de Compras', 'reports', 'read', 'Visualizar Relatórios de Compras', 'migration'),
+  ('reports.sales', 'Visualizar Relatórios de Vendas', 'reports', 'read', 'Visualizar Relatórios de Vendas', 'migration'),
+  ('reports.suppliers', 'Visualizar Relatórios de Fornecedores', 'reports', 'read', 'Visualizar Relatórios de Fornecedores', 'migration'),
+  ('reports.view', 'Visualizar Relatórios', 'reports', 'read', 'Visualizar Relatórios', 'migration'),
+  ('returns.create', 'Criar Devoluções', 'returns', 'create', 'Criar Devoluções', 'migration'),
+  ('returns.delete', 'Excluir Devoluções', 'returns', 'delete', 'Excluir Devoluções', 'migration'),
+  ('returns.read', 'Visualizar Devoluções', 'returns', 'read', 'Visualizar Devoluções', 'migration'),
+  ('returns.update', 'Atualizar Devoluções', 'returns', 'update', 'Atualizar Devoluções', 'migration'),
+  ('roles.create', 'Criar Funções', 'roles', 'create', 'Criar Funções', 'migration'),
+  ('roles.delete', 'Excluir Funções', 'roles', 'delete', 'Excluir Funções', 'migration'),
+  ('roles.read', 'Visualizar Funções', 'roles', 'read', 'Visualizar Funções', 'migration'),
+  ('roles.update', 'Atualizar Funções', 'roles', 'update', 'Atualizar Funções', 'migration'),
+  ('service_invoice.create', 'Emitir NFS-e', 'service_invoice', 'create', 'Permite emitir notas fiscais de serviço.', 'migration'),
+  ('service_invoice.delete', 'Cancelar NFS-e', 'service_invoice', 'delete', 'Permite cancelar notas fiscais de serviço.', 'migration'),
+  ('service_invoice.read', 'Visualizar NFS-e', 'service_invoice', 'read', 'Permite visualizar notas fiscais de serviço emitidas.', 'migration'),
+  ('service_invoice.update', 'Editar NFS-e', 'service_invoice', 'update', 'Permite editar/corrigir notas fiscais de serviço.', 'migration'),
+  ('settings.update', 'Atualizar Configurações', 'settings', 'update', 'Atualizar Configurações', 'migration'),
+  ('settings.view', 'Visualizar Configurações', 'settings', 'read', 'Visualizar Configurações', 'migration'),
+  ('subscription.manage', 'Gerenciar Assinatura', 'subscription', 'manage', 'Gerenciar Assinatura', 'migration'),
+  ('subscription.view', 'Visualizar Assinatura', 'subscription', 'read', 'Visualizar Assinatura', 'migration'),
+  ('suppliers.create', 'Criar Fornecedores', 'suppliers', 'create', 'Criar Fornecedores', 'migration'),
+  ('suppliers.delete', 'Excluir Fornecedores', 'suppliers', 'delete', 'Excluir Fornecedores', 'migration'),
+  ('suppliers.read', 'Visualizar Fornecedores', 'suppliers', 'read', 'Visualizar Fornecedores', 'migration'),
+  ('suppliers.update', 'Atualizar Fornecedores', 'suppliers', 'update', 'Atualizar Fornecedores', 'migration'),
+  ('taxes.update', 'Atualizar Impostos', 'taxes', 'update', 'Atualizar Impostos', 'migration'),
+  ('taxes.view', 'Visualizar Impostos', 'taxes', 'read', 'Visualizar Impostos', 'migration'),
+  ('vehicles.create', 'Criar Veículos', 'vehicles', 'create', 'Criar Veículos', 'migration'),
+  ('vehicles.delete', 'Excluir Veículos', 'vehicles', 'delete', 'Excluir Veículos', 'migration'),
+  ('vehicles.read', 'Visualizar Veículos', 'vehicles', 'read', 'Visualizar Veículos', 'migration'),
+  ('vehicles.update', 'Atualizar Veículos', 'vehicles', 'update', 'Atualizar Veículos', 'migration')
+ON CONFLICT (code) DO NOTHING;
