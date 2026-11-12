@@ -51,7 +51,7 @@ export default defineNuxtConfig({
     }
   },
 
-  css: ['driver.js/dist/driver.css', '~/assets/css/main.css'],
+  css: ['~/assets/css/main.css'],
 
   site: {
     url: process.env.NUXT_PUBLIC_SITE_URL || 'https://autopro.beenk.com.br',
