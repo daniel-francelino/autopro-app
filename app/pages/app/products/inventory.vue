@@ -4,11 +4,11 @@ import type { RowSelectionState, SortingState } from '@tanstack/table-core'
 import { ActionCode } from '~/constants/action-codes'
 import type { ProductCategory } from '~/types/products'
 import { generateCode } from '~/utils'
+import type { ViewMode } from '~/types/ui'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Estoque' })
 
-type ViewMode = 'table' | 'card'
 type LowStockFilter = 'all' | 'low' | 'available'
 
 type ProductOption = {
@@ -838,7 +838,7 @@ const lineColumns = [
                 {{ row.original.description }}
               </p>
               <p class="truncate text-xs text-muted">
-                {{ row.original.products?.product_categories?.name || row.original.products?.name || row.original.brand || 'Sem vínculo de catálogo' }}
+                {{ (row.original as PartItem).products?.product_categories?.name || (row.original as PartItem).products?.name || row.original.brand || 'Sem vínculo de catálogo' }}
               </p>
             </div>
           </template>
@@ -851,7 +851,7 @@ const lineColumns = [
 
           <template #sale_price-cell="{ row }">
             <span class="text-sm text-muted">
-              {{ formatCurrency(row.original.sale_price) }}
+              {{ formatCurrency((row.original as PartItem).sale_price) }}
             </span>
           </template>
 
@@ -907,7 +907,7 @@ const lineColumns = [
                         size="xs"
                       />
                       <UBadge
-                        :label="part.products?.product_categories?.name || 'Sem categoria do catálogo'"
+                        :label="(part as PartItem).products?.product_categories?.name || 'Sem categoria do catálogo'"
                         color="neutral"
                         variant="subtle"
                         size="xs"
@@ -958,7 +958,7 @@ const lineColumns = [
                   </div>
                   <div class="flex items-center gap-2">
                     <UIcon name="i-lucide-badge-dollar-sign" class="size-4 shrink-0" />
-                    <span class="truncate">{{ formatCurrency(part.sale_price) }}</span>
+                    <span class="truncate">{{ formatCurrency((part as PartItem).sale_price) }}</span>
                   </div>
                 </div>
               </div>

@@ -4,7 +4,7 @@ import { ActionCode } from '~/constants/action-codes'
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Categorias de produtos' })
 
-interface ProductCategory {
+type ProductCategory = {
   id: string
   name: string
   description: string | null

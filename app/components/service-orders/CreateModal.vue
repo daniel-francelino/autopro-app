@@ -17,6 +17,7 @@ import {
   resolveEffectiveCommissionRules
 } from '../../../lib/utils/employee-commission-engine'
 import type {
+  MasterProductItem,
   ServiceOrderDraftItem,
   ServiceOrderItem,
   ServiceOrderRaw,
@@ -46,13 +47,6 @@ interface SelectOption {
 interface EmployeeItem {
   id: string
   name: string
-}
-
-interface MasterProductItem {
-  id: string
-  name: string
-  description: string | null
-  notes: string | null
 }
 
 interface TaxItem {
@@ -459,7 +453,7 @@ const commissionOrderInput = computed(
       total_taxes_amount: totalTaxesAmount.value,
       discount: discountValue.value,
       commission_manual_adjustments_log: props.orderToEdit?.commission_manual_adjustments_log ?? []
-    }) as ServiceOrderRaw
+    }) as unknown as ServiceOrderRaw
 )
 
 const commissionBreakdown = computed(() =>

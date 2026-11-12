@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ApexOptions } from 'apexcharts'
 import VueApexCharts from 'vue3-apexcharts'
 
 interface Series {
@@ -31,7 +32,7 @@ function fmtShort(v: number) {
   return String(Math.round(v))
 }
 
-const chartOptions = computed(() => ({
+const chartOptions = computed<ApexOptions>(() => ({
   chart: {
     type: 'line',
     toolbar: { show: false },

@@ -1,5 +1,6 @@
 <script setup lang='ts'>
 import type { Client } from '~/types/clients'
+import type { BadgeColor } from '~/types/ui'
 
 type HistoryOrder = {
   id: string
@@ -68,7 +69,7 @@ function formatDate(date: string) {
   return `${d}/${m}/${y}`
 }
 
-const statusColorMap: Record<string, string> = {
+const statusColorMap: Record<string, BadgeColor> = {
   estimate: 'neutral',
   open: 'info',
   in_progress: 'warning',

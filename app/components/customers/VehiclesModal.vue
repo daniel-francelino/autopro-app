@@ -301,7 +301,7 @@ function vehicleLabel(v: Vehicle): string {
           </UFormField>
           <UFormField label="Ano">
             <UInput
-              v-model="vehicleForm.year"
+              v-model.number="vehicleForm.year"
               type="number"
               min="1900"
               max="2100"
@@ -316,7 +316,7 @@ function vehicleLabel(v: Vehicle): string {
           </UFormField>
           <UFormField label="Quilometragem">
             <UInput
-              v-model="vehicleForm.mileage"
+              v-model.number="vehicleForm.mileage"
               type="number"
               min="0"
               class="w-full"

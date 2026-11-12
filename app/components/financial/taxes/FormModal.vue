@@ -107,7 +107,7 @@ const taxTypeOptions = [
         </UFormField>
         <UFormField label="Alíquota (%)" required>
           <UInput
-            v-model="form.rate"
+            v-model.number="form.rate"
             type="number"
             min="0"
             max="100"

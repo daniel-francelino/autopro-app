@@ -2,11 +2,11 @@
 import { watchDebounced } from '@vueuse/core'
 import type { RowSelectionState, SortingState } from '@tanstack/table-core'
 import { ActionCode } from '~/constants/action-codes'
+import type { BadgeColor } from '~/types/ui'
+import type { BankAccountItem } from '~/types/financial'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Financeiro' })
-
-type BadgeColor = 'success' | 'error' | 'warning' | 'primary' | 'secondary' | 'info' | 'neutral'
 
 interface Entry {
   id: string
@@ -26,12 +26,6 @@ interface Entry {
   current_installment?: number | null
   parent_transaction_id?: string | null
   [key: string]: unknown
-}
-
-type BankAccountItem = {
-  id: string
-  account_name: string
-  bank_name?: string | null
 }
 
 type FinancialResponse = {

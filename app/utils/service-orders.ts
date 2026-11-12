@@ -1,3 +1,4 @@
+import type { BadgeColor } from '~/types/ui'
 import type { ServiceOrderCommission, ServiceOrderEmployee, ServiceOrderItem, ServiceOrderRaw } from '~/types/service-orders'
 import {
   computeEmployeeOrderCommission,
@@ -8,7 +9,7 @@ import {
 
 // ─── Status maps ──────────────────────────────────────────────────────────────
 
-export const STATUS_COLOR: Record<string, string> = {
+export const STATUS_COLOR: Record<string, BadgeColor> = {
   estimate: 'neutral',
   open: 'info',
   in_progress: 'warning',
@@ -41,7 +42,7 @@ export const STATUS_ICON: Record<string, string> = {
   cancelled: 'i-lucide-x-circle'
 }
 
-export const PAYMENT_STATUS_COLOR: Record<string, string> = {
+export const PAYMENT_STATUS_COLOR: Record<string, BadgeColor> = {
   pending: 'warning',
   paid: 'success',
   partial: 'info'

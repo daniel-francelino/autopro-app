@@ -5,23 +5,7 @@ import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
 import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
 import { parseDateRange, toNumber, qArr, paginate, sortFactor, normalizeReportStatus } from '../../utils/report-helpers'
-
-interface EmployeeRecord {
-  id: string
-  name?: string | null
-}
-
-interface ServiceOrderRecord {
-  id?: string | null
-  number?: string | number | null
-  status?: string | null
-  payment_status?: string | null
-  client_name?: string | null
-  entry_date?: string | null
-  completion_date?: string | null
-  total_amount?: number | string | null
-  payment_method?: string | null
-}
+import type { EmployeeNameRecord, CommissionReportOrderRecord } from '../../types/reports'
 
 interface EmployeeFinancialRecord {
   id: string
@@ -87,21 +71,21 @@ export default defineEventHandler(async (event) => {
       organizationId,
       order: { column: 'reference_date' }
     }),
-    fetchAllOrganizationRows<ServiceOrderRecord>(supabase, {
+    fetchAllOrganizationRows<CommissionReportOrderRecord>(supabase, {
       table: 'service_orders',
       organizationId,
       nullColumns: ['deleted_at'],
       order: { column: 'created_at' }
     }),
-    fetchAllOrganizationRows<EmployeeRecord>(supabase, {
+    fetchAllOrganizationRows<EmployeeNameRecord>(supabase, {
       table: 'employees',
       organizationId,
       nullColumns: ['deleted_at']
     })
   ])
 
-  const employeesMap = new Map<string, EmployeeRecord>(employees.map(employee => [String(employee.id), employee]))
-  const ordersMap = new Map<string, ServiceOrderRecord>(orders.map(order => [String(order.id || ''), order]))
+  const employeesMap = new Map<string, EmployeeNameRecord>(employees.map(employee => [String(employee.id), employee]))
+  const ordersMap = new Map<string, CommissionReportOrderRecord>(orders.map(order => [String(order.id || ''), order]))
 
   const filteredRecords = records.filter((record) => {
     const order = record?.service_order_id ? ordersMap.get(String(record.service_order_id)) : null

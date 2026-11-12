@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ApexOptions } from 'apexcharts'
 import VueApexCharts from 'vue3-apexcharts'
 
 const props = defineProps<{
@@ -24,7 +25,7 @@ function fmt(v: number) {
 
 const total = computed(() => props.series.reduce((a, b) => a + b, 0))
 
-const chartOptions = computed(() => ({
+const chartOptions = computed<ApexOptions>(() => ({
   chart: {
     type: 'donut',
     toolbar: { show: false },

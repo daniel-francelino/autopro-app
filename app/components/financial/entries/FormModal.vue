@@ -2,13 +2,9 @@
 import { addMonths, addYears, format, parseISO } from 'date-fns'
 import { formatCategoryName } from '~/utils/financial-category-options'
 import { ActionCode } from '~/constants/action-codes'
+import type { BankAccountItem } from '~/types/financial'
 
 type Entry = Record<string, unknown>
-type BankAccountItem = {
-  id: string
-  account_name: string
-  bank_name?: string | null
-}
 type CategoryItem = { id: string, name: string, type: 'income' | 'expense', icon: string, color: string, is_default: boolean }
 type CategoryResponse = {
   defaults: CategoryItem[]

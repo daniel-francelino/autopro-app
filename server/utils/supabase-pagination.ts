@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { createError } from 'h3'
 
 export type SupabaseReportRow = object
@@ -37,14 +38,17 @@ interface FetchAllRowsOptions {
 }
 
 export async function fetchAllOrganizationRows<T extends SupabaseReportRow = SupabaseReportRow>(
-  supabase: SupabaseClientLike,
+  supabase: SupabaseClientLike | SupabaseClient,
   options: FetchAllRowsOptions
 ): Promise<T[]> {
   const pageSize = options.pageSize ?? 1000
   const rows: T[] = []
+  // The real SupabaseClient is structurally richer than SupabaseClientLike (and untyped
+  // here, Database = any), so narrow once to the minimal paginated-SELECT surface.
+  const client = supabase as SupabaseClientLike
 
   for (let offset = 0; ; offset += pageSize) {
-    let query = supabase
+    let query = client
       .from<T>(options.table)
       .select(options.columns ?? '*')
       .eq('organization_id', options.organizationId)

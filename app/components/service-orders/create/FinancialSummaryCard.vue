@@ -83,7 +83,7 @@ defineEmits<{
           </template>
           <UiCurrencyInput
             :model-value="discount"
-            @update:model-value="$emit('update:discount', $event)"
+            @update:model-value="$emit('update:discount', $event ?? '')"
           />
         </UFormField>
 

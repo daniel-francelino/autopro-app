@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { CommissionDetailData } from '~/components/reports/commissions/CommissionsDetailSlideover.vue'
 import { ActionCode } from '~/constants/action-codes'
+import type { BadgeColor } from '~/types/ui'
 
 interface EmployeeCommissionProfile {
   id: string
@@ -48,7 +49,6 @@ interface CommissionDetailResponse {
 // ─── OS trabalhadas / Comissões / Itens vendidos (mesmo endpoint e formato do
 // Relatório de Funcionários — server/utils/employee-report.ts) ─────────────
 
-type BadgeColor = 'neutral' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error'
 type ViewMode = 'orders' | 'commissions' | 'items'
 
 interface EmployeeOrderRow {

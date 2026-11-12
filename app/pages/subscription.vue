@@ -117,7 +117,7 @@ async function subscribe(plan: { key: string, priceId: string | null }) {
               >
                 {{ plan.price }}
               </span>
-              <span class="text-muted text-sm">{{ plan.period }}</span>
+              <span class="text-muted text-sm">/mês</span>
             </div>
 
             <p class="text-sm text-muted leading-snug">

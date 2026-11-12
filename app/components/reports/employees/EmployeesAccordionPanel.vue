@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { BadgeColor } from '~/types/ui'
 /**
  * Report content for a single employee inside one accordion item on the
  * Employees report page. Mounted lazily by ReportsEmployeesAccordion (only
@@ -7,7 +8,6 @@
  * selected in the filter.
  */
 
-type BadgeColor = 'neutral' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error'
 type ViewMode = 'orders' | 'commissions' | 'items'
 
 interface EmployeeOrderRow {

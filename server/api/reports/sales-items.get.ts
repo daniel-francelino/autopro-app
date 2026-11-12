@@ -7,6 +7,7 @@ import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
 import type { SupabaseClientLike } from '../../utils/supabase-pagination'
 import { toNumber, roundMoney, paginate, sortFactor, normalizeReportStatus, formatStatusLabel, normalizeId } from '../../utils/report-helpers'
 import { enforceReportAccess } from '../../utils/license'
+import type { ClientNameRecord, EmployeeNameRecord, SalesItemsOrderRecord } from '../../types/reports'
 import {
   normalizeNumber,
   isCommissionRecord,
@@ -16,16 +17,6 @@ import {
   getItemResponsiblesFromCommissions,
   computeOrderItemCommissionMap
 } from '../../utils/sales-item-commissions'
-
-interface ClientRecord {
-  id: string
-  name?: string | null
-}
-
-interface EmployeeRecord {
-  id: string
-  name?: string | null
-}
 
 interface ProductRecord {
   id: string
@@ -37,43 +28,6 @@ interface ProductRecord {
 interface CategoryRecord {
   id: string
   name?: string | null
-}
-
-interface CommissionRecord {
-  employee_id?: string | null
-  amount?: number | string | null
-}
-
-interface ServiceOrderItem {
-  product_id?: string | null
-  category_id?: string | null
-  description?: string | null
-  name?: string | null
-  quantity?: number | string | null
-  cost_amount?: number | string | null
-  total_amount?: number | string | null
-  unit_price?: number | string | null
-  commission_total?: number | string | null
-  commissions?: CommissionRecord[] | null
-}
-
-interface ResponsibleEmployee {
-  employee_id?: string | null
-}
-
-interface ServiceOrderRecord {
-  id?: string | null
-  number?: string | number | null
-  client_id?: string | null
-  employee_responsible_id?: string | null
-  responsible_employees?: ResponsibleEmployee[] | null
-  status?: string | null
-  payment_status?: string | null
-  payment_method?: string | null
-  entry_date?: string | null
-  discount?: number | string | null
-  total_taxes_amount?: number | string | null
-  items?: ServiceOrderItem[] | null
 }
 
 interface EmployeeFinancialRecord {
@@ -249,19 +203,19 @@ export default defineEventHandler(async (event) => {
   const costSourcesSet = new Set(costSources.filter(value => value === 'item' || value === 'product' || value === 'none'))
 
   const [orders, clients, employees, products, categories, employeeFinancialRecords] = await Promise.all([
-    fetchAllOrganizationRows<ServiceOrderRecord>(reportSupabase, {
+    fetchAllOrganizationRows<SalesItemsOrderRecord>(reportSupabase, {
       table: 'service_orders',
       organizationId,
       nullColumns: ['deleted_at'],
       order: { column: 'entry_date' }
     }),
-    fetchAllOrganizationRows<ClientRecord>(reportSupabase, {
+    fetchAllOrganizationRows<ClientNameRecord>(reportSupabase, {
       table: 'clients',
       organizationId,
       columns: 'id, name',
       nullColumns: ['deleted_at']
     }),
-    fetchAllOrganizationRows<EmployeeRecord>(reportSupabase, {
+    fetchAllOrganizationRows<EmployeeNameRecord>(reportSupabase, {
       table: 'employees',
       organizationId,
       columns: 'id, name',
@@ -288,8 +242,8 @@ export default defineEventHandler(async (event) => {
     })
   ])
 
-  const clientsMap = new Map<string, ClientRecord>(clients.map(client => [String(client.id), client]))
-  const employeesMap = new Map<string, EmployeeRecord>(employees.map(employee => [String(employee.id), employee]))
+  const clientsMap = new Map<string, ClientNameRecord>(clients.map(client => [String(client.id), client]))
+  const employeesMap = new Map<string, EmployeeNameRecord>(employees.map(employee => [String(employee.id), employee]))
   const productsMap = new Map<string, ProductRecord>(products.map(product => [String(product.id), product]))
   const categoriesMap = new Map<string, CategoryRecord>(categories.map(category => [String(category.id), category]))
   const commissionRecords = employeeFinancialRecords.filter(record => isCommissionRecord(record.record_type) && normalizeNumber(record.amount) > 0)

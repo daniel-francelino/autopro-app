@@ -1,11 +1,13 @@
 <script setup lang="ts">
+import type { BadgeColor } from '~/types/ui'
+
 const props = withDefaults(
   defineProps<{
     open: boolean
     title?: string
     description?: string
     confirmLabel?: string
-    confirmColor?: string
+    confirmColor?: BadgeColor
     loading?: boolean
     confirmDisabled?: boolean
   }>(),

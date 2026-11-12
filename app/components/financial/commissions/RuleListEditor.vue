@@ -78,7 +78,7 @@ const hasDefaultRule = computed(() => props.modelValue.some(rule => rule.isDefau
             :items="commissionTypeOptions"
             value-key="value"
             class="w-full"
-            @update:model-value="(value: 'percentage' | 'fixed_amount') => updateRule(rule.key, { commissionType: value })"
+            @update:model-value="(value) => updateRule(rule.key, { commissionType: value as 'percentage' | 'fixed_amount' })"
           />
         </UFormField>
         <UFormField :label="rule.commissionType === 'percentage' ? 'Taxa (%)' : 'Valor fixo por unidade (R$)'" required>
@@ -97,7 +97,7 @@ const hasDefaultRule = computed(() => props.modelValue.some(rule => rule.isDefau
             v-else
             :model-value="rule.commissionAmount"
             class="w-full"
-            @update:model-value="(value: string) => updateRule(rule.key, { commissionAmount: value })"
+            @update:model-value="(value) => updateRule(rule.key, { commissionAmount: value as string })"
           />
         </UFormField>
       </div>
@@ -112,7 +112,7 @@ const hasDefaultRule = computed(() => props.modelValue.some(rule => rule.isDefau
           :items="commissionBaseOptions"
           value-key="value"
           class="w-full"
-          @update:model-value="(value: 'revenue' | 'profit') => updateRule(rule.key, { commissionBase: value })"
+          @update:model-value="(value) => updateRule(rule.key, { commissionBase: value as 'revenue' | 'profit' })"
         />
       </UFormField>
 
@@ -121,7 +121,7 @@ const hasDefaultRule = computed(() => props.modelValue.some(rule => rule.isDefau
         label="Regra padrão"
         color="neutral"
         :disabled="!rule.isDefault && hasDefaultRule"
-        @update:model-value="(value: boolean) => updateRule(rule.key, { isDefault: value, categoryIds: value ? [] : rule.categoryIds })"
+        @update:model-value="(value) => updateRule(rule.key, { isDefault: value === true, categoryIds: value === true ? [] : rule.categoryIds })"
       />
       <p class="-mt-2 text-xs text-muted">
         Aplica-se a qualquer item cuja categoria não esteja coberta por outra regra desta versão. No máximo uma regra padrão.
@@ -142,7 +142,7 @@ const hasDefaultRule = computed(() => props.modelValue.some(rule => rule.isDefau
             :model-value="rule.categoryIds.includes(category.id)"
             :disabled="disabledCategoryIdsFor(rule).has(category.id) && !rule.categoryIds.includes(category.id)"
             color="neutral"
-            @update:model-value="(checked: boolean) => toggleCategory(rule, category.id, checked)"
+            @update:model-value="(checked) => toggleCategory(rule, category.id, checked === true)"
           />
         </div>
       </div>

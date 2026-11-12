@@ -45,12 +45,12 @@ export default defineEventHandler(async (event) => {
     if (sub.created_at) {
       const d = new Date(sub.created_at)
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      if (key in newByMonth) newByMonth[key]++
+      if (key in newByMonth) newByMonth[key] = (newByMonth[key] ?? 0) + 1
     }
     if (sub.cancellation_date) {
       const d = new Date(sub.cancellation_date)
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      if (key in cancelledByMonth) cancelledByMonth[key]++
+      if (key in cancelledByMonth) cancelledByMonth[key] = (cancelledByMonth[key] ?? 0) + 1
     }
   }
 

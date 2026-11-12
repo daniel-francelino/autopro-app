@@ -95,7 +95,7 @@ async function save() {
           </UFormField>
           <UFormField label="Prazo de recebimento (dias)">
             <UInput
-              v-model="form.payment_receipt_days"
+              v-model.number="form.payment_receipt_days"
               type="number"
               min="0"
               class="w-full"

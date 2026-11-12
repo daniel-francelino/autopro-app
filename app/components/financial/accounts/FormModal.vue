@@ -145,7 +145,7 @@ const accountTypeOptions = [
           </UFormField>
           <UFormField label="Saldo inicial">
             <UInput
-              v-model="form.initial_balance"
+              v-model.number="form.initial_balance"
               type="number"
               min="0"
               step="0.01"

@@ -1,19 +1,8 @@
 <script setup lang="ts">
 import type { ServiceOrder } from '~/types/service-orders'
+import type { BankAccountItem, PaymentMethod, PaymentTerminalItem } from '~/types/financial'
 
-type PaymentMethod = 'pix' | 'cash' | 'credit_card' | 'debit_card' | 'bank_slip' | 'transfer' | 'check'
 type PaymentMethodOption = { label: string, value: PaymentMethod, icon: string }
-type BankAccountItem = {
-  id: string
-  account_name: string
-  bank_name: string | null
-  preferred_payment_method: string | null
-}
-type PaymentTerminalItem = {
-  id: string
-  terminal_name: string
-  provider_company: string | null
-}
 
 const props = defineProps<{
   open: boolean

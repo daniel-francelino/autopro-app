@@ -2,6 +2,8 @@
 import { watchDebounced } from '@vueuse/core'
 import type { RowSelectionState, SortingState } from '@tanstack/table-core'
 import { ActionCode } from '~/constants/action-codes'
+import type { ServiceOrder as ServiceOrderFull } from '~/types/service-orders'
+import type { BadgeColor, ViewMode } from '~/types/ui'
 
 type Vehicle = {
   id: string
@@ -18,14 +20,7 @@ type Vehicle = {
   clients?: { name: string } | null
 }
 
-type ServiceOrder = {
-  id: string
-  number: string | null
-  status: string
-  entry_date: string | null
-  reported_defect: string | null
-  total_amount: number | null
-}
+type ServiceOrder = Pick<ServiceOrderFull, 'id' | 'number' | 'status' | 'entry_date' | 'reported_defect' | 'total_amount'>
 
 type VehiclesResponse = {
   items: Vehicle[]
@@ -36,8 +31,6 @@ type VehiclesResponse = {
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Veículos' })
-
-type ViewMode = 'table' | 'card'
 
 const DEFAULT_PAGE_SIZE = 10
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
@@ -302,7 +295,7 @@ function fuelLabel(value: string | null | undefined): string {
   return fuelTypeOptions.find(o => o.value === value)?.label ?? value ?? '—'
 }
 
-const statusColorMap: Record<string, string> = {
+const statusColorMap: Record<string, BadgeColor> = {
   estimate: 'neutral',
   open: 'info',
   in_progress: 'warning',
@@ -762,7 +755,7 @@ const lineColumns = [
   <USlideover
     v-model:open="showDetails"
     side="right"
-    :ui="{ width: 'max-w-2xl' }"
+    :ui="{ content: 'max-w-2xl' }"
   >
     <template #header>
       <div

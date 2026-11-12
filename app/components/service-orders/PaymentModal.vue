@@ -1,19 +1,8 @@
 <script setup lang="ts">
 import type { ServiceOrder } from '~/types/service-orders'
+import type { BankAccountItem, PaymentMethod, PaymentTerminalItem } from '~/types/financial'
 
-type PaymentMethod = 'pix' | 'cash' | 'credit_card' | 'debit_card' | 'bank_slip' | 'transfer' | 'check'
 type PaymentMethodOption = { label: string, value: PaymentMethod, icon: string }
-type BankAccountItem = {
-  id: string
-  account_name: string
-  bank_name: string | null
-  preferred_payment_method: string | null
-}
-type PaymentTerminalItem = {
-  id: string
-  terminal_name: string
-  provider_company: string | null
-}
 type InstallmentStatus = 'paid' | 'pending'
 type PlanRowKind = 'down_payment' | 'installment'
 type PlanRow = {
@@ -55,16 +44,16 @@ const PAYMENT_METHOD_OPTIONS: PaymentMethodOption[] = [
   { label: 'Transferência', value: 'transfer', icon: 'i-lucide-arrow-right-left' },
   { label: 'Cheque', value: 'check', icon: 'i-lucide-scroll-text' }
 ]
-const INSTALLMENT_STATUS_OPTIONS = [
+const INSTALLMENT_STATUS_OPTIONS: { label: string, value: InstallmentStatus }[] = [
   { label: 'Pago', value: 'paid' },
   { label: 'Pendente', value: 'pending' }
-] as const
+]
 const INSTALLMENT_COUNT_OPTIONS = Array.from({ length: 12 }, (_, index) => {
   const value = index + 1
   return { label: value === 1 ? '1 parcela' : `${value} parcelas`, value }
 })
 
-const today = () => new Date().toISOString().split('T')[0]
+const today = () => new Date().toISOString().slice(0, 10)
 
 const form = reactive({
   paymentDate: today(),
@@ -134,7 +123,7 @@ function rowShowsTerminal(row: PlanRow) {
 function addMonthsToDate(value: string, months: number) {
   const baseDate = new Date(`${value}T00:00:00`)
   baseDate.setMonth(baseDate.getMonth() + months)
-  return baseDate.toISOString().split('T')[0]
+  return baseDate.toISOString().slice(0, 10)
 }
 
 function distributeInstallments(count: number, totalAmount: number, paymentDate: string, firstPaid: boolean) {
@@ -149,8 +138,9 @@ function distributeInstallments(count: number, totalAmount: number, paymentDate:
   }))
   const difference = Number((totalAmount - (baseAmount * count)).toFixed(2))
 
-  if (generated.length > 0) {
-    generated[0].amount = Number((generated[0].amount + difference).toFixed(2))
+  const first = generated[0]
+  if (first) {
+    first.amount = Number((first.amount + difference).toFixed(2))
   }
 
   return generated

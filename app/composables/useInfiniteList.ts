@@ -1,7 +1,7 @@
 export interface InfiniteListFetchParams {
   cursor: number
   limit: number
-  signal: AbortSignal
+  signal?: AbortSignal
 }
 
 export interface InfiniteListFetchResult<T> {

@@ -1,3 +1,7 @@
+// Imports explícitos: este handler também é tipado no projeto `app` (via tipos de rotas do Nitro),
+// onde os auto-imports globais `useSiteConfig`/`queryCollection` são as versões de client.
+import { queryCollection } from '@nuxt/content/nitro'
+import { useSiteConfig } from '#site-config/server/composables/useSiteConfig'
 import { PLAN_DEFINITIONS, PLAN_LICENSES } from '../../app/composables/usePlans'
 
 /**

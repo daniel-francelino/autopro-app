@@ -7,7 +7,7 @@ export interface TagFilterOption {
   initials?: string
 }
 
-function isHexColor(color: string) {
+function isHexColor(color: string): color is `#${string}` {
   return color.startsWith('#')
 }
 

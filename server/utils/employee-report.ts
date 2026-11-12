@@ -8,6 +8,7 @@
 import { fetchAllOrganizationRows } from './supabase-pagination'
 import type { SupabaseClientLike } from './supabase-pagination'
 import { parseDateStart, parseDateEnd, normalizeReportStatus, normalizeId, roundMoney, toNumber } from './report-helpers'
+import type { ClientNameRecord, EmployeeNameRecord, EmployeeReportOrderRecord } from '../types/reports'
 import {
   normalizeNumber,
   isCommissionRecord,
@@ -18,53 +19,9 @@ import {
   computeOrderItemCommissionMap
 } from './sales-item-commissions'
 
-interface ClientRecord {
-  id: string
-  name?: string | null
-}
-
-interface EmployeeRecord {
-  id: string
-  name?: string | null
-}
-
 interface CategoryRecord {
   id: string
   name?: string | null
-}
-
-interface ResponsibleEmployee {
-  employee_id?: string | null
-}
-
-interface ServiceOrderItem {
-  product_id?: string | null
-  category_id?: string | null
-  description?: string | null
-  name?: string | null
-  quantity?: number | string | null
-  cost_amount?: number | string | null
-  total_amount?: number | string | null
-  unit_price?: number | string | null
-  commission_total?: number | string | null
-  commissions?: Array<{ employee_id?: string | null, amount?: number | string | null }> | null
-}
-
-interface ServiceOrderRecord {
-  id?: string | null
-  number?: string | number | null
-  client_id?: string | null
-  employee_responsible_id?: string | null
-  responsible_employees?: ResponsibleEmployee[] | null
-  status?: string | null
-  payment_status?: string | null
-  payment_method?: string | null
-  entry_date?: string | null
-  total_amount?: number | string | null
-  total_cost_amount?: number | string | null
-  discount?: number | string | null
-  total_taxes_amount?: number | string | null
-  items?: ServiceOrderItem[] | null
 }
 
 interface EmployeeFinancialRecord {
@@ -160,19 +117,19 @@ export async function getEmployeeReport(
   const { orderStatusFilters, paymentStatusFilters, paymentMethods, commissionStatus, recordType } = filters
 
   const [orders, employees, clients, categories, financialRecords] = await Promise.all([
-    fetchAllOrganizationRows<ServiceOrderRecord>(supabase, {
+    fetchAllOrganizationRows<EmployeeReportOrderRecord>(supabase, {
       table: 'service_orders',
       organizationId,
       nullColumns: ['deleted_at'],
       order: { column: 'entry_date' }
     }),
-    fetchAllOrganizationRows<EmployeeRecord>(supabase, {
+    fetchAllOrganizationRows<EmployeeNameRecord>(supabase, {
       table: 'employees',
       organizationId,
       columns: 'id, name',
       nullColumns: ['deleted_at']
     }),
-    fetchAllOrganizationRows<ClientRecord>(supabase, {
+    fetchAllOrganizationRows<ClientNameRecord>(supabase, {
       table: 'clients',
       organizationId,
       columns: 'id, name',
@@ -192,8 +149,8 @@ export async function getEmployeeReport(
     })
   ])
 
-  const employeesMap = new Map<string, EmployeeRecord>(employees.map(employee => [String(employee.id), employee]))
-  const clientsMap = new Map<string, ClientRecord>(clients.map(client => [String(client.id), client]))
+  const employeesMap = new Map<string, EmployeeNameRecord>(employees.map(employee => [String(employee.id), employee]))
+  const clientsMap = new Map<string, ClientNameRecord>(clients.map(client => [String(client.id), client]))
   const categoriesMap = new Map<string, CategoryRecord>(categories.map(category => [String(category.id), category]))
 
   const employeesOptions = employees
@@ -213,7 +170,7 @@ export async function getEmployeeReport(
 
   const selectedEmployee = employeesMap.get(employeeId) ?? null
 
-  function orderPassesFilters(order: ServiceOrderRecord): boolean {
+  function orderPassesFilters(order: EmployeeReportOrderRecord): boolean {
     const entryDate = order?.entry_date ? new Date(`${order.entry_date}T00:00:00`) : null
     if (!entryDate || Number.isNaN(entryDate.getTime())) return false
     if (dateFrom && entryDate < dateFrom) return false
@@ -224,15 +181,15 @@ export async function getEmployeeReport(
     return true
   }
 
-  function isEmployeeResponsible(order: ServiceOrderRecord): boolean {
+  function isEmployeeResponsible(order: EmployeeReportOrderRecord): boolean {
     return getResponsibles(order, employeesMap).some(responsible => responsible.id === employeeId)
   }
 
   const matchingOrders = orders.filter(order => orderPassesFilters(order) && isEmployeeResponsible(order))
-  const ordersMap = new Map<string, ServiceOrderRecord>(
+  const ordersMap = new Map<string, EmployeeReportOrderRecord>(
     orders
       .map(order => [normalizeId(order.id), order] as const)
-      .filter((entry): entry is [string, ServiceOrderRecord] => entry[0] !== null)
+      .filter((entry): entry is [string, EmployeeReportOrderRecord] => entry[0] !== null)
   )
 
   const matchingCommissionRecords = financialRecords.filter((record) => {

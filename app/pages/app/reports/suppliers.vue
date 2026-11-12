@@ -2,7 +2,7 @@
 import type { SortingState } from '@tanstack/vue-table'
 import type { SupplierDetailData } from '~/components/reports/suppliers/SuppliersDetailSlideover.vue'
 
-interface SupplierReportItem {
+type SupplierReportItem = {
   id: string
   name: string
   tradeName: string | null

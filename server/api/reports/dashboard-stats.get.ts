@@ -2,10 +2,26 @@ import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
+import type { ClientNameRecord, ServiceOrderRecord } from '../../types/reports'
 
 declare function defineEventHandler<T>(
   handler: (event: Parameters<typeof requireAuthUser>[0]) => T | Promise<T>
 ): (event: Parameters<typeof requireAuthUser>[0]) => Promise<T>
+
+// Rows for the 4 selects below; each lists exactly the columns requested in `columns`.
+type DashboardOrderRow = Pick<ServiceOrderRecord, 'id' | 'number' | 'status' | 'entry_date' | 'total_amount' | 'client_id'>
+  & { reported_defect?: string | null, vehicle_id?: string | null }
+type DashboardClientRow = ClientNameRecord
+interface DashboardVehicleRow { id: string, brand?: string | null, model?: string | null, license_plate?: string | null }
+interface DashboardAppointmentRow {
+  id: string
+  time?: string | null
+  status?: string | null
+  service_type?: string | null
+  appointment_date?: string | null
+  client_id?: string | null
+  vehicle_id?: string | null
+}
 
 export interface RecentOrder {
   id: string
@@ -63,26 +79,26 @@ export default defineEventHandler(async (event) => {
     vehicles,
     appointments
   ] = await Promise.all([
-    fetchAllOrganizationRows(supabase, {
+    fetchAllOrganizationRows<DashboardOrderRow>(supabase, {
       table: 'service_orders',
       organizationId,
       columns: 'id, number, status, entry_date, reported_defect, total_amount, client_id, vehicle_id, created_at',
       nullColumns: ['deleted_at'],
       order: { column: 'created_at' }
     }),
-    fetchAllOrganizationRows(supabase, {
+    fetchAllOrganizationRows<DashboardClientRow>(supabase, {
       table: 'clients',
       organizationId,
       columns: 'id, name',
       nullColumns: ['deleted_at']
     }),
-    fetchAllOrganizationRows(supabase, {
+    fetchAllOrganizationRows<DashboardVehicleRow>(supabase, {
       table: 'vehicles',
       organizationId,
       columns: 'id, brand, model, license_plate',
       nullColumns: ['deleted_at']
     }),
-    fetchAllOrganizationRows(supabase, {
+    fetchAllOrganizationRows<DashboardAppointmentRow>(supabase, {
       table: 'appointments',
       organizationId,
       columns: 'id, time, status, service_type, appointment_date, client_id, vehicle_id',

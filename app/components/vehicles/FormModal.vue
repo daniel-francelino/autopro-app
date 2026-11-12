@@ -288,7 +288,7 @@ async function save() {
         <!-- Ano -->
         <UFormField label="Ano">
           <UInput
-            v-model="form.year"
+            v-model.number="form.year"
             type="number"
             min="1900"
             max="2100"
@@ -322,7 +322,7 @@ async function save() {
         <!-- Quilometragem -->
         <UFormField label="Quilometragem" class="sm:col-span-2">
           <UInput
-            v-model="form.mileage"
+            v-model.number="form.mileage"
             type="number"
             min="0"
             class="w-full"

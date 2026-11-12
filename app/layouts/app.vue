@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { NavigationMenuItem } from '@nuxt/ui'
+import type { CommandPaletteItem, NavigationMenuItem } from '@nuxt/ui'
 import { ActionCode } from '~/constants/action-codes'
 
 const open = ref(false)
@@ -205,7 +205,8 @@ const groups = computed(() => [
   {
     id: 'links',
     label: 'Ir para',
-    items: links.value.flat()
+    // CommandPaletteItem nao aceita `chip: false` (aceito por NavigationMenuItem); so tipo
+    items: links.value.flat() as CommandPaletteItem[]
   }
 ])
 

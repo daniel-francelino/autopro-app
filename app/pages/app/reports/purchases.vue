@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { SortingState } from '@tanstack/vue-table'
 import { ActionCode } from '~/constants/action-codes'
+import type { BadgeColor } from '~/types/ui'
 
 interface PurchaseReportItem {
   purchase_date?: string | null
@@ -33,8 +34,6 @@ interface PurchaseCharts {
   bySupplier: Array<{ name: string, total: number }>
   byDay: Array<{ name: string, total: number }>
 }
-
-type BadgeColor = 'neutral' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error'
 
 interface PurchaseReportResponse {
   data?: {
@@ -271,16 +270,16 @@ async function exportReport(format: 'csv' | 'pdf') {
 
           <template #supplier-cell="{ row }">
             <div
-              v-if="row.original.suppliers?.name ?? row.original.supplierName ?? row.original.supplier_name"
+              v-if="(row.original as PurchaseReportItem).suppliers?.name ?? row.original.supplierName ?? row.original.supplier_name"
               class="flex items-center gap-2"
             >
               <div class="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10">
                 <span class="text-xs font-bold text-primary">
-                  {{ getInitials(String(row.original.suppliers?.name ?? row.original.supplierName ?? row.original.supplier_name ?? '')) }}
+                  {{ getInitials(String((row.original as PurchaseReportItem).suppliers?.name ?? row.original.supplierName ?? row.original.supplier_name ?? '')) }}
                 </span>
               </div>
               <span class="truncate font-medium text-highlighted">
-                {{ row.original.suppliers?.name ?? row.original.supplierName ?? row.original.supplier_name ?? '—' }}
+                {{ (row.original as PurchaseReportItem).suppliers?.name ?? row.original.supplierName ?? row.original.supplier_name ?? '—' }}
               </span>
             </div>
             <span v-else class="text-sm text-muted">—</span>

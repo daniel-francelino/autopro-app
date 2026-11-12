@@ -3,11 +3,11 @@ import { watchDebounced } from '@vueuse/core'
 import type { RowSelectionState, SortingState } from '@tanstack/table-core'
 import { ActionCode } from '~/constants/action-codes'
 import type { ProductItem, ProductsResponse } from '~/types/products'
+import type { ViewMode } from '~/types/ui'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Produtos' })
 
-type ViewMode = 'table' | 'card'
 type ProductTypeFilter = 'all' | 'unit' | 'group'
 type InventoryFilter = 'all' | 'tracked' | 'not_tracked'
 

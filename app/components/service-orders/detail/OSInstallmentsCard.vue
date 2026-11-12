@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import type { ServiceOrderInstallment, ServiceOrderInstallmentReceipt } from '~/types/service-orders'
 import { formatCurrency, formatDate } from '~/utils/service-orders'
-
-type PaymentMethod = 'pix' | 'cash' | 'credit_card' | 'debit_card' | 'bank_slip' | 'transfer' | 'check'
-type BankAccountItem = { id: string, account_name: string, bank_name: string | null }
-type PaymentTerminalItem = { id: string, terminal_name: string, provider_company: string | null }
+import type { BankAccountItem, PaymentMethod, PaymentTerminalItem } from '~/types/financial'
+import type { BadgeColor } from '~/types/ui'
 
 const props = defineProps<{
   installments: ServiceOrderInstallment[]
@@ -20,7 +18,7 @@ const emit = defineEmits<{ changed: [] }>()
 
 const toast = useToast()
 
-const installmentStatusColor: Record<string, string> = {
+const installmentStatusColor: Record<string, BadgeColor> = {
   paid: 'success',
   partial: 'info',
   pending: 'warning',

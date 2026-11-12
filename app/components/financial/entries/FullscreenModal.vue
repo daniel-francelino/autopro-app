@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { RowSelectionState, SortingState } from '@tanstack/table-core'
-
-type BadgeColor = 'success' | 'error' | 'warning' | 'primary' | 'secondary' | 'info' | 'neutral'
+import type { BadgeColor } from '~/types/ui'
+import type { BankAccountItem } from '~/types/financial'
 
 interface Entry {
   id: string
@@ -19,12 +19,6 @@ interface Entry {
   installment_count?: number | null
   current_installment?: number | null
   [key: string]: unknown
-}
-
-type BankAccountItem = {
-  id: string
-  account_name: string
-  bank_name?: string | null
 }
 
 const props = defineProps<{

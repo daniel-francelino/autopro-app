@@ -13,7 +13,7 @@ interface DebtorClient {
   email?: string | null
 }
 
-interface DebtorReportItem {
+type DebtorReportItem = {
   clientId: string
   clientName: string
   phone: string | null
@@ -26,7 +26,7 @@ interface DebtorReportItem {
   client?: DebtorClient | null
 }
 
-interface DebtorOrderRow {
+type DebtorOrderRow = {
   rowId: string
   orderId: string | null
   orderNumber: string | null

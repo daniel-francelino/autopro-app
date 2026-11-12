@@ -3,12 +3,12 @@ import { watchDebounced } from '@vueuse/core'
 import type { RowSelectionState, SortingState } from '@tanstack/table-core'
 import { ActionCode } from '~/constants/action-codes'
 import type { PaymentTerminal as Terminal } from '~/types/financial'
+import type { ViewMode } from '~/types/ui'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Maquininhas' })
 
 type TerminalsResponse = { items: Terminal[], total: number, page: number, page_size: number }
-type ViewMode = 'table' | 'card'
 
 const DEFAULT_PAGE_SIZE = 10
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]

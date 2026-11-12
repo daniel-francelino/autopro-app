@@ -3,7 +3,7 @@ import type { ServiceOrderDetailFull } from '~/types/service-orders'
 import { formatCurrency } from '~/utils/service-orders'
 import type { CommissionBreakdownLine } from '../CommissionBreakdownPopover.vue'
 
-type OrderItem = ServiceOrderDetailFull['order']['items'][number]
+type OrderItem = NonNullable<ServiceOrderDetailFull['order']['items']>[number]
 
 const props = defineProps<{
   order: ServiceOrderDetailFull['order']

@@ -258,3 +258,23 @@ export interface Tax {
   rate?: number | string | null
   [key: string]: unknown
 }
+
+/** Metodos de pagamento aceitos nas baixas de OS (valores persistidos). */
+export type PaymentMethod = 'pix' | 'cash' | 'credit_card' | 'debit_card' | 'bank_slip' | 'transfer' | 'check'
+
+/**
+ * Conta bancaria resumida usada em seletores/baixas.
+ * `preferred_payment_method` e texto livre (nao e `PaymentMethod`); normalizar com `normalizePaymentMethod`.
+ */
+export interface BankAccountItem {
+  id: string
+  account_name: string
+  bank_name?: string | null
+  preferred_payment_method?: string | null
+}
+
+export interface PaymentTerminalItem {
+  id: string
+  terminal_name: string
+  provider_company: string | null
+}

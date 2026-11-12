@@ -28,8 +28,8 @@ export default defineEventHandler(async (event) => {
   const skipList = query.skipList === 'true'
   const dateFrom = parseDateStart(query.dateFrom as string)
   const dateTo = parseDateEnd(query.dateTo as string)
-  const orderStatusFilters = qArr(query.orderStatusFilters)
-  const paymentStatusFilters = qArr(query.paymentStatusFilters)
+  const orderStatusFilters = qArr(query.orderStatusFilters as string | string[] | undefined)
+  const paymentStatusFilters = qArr(query.paymentStatusFilters as string | string[] | undefined)
 
   const [orders, clients] = await Promise.all([
     fetchAllOrganizationRows<CustomerOrderRow>(supabase, {

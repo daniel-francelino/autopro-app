@@ -203,3 +203,11 @@ export type ServiceOrderDetailFull = {
   }[]
   responsibleNames: { employee_id: string, name: string | null }[]
 }
+
+/** Produto mestre (catalogo) vinculado a OS; `description`/`notes` opcionais. */
+export type MasterProductItem = {
+  id: string
+  name: string
+  description?: string | null
+  notes?: string | null
+}

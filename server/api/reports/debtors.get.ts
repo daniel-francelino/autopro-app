@@ -6,19 +6,7 @@ import { resolveOrganizationId } from '../../utils/organization'
 import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
 import { parseDateRange, toNumber, qArr, paginate, sortFactor, normalizeReportStatus } from '../../utils/report-helpers'
 import { enforceReportAccess } from '../../utils/license'
-
-interface ServiceOrderRecord {
-  id?: string | null
-  number?: string | number | null
-  client_id?: string | null
-  status?: string | null
-  payment_status?: string | null
-  payment_method?: string | null
-  total_amount?: number | string | null
-  expected_payment_date?: string | null
-  entry_date?: string | null
-  is_installment?: boolean | null
-}
+import type { ClientContactRecord, DebtorOrderRecord } from '../../types/reports'
 
 interface InstallmentRecord {
   id?: string | null
@@ -34,13 +22,6 @@ interface InstallmentRecord {
 interface ReceivedTransactionRecord {
   service_order_installment_id?: string | null
   amount?: number | string | null
-}
-
-interface ClientRecord {
-  id: string
-  name?: string | null
-  phone?: string | null
-  email?: string | null
 }
 
 interface PendingItem {
@@ -66,7 +47,7 @@ interface DebtorAggregate {
 }
 
 interface DebtorClientRow extends DebtorAggregate {
-  client?: ClientRecord | null
+  client?: ClientContactRecord | null
   clientName: string
   phone: string | null
   email: string | null
@@ -111,7 +92,7 @@ export default defineEventHandler(async (event) => {
   const { dateFrom, dateTo } = parseDateRange(query.dateFrom as string, query.dateTo as string)
 
   const [orders, installments, clients, receivedTransactions] = await Promise.all([
-    fetchAllOrganizationRows<ServiceOrderRecord>(supabase, {
+    fetchAllOrganizationRows<DebtorOrderRecord>(supabase, {
       table: 'service_orders',
       organizationId,
       nullColumns: ['deleted_at'],
@@ -122,7 +103,7 @@ export default defineEventHandler(async (event) => {
       organizationId,
       nullColumns: ['deleted_at']
     }),
-    fetchAllOrganizationRows<ClientRecord>(supabase, {
+    fetchAllOrganizationRows<ClientContactRecord>(supabase, {
       table: 'clients',
       organizationId,
       nullColumns: ['deleted_at']
@@ -134,8 +115,8 @@ export default defineEventHandler(async (event) => {
       nullColumns: ['deleted_at']
     })
   ])
-  const clientsMap = new Map<string, ClientRecord>(clients.map(c => [String(c.id), c]))
-  const ordersMap = new Map<string, ServiceOrderRecord>(orders.map(order => [String(order.id || ''), order]))
+  const clientsMap = new Map<string, ClientContactRecord>(clients.map(c => [String(c.id), c]))
+  const ordersMap = new Map<string, DebtorOrderRecord>(orders.map(order => [String(order.id || ''), order]))
 
   // An installment can now be settled across more than one receipt
   // (partial payments) — what's still owed on it is its expected amount

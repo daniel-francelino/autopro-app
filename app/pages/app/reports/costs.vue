@@ -3,7 +3,7 @@ import type { SortingState } from '@tanstack/vue-table'
 import type { CostCategoryDetailData } from '~/components/reports/costs/CostsCategoryDetailsSlideover.vue'
 import { DEFAULT_CATEGORY_COLOR, DEFAULT_CATEGORY_ICON, formatCategoryName } from '~/utils/financial-category-options'
 
-interface CategoryRow {
+type CategoryRow = {
   categoryKey: string
   category: string
   icon: string

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { DEFAULT_CATEGORY_COLOR, formatCategoryName } from '~/utils/financial-category-options'
+import type { BadgeColor } from '~/types/ui'
 
 export interface CostCategoryDetailItem {
   id: string
@@ -31,8 +32,6 @@ const props = defineProps<{
   loading: boolean
   data: CostCategoryDetailData | null
 }>()
-
-type BadgeColor = 'neutral' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error'
 
 defineEmits<{
   'update:open': [value: boolean]

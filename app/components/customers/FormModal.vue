@@ -19,7 +19,7 @@ const isLoadingCep = ref(false)
 const isSaving = ref(false)
 const employees = ref<Employee[]>([])
 const isLoadingEmployees = ref(false)
-const employeeToAdd = ref<Employee | null>(null)
+const employeeToAdd = ref<string | undefined>(undefined) // value-key="id": o USelectMenu entrega o id, nao o objeto
 
 // ─── Validation errors ──────────────────────────────────────────────────────
 const errors = reactive<Record<string, string>>({})
@@ -167,8 +167,8 @@ const employeeOptions = computed(() =>
 
 function addEmployee() {
   if (!employeeToAdd.value) return
-  form.responsible_employees.push({ employee_id: employeeToAdd.value.id })
-  employeeToAdd.value = null
+  form.responsible_employees.push({ employee_id: employeeToAdd.value })
+  employeeToAdd.value = undefined
 }
 
 function removeEmployee(id: string) {

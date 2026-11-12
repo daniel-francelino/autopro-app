@@ -63,7 +63,7 @@ export default defineEventHandler(async (event) => {
 
   const items = (data || []).map((sub: Record<string, unknown>) => ({
     ...sub,
-    organization_name: orgNameMap[sub.organization_id] ?? '—'
+    organization_name: orgNameMap[sub.organization_id as string] ?? '—'
   }))
 
   return { items, total: count ?? items.length, page, page_size: pageSize }

@@ -2,11 +2,11 @@
 import { watchDebounced } from '@vueuse/core'
 import type { RowSelectionState, SortingState } from '@tanstack/table-core'
 import { ActionCode } from '~/constants/action-codes'
+import type { ViewMode } from '~/types/ui'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Fornecedores' })
 
-type ViewMode = 'table' | 'card'
 type SupplierPersonType = 'all' | 'pf' | 'pj'
 type SupplierStatusFilter = 'all' | 'active' | 'inactive'
 
@@ -842,13 +842,13 @@ const lineColumns = [
 
           <template #tax_id-cell="{ row }">
             <span class="text-sm text-muted">
-              {{ formatTaxId(row.original.tax_id, row.original.person_type) }}
+              {{ formatTaxId((row.original as SupplierItem).tax_id, (row.original as SupplierItem).person_type) }}
             </span>
           </template>
 
           <template #phone-cell="{ row }">
             <span class="text-sm text-muted">
-              {{ formatPhone(row.original.phone) }}
+              {{ formatPhone((row.original as SupplierItem).phone) }}
             </span>
           </template>
 
@@ -939,11 +939,11 @@ const lineColumns = [
                 <div class="grid grid-cols-1 gap-2 text-sm text-muted sm:grid-cols-2">
                   <div class="flex items-center gap-2">
                     <UIcon name="i-lucide-id-card" class="size-4 shrink-0" />
-                    <span class="truncate">{{ formatTaxId(supplier.tax_id, supplier.person_type) }}</span>
+                    <span class="truncate">{{ formatTaxId((supplier as SupplierItem).tax_id, (supplier as SupplierItem).person_type) }}</span>
                   </div>
                   <div class="flex items-center gap-2">
                     <UIcon name="i-lucide-phone" class="size-4 shrink-0" />
-                    <span class="truncate">{{ formatPhone(supplier.phone) }}</span>
+                    <span class="truncate">{{ formatPhone((supplier as SupplierItem).phone) }}</span>
                   </div>
                   <div class="flex items-center gap-2">
                     <UIcon name="i-lucide-mail" class="size-4 shrink-0" />

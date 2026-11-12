@@ -2,11 +2,11 @@
 import { watchDebounced } from '@vueuse/core'
 import type { RowSelectionState, SortingState } from '@tanstack/table-core'
 import { ActionCode } from '~/constants/action-codes'
+import type { ViewMode } from '~/types/ui'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Compras' })
 
-type ViewMode = 'table' | 'card'
 type PurchaseStatusFilter = 'all' | 'pending' | 'paid'
 
 type SupplierOption = { id: string, name: string }
@@ -26,7 +26,7 @@ type PurchaseLineItem = {
   description: string
   quantity: number
   unit_cost_price: number
-  unit_sale_price: number | null
+  unit_sale_price: number | string | null
   total_item_price: number
   add_to_stock: boolean
 }
@@ -849,29 +849,29 @@ const lineColumns = [
 
           <template #purchase_date-cell="{ row }">
             <span class="text-sm text-muted">
-              {{ formatDate(row.original.purchase_date) }}
+              {{ formatDate((row.original as PurchaseItem).purchase_date) }}
             </span>
           </template>
 
           <template #supplier-cell="{ row }">
             <div class="min-w-0">
               <p class="truncate font-medium text-highlighted">
-                {{ row.original.suppliers?.name || 'Fornecedor não informado' }}
+                {{ (row.original as PurchaseItem).suppliers?.name || 'Fornecedor não informado' }}
               </p>
             </div>
           </template>
 
           <template #total_amount-cell="{ row }">
             <span class="text-sm text-muted">
-              {{ formatCurrency(row.original.total_amount) }}
+              {{ formatCurrency((row.original as PurchaseItem).total_amount) }}
             </span>
           </template>
 
           <template #payment_status-cell="{ row }">
             <UBadge
-              :label="statusLabelMap[row.original.payment_status] || row.original.payment_status"
-              :color="statusColorMap[row.original.payment_status] || 'neutral'"
-              :leading-icon="statusIconMap[row.original.payment_status]"
+              :label="statusLabelMap[(row.original as PurchaseItem).payment_status] || (row.original as PurchaseItem).payment_status"
+              :color="statusColorMap[(row.original as PurchaseItem).payment_status] || 'neutral'"
+              :leading-icon="statusIconMap[(row.original as PurchaseItem).payment_status]"
               variant="subtle"
               size="xs"
             />
@@ -1069,7 +1069,7 @@ const lineColumns = [
 
           <UFormField label="Valor total" required>
             <UInput
-              v-model="form.total_amount"
+              v-model.number="form.total_amount"
               type="number"
               min="0"
               step="0.01"
@@ -1129,7 +1129,7 @@ const lineColumns = [
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <UFormField label="PeÃ§a do estoque" class="sm:col-span-2">
                 <USelectMenu
-                  v-model="item.part_id"
+                  :model-value="item.part_id ?? undefined"
                   :items="partOptions"
                   value-key="value"
                   :loading="isLoadingParts"
@@ -1137,7 +1137,7 @@ const lineColumns = [
                   class="w-full"
                   searchable
                   clearable
-                  @update:model-value="onPartSelect(item, item.part_id ?? null)"
+                  @update:model-value="(v) => { item.part_id = v as string | null; onPartSelect(item, item.part_id ?? null) }"
                 />
               </UFormField>
 
@@ -1169,11 +1169,12 @@ const lineColumns = [
 
               <UFormField label="PreÃ§o de venda sugerido">
                 <UInput
-                  v-model="item.unit_sale_price"
+                  :model-value="item.unit_sale_price ?? undefined"
                   type="number"
                   min="0"
                   step="0.01"
                   class="w-full"
+                  @update:model-value="item.unit_sale_price = $event"
                 />
               </UFormField>
 

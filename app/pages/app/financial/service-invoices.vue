@@ -2,6 +2,7 @@
 import { watchDebounced } from '@vueuse/core'
 import { ActionCode } from '~/constants/action-codes'
 import type { NfseRow, SyncStatusResponse } from '~/types/nfse'
+import type { BadgeColor } from '~/types/ui'
 
 definePageMeta({
   layout: 'app',
@@ -139,8 +140,6 @@ async function submitSearch(value: string) {
 }
 
 // ─── Status helpers ───────────────────────────────────────────────────────────
-
-type BadgeColor = 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error' | 'neutral'
 
 const STATUS_LABEL: Record<string, string> = {
   authorized: 'Autorizada',

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { NavigationMenuItem } from '@nuxt/ui'
+import type { CommandPaletteItem, NavigationMenuItem } from '@nuxt/ui'
 
 const open = ref(false)
 const sidebarCollapsed = ref(true)
@@ -71,7 +71,7 @@ const links = computed<NavigationMenuItem[][]>(() =>
   ])
 )
 
-const groups = computed(() => sections.value.map(({ id, label, items }) => ({ id, label, items })))
+const groups = computed(() => sections.value.map(({ id, label, items }) => ({ id, label, items: items as CommandPaletteItem[] })))
 
 watch(
   isMobile,

@@ -1,40 +1,7 @@
 import { normalizeReportStatus, parseDateEnd, parseDateStart, roundMoney, toNumber } from './report-helpers'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { fetchAllOrganizationRows, type SupabaseClientLike } from './supabase-pagination'
-
-interface EmployeeRecord {
-  id: string
-  name?: string | null
-  role?: string | null
-  email?: string | null
-  phone?: string | null
-  tax_id?: string | null
-  person_type?: string | null
-  photo_url?: string | null
-  city?: string | null
-  state?: string | null
-  neighborhood?: string | null
-  street?: string | null
-  address_number?: string | null
-  address_complement?: string | null
-  zip_code?: string | null
-  termination_date?: string | null
-  termination_reason?: string | null
-}
-
-interface ServiceOrderRecord {
-  id: string
-  number?: string | number | null
-  status?: string | null
-  payment_status?: string | null
-  entry_date?: string | null
-  client_id?: string | null
-}
-
-interface ClientRecord {
-  id: string
-  name?: string | null
-}
+import type { EmployeeRecord, EmployeeCommissionOrderRecord, ClientNameRecord } from '../types/reports'
 
 interface EmployeeFinancialRecord {
   id: string
@@ -173,7 +140,7 @@ function buildDate(value: string | null | undefined) {
   return Number.isNaN(date.getTime()) ? null : date
 }
 
-function resolveReferenceDate(record: EmployeeFinancialRecord, order: ServiceOrderRecord | null) {
+function resolveReferenceDate(record: EmployeeFinancialRecord, order: EmployeeCommissionOrderRecord | null) {
   return record.reference_date || record.date || order?.entry_date || null
 }
 
@@ -227,24 +194,24 @@ export async function getEmployeeCommissionReport({
 
   const [ordersData, clientsData] = await Promise.all([
     serviceOrderIds.length > 0
-      ? fetchAllOrganizationRows<ServiceOrderRecord>(supabase as unknown as SupabaseClientLike, {
+      ? fetchAllOrganizationRows<EmployeeCommissionOrderRecord>(supabase as unknown as SupabaseClientLike, {
           table: 'service_orders',
           organizationId,
           columns: 'id, number, status, payment_status, entry_date, client_id',
           nullColumns: ['deleted_at']
         }).then(orders => orders.filter(order => serviceOrderIds.includes(String(order.id))))
-      : Promise.resolve([] as ServiceOrderRecord[]),
+      : Promise.resolve([] as EmployeeCommissionOrderRecord[]),
     serviceOrderIds.length > 0
-      ? fetchAllOrganizationRows<ClientRecord>(supabase as unknown as SupabaseClientLike, {
+      ? fetchAllOrganizationRows<ClientNameRecord>(supabase as unknown as SupabaseClientLike, {
           table: 'clients',
           organizationId,
           columns: 'id, name',
           nullColumns: ['deleted_at']
         })
-      : Promise.resolve([] as ClientRecord[])
+      : Promise.resolve([] as ClientNameRecord[])
   ])
 
-  const ordersMap = new Map<string, ServiceOrderRecord>(
+  const ordersMap = new Map<string, EmployeeCommissionOrderRecord>(
     ordersData.map(order => [String(order.id), order])
   )
 

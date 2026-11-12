@@ -1,3 +1,6 @@
+// tsconfig.node.json (que tipa este arquivo) não inclui as augmentations geradas pelos módulos;
+// sem isto, `robots` em routeRules não existe no tipo (TS2353). Arquivo gerado por `nuxt prepare`.
+import type {} from './.nuxt/types/nuxt-robots-nitro'
 import { readdirSync } from 'node:fs'
 
 // Páginas de conteúdo público (content/paginas/*.md), servidas em /<slug>.

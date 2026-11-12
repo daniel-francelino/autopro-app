@@ -3,6 +3,7 @@ import { watchDebounced } from '@vueuse/core'
 import type { RowSelectionState, SortingState } from '@tanstack/table-core'
 import { ActionCode } from '~/constants/action-codes'
 import type { Client, PersonType } from '~/types/clients'
+import type { ViewMode } from '~/types/ui'
 
 function formatTaxId(taxId: string | null, personType: PersonType): string {
   if (!taxId) return '-'
@@ -30,7 +31,6 @@ function formatPhone(phone: string | null): string {
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Clientes' })
 
-type ViewMode = 'table' | 'card'
 const ALL_PERSON_TYPES_VALUE = 'all'
 
 type ClientsResponse = {

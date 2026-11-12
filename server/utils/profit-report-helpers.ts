@@ -2,10 +2,8 @@
 // (server/api/reports/profit-cash-flow.get.ts, profit-by-order.get.ts).
 // See docs/reports/profit-report.md for the business rationale behind each mode.
 
-import type { SupabaseReportRow } from './supabase-pagination'
+import type { ProfitOrderRecord, ProfitTransactionRecord } from '../types/reports'
 import { toNumber, formatDateKey, formatDayLabel, matchesStatusFilters, normalizeReportStatus, getPreviousRangeByMode, calculateVariation, getComparisonModeLabel, formatPeriodLabel } from './report-helpers'
-
-type ReportRow = SupabaseReportRow
 
 export interface PeriodProfitData {
   revenue: number
@@ -13,9 +11,9 @@ export interface PeriodProfitData {
   profit: number
   profitMargin: number
   orderCount: number
-  orders: ReportRow[]
-  costsData?: ReportRow[]
-  incomeData?: ReportRow[]
+  orders: ProfitOrderRecord[]
+  costsData?: ProfitTransactionRecord[]
+  incomeData?: ProfitTransactionRecord[]
   partsCost?: number
   commissionCost?: number
 }
@@ -72,25 +70,25 @@ export interface TopProfitableOrder {
 // com o status certo" — os dois podem divergir bastante (parcelas, estornos, ajustes manuais).
 
 export function calculateCashFlowFromTransactions(
-  transactions: ReportRow[],
+  transactions: ProfitTransactionRecord[],
   start: Date,
   end: Date,
   statusFilters: string[]
 ): PeriodProfitData {
-  const periodIncome = transactions.filter((t: ReportRow) => {
+  const periodIncome = transactions.filter((t: ProfitTransactionRecord) => {
     const dueDate = t?.due_date ? new Date(`${t.due_date}T00:00:00`) : null
     const isIncome = t?.type === 'income'
     const isCancelled = normalizeReportStatus(t?.status) === 'cancelled'
     return !!dueDate && !Number.isNaN(dueDate.getTime()) && isIncome && !isCancelled && matchesStatusFilters(t?.status, statusFilters) && dueDate >= start && dueDate <= end
   })
-  const periodCosts = transactions.filter((t: ReportRow) => {
+  const periodCosts = transactions.filter((t: ProfitTransactionRecord) => {
     const dueDate = t?.due_date ? new Date(`${t.due_date}T00:00:00`) : null
     const isCost = t?.type === 'expense'
     const isCancelled = normalizeReportStatus(t?.status) === 'cancelled'
     return !!dueDate && !Number.isNaN(dueDate.getTime()) && isCost && !isCancelled && matchesStatusFilters(t?.status, statusFilters) && dueDate >= start && dueDate <= end
   })
-  const revenue = periodIncome.reduce((acc: number, t: ReportRow) => acc + toNumber(t?.amount, 0), 0)
-  const costs = periodCosts.reduce((acc: number, t: ReportRow) => acc + toNumber(t?.amount, 0), 0)
+  const revenue = periodIncome.reduce((acc: number, t: ProfitTransactionRecord) => acc + toNumber(t?.amount, 0), 0)
+  const costs = periodCosts.reduce((acc: number, t: ProfitTransactionRecord) => acc + toNumber(t?.amount, 0), 0)
   const profit = revenue - costs
   return { revenue, costs, profit, profitMargin: revenue > 0 ? (profit / revenue) * 100 : 0, orderCount: periodIncome.length, orders: [], costsData: periodCosts, incomeData: periodIncome }
 }
@@ -131,22 +129,22 @@ export function buildCashFlowTransactionsEvolutionData(periodData: PeriodProfitD
 // que é o comportamento padrão deste modo (regime de competência, independente de pagamento).
 
 export function calculateByOrderPeriodData(
-  orders: ReportRow[],
+  orders: ProfitOrderRecord[],
   start: Date,
   end: Date,
   orderStatusFilters: string[] = [],
   paymentStatusFilters: string[] = []
 ): PeriodProfitData {
-  const periodOrders = orders.filter((o: ReportRow) => {
+  const periodOrders = orders.filter((o: ProfitOrderRecord) => {
     const entryDate = o?.entry_date ? new Date(`${o.entry_date}T00:00:00`) : null
     if (!entryDate || Number.isNaN(entryDate.getTime()) || entryDate < start || entryDate > end) return false
     if (orderStatusFilters.length > 0 && !orderStatusFilters.includes(String(o?.status || ''))) return false
     if (!matchesStatusFilters(o?.payment_status, paymentStatusFilters)) return false
     return true
   })
-  const revenue = periodOrders.reduce((acc: number, o: ReportRow) => acc + toNumber(o?.total_amount, 0), 0)
-  const partsCost = periodOrders.reduce((acc: number, o: ReportRow) => acc + toNumber(o?.total_cost_amount, 0), 0)
-  const commissionCost = periodOrders.reduce((acc: number, o: ReportRow) => acc + toNumber(o?.commission_amount, 0), 0)
+  const revenue = periodOrders.reduce((acc: number, o: ProfitOrderRecord) => acc + toNumber(o?.total_amount, 0), 0)
+  const partsCost = periodOrders.reduce((acc: number, o: ProfitOrderRecord) => acc + toNumber(o?.total_cost_amount, 0), 0)
+  const commissionCost = periodOrders.reduce((acc: number, o: ProfitOrderRecord) => acc + toNumber(o?.commission_amount, 0), 0)
   const costs = partsCost + commissionCost
   const profit = revenue - costs
   return { revenue, costs, profit, profitMargin: revenue > 0 ? (profit / revenue) * 100 : 0, orderCount: periodOrders.length, orders: periodOrders, partsCost, commissionCost }
@@ -169,8 +167,8 @@ export function buildByOrderEvolutionData(periodData: PeriodProfitData | null, s
   return Object.entries(dailyData).map(([date, v]) => ({ name: formatDayLabel(date), ...v, profit: v.revenue - v.costs }))
 }
 
-export function buildTopProfitableOrders(orders: ReportRow[]): TopProfitableOrder[] {
-  return orders.map((o: ReportRow) => {
+export function buildTopProfitableOrders(orders: ProfitOrderRecord[]): TopProfitableOrder[] {
+  return orders.map((o: ProfitOrderRecord) => {
     const revenue = toNumber(o?.total_amount, 0)
     const cost = toNumber(o?.total_cost_amount, 0) + toNumber(o?.commission_amount, 0)
     const profit = revenue - cost

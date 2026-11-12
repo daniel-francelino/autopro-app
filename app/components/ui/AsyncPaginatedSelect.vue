@@ -1,4 +1,5 @@
 <script setup lang="ts" generic="T extends Record<string, any>">
+import type { Ref } from 'vue'
 /**
  * Searchable select with infinite scroll.
  *
@@ -69,7 +70,7 @@ const inputRef = ref<HTMLInputElement | null>(null)
 
 // ─── Remote mode state ─────────────────────────────────────────────────────
 
-const remoteItems = ref<T[]>([])
+const remoteItems = ref([]) as Ref<T[]>
 const currentPage = ref(1)
 const total = ref(0)
 const loading = ref(false)

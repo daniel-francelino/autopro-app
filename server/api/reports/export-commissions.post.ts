@@ -6,23 +6,10 @@ import { resolveOrganizationId } from '../../utils/organization'
 import { buildReportDownloadData } from '../../utils/report-export'
 import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
 import { parseDateRange, formatCurrency, formatOptionalDate, formatStatusLabel, normalizeReportStatus, sortFactor, toNumber } from '../../utils/report-helpers'
-
-interface EmployeeRecord {
-  id: string
-  name?: string | null
-}
+import type { EmployeeNameRecord, CommissionExportOrderRecord } from '../../types/reports'
 
 interface OrganizationRecord {
   name?: string | null
-}
-
-interface ServiceOrderRecord {
-  id?: string | null
-  number?: string | number | null
-  status?: string | null
-  payment_status?: string | null
-  payment_method?: string | null
-  entry_date?: string | null
 }
 
 interface EmployeeFinancialRecord {
@@ -89,13 +76,13 @@ export default defineEventHandler(async (event) => {
       organizationId,
       order: { column: 'reference_date' }
     }),
-    fetchAllOrganizationRows<ServiceOrderRecord>(supabase, {
+    fetchAllOrganizationRows<CommissionExportOrderRecord>(supabase, {
       table: 'service_orders',
       organizationId,
       nullColumns: ['deleted_at'],
       order: { column: 'created_at' }
     }),
-    fetchAllOrganizationRows<EmployeeRecord>(supabase, {
+    fetchAllOrganizationRows<EmployeeNameRecord>(supabase, {
       table: 'employees',
       organizationId,
       nullColumns: ['deleted_at']
@@ -109,8 +96,8 @@ export default defineEventHandler(async (event) => {
 
   const organization = (organizationResult.data ?? null) as OrganizationRecord | null
 
-  const employeesMap = new Map<string, EmployeeRecord>(employees.map(employee => [String(employee.id), employee]))
-  const ordersMap = new Map<string, ServiceOrderRecord>(orders.map(order => [String(order.id || ''), order]))
+  const employeesMap = new Map<string, EmployeeNameRecord>(employees.map(employee => [String(employee.id), employee]))
+  const ordersMap = new Map<string, CommissionExportOrderRecord>(orders.map(order => [String(order.id || ''), order]))
 
   const items: ExportCommissionRecord[] = records
     .filter((record) => {

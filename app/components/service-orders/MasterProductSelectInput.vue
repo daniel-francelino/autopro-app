@@ -1,10 +1,5 @@
 <script setup lang="ts">
-interface MasterProductItem {
-  id: string
-  name: string
-  description: string | null
-  notes: string | null
-}
+import type { MasterProductItem } from '~/types/service-orders'
 
 defineProps<{
   modelValue: string

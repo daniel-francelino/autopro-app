@@ -2,6 +2,32 @@ export type PermissionMap = Record<string, boolean>
 
 export type WorkshopEntity = Record<string, unknown>
 
+export type WorkshopOrganization = {
+  id?: string
+  name?: string | null
+  trade_name?: string | null
+  logo_url?: string | null
+  person_type?: 'pf' | 'pj' | null
+  tax_id?: string | null
+  phone?: string | null
+  whatsapp?: string | null
+  email?: string | null
+  zip_code?: string | null
+  street?: string | null
+  address_number?: string | null
+  neighborhood?: string | null
+  city?: string | null
+  state?: string | null
+} & WorkshopEntity
+
+export type WorkshopCurrentUser = {
+  id?: string
+  display_name?: string | null
+  full_name?: string | null
+  email?: string | null
+  organization_id?: string | null
+} & WorkshopEntity
+
 export type WorkshopAction = {
   id: string
   code: string
@@ -18,9 +44,9 @@ export type WorkshopRoleAction = {
 } & WorkshopEntity
 
 export type WorkshopBootstrapResponse = {
-  currentUser: WorkshopEntity | null
+  currentUser: WorkshopCurrentUser | null
   userRole: WorkshopEntity | null
-  organization: WorkshopEntity | null
+  organization: WorkshopOrganization | null
   employee: WorkshopEntity | null
   roles: WorkshopEntity[]
   actions: WorkshopAction[]

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ServiceOrder } from '~/types/service-orders'
 import { canEditServiceOrder } from '~/utils/service-orders'
+import type { BadgeColor } from '~/types/ui'
 
 const props = defineProps<{
   order: ServiceOrder
@@ -28,8 +29,6 @@ const emit = defineEmits<{
   'pdf': [order: ServiceOrder]
   'issue-nfse': [order: ServiceOrder]
 }>()
-
-type BadgeColor = 'neutral' | 'info' | 'warning' | 'success' | 'error' | 'primary' | 'secondary'
 
 const statusColorMap: Record<string, BadgeColor> = {
   estimate: 'neutral',

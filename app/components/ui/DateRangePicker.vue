@@ -6,8 +6,10 @@ import {
   parseDate,
   today
 } from '@internationalized/date'
-import type { DateRange, DateValue } from '@internationalized/date'
+import type { DateValue } from '@internationalized/date'
 import { createReusableTemplate } from '@vueuse/core'
+
+type DateRange = { start: DateValue | undefined, end: DateValue | undefined }
 
 const props = withDefaults(
   defineProps<{
@@ -99,7 +101,7 @@ const calendarValue = computed<DateRange>({
   }
 })
 
-function formatRange(from: string | undefined, to: string | undefined) {
+function formatRange(from: string | null | undefined, to: string | null | undefined) {
   const start = isoToCalendarDate(from)
   const end = isoToCalendarDate(to)
   if (!start) return ''

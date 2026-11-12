@@ -9,6 +9,9 @@ useSeoMeta({
   title: 'Assinatura'
 })
 
+// O schema da collection `pricing` (content.config.ts) nao declara `plans`, mas o YAML o fornece em runtime
+type PricingPageProp = InstanceType<typeof BillingPricingPlans>['$props']['page']
+
 const isOpen = ref(true)
 
 const { data: page, status } = await useAsyncData(
@@ -44,7 +47,7 @@ const { data: page, status } = await useAsyncData(
             <BillingPricingPlans
               v-else-if="page"
               embedded
-              :page="page"
+              :page="(page as unknown as PricingPageProp)"
               cancel-path="/app/subscribe?checkout=cancel"
               success-path="/app?checkout=success"
             />

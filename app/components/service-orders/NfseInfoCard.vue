@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { NfseRow } from '~/types/nfse'
+import type { BadgeColor } from '~/types/ui'
 
 type NfseListResponse = { success: boolean, data: NfseRow[] }
 
@@ -29,8 +30,6 @@ const isCompleted = computed(
 )
 
 // ─── Status display ─────────────────────────────────────────────────────────
-
-type BadgeColor = 'neutral' | 'info' | 'warning' | 'success' | 'error' | 'primary' | 'secondary'
 
 const statusColorMap: Record<string, BadgeColor> = {
   processing_authorization: 'warning',

@@ -23,7 +23,7 @@ async function confirm() {
   if (!props.nfse || isCancelling.value) return
   isCancelling.value = true
   try {
-    await $fetch(`/api/fiscal/nfse/${encodeURIComponent(props.nfse.provider_reference)}`, {
+    await $fetch(`/api/fiscal/nfse/${encodeURIComponent(props.nfse.provider_reference)}` as string, {
       method: 'DELETE',
       body: justification.value.trim() ? { justification: justification.value.trim() } : {}
     })

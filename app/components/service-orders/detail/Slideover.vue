@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ServiceOrder, ServiceOrderDetail } from '~/types/service-orders'
+import type { BadgeColor } from '~/types/ui'
 
 const props = defineProps<{
   open: boolean
@@ -38,7 +39,7 @@ watch(
   }
 )
 
-const statusColorMap: Record<string, string> = {
+const statusColorMap: Record<string, BadgeColor> = {
   estimate: 'neutral',
   open: 'info',
   in_progress: 'warning',
@@ -56,7 +57,7 @@ const statusLabelMap: Record<string, string> = {
   delivered: 'Entregue',
   cancelled: 'Cancelada'
 }
-const paymentStatusColorMap: Record<string, string> = {
+const paymentStatusColorMap: Record<string, BadgeColor> = {
   pending: 'warning',
   paid: 'success',
   partial: 'info'

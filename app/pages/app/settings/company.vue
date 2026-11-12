@@ -67,7 +67,9 @@ const {
   requestFetch<OrgData>('/api/organizations', { headers: requestHeaders })
 )
 
-const form = reactive<Partial<Schema>>({})
+// Estado do formulario: campos nullable do schema sao tratados como opcionais na UI (tipo apenas)
+type FormState = { [K in Exclude<keyof Schema, 'logo_url'>]?: NonNullable<Schema[K]> } & { logo_url?: string | null }
+const form = reactive<FormState>({})
 
 function fillForm(data: OrgData | null | undefined) {
   if (!data) return

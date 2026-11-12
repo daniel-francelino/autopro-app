@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import type { MasterProductItem } from '~/types/service-orders'
+
 interface MasterProductDisplay { name: string, description?: string | null }
-interface MasterProductSelected { id: string, name: string, description: string | null, notes: string | null }
 interface ClientRecord { id: string, name: string }
 interface VehicleRecord { id: string, brand: string | null, model: string | null, license_plate: string | null, client_id?: string | null }
 
@@ -30,7 +31,7 @@ const emit = defineEmits<{
   'clearClient': []
   'selectVehicle': [vehicle: VehicleRecord]
   'clearVehicle': []
-  'selectMasterProduct': [product: MasterProductSelected]
+  'selectMasterProduct': [product: MasterProductItem]
   'clearMasterProduct': []
   'openMasterProductEditor': []
   'openMasterProductManager': []

@@ -3,6 +3,7 @@ import { watchDebounced } from '@vueuse/core'
 import type { RowSelectionState, SortingState } from '@tanstack/table-core'
 import { ActionCode } from '~/constants/action-codes'
 import type { BankAccount } from '~/types/financial'
+import type { BadgeColor, ViewMode } from '~/types/ui'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Contas bancárias' })
@@ -13,16 +14,6 @@ type AccountsResponse = {
   page: number
   page_size: number
 }
-type ViewMode = 'table' | 'card'
-type BadgeColor
-  = | 'primary'
-    | 'secondary'
-    | 'success'
-    | 'info'
-    | 'warning'
-    | 'error'
-    | 'neutral'
-
 const DEFAULT_PAGE_SIZE = 10
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
 const MANAGED_QUERY_KEYS = [

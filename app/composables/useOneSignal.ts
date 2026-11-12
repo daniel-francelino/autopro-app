@@ -49,7 +49,7 @@ function defaultState(): OneSignalState {
   }
 }
 
-function mapPermission(value: NotificationPermission | Notification['permission'] | undefined): NotificationPermission {
+function mapPermission(value: NotificationPermission | undefined): NotificationPermission {
   if (value === 'granted' || value === 'denied' || value === 'default')
     return value
 

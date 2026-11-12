@@ -9,6 +9,7 @@ import {
   salesPaymentMethodColor,
   salesPaymentStatusColor
 } from '~/utils/report-sales-items'
+import type { BadgeColor } from '~/types/ui'
 
 export interface SalesItemsDetailRow {
   id: string
@@ -57,8 +58,6 @@ const props = defineProps<{
   loading: boolean
   data: SalesItemsDetailData | null
 }>()
-
-type BadgeColor = 'neutral' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error'
 
 defineEmits<{
   'update:open': [value: boolean]

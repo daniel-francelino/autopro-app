@@ -377,7 +377,7 @@ async function save() {
                   required
                 >
                   <UInput
-                    v-model="form.code"
+                    v-model.number="form.code"
                     icon="i-lucide-scan-barcode"
                     :trailing-icon="isLoadingNextCode ? 'i-lucide-loader-circle' : undefined"
                     type="number"

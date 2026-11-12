@@ -4,6 +4,12 @@ import type { Cell, ColumnDef, Header, HeaderContext, Row, RowSelectionState, So
 
 type TableRowData = Record<string, unknown>
 type DataTableColumn = ColumnDef<TableRowData, unknown>
+// ColumnDef e uma uniao: accessorKey/accessorFn so existem em parte das variantes
+type AccessorFields = {
+  accessorKey?: string
+  accessorFn?: (row: TableRowData, index: number) => unknown
+}
+const withAccessors = (column: DataTableColumn) => column as unknown as AccessorFields
 type DisplayMode = 'table' | 'card'
 
 const props = withDefaults(defineProps<{
@@ -259,8 +265,9 @@ function getColumnKey(column: DataTableColumn) {
   if (typeof column.id === 'string')
     return column.id
 
-  if (typeof column.accessorKey === 'string')
-    return column.accessorKey
+  const { accessorKey } = withAccessors(column)
+  if (typeof accessorKey === 'string')
+    return accessorKey
 
   return undefined
 }
@@ -277,11 +284,12 @@ function isActionsColumn(column: DataTableColumn) {
 }
 
 function getColumnValue(column: DataTableColumn, item: TableRowData, index: number) {
-  if (typeof column.accessorFn === 'function')
-    return column.accessorFn(item, index)
+  const { accessorFn, accessorKey } = withAccessors(column)
+  if (typeof accessorFn === 'function')
+    return accessorFn(item, index)
 
-  if (typeof column.accessorKey === 'string')
-    return item[column.accessorKey]
+  if (typeof accessorKey === 'string')
+    return item[accessorKey]
 
   return undefined
 }
@@ -400,9 +408,9 @@ function normalizeColumn(column: DataTableColumn): DataTableColumn {
   const fallbackLabel = formatColumnLabel(getColumnKey(column) ?? 'Coluna')
   const sortable = typeof column.enableSorting === 'boolean'
     ? column.enableSorting
-    : Boolean(typeof column.accessorKey === 'string' && !isActionsColumn(column))
+    : Boolean(typeof withAccessors(column).accessorKey === 'string' && !isActionsColumn(column))
   const actionsColumn = isActionsColumn(column)
-  const meta = (column.meta ?? {}) as {
+  const meta = (column.meta ?? {}) as unknown as {
     class?: {
       th?: string | ((context: Header<TableRowData, unknown>) => string)
       td?: string | ((context: Cell<TableRowData, unknown>) => string)
@@ -427,7 +435,7 @@ function normalizeColumn(column: DataTableColumn): DataTableColumn {
         )
       }
     }
-  }
+  } as DataTableColumn
 }
 
 const normalizedColumns = computed<DataTableColumn[]>(() => {

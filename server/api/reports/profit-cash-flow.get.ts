@@ -4,6 +4,7 @@ import { requireAuthUser } from '../../utils/require-auth'
 import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
 import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
+import type { ProfitTransactionRecord } from '../../types/reports'
 import { parseDateStart, parseDateEnd, normalizeStatusFilters } from '../../utils/report-helpers'
 import { enforceReportAccess } from '../../utils/license'
 import { calculateCashFlowFromTransactions, buildCashFlowTransactionsEvolutionData, resolveComparison, buildVariations, toPublicPeriodData } from '../../utils/profit-report-helpers'
@@ -30,7 +31,7 @@ export default defineEventHandler(async (event) => {
     return { data: { profitReport: { currentData: null, previousData: null, variations: null, comparisonMeta: null, evolutionData: [] } } }
   }
 
-  const transactions = await fetchAllOrganizationRows(supabase, {
+  const transactions = await fetchAllOrganizationRows<ProfitTransactionRecord>(supabase, {
     table: 'financial_transactions',
     organizationId,
     nullColumns: ['deleted_at'],

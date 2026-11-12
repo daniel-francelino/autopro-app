@@ -2,11 +2,11 @@
 import { watchDebounced } from '@vueuse/core'
 import type { RowSelectionState, SortingState } from '@tanstack/table-core'
 import { ActionCode } from '~/constants/action-codes'
+import type { ViewMode } from '~/types/ui'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Autorizações de Compra' })
 
-type ViewMode = 'table' | 'card'
 type RequestStatusFilter = 'all' | 'waiting' | 'authorized' | 'rejected' | 'purchased'
 
 type PurchaseRequestItemRow = {
@@ -713,29 +713,29 @@ const lineColumns = [
 
           <template #request_date-cell="{ row }">
             <span class="text-sm text-muted">
-              {{ formatDate(row.original.request_date) }}
+              {{ formatDate((row.original as PurchaseRequestItem).request_date) }}
             </span>
           </template>
 
           <template #supplier-cell="{ row }">
             <div class="min-w-0">
               <p class="truncate font-medium text-highlighted">
-                {{ row.original.suppliers?.name || 'Fornecedor não informado' }}
+                {{ (row.original as PurchaseRequestItem).suppliers?.name || 'Fornecedor não informado' }}
               </p>
             </div>
           </template>
 
           <template #total_request_amount-cell="{ row }">
             <span class="text-sm text-muted">
-              {{ formatCurrency(row.original.total_request_amount) }}
+              {{ formatCurrency((row.original as PurchaseRequestItem).total_request_amount) }}
             </span>
           </template>
 
           <template #status-cell="{ row }">
             <UBadge
-              :label="statusLabelMap[row.original.status] || row.original.status"
-              :color="statusColorMap[row.original.status] || 'neutral'"
-              :leading-icon="statusIconMap[row.original.status]"
+              :label="statusLabelMap[(row.original as PurchaseRequestItem).status] || (row.original as PurchaseRequestItem).status"
+              :color="statusColorMap[(row.original as PurchaseRequestItem).status] || 'neutral'"
+              :leading-icon="statusIconMap[(row.original as PurchaseRequestItem).status]"
               variant="subtle"
               size="xs"
             />
@@ -965,7 +965,7 @@ const lineColumns = [
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <UFormField label="Peça" class="sm:col-span-2">
               <USelectMenu
-                v-model="item.part_id"
+                :model-value="item.part_id ?? undefined"
                 :items="partOptions"
                 value-key="value"
                 :loading="isLoadingParts"
@@ -973,12 +973,17 @@ const lineColumns = [
                 class="w-full"
                 searchable
                 clearable
-                @update:model-value="onPartSelect(item, item.part_id ?? null)"
+                @update:model-value="(v) => { item.part_id = v as string | null | undefined; onPartSelect(item, item.part_id ?? null) }"
               />
             </UFormField>
 
             <UFormField label="Código">
-              <UInput v-model="item.code" class="w-full" placeholder="Ex: FILT-001" />
+              <UInput
+                :model-value="item.code ?? undefined"
+                class="w-full"
+                placeholder="Ex: FILT-001"
+                @update:model-value="item.code = $event"
+              />
             </UFormField>
 
             <UFormField label="Descrição" required>
@@ -1007,7 +1012,12 @@ const lineColumns = [
             </UFormField>
 
             <UFormField label="Observações" class="sm:col-span-2">
-              <UTextarea v-model="item.notes" class="w-full" :rows="2" />
+              <UTextarea
+                :model-value="item.notes ?? undefined"
+                class="w-full"
+                :rows="2"
+                @update:model-value="item.notes = $event"
+              />
             </UFormField>
           </div>
         </div>

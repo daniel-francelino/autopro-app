@@ -3,12 +3,12 @@ import { watchDebounced } from '@vueuse/core'
 import type { RowSelectionState, SortingState } from '@tanstack/table-core'
 import { ActionCode } from '~/constants/action-codes'
 import type { Tax } from '~/types/financial'
+import type { ViewMode } from '~/types/ui'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Impostos' })
 
 type TaxesResponse = { items: Tax[], total: number, page: number, page_size: number }
-type ViewMode = 'table' | 'card'
 
 const DEFAULT_PAGE_SIZE = 10
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
@@ -352,7 +352,7 @@ const lineColumns = [
                           {{ tax.name }}
                         </h3>
                         <UBadge
-                          :label="TAX_TYPE_LABELS[tax.type as string] ?? tax.type ?? undefined"
+                          :label="TAX_TYPE_LABELS[tax.type as string] ?? (tax.type as string | undefined)"
                           color="neutral"
                           variant="subtle"
                           size="sm"

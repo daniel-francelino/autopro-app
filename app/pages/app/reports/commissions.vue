@@ -5,6 +5,7 @@ import type { PayConfirmTarget } from '~/components/reports/commissions/Commissi
 import type { BulkDateStrategy } from '~/components/reports/commissions/CommissionsBulkPayModal.vue'
 import type { CommissionReportItem } from '~/composables/useCommissionsReportList'
 import { ActionCode } from '~/constants/action-codes'
+import type { BadgeColor } from '~/types/ui'
 
 // A commission pending for longer than this is flagged so the user can
 // choose to backdate the payment to when the OS was actually completed,
@@ -34,8 +35,6 @@ interface CommissionDetailResponse {
     detail?: CommissionDetailData
   }
 }
-
-type BadgeColor = 'neutral' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Relatório de Comissões' })

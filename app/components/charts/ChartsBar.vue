@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ApexOptions } from 'apexcharts'
 import VueApexCharts from 'vue3-apexcharts'
 
 interface Series {
@@ -38,7 +39,7 @@ function fmtCategory(value: string) {
   return formatted.length > 22 ? `${formatted.slice(0, 21)}...` : formatted
 }
 
-const chartOptions = computed(() => ({
+const chartOptions = computed<ApexOptions>(() => ({
   chart: {
     type: 'bar',
     stacked: props.stacked ?? false,
@@ -65,14 +66,14 @@ const chartOptions = computed(() => ({
     labels: {
       style: { fontSize: '11px', fontFamily: 'inherit', colors: isDark.value ? '#9ca3af' : '#6b7280' },
       rotate: props.horizontal ? 0 : props.categories.length > 16 ? -45 : 0,
-      formatter: props.horizontal ? (value: string) => fmtShort(Number(value || 0)) : (value: string) => fmtCategory(value)
+      formatter: props.horizontal ? (value: number | string) => fmtShort(Number(value || 0)) : (value: number | string) => fmtCategory(String(value))
     },
     axisBorder: { show: false },
     axisTicks: { show: false }
   },
   yaxis: {
     labels: {
-      formatter: props.horizontal ? (value: string) => fmtCategory(value) : fmtShort,
+      formatter: props.horizontal ? (value: number | string) => fmtCategory(String(value)) : fmtShort,
       maxWidth: props.horizontal ? 140 : undefined,
       style: { fontSize: '11px', fontFamily: 'inherit', colors: isDark.value ? '#9ca3af' : '#6b7280' }
     }
