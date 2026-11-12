@@ -42,6 +42,7 @@ useSeoMeta({ title: 'Relatório de Comissões' })
 
 const { can } = useWorkshopPermissions()
 const toast = useToast()
+const canExport = computed(() => can(ActionCode.REPORTS_COMMISSIONS))
 
 const { dateFrom, dateTo, orderStatusFilters, paymentStatusFilters, selectedEmployees, paymentMethodFilters } = useReportDateRange()
 const paymentMethods = paymentMethodFilters
@@ -474,7 +475,7 @@ async function exportReport(format: 'csv' | 'pdf') {
               :disabled="!hasSelection"
               @click="bulkDeleteOpen = true"
             />
-            <UTooltip text="Exportar relatório">
+            <UTooltip v-if="canExport" text="Exportar relatório">
               <UDropdownMenu
                 :items="exportItems"
                 :content="{ align: 'end' }"

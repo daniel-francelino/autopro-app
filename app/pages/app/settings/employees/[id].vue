@@ -160,6 +160,9 @@ const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 
 const canRead = computed(() => workshop.can(ActionCode.EMPLOYEES_READ))
+// Fase 7 (D12): o servidor exige reports.employees / reports.commissions nessas rotas.
+const canViewEmployeeReport = computed(() => workshop.can(ActionCode.REPORTS_EMPLOYEES))
+const canViewCommissionDetail = computed(() => workshop.can(ActionCode.REPORTS_COMMISSIONS))
 const employeeId = computed(() => String(route.params.id || ''))
 const dateFrom = useReportQueryParam('from', defaultFrom())
 const dateTo = useReportQueryParam('to', defaultTo())
@@ -196,14 +199,16 @@ const [
   ),
   useAsyncData(
     () => reportQueryKey.value,
-    () => requestFetch<EmployeeReportResponse>('/api/reports/employees', {
-      headers: requestHeaders,
-      query: {
-        employeeId: employeeId.value,
-        dateFrom: dateFrom.value,
-        dateTo: dateTo.value
-      }
-    }),
+    () => canViewEmployeeReport.value
+      ? requestFetch<EmployeeReportResponse>('/api/reports/employees', {
+          headers: requestHeaders,
+          query: {
+            employeeId: employeeId.value,
+            dateFrom: dateFrom.value,
+            dateTo: dateTo.value
+          }
+        })
+      : Promise.resolve(null),
     { watch: [reportQueryKey] }
   ),
   // Bônus atribuídos — não depende do período do relatório (dateFrom/dateTo
@@ -450,6 +455,7 @@ function buildAddress(profile: EmployeeCommissionProfile | null) {
 }
 
 async function openCommissionDetail(row: EmployeeCommissionRow) {
+  if (!canViewCommissionDetail.value) return
   detailOpen.value = true
   detailLoading.value = true
   detailData.value = null
@@ -469,6 +475,7 @@ async function openCommissionDetail(row: EmployeeCommissionRow) {
 }
 
 async function exportReport(format: 'csv' | 'pdf') {
+  if (!canViewEmployeeReport.value) return
   exporting.value = format
   try {
     const response = await $fetch<{ success: boolean, data: { fileName: string, contentType: string, base64: string } }>(
@@ -719,15 +726,15 @@ async function exportReport(format: 'csv' | 'pdf') {
             </div>
           </div>
 
-          <div class="flex flex-wrap items-center justify-between gap-3">
+          <div v-if="canViewEmployeeReport" class="flex flex-wrap items-center justify-between gap-3">
             <UiDateRangePicker v-model:from="dateFrom" v-model:to="dateTo" class="w-auto" />
           </div>
 
-          <div v-if="isFirstReportLoad" class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div v-if="canViewEmployeeReport && isFirstReportLoad" class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <USkeleton v-for="i in 4" :key="i" class="h-24 w-full rounded-2xl" />
           </div>
 
-          <div v-else class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div v-else-if="canViewEmployeeReport" class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div class="rounded-2xl border border-default bg-elevated/50 p-4">
               <div class="flex items-start gap-3">
                 <div class="rounded-xl bg-primary/10 p-2 shrink-0">
@@ -799,7 +806,7 @@ async function exportReport(format: 'csv' | 'pdf') {
             </div>
           </div>
 
-          <div class="flex flex-wrap items-center justify-between gap-3">
+          <div v-if="canViewEmployeeReport" class="flex flex-wrap items-center justify-between gap-3">
             <UTabs
               v-model="activeTab"
               :items="viewItems"
@@ -826,6 +833,7 @@ async function exportReport(format: 'csv' | 'pdf') {
           </div>
 
           <AppDataTableInfinite
+            v-if="canViewEmployeeReport"
             :key="activeTab"
             :columns="columns"
             :data="activeData"
@@ -913,7 +921,7 @@ async function exportReport(format: 'csv' | 'pdf') {
             </template>
             <template #c_actions-cell="{ row }">
               <div class="flex items-center justify-end">
-                <UTooltip text="Ver detalhes">
+                <UTooltip v-if="canViewCommissionDetail" text="Ver detalhes">
                   <UButton
                     icon="i-lucide-eye"
                     color="neutral"

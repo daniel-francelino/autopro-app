@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { SortingState } from '@tanstack/vue-table'
+import { ActionCode } from '~/constants/action-codes'
 import type { SalesItemsDetailData } from '~/components/reports/sales-items/SalesItemsDetailSlideover.vue'
 
 interface SalesItemRow {
@@ -82,6 +83,8 @@ useSeoMeta({ title: 'Itens Vendidos' })
 const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 const toast = useToast()
+const workshop = useWorkshopPermissions()
+const canExport = computed(() => workshop.can(ActionCode.REPORTS_SALES))
 
 const { dateFrom, dateTo, orderStatusFilters: statusFilters, paymentStatusFilters, paymentMethodFilters, clientIds, selectedEmployees: responsibleIds } = useReportDateRange()
 const search = useReportQueryParam('q', '')
@@ -420,7 +423,7 @@ async function exportReport(format: 'csv' | 'pdf') {
                 </UTooltip>
               </div>
 
-              <UTooltip text="Exportar relatório">
+              <UTooltip v-if="canExport" text="Exportar relatório">
                 <UDropdownMenu
                   :items="exportItems"
                   :content="{ align: 'end' }"

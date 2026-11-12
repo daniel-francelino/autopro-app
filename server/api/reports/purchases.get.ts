@@ -1,6 +1,7 @@
 import { defineEventHandler, getQuery } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
+import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
 import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
 import { toNumber, qArr, paginate, sortFactor, formatDayLabel, getPurchasePaymentStatus } from '../../utils/report-helpers'
@@ -27,6 +28,7 @@ interface PurchaseReportItem extends PurchaseRecord {
 
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
+  await requireOrgPermission(authUser.id, 'reports.purchases', event)
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 

@@ -176,20 +176,23 @@ describe('EMP-18 / EMP-06l: funcionário inexistente ou de outra org', () => {
   })
 })
 
-describe('EMP-06m: emp-sem não deveria exportar (KF-09, KF-52)', () => {
-  beforeEach(() => loginAs('emp-sem'))
-  it('controle [caracteriza comportamento atual; decisão em G1-OQ-01 e KF-09]: emp-sem POST -> 200 e arquivo com as comissões de A', async () => {
-    const res = await exportFile('e-a1', { format: 'csv', ...MARCH })
-    expect(res.status).toBe(200)
-    expect(decode(fileOf(res))).toContain('Alinhamento')
-  })
-  it.fails('EMP-06m: POST como emp-sem -> 403 e nenhum arquivo [KF-52]', async () => {
+describe('EMP-06m: exportar exige employees.read (Fase 7; KF-52 resolvido)', () => {
+  it('emp-sem POST -> 403 e nenhum arquivo', async () => {
+    loginAs('emp-sem')
     const res = await exportFile('e-a1', { format: 'csv', ...MARCH })
     expect(res.status).toBe(403)
     expect(res.body).toBeUndefined()
   })
+  it('emp-com com employees.read concedido -> 200 e arquivo com as comissões de A', async () => {
+    fake.tables.actions!.push({ id: 'act-emp-read', code: 'employees.read', deleted_at: null })
+    fake.tables.role_actions!.push({ role_id: 'r-com', action_id: 'act-emp-read', is_granted: true })
+    loginAs('emp-com')
+    const res = await exportFile('e-a1', { format: 'csv', ...MARCH })
+    expect(res.status).toBe(200)
+    expect(decode(fileOf(res))).toContain('Alinhamento')
+  })
 })
 
 describe('Decisões de produto pendentes (it.todo)', () => {
-  it.todo('EMP-06m emp-com: POST 200 com a permissão de exportar. Sem chave equivalente em action-codes.ts: não há employees.export; reports.employees pertence a /api/reports/export-employees (outra rota) e a página do funcionário não gateia esta rota. Aguarda G1-OQ-01')
+  it.todo('EMP-06m: código dedicado de exportação (hoje a rota usa employees.read; G1-OQ-01)')
 })

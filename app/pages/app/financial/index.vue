@@ -304,7 +304,9 @@ const _hasActiveFilters = computed(() =>
 type CategoryListItem = { id: string, name: string, type: 'income' | 'expense', icon: string, color: string, is_default: boolean }
 const { data: categoriesData } = await useAsyncData(
   'financial-categories-filter-options',
-  () => requestFetch<{ defaults: CategoryListItem[], custom: CategoryListItem[] }>('/api/financial/categories', { headers: requestHeaders }),
+  () => canRead.value
+    ? requestFetch<{ defaults: CategoryListItem[], custom: CategoryListItem[] }>('/api/financial/categories', { headers: requestHeaders })
+    : Promise.resolve({ defaults: [], custom: [] }),
   { default: () => ({ defaults: [], custom: [] }) }
 )
 

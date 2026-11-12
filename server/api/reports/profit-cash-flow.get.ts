@@ -1,6 +1,7 @@
 import { defineEventHandler, getQuery } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
+import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
 import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
 import { parseDateStart, parseDateEnd, normalizeStatusFilters } from '../../utils/report-helpers'
@@ -12,6 +13,7 @@ import { calculateCashFlowFromTransactions, buildCashFlowTransactionsEvolutionDa
 // Ver docs/reports/profit-report.md seção 5.
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
+  await requireOrgPermission(authUser.id, 'reports.profit', event)
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
   await enforceReportAccess(organizationId, 'costs')

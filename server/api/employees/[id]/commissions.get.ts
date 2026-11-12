@@ -1,11 +1,13 @@
 import { createError, defineEventHandler, getQuery, getRouterParam } from 'h3'
 import { requireAuthUser } from '../../../utils/require-auth'
+import { requireOrgPermission } from '../../../utils/require-org-permission'
 import { getSupabaseAdminClient } from '../../../utils/supabase'
 import { resolveOrganizationId } from '../../../utils/organization'
 import { getEmployeeCommissionReport } from '../../../utils/employee-commission-report'
 
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
+  await requireOrgPermission(authUser.id, 'employees.read', event)
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
   const employeeId = getRouterParam(event, 'id')

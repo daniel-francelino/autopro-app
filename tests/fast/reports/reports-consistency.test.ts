@@ -20,6 +20,7 @@ const cookies = { 'sb-access-token': 'tok' }
 const R = (name: string) => `server/api/reports/${name}.get.ts`
 const range = { dateFrom: '2026-03-01', dateTo: '2026-03-31' }
 
+const REPORT_CODES = ['reports.commissions', 'reports.costs', 'reports.debtors', 'reports.purchases', 'reports.profit', 'reports.view']
 type Row = Record<string, unknown>
 const base = { organization_id: 'org-a', deleted_at: null }
 
@@ -30,6 +31,10 @@ function order(id: string, o: Row): Row {
 function seed() {
   fake = createFakeSupabase({
     user_profiles: [{ id: 'p1', user_id: 'u1', organization_id: 'org-a', role_id: 'r', is_owner: false, is_active: true, employee_id: null }],
+    // Fase 7: o usuário de teste recebe os códigos de relatório (guard por action nas rotas GET).
+    roles: [{ id: 'r', name: 'relatorios', is_system_role: false, organization_id: 'org-a' }],
+    actions: REPORT_CODES.map((code, i) => ({ id: `act-${i}`, code, deleted_at: null })),
+    role_actions: REPORT_CODES.map((_, i) => ({ role_id: 'r', action_id: `act-${i}`, is_granted: true })),
     subscriptions: [{ id: 's1', organization_id: 'org-a', plan_key: 'pro', status: 'active', deleted_at: null }],
     clients: [{ id: 'c1', ...base, name: 'Cliente 1', created_at: '2026-03-02T10:00:00Z' }, { id: 'c2', ...base, name: 'Cliente 2', created_at: '2026-01-02T10:00:00Z' }],
     employees: [{ id: 'e1', ...base, name: 'Ana' }, { id: 'e2', ...base, name: 'Bruno' }],

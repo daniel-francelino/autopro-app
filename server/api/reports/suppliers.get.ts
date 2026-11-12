@@ -1,6 +1,7 @@
 import { defineEventHandler, getQuery } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
+import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
 import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
 import { parseDateRange, toNumber, qArr, paginate, sortFactor } from '../../utils/report-helpers'
@@ -58,6 +59,7 @@ interface SupplierReportItem {
 
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
+  await requireOrgPermission(authUser.id, 'reports.suppliers', event)
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { SortingState } from '@tanstack/vue-table'
+import { ActionCode } from '~/constants/action-codes'
 
 interface PurchaseReportItem {
   purchase_date?: string | null
@@ -51,6 +52,8 @@ useSeoMeta({ title: 'Relatório de Compras' })
 const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 const toast = useToast()
+const workshop = useWorkshopPermissions()
+const canExport = computed(() => workshop.can(ActionCode.REPORTS_PURCHASES))
 
 const { dateFrom, dateTo } = useReportDateRange()
 
@@ -248,7 +251,7 @@ async function exportReport(format: 'csv' | 'pdf') {
           @search-change="page = 1"
         >
           <template #toolbar-right>
-            <UTooltip text="Exportar relatório">
+            <UTooltip v-if="canExport" text="Exportar relatório">
               <UDropdownMenu
                 :items="exportItems"
                 :content="{ align: 'end' }"

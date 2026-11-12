@@ -2,6 +2,7 @@ import { createError, defineEventHandler, getRouterParam } from 'h3'
 import { normalizeReportStatus, roundMoney, toNumber } from '../../../utils/report-helpers'
 import { resolveOrganizationId } from '../../../utils/organization'
 import { requireAuthUser } from '../../../utils/require-auth'
+import { requireOrgPermission } from '../../../utils/require-org-permission'
 import { getSupabaseAdminClient } from '../../../utils/supabase'
 
 function normalizeId(value: unknown) {
@@ -137,6 +138,7 @@ function getVehicleLabel(vehicle: VehicleLabelSource | null | undefined) {
 
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
+  await requireOrgPermission(authUser.id, 'reports.commissions', event)
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
   const id = getRouterParam(event, 'id')

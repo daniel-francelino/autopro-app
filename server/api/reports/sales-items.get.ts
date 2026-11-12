@@ -1,6 +1,7 @@
 import { defineEventHandler, getQuery } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
+import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
 import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
 import type { SupabaseClientLike } from '../../utils/supabase-pagination'
@@ -208,6 +209,7 @@ function mergeFilterLists(...values: unknown[]): string[] {
 
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
+  await requireOrgPermission(authUser.id, 'reports.sales', event)
   const supabase = getSupabaseAdminClient()
   const reportSupabase = supabase as unknown as SupabaseClientLike
   const organizationId = await resolveOrganizationId(event, authUser.id)

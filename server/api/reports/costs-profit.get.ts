@@ -1,6 +1,7 @@
 import { defineEventHandler, getQuery } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
+import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
 import { fetchAllOrganizationRows, type SupabaseReportRow } from '../../utils/supabase-pagination'
 import { toNumber, qArr, normalizeStatusFilters, matchesStatusFilters, paginate, sortFactor, normalizeReportStatus } from '../../utils/report-helpers'
@@ -13,6 +14,7 @@ const UNCATEGORIZED_META = { name: 'Sem categoria', icon: 'i-lucide-circle-help'
 
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
+  await requireOrgPermission(authUser.id, 'reports.costs', event)
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
   await enforceReportAccess(organizationId, 'costs')
