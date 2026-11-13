@@ -3,6 +3,7 @@ import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 import { filterActionsByPlan, resolveOrgLicense } from '../../utils/license'
 import { computeRoleCounts } from '../../utils/role-counts'
+import { applyRoleScope } from '../../utils/role-scope'
 
 const PAGE_SIZE = 1000
 
@@ -26,11 +27,11 @@ export default defineEventHandler(async (event) => {
 
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
-  // Include both org-specific roles and system roles
-  const { data: items, error } = await supabase
-    .from('roles')
-    .select('*')
-    .or(`organization_id.eq.${organizationId},is_system_role.eq.true`)
+  // Papeis da organizacao + papeis globais (organization_id nulo); ver server/utils/role-scope.ts
+  const { data: items, error } = await applyRoleScope(
+    supabase.from('roles').select('*'),
+    organizationId
+  )
     .is('deleted_at', null)
     .order('display_name', { ascending: true })
 

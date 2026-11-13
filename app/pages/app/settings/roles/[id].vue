@@ -46,7 +46,6 @@ type RoleDetailResponse = {
     assigned_users: AssignedUser[]
     summary: {
       granted_actions_count: number
-      total_actions_count: number
       assigned_users_count: number
     }
   }
@@ -116,7 +115,6 @@ const summary = computed(
   () =>
     data.value?.item?.summary ?? {
       granted_actions_count: 0,
-      total_actions_count: 0,
       assigned_users_count: 0
     }
 )
@@ -267,6 +265,9 @@ const showLeaveConfirm = ref(false)
 let leaveResolver: ((leave: boolean) => void) | null = null
 
 function confirmLeave(): Promise<boolean> {
+  // Chamada repetida: resolve a anterior com "ficar" para nao deixar Promise pendente.
+  leaveResolver?.(false)
+  leaveResolver = null
   showLeaveConfirm.value = true
   return new Promise((resolve) => {
     leaveResolver = resolve
@@ -565,10 +566,10 @@ watch(
               </div>
 
               <div
-                class="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3"
+                class="grid grid-cols-2 gap-3"
               >
                 <div
-                  class="flex min-w-0 items-baseline justify-between gap-2 rounded-2xl border border-default/70 bg-default/40 p-3 sm:flex-col sm:items-start lg:flex-row lg:items-baseline xl:flex-col xl:items-start"
+                  class="flex min-w-0 flex-col items-start gap-1 rounded-2xl border border-default/70 bg-default/40 p-3"
                 >
                   <p
                     class="flex min-w-0 items-center gap-1.5 text-xs text-muted"
@@ -583,7 +584,7 @@ watch(
                   </p>
                 </div>
                 <div
-                  class="flex min-w-0 items-baseline justify-between gap-2 rounded-2xl border border-default/70 bg-default/40 p-3 sm:flex-col sm:items-start lg:flex-row lg:items-baseline xl:flex-col xl:items-start"
+                  class="flex min-w-0 flex-col items-start gap-1 rounded-2xl border border-default/70 bg-default/40 p-3"
                 >
                   <p
                     class="flex min-w-0 items-center gap-1.5 text-xs text-muted"
@@ -595,21 +596,6 @@ watch(
                     class="text-2xl font-semibold tabular-nums text-highlighted"
                   >
                     {{ summary.granted_actions_count }}
-                  </p>
-                </div>
-                <div
-                  class="flex min-w-0 items-baseline justify-between gap-2 rounded-2xl border border-default/70 bg-default/40 p-3 sm:flex-col sm:items-start lg:flex-row lg:items-baseline xl:flex-col xl:items-start"
-                >
-                  <p
-                    class="flex min-w-0 items-center gap-1.5 text-xs text-muted"
-                  >
-                    <UIcon name="i-lucide-grid-2x2" class="size-4 shrink-0 text-primary/80" />
-                    <span class="truncate">Total de ações</span>
-                  </p>
-                  <p
-                    class="text-2xl font-semibold tabular-nums text-highlighted"
-                  >
-                    {{ summary.total_actions_count }}
                   </p>
                 </div>
               </div>

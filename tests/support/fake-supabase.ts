@@ -20,6 +20,45 @@ export interface FakeSupabase {
   failNext: (table: string, message?: string) => void
 }
 
+const OR_UNSUPPORTED = /[()]/
+
+function parseOrCondition(raw: string): Filter | null {
+  const match = /^([a-z_][a-z0-9_]*)\.(eq|neq|is|ilike|gt|gte|lt|lte)\.(.*)$/i.exec(raw.trim())
+  if (!match) return null
+  const [, col, op, value] = match as unknown as [string, string, string, string]
+  if (OR_UNSUPPORTED.test(value) && op !== 'ilike') return null
+  const cmp = (row: Row) => {
+    const cell = row[col]
+    const typed = typeof cell === 'number' ? Number(value) : typeof cell === 'boolean' ? value === 'true' : value
+    switch (op) {
+      case 'eq': return cell === typed
+      case 'neq': return cell !== typed
+      case 'is': return value === 'null' ? cell == null : cell === (value === 'true')
+      case 'gt': return cell > typed
+      case 'gte': return cell >= typed
+      case 'lt': return cell < typed
+      case 'lte': return cell <= typed
+      default: {
+        const needle = value.replace(/^%|%$/g, '').toLowerCase()
+        return String(cell ?? '').toLowerCase().includes(needle)
+      }
+    }
+  }
+  return cmp
+}
+
+function parseOrFilter(expr?: string): Filter | null {
+  if (!expr) return null
+  const parts = expr.split(',')
+  const conditions: Filter[] = []
+  for (const part of parts) {
+    const cond = parseOrCondition(part)
+    if (!cond) return null
+    conditions.push(cond)
+  }
+  return row => conditions.some(c => c(row))
+}
+
 export function createFakeSupabase(seed: Record<string, Row[]> = {}): FakeSupabase {
   const tables: Record<string, Row[]> = {}
   for (const [name, rows] of Object.entries(seed)) tables[name] = rows.map(r => ({ ...r }))
@@ -106,7 +145,13 @@ export function createFakeSupabase(seed: Record<string, Row[]> = {}): FakeSupaba
         addFilter(`${col} ilike ${pattern}`, r => String(r[col] ?? '').toLowerCase().includes(needle))
         return builder
       },
-      or() { return builder },
+      // Interpreta `col.op.valor,col.op.valor` (OR). Filtro nao suportado (and()/or() aninhado,
+      // operador desconhecido, `now()`) continua sendo no-op, como antes.
+      or(expr?: string) {
+        const fn = parseOrFilter(expr)
+        if (fn) addFilter(`or(${expr})`, fn)
+        return builder
+      },
       order(col: string, opts?: { ascending?: boolean }) { orderBy = { col, asc: opts?.ascending !== false }; return builder },
       limit(n: number) { limitN = n; return builder },
       range(from: number, to: number) { limitN = to - from + 1; return builder },

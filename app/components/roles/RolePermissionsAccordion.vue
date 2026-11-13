@@ -49,12 +49,14 @@ const totalGranted = computed(() =>
   countGranted(props.actions, props.modelValue)
 )
 
+const searching = computed(() => query.value.trim() !== '')
+
 function isOpen(resource: string) {
-  return query.value.trim() !== '' || openManual.value.includes(resource)
+  return searching.value || openManual.value.includes(resource)
 }
 
 function toggle(resource: string) {
-  if (query.value.trim()) return
+  if (searching.value) return
   openManual.value = openManual.value.includes(resource)
     ? openManual.value.filter(r => r !== resource)
     : [...openManual.value, resource]
@@ -73,16 +75,6 @@ function toggleGroup(visible: PermissionAction[]) {
 
 function toggleAction(id: string, value: boolean | 'indeterminate') {
   emit('update:modelValue', { ...props.modelValue, [id]: Boolean(value) })
-}
-
-function actionDescription(action: PermissionAction) {
-  const description = action.description?.trim()
-  if (
-    description
-    && normalizeSearchText(description) !== normalizeSearchText(action.name)
-  ) return description
-
-  return action.code
 }
 </script>
 
@@ -148,7 +140,9 @@ function actionDescription(action: PermissionAction) {
             type="button"
             class="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-lg text-left text-sm font-medium text-highlighted hover:bg-elevated/60"
             :aria-expanded="isOpen(group.resource)"
-            :aria-controls="`perm-group-${group.resource}`"
+            :aria-controls="isOpen(group.resource) ? permissionPanelId(group.resource) : undefined"
+            :aria-disabled="searching ? true : undefined"
+            :title="searching ? 'Grupos abertos pela busca' : undefined"
             @click="toggle(group.resource)"
           >
             <UIcon
@@ -171,12 +165,8 @@ function actionDescription(action: PermissionAction) {
             :model-value="groupChecked(group.visible)"
             :disabled="disabled || !group.visible.length"
             color="neutral"
-            :label="filterActive ? 'Marcar resultados' : 'Marcar todas'"
-            :aria-label="
-              filterActive
-                ? `Marcar resultados de ${group.label}`
-                : `Marcar todas as permissões de ${group.label}`
-            "
+            :label="groupCheckboxLabels(filterActive, group.label).visible"
+            :aria-label="groupCheckboxLabels(filterActive, group.label).aria"
             :ui="{ label: 'text-xs text-muted' }"
             @update:model-value="toggleGroup(group.visible)"
           />
@@ -184,7 +174,7 @@ function actionDescription(action: PermissionAction) {
 
         <div
           v-if="isOpen(group.resource)"
-          :id="`perm-group-${group.resource}`"
+          :id="permissionPanelId(group.resource)"
           class="divide-y divide-default/40 border-t border-default/40 bg-elevated/20"
         >
           <div
@@ -198,10 +188,11 @@ function actionDescription(action: PermissionAction) {
               :disabled="disabled"
               color="neutral"
               :label="action.name || action.code"
-              :description="actionDescription(action)"
+              :description="permissionDescription(action) ?? undefined"
               class="w-full"
               @update:model-value="toggleAction(action.id, $event)"
             />
+            <span class="sr-only">Código: {{ action.code }}</span>
           </div>
         </div>
       </section>

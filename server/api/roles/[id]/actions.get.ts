@@ -3,6 +3,7 @@ import { requireAuthUser } from '../../../utils/require-auth'
 import { requireOrgPermission } from '../../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../../utils/organization'
 import { resolveOrgLicense, filterActionsByPlan } from '../../../utils/license'
+import { applyRoleScope } from '../../../utils/role-scope'
 
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
@@ -16,11 +17,13 @@ export default defineEventHandler(async (event) => {
 
   // Verify the role belongs to this org (or is a system role)
   const [{ data: role }, { planKey }] = await Promise.all([
-    supabase
-      .from('roles')
-      .select('id')
-      .eq('id', id)
-      .or(`organization_id.eq.${organizationId},is_system_role.eq.true`)
+    applyRoleScope(
+      supabase
+        .from('roles')
+        .select('id')
+        .eq('id', id),
+      organizationId
+    )
       .is('deleted_at', null)
       .maybeSingle(),
     resolveOrgLicense(organizationId)

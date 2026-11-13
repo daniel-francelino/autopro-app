@@ -2,6 +2,7 @@
 import RoleDetailsSlideover from '~/components/roles/RoleDetailsSlideover.vue'
 import RoleRowActions from '~/components/roles/RoleRowActions.vue'
 import { ActionCode } from '~/constants/action-codes'
+import { rolePermissionsLabel, roleUsersLabel, sortRolesForList } from '~/utils/role-permissions'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Permissões' })
@@ -26,28 +27,8 @@ type Role = {
   granted_actions_count?: number
 }
 
-type ActionItem = {
-  id: string
-  code: string
-  name: string | null
-  description: string | null
-  resource: string | null
-}
-
-type RoleAction = {
-  id: string
-  role_id: string
-  action_id: string
-  is_granted: boolean
-}
-
 type RolesResponse = {
   items: Role[]
-}
-
-type RoleActionsResponse = {
-  actions: ActionItem[]
-  role_actions: RoleAction[]
 }
 
 const { data, status, refresh } = await useAsyncData(
@@ -55,7 +36,7 @@ const { data, status, refresh } = await useAsyncData(
   () => requestFetch<RolesResponse>('/api/roles', { headers: requestHeaders })
 )
 
-const roles = computed(() => data.value?.items ?? [])
+const sortedRoles = computed(() => sortRolesForList(data.value?.items ?? []))
 
 const showRoleModal = ref(false)
 const isEditingRole = ref(false)
@@ -71,23 +52,8 @@ const showDeleteConfirm = ref(false)
 const deletingRoleId = ref<string | null>(null)
 const pendingDeleteRole = ref<Role | null>(null)
 
-const selectedPermissionsRoleId = ref<string | null>(null)
-const actionsData = ref<RoleActionsResponse | null>(null)
-const isLoadingActions = ref(false)
 const detailsRoleId = ref<string | null>(null)
 const detailsSlideoverOpen = ref(false)
-
-const columns = [
-  { id: 'role', header: 'Papel' },
-  { id: 'type', header: 'Tipo' },
-  { id: 'users', header: 'Usuários' },
-  { id: 'permissions', header: 'Permissões' },
-  { id: 'actions', header: () => h('span', { class: 'sr-only' }, 'Ações') }
-]
-
-function countLabel(value: number | undefined) {
-  return typeof value === 'number' ? String(value) : '—'
-}
 
 function roleLabel(role: Role) {
   return role.display_name?.trim() || role.name
@@ -175,11 +141,6 @@ async function confirmDeleteRole() {
     await $fetch(`/api/roles/${pendingDeleteRole.value.id}`, { method: 'DELETE' })
     toast.add({ title: 'Papel removido', color: 'success' })
 
-    if (selectedPermissionsRoleId.value === pendingDeleteRole.value.id) {
-      selectedPermissionsRoleId.value = null
-      actionsData.value = null
-    }
-
     showDeleteConfirm.value = false
     pendingDeleteRole.value = null
     await refresh()
@@ -192,38 +153,6 @@ async function confirmDeleteRole() {
     })
   } finally {
     deletingRoleId.value = null
-  }
-}
-
-async function fetchRolePermissions(roleId: string) {
-  const response = await $fetch<RoleActionsResponse>(`/api/roles/${roleId}/actions`)
-  actionsData.value = response
-}
-
-async function openPermissions(role: Role) {
-  if (selectedPermissionsRoleId.value === role.id) {
-    selectedPermissionsRoleId.value = null
-    actionsData.value = null
-    return
-  }
-
-  selectedPermissionsRoleId.value = role.id
-  isLoadingActions.value = true
-
-  try {
-    await fetchRolePermissions(role.id)
-  } catch (error: unknown) {
-    selectedPermissionsRoleId.value = null
-    actionsData.value = null
-
-    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
-    toast.add({
-      title: 'Erro',
-      description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível carregar permissões',
-      color: 'error'
-    })
-  } finally {
-    isLoadingActions.value = false
   }
 }
 
@@ -261,120 +190,73 @@ function openRoleDetails(role: Role | null) {
       />
     </UPageCard>
 
-    <div class="grid grid-cols-1 gap-4">
-      <UPageCard variant="subtle">
-        <div v-if="status === 'pending'" class="space-y-3">
-          <USkeleton v-for="i in 5" :key="i" class="h-16 w-full rounded-lg" />
-        </div>
+    <div v-if="status === 'pending'" class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <USkeleton v-for="i in 4" :key="i" class="h-32 w-full rounded-xl" />
+    </div>
 
-        <template v-else-if="roles.length">
-          <UTable
-            :data="roles"
-            :columns="columns"
-            class="hidden md:block"
-            :meta="{
-              class: {
-                tr: (row: { original: Role }) =>
-                  selectedPermissionsRoleId === row.original.id ? 'bg-primary/5' : ''
-              }
-            }"
-            @select="(_e: Event, row: { original: Role }) => openPermissions(row.original)"
+    <ul v-else-if="sortedRoles.length" class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <li
+        v-for="role in sortedRoles"
+        :key="role.id"
+        class="flex min-w-0 flex-col gap-3 rounded-xl border border-default bg-default p-4 shadow-xs"
+      >
+        <div class="flex min-w-0 items-start gap-3">
+          <span
+            class="flex size-10 shrink-0 items-center justify-center rounded-lg"
+            :class="role.is_system_role ? 'bg-elevated text-muted' : 'bg-primary/10 text-primary'"
+            aria-hidden="true"
           >
-            <template #role-cell="{ row }">
-              <div class="min-w-0 max-w-md space-y-0.5">
-                <p class="text-sm font-medium text-highlighted">
-                  {{ roleLabel(row.original) }}
-                </p>
-                <p class="text-sm text-muted">
-                  {{ row.original.description || 'Sem descrição' }}
-                </p>
-              </div>
-            </template>
-            <template #type-cell="{ row }">
-              <UBadge
-                v-if="row.original.is_system_role"
-                label="Sistema (somente leitura)"
-                color="neutral"
-                variant="subtle"
-                size="md"
-              />
-              <UBadge
-                v-else
-                label="Personalizado"
-                color="neutral"
-                variant="outline"
-                size="md"
-              />
-            </template>
-            <template #users-cell="{ row }">
-              <span class="tabular-nums">{{ countLabel(row.original.assigned_users_count) }}</span>
-            </template>
-            <template #permissions-cell="{ row }">
-              <span class="tabular-nums">{{ countLabel(row.original.granted_actions_count) }}</span>
-            </template>
-            <template #actions-cell="{ row }">
-              <RoleRowActions
-                class="justify-end"
-                :role-name="roleLabel(row.original)"
-                :can-edit="canUpdate && !row.original.is_system_role"
-                :can-delete="canDelete && !row.original.is_system_role"
-                :deleting="deletingRoleId === row.original.id"
-                @view="openRoleDetails(row.original)"
-                @edit="openEditRole(row.original)"
-                @delete="requestDeleteRole(row.original)"
-              />
-            </template>
-          </UTable>
-
-          <ul class="space-y-2 md:hidden">
-            <li
-              v-for="role in roles"
-              :key="role.id"
-              class="space-y-3 rounded-lg border border-default px-3 py-3"
-            >
-              <div class="space-y-1">
-                <div class="flex flex-wrap items-center gap-2">
-                  <p class="text-sm font-medium text-highlighted">
-                    {{ roleLabel(role) }}
-                  </p>
-                  <UBadge
-                    :label="role.is_system_role ? 'Sistema (somente leitura)' : 'Personalizado'"
-                    color="neutral"
-                    :variant="role.is_system_role ? 'subtle' : 'outline'"
-                    size="md"
-                  />
-                </div>
-                <p class="text-sm text-muted">
-                  {{ role.description || 'Sem descrição' }}
-                </p>
-                <p class="text-sm text-muted">
-                  Usuários: {{ countLabel(role.assigned_users_count) }}
-                  · Permissões: {{ countLabel(role.granted_actions_count) }}
-                </p>
-              </div>
-              <RoleRowActions
-                :role-name="roleLabel(role)"
-                :can-edit="canUpdate && !role.is_system_role"
-                :can-delete="canDelete && !role.is_system_role"
-                :deleting="deletingRoleId === role.id"
-                @view="openRoleDetails(role)"
-                @edit="openEditRole(role)"
-                @delete="requestDeleteRole(role)"
-              />
-            </li>
-          </ul>
-        </template>
-
-        <div v-else class="rounded-lg border border-dashed border-default px-4 py-8 text-center">
-          <UIcon name="i-lucide-shield-off" class="mx-auto mb-2 size-8 text-muted" />
-          <p class="text-sm font-medium text-highlighted">
-            Nenhum papel cadastrado
-          </p>
-          <p class="mt-1 text-sm text-muted">
-            Crie um papel para organizar o acesso da equipe.
-          </p>
+            <UIcon name="i-lucide-shield" class="size-5" />
+          </span>
+          <div class="min-w-0 flex-1">
+            <p class="break-words text-base font-semibold text-highlighted">
+              {{ roleLabel(role) }}
+            </p>
+            <p v-if="role.is_system_role" class="mt-0.5 flex items-center gap-1 text-xs text-muted">
+              <UIcon name="i-lucide-lock" class="size-3.5 shrink-0" aria-hidden="true" />
+              Sistema · Somente leitura
+            </p>
+            <UBadge
+              v-else
+              label="Personalizado"
+              color="primary"
+              variant="subtle"
+              size="sm"
+              class="mt-0.5"
+            />
+          </div>
+          <RoleRowActions
+            class="shrink-0"
+            :role-name="roleLabel(role)"
+            :can-edit="canUpdate && !role.is_system_role"
+            :can-delete="canDelete && !role.is_system_role"
+            :deleting="deletingRoleId === role.id"
+            @view="openRoleDetails(role)"
+            @edit="openEditRole(role)"
+            @delete="requestDeleteRole(role)"
+          />
         </div>
-      </UPageCard>
+        <div class="flex flex-wrap gap-2">
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-elevated px-3 py-1 text-sm text-default">
+            <UIcon name="i-lucide-users" class="size-4 text-muted" aria-hidden="true" />
+            {{ roleUsersLabel(role.assigned_users_count) }}
+          </span>
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-elevated px-3 py-1 text-sm text-default">
+            <UIcon name="i-lucide-key-round" class="size-4 text-muted" aria-hidden="true" />
+            {{ rolePermissionsLabel(role.granted_actions_count) }}
+          </span>
+        </div>
+      </li>
+    </ul>
+
+    <div v-else class="rounded-lg border border-dashed border-default px-4 py-8 text-center">
+      <UIcon name="i-lucide-shield-off" class="mx-auto mb-2 size-8 text-muted" />
+      <p class="text-sm font-medium text-highlighted">
+        Nenhum papel cadastrado
+      </p>
+      <p class="mt-1 text-sm text-muted">
+        Crie um papel para organizar o acesso da equipe.
+      </p>
     </div>
   </template>
 

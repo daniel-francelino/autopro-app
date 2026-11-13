@@ -25,7 +25,7 @@ const menuItems = computed(() => [
 </script>
 
 <template>
-  <div class="flex shrink-0 items-center gap-1" @click.stop>
+  <div class="flex items-center gap-1" @click.stop>
     <UButton
       :label="canEdit ? 'Editar' : 'Ver'"
       :icon="canEdit ? 'i-lucide-pencil' : 'i-lucide-eye'"
@@ -33,7 +33,7 @@ const menuItems = computed(() => [
       color="neutral"
       variant="outline"
       size="sm"
-      class="min-h-11 md:min-h-0"
+      class="min-h-11"
       @click="canEdit ? emit('edit') : emit('view')"
     />
     <UButton
@@ -43,7 +43,7 @@ const menuItems = computed(() => [
       color="neutral"
       variant="ghost"
       size="sm"
-      class="min-h-11 min-w-11 md:min-h-0 md:min-w-0"
+      class="min-h-11 min-w-11"
       @click="emit('view')"
     />
     <UDropdownMenu v-if="canDelete" :items="menuItems">
@@ -53,7 +53,7 @@ const menuItems = computed(() => [
         color="neutral"
         variant="ghost"
         size="sm"
-        class="min-h-11 min-w-11 md:min-h-0 md:min-w-0"
+        class="min-h-11 min-w-11"
         :loading="deleting"
       />
     </UDropdownMenu>

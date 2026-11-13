@@ -3,6 +3,7 @@ import { requireAuthUser } from '../../utils/require-auth'
 import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
 import { resolveOrgLicense, filterActionsByPlan } from '../../utils/license'
+import { applyRoleScope } from '../../utils/role-scope'
 
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
@@ -15,11 +16,13 @@ export default defineEventHandler(async (event) => {
   if (!id)
     throw createError({ statusCode: 400, statusMessage: 'ID obrigatório' })
 
-  const { data: role, error: roleError } = await supabase
-    .from('roles')
-    .select('id, name, display_name, description, is_system_role, organization_id')
-    .eq('id', id)
-    .or(`organization_id.eq.${organizationId},is_system_role.eq.true`)
+  const { data: role, error: roleError } = await applyRoleScope(
+    supabase
+      .from('roles')
+      .select('id, name, display_name, description, is_system_role, organization_id')
+      .eq('id', id),
+    organizationId
+  )
     .is('deleted_at', null)
     .maybeSingle()
 
