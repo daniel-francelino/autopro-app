@@ -285,8 +285,9 @@ watch(() => [props.open, props.roleId], loadRoleDetail, { immediate: true })
                 aria-label="Módulos e permissões liberadas"
                 :ui="{ link: 'min-w-0', linkLabel: 'min-w-0 flex-1 whitespace-normal break-words text-left' }"
               >
-                <template #module-trailing="{ item }">
+                <template #item-trailing="{ item }">
                   <UBadge
+                    v-if="item.slot === 'module'"
                     :label="grantedOfTotalLabel(item.granted, item.total)"
                     :aria-label="`${item.label}: ${item.granted} de ${item.total} permissões liberadas`"
                     color="neutral"
