@@ -6,6 +6,18 @@ import { recordAudit } from '../../../../../utils/audit/record'
 import { recalculateServiceOrderPaymentStatus } from '../../../../../utils/service-order-payment-status'
 import { createIncomeTransaction } from '../../../../../utils/financial-income'
 import { releaseServiceOrderCommissions } from '../../../../../utils/service-order-commissions'
+import { recordOsEvents } from '../../../../../utils/os-history/record'
+
+// Normalização só para o payload do histórico (não afeta o pagamento).
+function normalizeEventMethod(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim().slice(0, 30) : null
+}
+
+function normalizeEventDate(value: unknown): string | null {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null
+  const d = new Date(`${value}T00:00:00Z`)
+  return Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== value ? null : value
+}
 
 function roundMoney(value: number) {
   return Number(value.toFixed(2))
@@ -56,6 +68,9 @@ export default defineEventHandler(async (event) => {
   }
 
   const installmentAmount = roundMoney(Number(installment.amount || 0))
+
+  // Dados do recebimento, só para o histórico da OS (não influenciam a regra de negócio).
+  let receipt: { transactionId: string, amount: number, partial: boolean, paymentMethod: string | null } | null = null
 
   // An installment created before Phase 4 already carries a pending
   // placeholder transaction sized for the full amount — splitting that into
@@ -146,6 +161,8 @@ export default defineEventHandler(async (event) => {
     if (updateInstallmentError) {
       throw createError({ statusCode: 500, statusMessage: updateInstallmentError.message })
     }
+
+    receipt = { transactionId: existingTransaction.id, amount: installmentAmount, partial: false, paymentMethod: existingTransaction.payment_method ?? installment.payment_method ?? null }
   } else {
     // No transaction exists yet for this installment — it can be settled in
     // full or in parts, possibly across more than one call. How much has
@@ -226,6 +243,8 @@ export default defineEventHandler(async (event) => {
     if (updateInstallmentError) {
       throw createError({ statusCode: 500, statusMessage: updateInstallmentError.message })
     }
+
+    receipt = { transactionId: transaction.id, amount: requestedAmount, partial: !isFullySettled, paymentMethod: requestedPaymentMethod || installment.payment_method || null }
   }
 
   // Recalculate service order payment_status from all installments
@@ -251,6 +270,27 @@ export default defineEventHandler(async (event) => {
     before: installment as Record<string, unknown>,
     extra: { installmentId, warnings: commissionResult.warnings }
   })
+
+  // Histórico da OS (evento de prova da fatia F0): depois do último passo de negócio; falha aqui nunca derruba o recebimento.
+  if (receipt) {
+    await recordOsEvents(event, supabase, [{
+      organizationId,
+      serviceOrderId: orderId,
+      eventType: 'installment.paid',
+      category: 'payment',
+      visibility: 'financial',
+      entityType: 'installment',
+      entityId: installmentId,
+      idempotencyKey: `installment_paid:${installmentId}:${receipt.transactionId}`,
+      payload: {
+        installment_number: installment.installment_number ?? null,
+        amount: receipt.amount,
+        payment_method: normalizeEventMethod(receipt.paymentMethod),
+        payment_date: normalizeEventDate(paymentDate),
+        partial: receipt.partial
+      }
+    }], { defaultSource: 'os_detail' })
+  }
 
   return { success: true, warnings: commissionResult.warnings }
 })

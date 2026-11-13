@@ -41,6 +41,10 @@ describe('M1: no session cookie → 401 on every protected handler', () => {
     expect(protectedHandlers.length).toBeGreaterThan(200)
   })
 
+  it('[OSH-032] o endpoint de histórico da OS está na matriz (não pode sair dela por engano)', () => {
+    expect(protectedHandlers.map(h => h.file)).toContain('server/api/service-orders/[id]/history.get.ts')
+  })
+
   it.each(protectedHandlers.map(h => [h.file]))('%s', async (file) => {
     const method = file.match(/\.(get|post|put|patch|delete)\.ts$/)![1]!.toUpperCase()
     const result = await callHandler(file, fakeEvent({ method, params: { id: 'x', reference: 'x', orderId: 'x', transactionId: 'x' } }))

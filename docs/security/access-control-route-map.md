@@ -78,6 +78,8 @@ Exceção a implementar: `stripe/checkout` e `billing/checkout` só exigem `subs
 | PUT `taxes/:id` | `taxes/FormModal.vue:64` | `taxes.update` | idem | A, M, mgr |
 | DELETE `taxes/:id` | `taxes.vue:182,200` | `taxes.update` (`:274,364,372`) | idem | A, M, mgr |
 
+Atualização 2026-11-13: `GET roles`, `GET roles/:id` e `GET roles/:id/actions` agora filtram por `organization_id = org OR organization_id IS NULL` (`server/utils/role-scope.ts`; decisão D-1 do plano de remediação). A divisão de payload sem `roles.read` (RE-02/D-2) **ainda não foi implementada**. Ver `docs/security/roles-endpoint-remediation-plan.md`.
+
 V15 (tipo A, achado novo): `GET roles` é lido por `settings/employees/index.vue:82` (tela `employees.read`); `marcineia` tem `employees.read` e não tem `roles.read`. Exigir `roles.read` quebra a lista de roles do modal de funcionários dela. Pelo R4 (lista auxiliar) o `GET roles` deveria ficar só org, ou o plano deve registrar a exceção. Verificado (chamada); uso real do modal pela M **não verificado**.
 
 ## Fase 4: escrita em cadastros (38 rotas)
