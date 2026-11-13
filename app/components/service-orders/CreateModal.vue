@@ -916,6 +916,7 @@ async function submit() {
 
     const res = await $fetch<CreateResponse>('/api/service-orders', {
       method: 'POST',
+      headers: { 'x-origin': 'os_form' },
       body: {
         orderId: isEditMode.value ? props.orderToEdit?.id : undefined,
         orderData: {

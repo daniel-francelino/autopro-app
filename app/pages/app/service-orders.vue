@@ -204,6 +204,7 @@ async function advanceStatus(order: ServiceOrder) {
   try {
     await $fetch('/api/service-orders', {
       method: 'POST',
+      headers: { 'x-origin': 'os_list' },
       body: { orderId: order.id, orderData: { status: nextStatus } }
     })
     toast.add({ title: 'Status atualizado', color: 'success' })
@@ -235,6 +236,7 @@ async function duplicate(order: ServiceOrder) {
 
     await $fetch('/api/service-orders', {
       method: 'POST',
+      headers: { 'x-origin': 'os_list' },
       body: {
         orderData: {
           client_id: orig.client_id || null,

@@ -7,7 +7,7 @@ import { requireOrgPermission } from '../../../utils/require-org-permission'
 import { recordAudit } from '../../../utils/audit/record'
 import { recalculateServiceOrderPaymentStatus } from '../../../utils/service-order-payment-status'
 import { softDeleteFinancialTransaction, FINANCIAL_TRANSACTION_DELETION_SOURCES } from '../../../utils/financial-transaction-deletion'
-import { OS_EVENT_KEYS, OS_SOURCE_POLICIES, orderReceivedTotal, commissionRemovedPayload, historyContext, loadEmployeeNames, osEvent, recordWithContext, snapshotMoney } from '../../../utils/os-history/events'
+import { OS_EVENT_KEYS, OS_SOURCE_POLICIES, type CommissionRecordLike, orderReceivedTotal, commissionRemovedPayload, historyContext, loadEmployeeNames, osEvent, recordWithContext, snapshotMoney } from '../../../utils/os-history/events'
 
 /**
  * DELETE /api/service-orders/:id/payment
@@ -63,7 +63,7 @@ export default defineEventHandler(async (event) => {
 
   // Caixa realmente recebido (transações income pagas), lido ANTES de desfazer; só para o texto do histórico.
   const receivedBeforeRemoval = await orderReceivedTotal(supabase, organizationId, orderId)
-  const confirmedCommissions: Array<Record<string, any>> = []
+  const confirmedCommissions: CommissionRecordLike[] = []
   let confirmedInstallments = 0
   let deletedStatements = 0
   let deletedTransactions = 0
@@ -187,7 +187,7 @@ export default defineEventHandler(async (event) => {
         entityType: 'service_order',
         entityId: orderId,
         idempotencyKey: OS_EVENT_KEYS.paymentDeleted(orderId, history.scope!)
-      }, { installments_removed: confirmedInstallments, received_total: snapshotMoney(receivedBeforeRemoval) })] : []),
+      }, { installments_removed: confirmedInstallments, received_total: receivedBeforeRemoval == null ? null : snapshotMoney(receivedBeforeRemoval) })] : []),
       ...confirmedCommissions.map(c => osEvent('commission.removed', {
         organizationId,
         serviceOrderId: orderId,

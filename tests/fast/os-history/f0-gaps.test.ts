@@ -43,7 +43,6 @@ describe('[OSH-001/002/004] origem declarada, divergente e padrão', () => {
     expect(resolveSource('os_list', { defaultSource: 'os_detail' })).toMatchObject({ code: 'os_detail', trust: 'mismatch' })
     expect(resolveSource('os_detail', { defaultSource: 'os_detail' })).toMatchObject({ code: 'os_detail', trust: 'declared' })
   })
-  it.todo('[OSH-004] endpoint compartilhado sem header: rótulo genérico do fluxo, não uma tela adivinhada (depende de F1: pay-commissions-bulk)')
 })
 
 describe('[OSH-005] catálogo fechado', () => {
@@ -71,7 +70,6 @@ describe('[OSH-006] rota da página -> origem (plugin api-client)', () => {
   it.each(['/', '/app', '/login', '/app/customers', '/app/financialx', '/app/reports', '', undefined])('rota sem mapa %j não gera código', (path) => {
     expect(originForPath(path as string | undefined)).toBeNull()
   })
-  it.todo('[OSH-006] override explícito (withOrigin) vence o mapa: cobrir quando o helper withOrigin existir/for exportado; o plugin real fica no E2E (OSH-043)')
 })
 
 // ---------------------------------------------------------------- recordOsEvents
@@ -155,7 +153,6 @@ describe('recordOsEvents (lacunas)', () => {
     expect(new Set(rows.map(r => r.correlation_id))).toEqual(new Set([REQ]))
   })
   it.todo('[OSH-014] `step` crescente 1..3: a migration 108 não tem coluna step (sem decisão); revisitar se o desenho a adotar')
-  it.todo('[OSH-015] helper de chave de idempotência (tipo+entidade+id do efeito): hoje a chave é montada inline em pay.post.ts, sem função a testar')
 })
 
 // ---------------------------------------------------------------- endpoint
@@ -251,6 +248,7 @@ describe('[OSH-042] rótulo de origem vem do catálogo, nunca do que está grava
   })
   it('texto do payload é devolvido como dado (escape fica no front)', () => {
     const r = renderOsEvent({ ...row, source_label: OS_HISTORY_SOURCES.os_detail, event_type: 'order.status_changed', payload: { from: '<b>x</b>', to: 'completed' } })
-    expect(r.details[0]!.from).toBe('<b>x</b>')
+    // Status fora do mapa não expõe o texto/código cru (rótulo genérico).
+    expect(r.details[0]!.from).toBe('outro status')
   })
 })

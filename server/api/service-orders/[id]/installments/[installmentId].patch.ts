@@ -94,7 +94,8 @@ export default defineEventHandler(async (event) => {
 
   recordAudit(event, {
     resourceId: orderId,
-    before: installment as Record<string, unknown>,
+    // Auditoria mantém o `before` original (id, status); os demais campos do select servem só ao histórico.
+    before: { id: installment.id, status: installment.status },
     after: updatedInstallment,
     extra: { installmentId }
   })

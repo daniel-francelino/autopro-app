@@ -34,7 +34,29 @@ const PAYMENT_METHODS: Record<string, string> = {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  open: 'Aberta', in_progress: 'Em andamento', completed: 'Concluída', cancelled: 'Cancelada'
+  open: 'Aberta', in_progress: 'Em andamento', completed: 'Concluída', cancelled: 'Cancelada',
+  estimate: 'Orçamento', waiting_for_part: 'Aguardando peça', invoiced: 'Faturada', delivered: 'Entregue'
+}
+
+// F2: rótulos e formatos dos campos da OS (chaves de server/utils/os-history/diff.ts). Chave desconhecida => rótulo genérico.
+const ORDER_FIELD_LABELS: Record<string, { label: string, kind: 'text' | 'money' | 'date' | 'bool' | 'opaque' }> = {
+  number: { label: 'Número da OS', kind: 'text' },
+  reported_defect: { label: 'Defeito relatado', kind: 'text' },
+  diagnosis: { label: 'Diagnóstico', kind: 'text' },
+  notes: { label: 'Observações', kind: 'text' },
+  entry_date: { label: 'Data de entrada', kind: 'date' },
+  expected_date: { label: 'Previsão de entrega', kind: 'date' },
+  expected_payment_date: { label: 'Previsão de pagamento', kind: 'date' },
+  completion_date: { label: 'Data de conclusão', kind: 'date' },
+  discount: { label: 'Desconto', kind: 'money' },
+  total_amount: { label: 'Valor total', kind: 'money' },
+  total_taxes_amount: { label: 'Total de impostos', kind: 'money' },
+  apply_taxes: { label: 'Aplicar impostos', kind: 'bool' },
+  selected_taxes: { label: 'Impostos selecionados', kind: 'opaque' },
+  client: { label: 'Cliente', kind: 'text' },
+  vehicle: { label: 'Veículo', kind: 'text' },
+  employee_responsible: { label: 'Funcionário responsável', kind: 'text' },
+  master_product: { label: 'Produto principal', kind: 'text' }
 }
 
 export function formatBRL(value: unknown): string {
@@ -241,6 +263,78 @@ const F1_RENDERERS: Record<string, (p: Record<string, unknown>, actor: string) =
   }
 }
 
+const fieldValue = (kind: string, v: unknown): string => {
+  if (v == null || v === '') return '(vazio)'
+  if (kind === 'money') return formatBRL(v)
+  if (kind === 'date') return formatDate(v) ?? '(vazio)'
+  if (kind === 'bool') return v === true ? 'Sim' : 'Não'
+  return str(v) ?? (typeof v === 'number' ? String(v) : '(vazio)')
+}
+
+const qtyText = (v: unknown) => (v == null ? '-' : new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 3 }).format(Number(v)))
+const ITEM_FIELD_LABELS: Record<string, string> = { name: 'Nome', quantity: 'Quantidade', unit_price: 'Preço', discount: 'Desconto' }
+
+function itemFieldValue(field: string, v: unknown): string {
+  if (field === 'quantity') return qtyText(v)
+  if (field === 'name') return str(v) ?? '(sem nome)'
+  return v == null ? formatBRL(0) : formatBRL(v)
+}
+
+function itemSummary(l: Record<string, unknown>): string {
+  const disc = Number(l.discount)
+  return `${qtyText(l.quantity)} x ${formatBRL(l.unit_price)}${Number.isFinite(disc) && disc > 0 ? ` (desconto ${formatBRL(disc)})` : ''}`
+}
+
+const F2_RENDERERS: Record<string, (p: Record<string, unknown>, actor: string) => Rendered> = {
+  'order.created': (p, actor) => ({
+    title: 'OS criada',
+    description: `${p.order_number ? `OS nº ${String(p.order_number)} criada` : 'OS criada'} por ${actor}.`,
+    details: []
+  }),
+  'order.deleted': (p, actor) => ({
+    title: 'OS excluída',
+    description: `${p.order_number ? `OS nº ${String(p.order_number)} excluída` : 'OS excluída'} por ${actor}.`,
+    details: []
+  }),
+  'order.fields_changed': (p, actor) => {
+    const list = Array.isArray(p.changes) ? p.changes as Array<Record<string, unknown>> : []
+    const details = list.map((c) => {
+      const key = String(c.field ?? '')
+      const def = Object.hasOwn(ORDER_FIELD_LABELS, key) ? ORDER_FIELD_LABELS[key] : undefined
+      const kind = def?.kind ?? 'text'
+      return { label: def?.label ?? 'Outro campo', from: fieldValue(kind, c.from), to: fieldValue(kind, c.to) }
+    })
+    return { title: 'OS alterada', description: `${actor} alterou: ${details.map(d => d.label).join(', ') || 'dados da OS'}.`, details }
+  },
+  'order.items_changed': (p, actor) => {
+    const lines = Array.isArray(p.lines) ? p.lines as Array<Record<string, unknown>> : []
+    const details: Rendered['details'] = lines.map((l) => {
+      const name = str(l.name) ?? '(sem nome)'
+      if (l.action === 'added') return { label: `Item adicionado: ${name}`, from: null, to: itemSummary(l) }
+      if (l.action === 'removed') return { label: `Item removido: ${name}`, from: itemSummary(l), to: null }
+      const ch = Array.isArray(l.changes) ? l.changes as Array<Record<string, unknown>> : []
+      const part = (side: 'from' | 'to') => ch.map(c => `${lookup(ITEM_FIELD_LABELS, String(c.field)) ?? 'Campo'} ${itemFieldValue(String(c.field), c[side])}`).join('; ')
+      return { label: `Item alterado: ${name}`, from: part('from'), to: part('to') }
+    })
+    const more = Number(p.more)
+    if (Number.isFinite(more) && more > 0) details.push({ label: `e mais ${more} ${more === 1 ? 'item' : 'itens'}`, from: null, to: null })
+    return { title: 'Itens da OS alterados', description: `${actor} alterou os itens da OS.`, details }
+  },
+  'order.responsibles_changed': (p, actor) => {
+    const names = (v: unknown) => (Array.isArray(v) ? v.map(n => str(n) ?? '(sem nome)') : [])
+    const added = names(p.added); const removed = names(p.removed)
+    const parts = [
+      ...(added.length ? [`adicionado${added.length > 1 ? 's' : ''}: ${added.join(', ')}`] : []),
+      ...(removed.length ? [`removido${removed.length > 1 ? 's' : ''}: ${removed.join(', ')}`] : [])
+    ]
+    return {
+      title: 'Responsáveis alterados',
+      description: `Responsáveis da OS alterados por ${actor} (${parts.join('; ')}).`,
+      details: [{ label: 'Responsáveis', from: removed.join(', ') || null, to: added.join(', ') || null }]
+    }
+  }
+}
+
 // Templates por event_type; o `schema_version` permite evoluir o payload sem reescrever o histórico.
 const RENDERERS: Record<string, (p: Record<string, unknown>, actor: string) => Rendered> = {
   'installment.paid': (p, actor) => {
@@ -256,8 +350,10 @@ const RENDERERS: Record<string, (p: Record<string, unknown>, actor: string) => R
     return { title, description: `${text}. Registrado por ${actor}.`, details: [] }
   },
   ...F1_RENDERERS,
+  ...F2_RENDERERS,
   'order.status_changed': (p, actor) => {
-    const label = (v: unknown) => lookup(STATUS_LABELS, String(v)) ?? str(v) ?? '-'
+    // Código fora do mapa não é exposto ao cliente (continua no payload).
+    const label = (v: unknown) => lookup(STATUS_LABELS, String(v)) ?? (str(v) ? 'outro status' : '-')
     return {
       title: 'Status alterado',
       description: `Status alterado de '${label(p.from)}' para '${label(p.to)}' por ${actor}.`,

@@ -6,7 +6,7 @@ import { resolveOrganizationId } from '../../utils/organization'
 import { recordAudit } from '../../utils/audit/record'
 import { resolveDefaultCategoryId } from '../../utils/financial-category-defaults'
 import { softDeleteFinancialTransaction, FINANCIAL_TRANSACTION_DELETION_SOURCES } from '../../utils/financial-transaction-deletion'
-import { OS_SOURCE_POLICIES, buildCommissionPaidEvent, createHistoryCache, historyContext, loadEmployeeNames, recordWithContext } from '../../utils/os-history/events'
+import { OS_SOURCE_POLICIES, buildCommissionPaidEvent, createHistoryCache, historyContext, loadEmployeeNames, prefetchReceivedTotals, recordWithContext } from '../../utils/os-history/events'
 
 /**
  * POST /api/financial/pay-commissions-bulk
@@ -232,6 +232,7 @@ export default defineEventHandler(async (event) => {
     // Cache por requisição: nomes em lote (1 consulta), conta e recebido por OS uma vez só.
     const cache = createHistoryCache()
     await loadEmployeeNames(supabase, organizationId, paidForHistory.map(p => p.registro.employee_id as string | null), cache)
+    await prefetchReceivedTotals(supabase, organizationId, paidForHistory.map(p => p.registro.service_order_id as string | null), cache)
     for (const p of paidForHistory) {
       if (!p.registro.service_order_id || p.registro.record_type !== 'commission' || !p.transactionId) continue
       events.push(await buildCommissionPaidEvent(supabase, {

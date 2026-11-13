@@ -31,7 +31,7 @@ describe('renderOsEvent', () => {
     const pay = renderOsEvent({ ...base, payload: { installment_number: 1, amount: 1, payment_method: v } })
     expect(pay.description).toContain(`(${v})`)
     const st = renderOsEvent({ ...base, event_type: 'order.status_changed', payload: { from: v, to: v } })
-    expect(st.description).toBe(`Status alterado de '${v}' para '${v}' por Maria.`)
+    expect(st.description).toBe("Status alterado de 'outro status' para 'outro status' por Maria.")
   })
 
   it('tipo desconhecido e ator ausente não quebram', () => {

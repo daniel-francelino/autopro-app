@@ -14,6 +14,7 @@ const INSTRUMENTED = [
   'server/api/service-orders/[id]/receive-extra-payment.post.ts',
   'server/api/service-orders/[id]/generate-commissions.post.ts',
   'server/api/service-orders/[id]/installments/[installmentId].delete.ts',
+  'server/api/service-orders/[id]/installments/[installmentId].patch.ts',
   'server/api/service-orders/[id]/installments/[installmentId]/pay.post.ts',
   'server/api/service-orders/[id]/financial-transactions/[transactionId].delete.ts',
   'server/api/financial/pay-commissions-bulk.post.ts',
@@ -24,6 +25,24 @@ const INSTRUMENTED = [
   'server/api/reports/commissions/[id]/pay.post.ts',
   'server/api/reports/commissions/[id].delete.ts'
 ]
+
+
+const stripComments = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
+const SHARED = /\b(reverseServiceOrderReceipt|releaseServiceOrderCommissions|recalculateServiceOrderPaymentStatus)\(\{/g
+/** Chamadas reais (sem comentários) com o literal de argumentos completo, respeitando chaves aninhadas. */
+function sharedCalls(source: string): Array<{ fn: string, args: string }> {
+  const src = stripComments(source)
+  const out: Array<{ fn: string, args: string }> = []
+  for (const m of src.matchAll(SHARED)) {
+    let depth = 1
+    let i = m.index! + m[0].length
+    const start = i
+    while (i < src.length && depth > 0) { const c = src[i++]; if (c === '{') depth++; else if (c === '}') depth-- }
+    out.push({ fn: m[1]!, args: src.slice(start, i - 1) })
+  }
+  return out
+}
+const hasHistoryKey = (args: string) => /(^|[\s,{])history\s*(,|:|$)/m.test(args)
 
 describe('OSH-154: todo handler instrumentado declara política de origem e grava via helper', () => {
   it.each(INSTRUMENTED)('%s', (file) => {
@@ -51,13 +70,25 @@ describe('OSH-154: todo handler instrumentado declara política de origem e grav
     }
   })
 
+  it('o extrator de chamadas ignora comentários e respeita chaves aninhadas (auto-teste)', () => {
+    const fake = [
+      '// reverseServiceOrderReceipt({ nada })',
+      'await releaseServiceOrderCommissions({ a: { b: 1 }, c: [{ d: 2 }], history })',
+      'await recalculateServiceOrderPaymentStatus({ orderId, meta: { x: 1 } })'
+    ].join('\n')
+    const calls = sharedCalls(fake)
+    expect(calls.map(c => c.fn)).toEqual(['releaseServiceOrderCommissions', 'recalculateServiceOrderPaymentStatus'])
+    expect(hasHistoryKey(calls[0]!.args)).toBe(true)
+    expect(hasHistoryKey(calls[1]!.args)).toBe(false)
+  })
+
   it('chamadas aos utilitários compartilhados, dentro de handler instrumentado, repassam `history` (cascata herda origem)', () => {
-    const callRe = /(reverseServiceOrderReceipt|releaseServiceOrderCommissions|recalculateServiceOrderPaymentStatus)\(\{([\s\S]*?)\}\)/g
     const missing: string[] = []
+    let total = 0
     for (const f of INSTRUMENTED) {
-      const src = read(f)
-      for (const m of src.matchAll(callRe)) if (!/\bhistory\b/.test(m[2]!)) missing.push(`${f}: ${m[1]}`)
+      for (const c of sharedCalls(read(f))) { total++; if (!hasHistoryKey(c.args)) missing.push(`${f}: ${c.fn}`) }
     }
+    expect(total).toBeGreaterThan(5)
     expect(missing).toEqual([])
   })
 })
@@ -65,11 +96,10 @@ describe('OSH-154: todo handler instrumentado declara política de origem e grav
 describe('OSH-154 (informativo): chamadores dos utilitários FORA da lista instrumentada', () => {
   it('lista os chamadores sem history para revisão (não falha; documenta lacunas conhecidas)', () => {
     const all = walk(join(ROOT, 'server/api')).map(rel).filter(f => f.endsWith('.ts'))
-    const re = /(reverseServiceOrderReceipt|releaseServiceOrderCommissions|recalculateServiceOrderPaymentStatus)\(\{([\s\S]*?)\}\)/g
     const gaps: string[] = []
     for (const f of all) {
       if (INSTRUMENTED.includes(f)) continue
-      for (const m of read(f).matchAll(re)) if (!/\bhistory\b/.test(m[2]!)) gaps.push(`${f}: ${m[1]}`)
+      for (const c of sharedCalls(read(f))) if (!hasHistoryKey(c.args)) gaps.push(`${f}: ${c.fn}`)
     }
     // eslint-disable-next-line no-console
     if (gaps.length) console.info('[os-history] chamadores sem history:', gaps)
@@ -78,14 +108,13 @@ describe('OSH-154 (informativo): chamadores dos utilitários FORA da lista instr
 })
 
 describe('OSH-144: mapa único de visibilidade/categoria por event_type', () => {
-  const expected = (t: string) => t === 'order.cancelled' || t === 'order.status_changed'
-    ? 'general'
-    : t.startsWith('commission.') ? 'commission' : 'financial'
+  const visibilityOf = (t: string) => t.startsWith('order.') ? 'general' : t.startsWith('commission.') ? 'commission' : 'financial'
+  const categoryOf = (t: string) => t === 'order.status_changed' ? 'status' : t === 'order.items_changed' ? 'items' : t.startsWith('order.') ? 'order' : t.startsWith('commission.') ? 'commission' : 'payment'
   it.each(Object.keys(OS_EVENT_CATALOG))('%s', (t) => {
     const meta = OS_EVENT_CATALOG[t as keyof typeof OS_EVENT_CATALOG]
-    expect(meta.visibility).toBe(expected(t))
-    const prefix = t.split('.')[0]
-    expect(meta.category).toBe(prefix === 'commission' ? 'commission' : t === 'order.cancelled' ? 'order' : t === 'order.status_changed' ? 'status' : 'payment')
+    expect(['order.', 'items.', 'installment.', 'payment.', 'receipt.', 'entry.', 'commission.'].some(p => t.startsWith(p)), `família desconhecida: ${t}`).toBe(true)
+    expect(meta.visibility).toBe(visibilityOf(t))
+    expect(meta.category).toBe(categoryOf(t))
   })
 
   it('todo tipo emitido por osEvent(\'x\') no servidor existe no catálogo e tem renderizador próprio', () => {
@@ -100,11 +129,11 @@ describe('OSH-144: mapa único de visibilidade/categoria por event_type', () => 
     }
   })
 
-  it('todo tipo do catálogo (exceto os de F0, gravados por recordOsEvents direto) é emitido por osEvent() em algum handler/util', () => {
+  it('todo tipo de pagamento/comissão do catálogo (order.* é de F0/F2; installment.paid é gravado direto) é emitido por osEvent() em algum handler/util', () => {
     const files = walk(join(ROOT, 'server')).map(rel).filter(f => f.endsWith('.ts'))
     const src = files.map(f => read(f)).join('\n')
-    const F0 = new Set(['order.status_changed', 'installment.paid'])
-    const dead = Object.keys(OS_EVENT_CATALOG).filter(t => !F0.has(t) && !new RegExp(`osEvent\\(\\s*'${t.replace('.', '\\.')}'`).test(src))
+    const F0 = new Set(['installment.paid'])
+    const dead = Object.keys(OS_EVENT_CATALOG).filter(t => !t.startsWith('order.') && !F0.has(t) && !new RegExp(`osEvent\\(\\s*'${t.replace('.', '\\.')}'`).test(src))
     expect(dead).toEqual([])
   })
 })

@@ -6,6 +6,8 @@ import { resolveOrganizationId } from '../../utils/organization'
 import { requireOrgPermission } from '../../utils/require-org-permission'
 import { recordAudit } from '../../utils/audit/record'
 import { softDeleteFinancialTransaction, FINANCIAL_TRANSACTION_DELETION_SOURCES } from '../../utils/financial-transaction-deletion'
+import { OS_SOURCE_POLICIES, historyContext, recordWithContext } from '../../utils/os-history/events'
+import { buildOrderDeletedEvent } from '../../utils/os-history/order-events'
 
 /**
  * DELETE /api/service-orders/:id
@@ -17,6 +19,7 @@ export default defineEventHandler(async (event) => {
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
+  const history = historyContext(event, OS_SOURCE_POLICIES.orderDelete)
   const orderId = getRouterParam(event, 'id')
 
   if (!orderId) {
@@ -171,6 +174,9 @@ export default defineEventHandler(async (event) => {
   if (deleteError) {
     throw createError({ statusCode: 500, statusMessage: `Failed to delete service order: ${deleteError.message}` })
   }
+
+  // Histórico da OS: só depois do soft delete confirmado (o erro acima já interrompeu o fluxo).
+  await recordWithContext(history, supabase, () => [buildOrderDeletedEvent(organizationId, orderId, order.number, history.scope!)])
 
   recordAudit(event, { before: order as Record<string, unknown>, extra: {
     deleted: { statements: deletedStatements, transactions: deletedTransactions, commissions: deletedCommissions, installments: deletedInstallments },

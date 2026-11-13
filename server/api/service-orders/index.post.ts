@@ -5,6 +5,8 @@ import { resolveOrganizationId } from '../../utils/organization'
 import { requireOrgPermission } from '../../utils/require-org-permission'
 import { recordAudit } from '../../utils/audit/record'
 import { normalizeOsNumber } from '../../utils/service-order-number'
+import { OS_SOURCE_POLICIES, historyContext, recordWithContext } from '../../utils/os-history/events'
+import { buildOrderCreatedEvent, buildOrderUpdateEvents } from '../../utils/os-history/order-events'
 import {
   computeServiceOrderItemsWithCommissionSnapshots,
   type ServiceOrderCommissionItem
@@ -42,6 +44,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'orderData is required' })
   }
 
+  const history = historyContext(event, OS_SOURCE_POLICIES.osForm)
   const warnings: string[] = []
   const isUpdate = !!orderId
   let existingOrder: Record<string, unknown> | null = null
@@ -218,6 +221,10 @@ export default defineEventHandler(async (event) => {
     }
     savedOrder = data as SavedOrderRecord
     recordAudit(event, { resourceId: orderId, before: existingOrder, after: savedOrder as unknown as Record<string, unknown> })
+    // Histórico da OS (F2): só depois do update confirmado; nunca derruba a operação.
+    await recordWithContext(history, supabase, () => buildOrderUpdateEvents(supabase, {
+      organizationId, orderId: String(orderId), before: existingOrder!, after: data as Record<string, unknown>, scope: history.scope!
+    }))
   } else {
     // Create new order
     orderPayload.created_by = authUser.email
@@ -233,6 +240,7 @@ export default defineEventHandler(async (event) => {
     }
     savedOrder = data as SavedOrderRecord
     recordAudit(event, { resourceId: String(savedOrder.id), after: savedOrder as unknown as Record<string, unknown> })
+    await recordWithContext(history, supabase, () => [buildOrderCreatedEvent(organizationId, { id: String(savedOrder.id), number: (data as Record<string, unknown>)?.number })])
   }
 
   // Handle appointment creation if provided

@@ -34,8 +34,8 @@ export function osHistorySourceLabel(code: OsHistorySourceCode): string {
 /**
  * Mapa fixo rota da página -> origem (maior prefixo vence). Rota sem entrada: sem header,
  * o servidor cai na origem padrão do endpoint.
- * Limitação conhecida (F0): `/app/service-orders` declara `os_detail` para toda a tela; o refinamento
- * `os_form`/`os_list` fica para as fatias que instrumentarem esses eventos.
+ * `/app/service-orders` declara `os_detail` para a tela toda; `os_form` (cadastro/edição) e `os_list` (ações da lista)
+ * são declarados por chamada (header `x-origin` explícito nos componentes, F2).
  */
 const ROUTE_ORIGINS: Array<[prefix: string, code: OsHistorySourceCode]> = [
   ['/app/service-orders', 'os_detail'],

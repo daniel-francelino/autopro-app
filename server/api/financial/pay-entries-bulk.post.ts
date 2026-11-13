@@ -4,7 +4,7 @@ import { requireAuthUser } from '../../utils/require-auth'
 import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
 import { recordAudit } from '../../utils/audit/record'
-import { OS_EVENT_KEYS, OS_SOURCE_POLICIES, buildCommissionPaidEvent, createHistoryCache, historyContext, osEvent, prefetchEntryLinks, recordWithContext, resolveEntryOsLink, snapshotMoney } from '../../utils/os-history/events'
+import { OS_EVENT_KEYS, OS_SOURCE_POLICIES, buildCommissionPaidEvent, createHistoryCache, historyContext, osEvent, prefetchEntryLinks, prefetchReceivedTotals, recordWithContext, resolveEntryOsLink, snapshotMoney } from '../../utils/os-history/events'
 
 /**
  * POST /api/financial/pay-entries-bulk
@@ -172,6 +172,7 @@ export default defineEventHandler(async (event) => {
     const events = []
     const cache = createHistoryCache()
     await prefetchEntryLinks(supabase, organizationId, paidForHistory.map(p => p.entry), cache)
+    await prefetchReceivedTotals(supabase, organizationId, [...cache.records.values()].map(r => (r?.record_type === 'commission' ? r.service_order_id : null) as string | null), cache)
     for (const { entry, recordSynced } of paidForHistory) {
       const link = await resolveEntryOsLink(supabase, organizationId, entry, cache)
       if (!link) continue

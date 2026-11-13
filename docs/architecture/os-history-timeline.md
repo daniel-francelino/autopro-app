@@ -254,8 +254,8 @@ Fatia indicada: F1 = pagamentos/comissões, F2 = status/campos/itens, F3 = ciclo
 | `installment.edited` | `installments/[installmentId].patch.ts` | "Parcela 3: vencimento alterado de 10/12 para 15/12." | `os_detail` | F1 |
 | `installment.removed` | `installments/[installmentId].delete.ts` | "Parcela 2 removida por Maria. Motivo: lançamento em duplicidade." (usa `deletion_reason`) | `os_detail` | F1 |
 | `receipt.reversed` | `financial-transactions/[transactionId].delete.ts`, `financial/[id].delete.ts` via `reverseServiceOrderReceipt` | "Recebimento de R$ 300,00 desfeito por Maria." | `os_detail`, `financial_entries` | F1 |
-| `payment.removed` | `payment.delete.ts` | "Pagamento da OS removido por João: recebimentos desfeitos e plano de pagamento apagado." | `os_detail` | F1 |
-| `payment.plan_regenerated` | **não é rota própria**: derivado quando `process-payment` ocorre numa OS que já teve `payment.removed` (correlação, **[D2]**) | "Plano de pagamento gerado novamente: 2 parcelas, total R$ 900,00." | `os_detail` | F1 |
+| `payment.deleted` | `payment.delete.ts` | "Pagamento da OS removido por João: recebimentos desfeitos e plano de pagamento apagado." | `os_detail` | F1 |
+| `payment.plan_regenerated` | **não é rota própria**: derivado quando `process-payment` ocorre numa OS que já teve `payment.deleted` (correlação, **[D2]**) | "Plano de pagamento gerado novamente: 2 parcelas, total R$ 900,00." | `os_detail` | F1 |
 | `payment.status_changed` | `recalculateServiceOrderPaymentStatus` (`service-order-payment-status.ts`), só quando muda | "Situação do pagamento alterada de 'Pendente' para 'Parcialmente pago'." | herda da ação causadora | F1 |
 | `commission.released` | `releaseServiceOrderCommissions` (`service-order-commissions.ts`), ao criar a linha `pending` | "Comissão de R$ 45,00 liberada para Carlos (proporcional ao recebido)." | herda da ação causadora (`os_detail` ou `system`) | F1 |
 | `commission.release_mode_changed` | `process-payment.post.ts` (`commission_release_mode='full'`) | "Comissões da OS passaram a ser liberadas integralmente, sem esperar o recebimento." | `os_detail` | F1 (regra sensível, ver D5) |
@@ -371,6 +371,21 @@ Cada fatia é independente e reversível (só adiciona gravação; nenhuma mudan
 - **D13** `financial/[id]/pay` parece não sincronizar o registro de comissão ([H]); encaminhar ao `data-integrity-auditor`. O histórico só registra o que ocorrer.
 
 ---
+
+## 11.1 Respostas do responsável (2026-11-13)
+
+Valem para F2 e F3. Perguntas Q16 a Q30 em `docs/testing/os-history-scenarios-f2-f3.md`.
+
+| Pergunta | Decisão |
+|---|---|
+| D6 / OS excluída | O usuário não acessa mais o histórico (`GET history` responde 404). Os eventos permanecem na tabela para consulta direta no banco pelo desenvolvimento. |
+| Q16 e Q17 (allowlist, campos sensíveis) | Todo campo alterado pode entrar no histórico. Mantém-se a regra técnica de nunca expor comissão a quem não tem o gate, ids crus ou dados de outro tenant (a visibilidade é decisão de segurança, não de produto). |
+| Q18 a Q20 (itens, teto, desconto) | Delegado ao arquiteto/desenvolvedor: **um evento por requisição** de edição de itens (`order.items_changed`), com uma linha por item (adicionado, removido, alterado de → para em quantidade, preço e desconto), teto de 50 linhas por evento com resumo "e mais N itens"; desconto como campo com de → para, sem comissão. Reavaliar com uso real. |
+| Q21 (status) | Todos os status e transições são registrados, sempre "status antigo → status novo". Sem regra de transição própria do histórico. |
+| Q24 (evento de exclusão) | Só o desenvolvimento lê (direto no banco). Sem restauração pelo usuário. |
+| Q25 (comissão manual) | Registrar reversão, justificativa e demais dados informados no ajuste (visibilidade `commission`). |
+| Q26 (NFS-e) | Fora desta rodada: a parte fiscal será refeita depois. Em F3, NFS-e fica de fora e vira pendência. D10 continua valendo (NFS-e gera evento), mas a implementação espera o refazimento. |
+| Q29 (cliente e veículo) | Troca de cliente ou veículo na OS gera evento; a placa aparece no texto. |
 
 ## 12. O que não foi verificado
 

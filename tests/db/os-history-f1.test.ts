@@ -89,7 +89,7 @@ describe.skipIf(!available)('chaves de idempotência das cascatas no banco real'
 })
 
 describe.skipIf(!available)('endpoint history com eventos F1: visibilidade e tenant ponta a ponta (OSH-163, 144)', () => {
-  it('catálogo gravado no banco: general só vê order.cancelled; financial soma pagamentos; commission vê tudo; org B não vê nada de A', async () => {
+  it('catálogo gravado no banco: general só vê os eventos order.*; financial soma pagamentos; commission vê tudo; org B não vê nada de A', async () => {
     const so = (await createServiceOrder(orgA, `E${Date.now() % 1e6}`)).data!.id as string
     const payloads: Record<string, Record<string, unknown>> = {}
     const events = Object.keys(OS_EVENT_CATALOG).map((type, i) => osEvent(type as keyof typeof OS_EVENT_CATALOG, { organizationId: orgA, serviceOrderId: so, idempotencyKey: `e2e:${type}:${so}:${i}` }, payloads[type] ?? {}))
@@ -100,7 +100,7 @@ describe.skipIf(!available)('endpoint history com eventos F1: visibilidade e ten
     as.visibilities = ['general']
     const general = ((await get(so)).body as { items: Item[] }).items
     expect(general.length).toBe(Object.values(OS_EVENT_CATALOG).filter(m => m.visibility === 'general').length)
-    expect(general.map(i => i.category).every(c => c === 'order' || c === 'status')).toBe(true)
+    expect(general.map(i => i.category).every(c => c === 'order' || c === 'status' || c === 'items')).toBe(true)
 
     as.visibilities = ['general', 'financial']
     const financial = ((await get(so)).body as { items: Item[] }).items
