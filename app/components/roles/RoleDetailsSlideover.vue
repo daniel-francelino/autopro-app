@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import {
   filterModulesByName,
+  grantedFractionLabel,
   grantedOfTotalLabel,
   modulesToTreeItems,
+  modulesWithGranted,
   summarizeModules,
   type PermissionAction
 } from '~/utils/role-permissions'
@@ -73,7 +75,7 @@ const modules = computed(() => {
     .filter(roleAction => roleAction.is_granted)
     .map(roleAction => roleAction.action_id))
 
-  return summarizeModules(detail.value.actions, grantedIds)
+  return modulesWithGranted(summarizeModules(detail.value.actions, grantedIds))
 })
 
 const filteredModules = computed(() => filterModulesByName(modules.value, moduleQuery.value))
@@ -286,21 +288,16 @@ watch(() => [props.open, props.roleId], loadRoleDetail, { immediate: true })
                 :ui="{ link: 'min-w-0', linkLabel: 'min-w-0 flex-1 whitespace-normal break-words text-left' }"
               >
                 <template #item-trailing="{ item }">
-                  <UBadge
-                    v-if="item.slot === 'module'"
-                    :label="grantedOfTotalLabel(item.granted, item.total)"
-                    :aria-label="`${item.label}: ${item.granted} de ${item.total} permissões liberadas`"
-                    color="neutral"
-                    variant="subtle"
-                    size="sm"
-                    class="shrink-0"
-                  />
+                  <template v-if="item.slot === 'module'">
+                    <span class="shrink-0 text-xs tabular-nums text-muted" aria-hidden="true">{{ grantedFractionLabel(item.granted, item.total) }}</span>
+                    <span class="sr-only">{{ grantedOfTotalLabel(item.granted, item.total) }} liberadas</span>
+                  </template>
                 </template>
               </UTree>
 
               <div v-else class="rounded-xl border border-dashed border-default px-4 py-8 text-center">
                 <p class="text-sm text-muted" role="status">
-                  Nenhum módulo encontrado
+                  {{ modules.length ? 'Nenhum módulo encontrado' : 'Nenhuma permissão liberada' }}
                 </p>
               </div>
             </div>

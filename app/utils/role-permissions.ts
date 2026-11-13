@@ -176,6 +176,16 @@ export function summarizeModules(actions: PermissionAction[], grantedIds: Readon
   })
 }
 
+/** Mantem so modulos com ao menos 1 permissao liberada. */
+export function modulesWithGranted<T extends { granted: number }>(modules: readonly T[]): T[] {
+  return modules.filter(m => m.granted > 0)
+}
+
+/** "(4/5)" visual ao lado do modulo; valores ausentes viram 0. */
+export function grantedFractionLabel(granted: number | null | undefined, total: number | null | undefined): string {
+  return `(${granted ?? 0}/${total ?? 0})`
+}
+
 /** Busca parcial pelo nome do modulo, sem caixa/acentos. */
 export function filterModulesByName<T extends { label: string }>(modules: readonly T[], query: string): T[] {
   const q = normalizeSearchText(query)

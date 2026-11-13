@@ -5,10 +5,12 @@ import {
   diffPermissions,
   filterActions,
   filterModulesByName,
+  grantedFractionLabel,
   grantedOfTotalLabel,
   groupActionsByResource,
   groupCheckboxLabels,
   modulesToTreeItems,
+  modulesWithGranted,
   normalizeSearchText,
   permissionPanelId,
   rolePermissionsLabel,
@@ -118,6 +120,14 @@ describe('sortRolesForList / rótulos de contagem', () => {
       ['Papéis', 1, 1]
     ])
     expect(mods[0]!.grantedActions.map(a => a.id)).toEqual(['2'])
+  })
+
+  it('oculta modulos sem permissao liberada e formata (N/M)', () => {
+    const mods = modulesWithGranted(summarizeModules(actions, new Set(['2', '1'])))
+    expect(mods.map(m => m.label)).toEqual(['Agendamentos', 'Papéis'])
+    expect(grantedFractionLabel(mods[0]!.granted, mods[0]!.total)).toBe('(1/2)')
+    expect(grantedFractionLabel(undefined, null)).toBe('(0/0)')
+    expect(modulesWithGranted(summarizeModules(actions, new Set()))).toEqual([])
   })
 
   it('busca modulo parcial, sem acento e sem caixa', () => {
