@@ -4,6 +4,8 @@ import {
   countGranted,
   diffPermissions,
   filterActions,
+  filterModulesByName,
+  grantedOfTotalLabel,
   groupActionsByResource,
   groupCheckboxLabels,
   normalizeSearchText,
@@ -12,6 +14,7 @@ import {
   roleUsersLabel,
   setGroup,
   sortRolesForList,
+  summarizeModules,
   type PermissionAction
 } from '../../../app/utils/role-permissions'
 
@@ -99,5 +102,28 @@ describe('sortRolesForList / rótulos de contagem', () => {
     expect(roleUsersLabel(undefined)).toBe('0 usuários')
     expect(rolePermissionsLabel(1)).toBe('1 permissão')
     expect(rolePermissionsLabel(105)).toBe('105 permissões')
+  })
+
+  it('rotulo "N de M"', () => {
+    expect(grantedOfTotalLabel(105, 107)).toBe('105 de 107')
+    expect(grantedOfTotalLabel(undefined, null)).toBe('0 de 0')
+  })
+
+  it('resume modulos com contagem de liberadas', () => {
+    const mods = summarizeModules(actions, new Set(['2', '1']))
+    expect(mods.map(m => [m.label, m.granted, m.total])).toEqual([
+      ['Agendamentos', 1, 2],
+      ['Geral', 0, 1],
+      ['Papéis', 1, 1]
+    ])
+    expect(mods[0]!.grantedActions.map(a => a.id)).toEqual(['2'])
+  })
+
+  it('busca modulo parcial, sem acento e sem caixa', () => {
+    const mods = summarizeModules(actions, new Set())
+    expect(filterModulesByName(mods, 'PAPEIS').map(m => m.label)).toEqual(['Papéis'])
+    expect(filterModulesByName(mods, 'agend').map(m => m.label)).toEqual(['Agendamentos'])
+    expect(filterModulesByName(mods, '  ')).toHaveLength(3)
+    expect(filterModulesByName(mods, 'zzz')).toEqual([])
   })
 })

@@ -33,7 +33,7 @@ const menuItems = computed(() => [
       color="neutral"
       variant="outline"
       size="sm"
-      class="min-h-11"
+      class="min-h-8"
       @click="canEdit ? emit('edit') : emit('view')"
     />
     <UButton
@@ -43,7 +43,7 @@ const menuItems = computed(() => [
       color="neutral"
       variant="ghost"
       size="sm"
-      class="min-h-11 min-w-11"
+      class="min-w-8"
       @click="emit('view')"
     />
     <UDropdownMenu v-if="canDelete" :items="menuItems">
@@ -53,7 +53,7 @@ const menuItems = computed(() => [
         color="neutral"
         variant="ghost"
         size="sm"
-        class="min-h-11 min-w-11"
+        class="min-w-8"
         :loading="deleting"
       />
     </UDropdownMenu>

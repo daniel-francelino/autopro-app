@@ -156,3 +156,29 @@ export function pluralLabel(count: number | null | undefined, singular: string, 
 
 export const roleUsersLabel = (count: number | null | undefined) => pluralLabel(count, 'usuário', 'usuários')
 export const rolePermissionsLabel = (count: number | null | undefined) => pluralLabel(count, 'permissão', 'permissões')
+
+/** "105 de 107" legivel; valores ausentes viram 0. */
+export function grantedOfTotalLabel(granted: number | null | undefined, total: number | null | undefined): string {
+  return `${granted ?? 0} de ${total ?? 0}`
+}
+
+export type ModuleSummary = PermissionGroup & {
+  granted: number
+  total: number
+  grantedActions: PermissionAction[]
+}
+
+/** Agrupa por modulo (ordem pt-BR) com contagem de liberadas e as acoes liberadas. */
+export function summarizeModules(actions: PermissionAction[], grantedIds: ReadonlySet<string>): ModuleSummary[] {
+  return groupActionsByResource(actions).map((group) => {
+    const grantedActions = group.actions.filter(a => grantedIds.has(a.id))
+    return { ...group, granted: grantedActions.length, total: group.actions.length, grantedActions }
+  })
+}
+
+/** Busca parcial pelo nome do modulo, sem caixa/acentos. */
+export function filterModulesByName<T extends { label: string }>(modules: readonly T[], query: string): T[] {
+  const q = normalizeSearchText(query)
+  if (!q) return [...modules]
+  return modules.filter(m => normalizeSearchText(m.label).includes(q))
+}

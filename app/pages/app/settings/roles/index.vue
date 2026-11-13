@@ -226,7 +226,7 @@ function openRoleDetails(role: Role | null) {
             />
           </div>
           <RoleRowActions
-            class="shrink-0"
+            class="shrink-0 self-start"
             :role-name="roleLabel(role)"
             :can-edit="canUpdate && !role.is_system_role"
             :can-delete="canDelete && !role.is_system_role"

@@ -1,18 +1,17 @@
 <script setup lang="ts">
+import {
+  filterModulesByName,
+  grantedOfTotalLabel,
+  summarizeModules,
+  type PermissionAction
+} from '~/utils/role-permissions'
+
 type RoleItem = {
   id: string
   name: string
   display_name: string | null
   description: string | null
   is_system_role: boolean
-}
-
-type ActionItem = {
-  id: string
-  code: string
-  name: string | null
-  description: string | null
-  resource: string | null
 }
 
 type RoleAction = {
@@ -35,7 +34,7 @@ type AssignedUser = {
 type RoleDetailResponse = {
   item?: {
     role: RoleItem
-    actions: ActionItem[]
+    actions: PermissionAction[]
     role_actions: RoleAction[]
     assigned_users: AssignedUser[]
     summary: {
@@ -44,13 +43,6 @@ type RoleDetailResponse = {
       assigned_users_count: number
     }
   }
-}
-
-type PermissionTab = {
-  label: string
-  value: string
-  count: number
-  icon: string
 }
 
 const props = defineProps<{
@@ -64,30 +56,36 @@ const emit = defineEmits<{
 
 const loading = ref(false)
 const detail = ref<RoleDetailResponse['item'] | null>(null)
-const activePermissionTab = ref('')
+const activeTab = ref('users')
+const moduleQuery = ref('')
 
-const { getResourceIcon, formatResourceLabel } = useRoleResources()
+const { getResourceIcon } = useRoleResources()
 
-const grantedGroupedActions = computed<Record<string, ActionItem[]>>(() => {
+const tabItems = [
+  { label: 'Usuários', value: 'users', icon: 'i-lucide-users', slot: 'users' as const },
+  { label: 'Permissões', value: 'permissions', icon: 'i-lucide-key-round', slot: 'permissions' as const }
+]
+
+const modules = computed(() => {
   if (!detail.value)
-    return {}
+    return []
 
   const grantedIds = new Set(detail.value.role_actions
     .filter(roleAction => roleAction.is_granted)
     .map(roleAction => roleAction.action_id))
 
-  return detail.value.actions.reduce<Record<string, ActionItem[]>>((groups, action) => {
-    if (!grantedIds.has(action.id))
-      return groups
-
-    const groupName = action.resource || 'Geral'
-    if (!groups[groupName])
-      groups[groupName] = []
-
-    groups[groupName].push(action)
-    return groups
-  }, {})
+  return summarizeModules(detail.value.actions, grantedIds)
 })
+
+const filteredModules = computed(() => filterModulesByName(modules.value, moduleQuery.value))
+
+// Devolve o foco ao botao que abriu o painel (abertura programatica nao tem trigger).
+let opener: HTMLElement | null = null
+function restoreFocus(event: Event) {
+  event.preventDefault()
+  opener?.focus()
+  opener = null
+}
 
 function roleLabel(role: RoleItem | null) {
   if (!role)
@@ -130,233 +128,184 @@ function onClose() {
   emit('update:open', false)
 }
 
-watch(() => [props.open, props.roleId], loadRoleDetail, { immediate: true })
-
-const permissionTabs = computed<PermissionTab[]>(() =>
-  Object.entries(grantedGroupedActions.value).map(([resource, actions]) => ({
-    label: formatResourceLabel(resource),
-    value: resource,
-    count: actions.length,
-    icon: getResourceIcon(resource)
-  }))
-)
-
-const activeTabActions = computed(() => {
-  if (!activePermissionTab.value)
-    return []
-
-  return grantedGroupedActions.value[activePermissionTab.value] ?? []
-})
-
-watch(permissionTabs, (tabs) => {
-  if (!tabs.length) {
-    activePermissionTab.value = ''
+watch(() => props.open, (open) => {
+  if (!open)
     return
-  }
 
-  if (!tabs.some(tab => tab.value === activePermissionTab.value))
-    activePermissionTab.value = tabs[0]!.value
-}, { immediate: true })
+  opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  activeTab.value = 'users'
+  moduleQuery.value = ''
+}, { flush: 'sync' })
+
+watch(() => [props.open, props.roleId], loadRoleDetail, { immediate: true })
 </script>
 
 <template>
-  <USlideover :open="props.open" :title="roleLabel(detail?.role ?? null)" @update:open="onClose">
+  <USlideover
+    :open="props.open"
+    title="Papéis e permissões / Detalhes"
+    :content="{ onCloseAutoFocus: restoreFocus }"
+    :ui="{ title: 'text-sm font-normal text-muted', content: 'w-full max-w-md' }"
+    @update:open="onClose"
+  >
+    <template #close>
+      <UButton
+        icon="i-lucide-x"
+        color="neutral"
+        variant="ghost"
+        aria-label="Fechar detalhes do papel"
+        @click="onClose"
+      />
+    </template>
+
     <template #body>
-      <div v-if="loading" class="space-y-4 p-4">
-        <USkeleton class="h-24 w-full rounded-2xl" />
-        <USkeleton class="h-32 w-full rounded-2xl" />
-        <USkeleton class="h-52 w-full rounded-2xl" />
+      <div v-if="loading" class="space-y-4">
+        <USkeleton class="h-14 w-full rounded-2xl" />
+        <USkeleton class="h-20 w-full rounded-2xl" />
+        <USkeleton class="h-40 w-full rounded-2xl" />
       </div>
 
-      <div v-else-if="detail" class="space-y-6">
-        <div class="rounded-2xl border border-default/70 bg-elevated/20 p-4">
-          <div class="flex flex-wrap items-start justify-between gap-3">
-            <div class="space-y-2">
-              <div class="flex flex-wrap items-center gap-2">
-                <div class="flex size-10 items-center justify-center rounded-2xl bg-primary/12 text-primary">
-                  <UIcon name="i-lucide-shield-check" class="size-5" />
-                </div>
-                <h3 class="text-lg font-semibold text-highlighted">
-                  {{ roleLabel(detail.role) }}
-                </h3>
-                <UBadge
-                  :label="detail.role.is_system_role ? 'Sistema' : 'Personalizado'"
-                  :color="detail.role.is_system_role ? 'warning' : 'neutral'"
-                  variant="subtle"
-                  size="sm"
-                />
-              </div>
-
-              <p class="text-sm text-muted">
-                {{ detail.role.description || 'Sem descrição cadastrada para este papel.' }}
-              </p>
-            </div>
-
-            <div class="grid min-w-55 gap-2 sm:grid-cols-3">
-              <div class="rounded-xl border border-default/70 bg-default/40 px-3 py-2">
-                <UIcon name="i-lucide-users" class="mb-2 size-4 text-primary/80" />
-                <p class="text-xs text-muted">
-                  Usuários vinculados
-                </p>
-                <p class="text-lg font-semibold text-highlighted">
-                  {{ detail.summary.assigned_users_count }}
-                </p>
-              </div>
-              <div class="rounded-xl border border-default/70 bg-default/40 px-3 py-2">
-                <UIcon name="i-lucide-badge-check" class="mb-2 size-4 text-success" />
-                <p class="text-xs text-muted">
-                  Permissões liberadas
-                </p>
-                <p class="text-lg font-semibold text-highlighted">
-                  {{ detail.summary.granted_actions_count }}
-                </p>
-              </div>
-              <div class="rounded-xl border border-default/70 bg-default/40 px-3 py-2">
-                <UIcon name="i-lucide-grid-2x2" class="mb-2 size-4 text-primary/80" />
-                <p class="text-xs text-muted">
-                  Total de ações
-                </p>
-                <p class="text-lg font-semibold text-highlighted">
-                  {{ detail.summary.total_actions_count }}
-                </p>
-              </div>
-            </div>
+      <div v-else-if="detail" class="space-y-5">
+        <div class="flex min-w-0 items-center gap-3">
+          <div class="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <UIcon name="i-lucide-shield-check" class="size-5" aria-hidden="true" />
+          </div>
+          <div class="min-w-0 space-y-1">
+            <h3 class="break-words text-xl font-semibold text-highlighted">
+              {{ roleLabel(detail.role) }}
+            </h3>
+            <UBadge
+              :label="detail.role.is_system_role ? 'Sistema · Somente leitura' : 'Personalizado'"
+              color="neutral"
+              variant="subtle"
+              size="sm"
+            />
           </div>
         </div>
 
-        <div class="space-y-3">
-          <div class="flex items-center justify-between gap-3">
-            <div class="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted">
-              <UIcon name="i-lucide-users-round" class="size-4" />
-              <h4>Usuários com este papel</h4>
-            </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="rounded-xl border border-default bg-elevated/30 px-4 py-3">
+            <p class="text-2xl font-semibold text-highlighted">
+              {{ detail.summary.assigned_users_count }}
+            </p>
+            <p class="text-xs text-muted">
+              Usuários vinculados
+            </p>
           </div>
+          <div class="rounded-xl border border-default bg-elevated/30 px-4 py-3">
+            <p class="text-2xl font-semibold text-highlighted">
+              <span aria-hidden="true">{{ detail.summary.granted_actions_count }} <span class="text-sm font-normal text-muted">/ {{ detail.summary.total_actions_count }}</span></span>
+              <span class="sr-only">{{ grantedOfTotalLabel(detail.summary.granted_actions_count, detail.summary.total_actions_count) }}</span>
+            </p>
+            <p class="text-xs text-muted">
+              Permissões liberadas
+            </p>
+          </div>
+        </div>
 
-          <div v-if="detail.assigned_users.length" class="space-y-2">
-            <div
-              v-for="user in detail.assigned_users"
-              :key="user.id"
-              class="flex items-start gap-3 rounded-xl border border-default/70 px-3 py-3"
-            >
-              <div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                {{ userInitials(user) }}
-              </div>
-
-              <div class="min-w-0 flex-1 space-y-1">
-                <div class="flex flex-wrap items-center gap-2">
-                  <p class="text-sm font-medium text-highlighted">
+        <UTabs
+          v-model="activeTab"
+          :items="tabItems"
+          variant="link"
+          color="primary"
+          class="w-full"
+          :ui="{ content: 'pt-4' }"
+        >
+          <template #users>
+            <ul v-if="detail.assigned_users.length" class="space-y-2">
+              <li
+                v-for="user in detail.assigned_users"
+                :key="user.id"
+                class="flex items-center gap-3 rounded-xl border border-default px-3 py-3"
+              >
+                <div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary" aria-hidden="true">
+                  {{ userInitials(user) }}
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p class="break-words text-sm font-semibold text-highlighted">
                     {{ userLabel(user) }}
                   </p>
-                  <UBadge
-                    :label="user.active ? 'Ativo' : 'Inativo'"
-                    :color="user.active ? 'success' : 'neutral'"
-                    variant="subtle"
-                    size="sm"
-                  />
+                  <p v-if="user.email" class="break-all text-xs text-muted">
+                    {{ user.email }}
+                  </p>
                 </div>
+                <UBadge
+                  :label="user.active ? 'Ativo' : 'Inativo'"
+                  :color="user.active ? 'success' : 'neutral'"
+                  variant="subtle"
+                  size="sm"
+                  class="shrink-0"
+                />
+              </li>
+            </ul>
 
-                <p v-if="user.email" class="text-xs text-muted">
-                  {{ user.email }}
-                </p>
-
-                <p v-if="user.employee_name" class="text-xs text-muted">
-                  Funcionário vinculado: {{ user.employee_name }}
-                </p>
-              </div>
+            <div v-else class="rounded-xl border border-dashed border-default px-4 py-8 text-center">
+              <UIcon name="i-lucide-users" class="mx-auto mb-2 size-8 text-muted" aria-hidden="true" />
+              <p class="text-sm font-medium text-highlighted">
+                Nenhum usuário vinculado
+              </p>
             </div>
-          </div>
+          </template>
 
-          <div v-else class="rounded-xl border border-dashed border-default px-4 py-8 text-center">
-            <UIcon name="i-lucide-users" class="mx-auto mb-2 size-8 text-muted" />
-            <p class="text-sm font-medium text-highlighted">
-              Nenhum usuário com este papel
-            </p>
-            <p class="mt-1 text-sm text-muted">
-              Assim que um usuário for vinculado a este papel, ele aparecerá aqui.
-            </p>
-          </div>
-        </div>
+          <template #permissions>
+            <div class="space-y-3">
+              <UInput
+                v-model="moduleQuery"
+                icon="i-lucide-search"
+                class="w-full"
+                placeholder="Buscar módulo"
+                aria-label="Buscar módulo"
+              >
+                <template v-if="moduleQuery" #trailing>
+                  <UButton
+                    icon="i-lucide-x"
+                    color="neutral"
+                    variant="link"
+                    size="xs"
+                    aria-label="Limpar busca"
+                    @click="moduleQuery = ''"
+                  />
+                </template>
+              </UInput>
 
-        <div class="space-y-3">
-          <div class="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted">
-            <UIcon name="i-lucide-sparkles" class="size-4" />
-            <h4>O que este papel pode fazer</h4>
-          </div>
-
-          <div v-if="Object.keys(grantedGroupedActions).length" class="space-y-4">
-            <div class="rounded-2xl border border-default/70 bg-default/20 p-2">
-              <div class="flex flex-wrap gap-2">
-                <button
-                  v-for="tab in permissionTabs"
-                  :key="tab.value"
-                  type="button"
-                  class="inline-flex max-w-full items-center gap-2 rounded-xl border px-3 py-2 text-left text-sm transition-colors"
-                  :class="activePermissionTab === tab.value
-                    ? 'border-primary bg-primary text-primary-foreground shadow-sm'
-                    : 'border-default bg-default/60 text-muted hover:bg-elevated'"
-                  @click="activePermissionTab = tab.value"
+              <ul v-if="filteredModules.length" class="space-y-2">
+                <li
+                  v-for="mod in filteredModules"
+                  :key="mod.resource"
+                  class="rounded-xl border border-default px-3 py-3"
                 >
-                  <UIcon :name="tab.icon" class="size-4 shrink-0" />
-                  <span class="break-all">
-                    {{ tab.label }}
-                  </span>
-                  <span class="rounded-full bg-black/8 px-1.5 py-0.5 text-xs font-semibold leading-none">
-                    {{ tab.count }}
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            <div class="rounded-xl border border-default/70">
-              <div class="divide-y divide-default/60">
-                <div
-                  v-for="action in activeTabActions"
-                  :key="action.id"
-                  class="flex items-center justify-between gap-4 px-4 py-3"
-                >
-                  <div class="flex min-w-0 items-start gap-3">
-                    <div class="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                      <UIcon :name="getResourceIcon(action.resource || activePermissionTab)" class="size-4" />
-                    </div>
-
-                    <div class="min-w-0">
-                      <p class="text-sm font-medium text-highlighted">
-                        {{ action.name || action.code }}
-                      </p>
-                      <p v-if="action.description" class="text-xs text-muted">
-                        {{ action.description }}
-                      </p>
-                      <p v-else class="text-xs text-muted">
-                        Código: {{ action.code }}
-                      </p>
-                    </div>
+                  <div class="flex items-center gap-2">
+                    <UIcon :name="getResourceIcon(mod.resource)" class="size-4 shrink-0 text-primary" aria-hidden="true" />
+                    <span class="min-w-0 flex-1 break-words text-sm font-medium text-highlighted">{{ mod.label }}</span>
+                    <UBadge
+                      :label="grantedOfTotalLabel(mod.granted, mod.total)"
+                      :aria-label="`${mod.label}: ${mod.granted} de ${mod.total} permissões liberadas`"
+                      color="neutral"
+                      variant="subtle"
+                      size="sm"
+                      class="shrink-0"
+                    />
                   </div>
+                  <ul v-if="mod.grantedActions.length" class="mt-2 space-y-1 pl-6 text-xs text-muted">
+                    <li v-for="action in mod.grantedActions" :key="action.id" class="break-words">
+                      {{ action.name || action.code }}
+                    </li>
+                  </ul>
+                </li>
+              </ul>
 
-                  <UBadge
-                    label="Permitido"
-                    color="success"
-                    variant="subtle"
-                    size="sm"
-                  />
-                </div>
+              <div v-else class="rounded-xl border border-dashed border-default px-4 py-8 text-center">
+                <p class="text-sm text-muted" role="status">
+                  Nenhum módulo encontrado
+                </p>
               </div>
             </div>
-          </div>
-
-          <div v-else class="rounded-xl border border-dashed border-default px-4 py-8 text-center">
-            <UIcon name="i-lucide-ban" class="mx-auto mb-2 size-8 text-muted" />
-            <p class="text-sm font-medium text-highlighted">
-              Nenhuma permissão liberada
-            </p>
-            <p class="mt-1 text-sm text-muted">
-              Este papel ainda não possui ações marcadas como permitidas.
-            </p>
-          </div>
-        </div>
+          </template>
+        </UTabs>
       </div>
 
-      <div v-else class="p-4">
-        <div class="rounded-xl border border-error/30 bg-error/10 p-4">
+      <div v-else>
+        <div class="rounded-xl border border-error/30 bg-error/10 p-4" role="alert">
           <p class="text-sm font-medium text-error">
             Não foi possível carregar os detalhes do papel.
           </p>
