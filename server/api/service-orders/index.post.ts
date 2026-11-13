@@ -6,6 +6,7 @@ import { requireOrgPermission } from '../../utils/require-org-permission'
 import { recordAudit } from '../../utils/audit/record'
 import { normalizeOsNumber } from '../../utils/service-order-number'
 import { OS_SOURCE_POLICIES, historyContext, recordWithContext } from '../../utils/os-history/events'
+import { buildAppointmentCreatedWithOrderEvent } from '../../utils/os-history/appointment-events'
 import { buildOrderCreatedEvent, buildOrderUpdateEvents } from '../../utils/os-history/order-events'
 import {
   computeServiceOrderItemsWithCommissionSnapshots,
@@ -274,6 +275,9 @@ export default defineEventHandler(async (event) => {
           .eq('id', savedOrder.id)
 
         savedOrder.appointment_id = appointment.id
+
+        // Histórico da OS: só depois do insert do agendamento confirmado (falha aqui vira `warnings`, sem evento).
+        await recordWithContext(history, supabase, () => [buildAppointmentCreatedWithOrderEvent(organizationId, String(savedOrder.id), appointment)])
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown appointment creation error'

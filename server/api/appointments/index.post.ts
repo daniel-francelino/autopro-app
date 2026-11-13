@@ -2,6 +2,8 @@ import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
+import { OS_SOURCE_POLICIES, historyContext, recordWithContext } from '../../utils/os-history/events'
+import { buildAppointmentEvents, toAppointmentSnap } from '../../utils/os-history/appointment-events'
 
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
@@ -43,6 +45,14 @@ export default defineEventHandler(async (event) => {
 
   if (error)
     throw createError({ statusCode: 500, statusMessage: error.message })
+
+  // Histórico da OS: só com OS vinculada (e da mesma organização), depois do insert confirmado.
+  if (item?.service_order_id) {
+    const history = historyContext(event, OS_SOURCE_POLICIES.appointments)
+    await recordWithContext(history, supabase, () => buildAppointmentEvents(supabase, {
+      organizationId, appointmentId: String(item.id), before: null, after: toAppointmentSnap(item), scope: history.scope!
+    }))
+  }
 
   return { item }
 })

@@ -16,6 +16,8 @@ export const OS_EVENT_CATALOG = {
   'order.created': { category: 'order', visibility: 'general' },
   'order.fields_changed': { category: 'order', visibility: 'general' },
   'order.items_changed': { category: 'items', visibility: 'general' },
+  // Custo, taxa de maquininha e condições de pagamento editados na OS: só com o gate financeiro (orders.pay).
+  'order.payment_terms_changed': { category: 'payment', visibility: 'financial' },
   'order.responsibles_changed': { category: 'order', visibility: 'general' },
   // Só o desenvolvimento lê (GET history responde 404 para OS excluída); visibilidade mantida coerente.
   'order.deleted': { category: 'order', visibility: 'general' },
@@ -37,7 +39,14 @@ export const OS_EVENT_CATALOG = {
   'commission.removed': { category: 'commission', visibility: 'commission' },
   'commission.paid': { category: 'commission', visibility: 'commission' },
   'commission.entry_edited': { category: 'commission', visibility: 'commission' },
-  'commission.entry_deleted': { category: 'commission', visibility: 'commission' }
+  'commission.entry_deleted': { category: 'commission', visibility: 'commission' },
+  // F3: agendamento vinculado à OS (sem dados pessoais do cliente; só data, hora, situação).
+  'appointment.created': { category: 'order', visibility: 'general' },
+  'appointment.linked': { category: 'order', visibility: 'general' },
+  'appointment.changed': { category: 'order', visibility: 'general' },
+  'appointment.cancelled': { category: 'order', visibility: 'general' },
+  'appointment.unlinked': { category: 'order', visibility: 'general' },
+  'appointment.removed': { category: 'order', visibility: 'general' }
 } as const satisfies Record<string, { category: OsEventCategory, visibility: OsEventVisibility }>
 
 export type OsEventType = keyof typeof OS_EVENT_CATALOG
@@ -80,9 +89,16 @@ export const OS_EVENT_KEYS = {
   orderCreated: (orderId: string) => osEventKey('order_created', orderId),
   orderFieldsChanged: (orderId: string, scope: string) => osEventKey('order_fields_changed', orderId, scope),
   orderItemsChanged: (orderId: string, scope: string) => osEventKey('order_items_changed', orderId, scope),
+  orderPaymentTermsChanged: (orderId: string, scope: string) => osEventKey('order_payment_terms_changed', orderId, scope),
   orderResponsiblesChanged: (orderId: string, scope: string) => osEventKey('order_responsibles_changed', orderId, scope),
   orderStatusChanged: (orderId: string, scope: string, from: string, to: string) => osEventKey('order_status_changed', orderId, scope, from, to),
-  orderDeleted: (orderId: string, scope: string) => osEventKey('order_deleted', orderId, scope)
+  orderDeleted: (orderId: string, scope: string) => osEventKey('order_deleted', orderId, scope),
+  appointmentCreated: (appointmentId: string) => osEventKey('appointment_created', appointmentId),
+  appointmentLinked: (appointmentId: string, orderId: string, scope: string) => osEventKey('appointment_linked', appointmentId, orderId, scope),
+  appointmentUnlinked: (appointmentId: string, orderId: string, scope: string) => osEventKey('appointment_unlinked', appointmentId, orderId, scope),
+  appointmentChanged: (appointmentId: string, scope: string) => osEventKey('appointment_changed', appointmentId, scope),
+  appointmentCancelled: (appointmentId: string, scope: string) => osEventKey('appointment_cancelled', appointmentId, scope),
+  appointmentRemoved: (appointmentId: string) => osEventKey('appointment_removed', appointmentId)
 } as const
 
 /**
@@ -119,7 +135,9 @@ export const OS_SOURCE_POLICIES = {
   commissionPay: { defaultSource: 'commission_report', allowedSources: ['bonus_page', 'os_detail'] },
   commissionDelete: { defaultSource: 'commission_report', allowedSources: ['os_detail'] },
   entriesBulk: { defaultSource: 'financial_bulk', allowedSources: ['financial_entries'] },
-  financialEntries: { defaultSource: 'financial_entries' }
+  financialEntries: { defaultSource: 'financial_entries' },
+  // Agenda é a tela padrão; o card da OS pode declarar a própria origem.
+  appointments: { defaultSource: 'appointments', allowedSources: ['os_detail', 'os_form'] }
 } as const satisfies Record<string, SourcePolicy>
 
 type EventBuilder = () => OsEventInput[] | Promise<OsEventInput[]>

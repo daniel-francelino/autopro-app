@@ -1,11 +1,13 @@
 // Histórico da OS (F2): UNIT (diff/render/chaves) e STATIC complementares a f2-diff-render.test.ts.
 // OSH-201/202/204/205/206/220/221/226/231/237/246/250/260/272/276/278/285/286/287.
 import { describe, expect, it } from 'vitest'
-import { diffItems, diffOrderFields, diffRefs, normalizeValue, ITEM_LINES_CAP, ORDER_FIELD_KINDS, ORDER_REF_FIELDS } from '../../../server/utils/os-history/diff'
+import { diffFinancialFields, FINANCIAL_FIELD_KINDS, diffItems, diffOrderFields, diffRefs, normalizeValue, ITEM_LINES_CAP, ORDER_FIELD_KINDS, ORDER_REF_FIELDS } from '../../../server/utils/os-history/diff'
 import { buildOrderUpdateEvents } from '../../../server/utils/os-history/order-events'
 import { renderOsEvent, type OsEventRow } from '../../../server/utils/os-history/render'
 import { OS_EVENT_CATALOG, OS_EVENT_KEYS, OS_SOURCE_POLICIES } from '../../../server/utils/os-history/events'
-import { read } from '../../support/source-scan'
+import { read, walk, rel, ROOT } from '../../support/source-scan'
+import { join } from 'node:path'
+import { readdirSync, readFileSync } from 'node:fs'
 
 const row = (event_type: string, payload: Record<string, unknown>): OsEventRow => ({
   id: 'e1', occurred_at: '2026-11-13T12:00:00Z', event_type, schema_version: 1, category: 'order', actor_name: 'Maria',
@@ -56,8 +58,8 @@ describe('[OSH-202/226/231] mudança sem efeito => zero (tabela)', () => {
 
 describe('[OSH-201/206] allowlist/denylist: só o que pode entrar entra', () => {
   const excluded = ['id', 'organization_id', 'created_at', 'updated_at', 'deleted_at', 'created_by', 'updated_by', 'deleted_by', 'appointment_id', 'active_nfe_id', 'active_nfse_id',
-    'commission_amount', 'commission_release_mode', 'commission_manual_adjustments_log', 'commission_whatever', 'total_cost_amount', 'terminal_fee_amount',
-    'payment_status', 'payment_method', 'is_installment', 'installment_count', 'status', 'items', 'responsible_employees', 'client_id', 'vehicle_id', 'employee_responsible_id', 'master_product_id']
+    'commission_amount', 'commission_release_mode', 'commission_manual_adjustments_log', 'commission_whatever',
+    'status', 'items', 'responsible_employees', 'client_id', 'vehicle_id', 'employee_responsible_id', 'master_product_id']
   it.each(excluded)('%s mudando => nenhuma mudança escalar', (col) => {
     const out = diffOrderFields({ [col]: 'a-1' }, { [col]: 'b-2' })
     expect(out).toEqual([])
@@ -65,16 +67,20 @@ describe('[OSH-201/206] allowlist/denylist: só o que pode entrar entra', () => 
   it('coluna desconhecida => "other" sem o nome da coluna em lugar nenhum da saída', () => {
     const out = diffOrderFields({ coluna_secreta_xyz: 'a', blob_xyz: { k: 1 } }, { coluna_secreta_xyz: 'b', blob_xyz: { k: 2 } })
     expect(out.map(c => c.field)).toEqual(['other', 'other'])
+    expect(out.every(c => c.from === '(alterado)' && c.to === '(alterado)')).toBe(true)
     expect(JSON.stringify(out)).not.toMatch(/xyz/)
+    const scalar = diffOrderFields({ coluna_x: 'a' }, { coluna_x: 'b' })
+    expect(scalar).toEqual([{ field: 'other', from: '(alterado)', to: '(alterado)' }])
+    const txt = JSON.stringify([scalar, renderOsEvent(row('order.fields_changed', { changes: scalar }))])
+    expect(txt).not.toMatch(/"a"|"b"|coluna_x/)
     expect(out.find(c => c.to === '(alterado)')).toBeTruthy() // estruturado nunca mostra conteúdo
   })
   it('estruturado: payload do blob não vaza chaves/valores internos', () => {
     const out = diffOrderFields({ blob: { token: 'abc123' } }, { blob: { token: 'zzz999' } })
     expect(JSON.stringify(out)).not.toMatch(/abc123|zzz999|token/)
   })
-  // Defeito latente (baixo): nfe_ids/nfse_ids são colunas text com ids de NF e não estão na denylist. O handler hoje não as grava,
-  // mas qualquer fluxo futuro que as altere faria o histórico mostrar ids crus como "Outro campo".
-  it('KF-nfe-ids (corrigido por L1): nfe_ids/nfse_ids (ids de NF em texto) não podem aparecer como valor do diff', () => {
+  // nfe_ids/nfse_ids: coluna desconhecida escalar grava só o marcador (sem ids crus).
+  it('nfe_ids/nfse_ids (ids de NF em texto) não aparecem como valor do diff', () => {
     const out = diffOrderFields({ nfse_ids: '["11111111-1111-4111-8111-111111111111"]' }, { nfse_ids: '["22222222-2222-4222-8222-222222222222"]' })
     expect(JSON.stringify(out)).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-/)
   })
@@ -87,14 +93,13 @@ describe('[OSH-278] texto livre longo (Q30)', () => {
     expect(out).toHaveLength(1)
     expect(String(out[0]!.to).length).toBeLessThanOrEqual(201) // 200 + reticências
   })
-  // Defeito de produção: a normalização trunca a 200 caracteres ANTES de comparar. Editar o texto depois do
-  // caractere 200 não gera nenhum evento (mudança real perdida), e o texto truncado não é marcado como tal.
-  it('KF-trunc-compare (corrigido): alteração após o caractere 200 de um texto longo deve gerar evento', () => {
+  // A comparação usa o texto completo (não o truncado); só o valor gravado é limitado a 200 caracteres.
+  it('alteração após o caractere 200 de um texto longo gera evento', () => {
     const a = `${'a'.repeat(250)}FIM-ANTIGO`
     const b = `${'a'.repeat(250)}FIM-NOVO`
     expect(diffOrderFields({ reported_defect: a }, { reported_defect: b })).toHaveLength(1)
   })
-  it('KF-trunc-marca (corrigido): texto truncado deve ser marcado (ex.: reticências)', () => {
+  it('texto truncado é marcado com reticências', () => {
     const out = diffOrderFields({ reported_defect: 'a' }, { reported_defect: 'y'.repeat(500) })
     expect(String(out[0]!.to)).toMatch(/…|\.\.\./)
   })
@@ -169,7 +174,6 @@ describe('[OSH-246/250] status: todos os pares e fallback', () => {
     expect(renderOsEvent(row('order.status_changed', {})).details[0]).toEqual({ label: 'Status', from: '-', to: '-' })
   })
   // (resolvido: status desconhecido usa o rótulo genérico 'outro status')
-  it.todo('PERGUNTA AO RESPONSÁVEL (OSH-250/Q7): status desconhecido (legado/futuro) hoje aparece com o CÓDIGO CRU no texto (ex.: "weird_code"); deve cair em rótulo genérico?')
 })
 
 describe('[OSH-204/205] renderização de valores', () => {
@@ -211,12 +215,12 @@ describe('[OSH-260] chaves de idempotência', () => {
 })
 
 describe('[OSH-272/287] catálogo x visibilidade x renderizador', () => {
-  const F2 = ['order.created', 'order.deleted', 'order.fields_changed', 'order.items_changed', 'order.responsibles_changed', 'order.status_changed', 'order.cancelled']
-  it('todo tipo order.* tem visibilidade e categoria explícitas, é general e é renderizado', () => {
+  const F2 = ['order.created', 'order.deleted', 'order.fields_changed', 'order.items_changed', 'order.payment_terms_changed', 'order.responsibles_changed', 'order.status_changed', 'order.cancelled']
+  it('todo tipo order.* tem visibilidade e categoria explícitas (general; payment_terms_changed = financial) e é renderizado', () => {
     expect(Object.keys(OS_EVENT_CATALOG).filter(t => t.startsWith('order.')).sort()).toEqual([...F2].sort())
     for (const t of F2) {
       const meta = OS_EVENT_CATALOG[t as keyof typeof OS_EVENT_CATALOG]
-      expect(meta.visibility, t).toBe('general')
+      expect(meta.visibility, t).toBe(t === 'order.payment_terms_changed' ? 'financial' : 'general')
       expect(meta.category, t).toBeTruthy()
       expect(renderOsEvent(row(t, {})).title, t).not.toBe('Evento registrado')
     }
@@ -280,23 +284,31 @@ describe('[OSH-285] STATIC: handlers de F2 instrumentados', () => {
 describe('[OSH-286] STATIC: toda coluna de service_orders está classificada', () => {
   // Fonte das colunas: migration de criação + ALTER TABLE ... ADD COLUMN posteriores.
   function migrationColumns(): string[] {
-    const create = read('supabase/migrations/20240101000018_create_service_orders.sql')
-    const body = create.slice(create.indexOf('CREATE TABLE public.service_orders'))
-    const block = body.slice(0, body.search(/\n\);/))
-    const cols = [...block.matchAll(/^\s{4}([a-z_]+)\s+(?:uuid|varchar|text|numeric|boolean|jsonb|int|integer|date|timestamptz)\b/gm)].map(m => m[1]!)
-    const extra = ['commission_release_mode', 'commission_manual_adjustments_log'] // migrations 74 e 93 (verificado abaixo)
-    expect(read('supabase/migrations/20240101000074_add_commission_release_mode_to_service_orders.sql')).toMatch(/ADD COLUMN commission_release_mode/)
-    expect(read('supabase/migrations/20240101000093_add_commission_manual_adjustments_log_to_service_orders.sql')).toMatch(/ADD COLUMN commission_manual_adjustments_log/)
-    return [...new Set([...cols, ...extra])]
+    const dir = join(ROOT, 'supabase/migrations')
+    const files = readdirSync(dir).filter(f => f.endsWith('.sql')).sort()
+    const cols = new Set<string>()
+    for (const f of files) {
+      const sql = readFileSync(join(dir, f), 'utf8').replace(/--[^\n]*/g, '')
+      const create = /CREATE TABLE\s+(?:IF NOT EXISTS\s+)?(?:public\.)?service_orders\s*\(([\s\S]*?)\n\);/i.exec(sql)
+      if (create) {
+        for (const m of create[1]!.matchAll(/^\s{2,}"?([a-z_]+)"?\s+(?:uuid|varchar|character|text|numeric|boolean|jsonb|json|integer|int|bigint|date|timestamptz|timestamp)\b/gim)) cols.add(m[1]!.toLowerCase())
+      }
+      for (const alter of sql.matchAll(/ALTER TABLE\s+(?:IF EXISTS\s+)?(?:ONLY\s+)?(?:public\.)?"?service_orders"?\s([^;]*);/gi)) {
+        for (const m of alter[1]!.matchAll(/ADD COLUMN\s+(?:IF NOT EXISTS\s+)?"?([a-z_]+)"?/gi)) cols.add(m[1]!.toLowerCase())
+        for (const m of alter[1]!.matchAll(/DROP COLUMN\s+(?:IF EXISTS\s+)?"?([a-z_]+)"?/gi)) cols.delete(m[1]!.toLowerCase())
+        for (const m of alter[1]!.matchAll(/RENAME COLUMN\s+"?([a-z_]+)"?\s+TO\s+"?([a-z_]+)"?/gi)) { cols.delete(m[1]!.toLowerCase()); cols.add(m[2]!.toLowerCase()) }
+      }
+    }
+    return [...cols]
   }
   // 'diff' = campo escalar no histórico; 'ref' = cadastro resolvido por nome; 'own' = tem evento próprio; 'excluded' = fora do histórico por decisão.
-  const POLICY: Record<string, 'diff' | 'generic' | 'ref' | 'own' | 'excluded'> = {
+  const POLICY: Record<string, 'diff' | 'financial' | 'generic' | 'ref' | 'own' | 'excluded'> = {
     id: 'excluded', organization_id: 'excluded', number: 'diff', client_id: 'ref', vehicle_id: 'ref', entry_date: 'diff', expected_date: 'diff',
     expected_payment_date: 'diff', completion_date: 'diff', master_product_id: 'ref', employee_responsible_id: 'ref', appointment_id: 'excluded',
-    responsible_employees: 'own', status: 'own', payment_status: 'excluded', payment_method: 'excluded', is_installment: 'excluded', installment_count: 'excluded',
+    responsible_employees: 'own', status: 'own', payment_status: 'financial', payment_method: 'financial', is_installment: 'financial', installment_count: 'financial',
     reported_defect: 'diff', diagnosis: 'diff', items: 'own', apply_taxes: 'diff', selected_taxes: 'diff', total_taxes_amount: 'diff', total_amount: 'diff',
-    total_cost_amount: 'excluded', discount: 'diff', commission_amount: 'excluded', terminal_fee_amount: 'excluded',
-    active_nfe_id: 'excluded', nfe_ids: 'generic', active_nfse_id: 'excluded', nfse_ids: 'generic', // generic = cairia em "Outro campo" (ver KF-nfe-ids)
+    total_cost_amount: 'financial', discount: 'diff', commission_amount: 'excluded', terminal_fee_amount: 'financial',
+    active_nfe_id: 'excluded', nfe_ids: 'generic', active_nfse_id: 'excluded', nfse_ids: 'generic', // generic = cairia em "Outro campo"
      notes: 'diff',
     created_at: 'excluded', created_by: 'excluded', updated_at: 'excluded', updated_by: 'excluded', deleted_at: 'excluded', deleted_by: 'excluded',
     commission_release_mode: 'excluded', commission_manual_adjustments_log: 'excluded'
@@ -312,19 +324,34 @@ describe('[OSH-286] STATIC: toda coluna de service_orders está classificada', (
     expect(Object.keys(POLICY).filter(c => !cols.includes(c)), 'classificações obsoletas').toEqual([])
   })
   it.each(Object.entries(POLICY))('%s (%s) se comporta conforme a classificação', (col, kind) => {
-    const fk = ORDER_FIELD_KINDS[col]
-    const [va, vb]: [unknown, unknown] = fk === 'money' ? [1, 2] : fk === 'bool' ? [false, true] : fk === 'date' ? ['2026-01-01', '2026-01-02'] : fk === 'opaque' ? [[{ x: 1 }], [{ x: 2 }]] : ['v-1', 'v-2']
+    const fk = ORDER_FIELD_KINDS[col] ?? FINANCIAL_FIELD_KINDS[col]
+    const [va, vb]: [unknown, unknown] = fk === 'money' || fk === 'int' ? [1, 2] : fk === 'bool' ? [false, true] : fk === 'date' ? ['2026-01-01', '2026-01-02'] : fk === 'opaque' ? [[{ x: 1 }], [{ x: 2 }]] : ['v-1', 'v-2']
     const diff = diffOrderFields({ [col]: va }, { [col]: vb })
+    const fin = diffFinancialFields({ [col]: va }, { [col]: vb })
     const refs = diffRefs({ [col]: 'a-1' }, { [col]: 'b-2' })
     if (kind === 'diff') expect(diff, col).toHaveLength(1)
-    else if (kind === 'generic') expect(diff.map(d => d.field)).toEqual(['other'])
+    else if (kind === 'financial') { expect(diff, col).toEqual([]); expect(fin, col).toHaveLength(1) } else if (kind === 'generic') expect(diff.map(d => d.field)).toEqual(['other'])
     else if (kind === 'ref') { expect(refs).toHaveLength(1); expect(diff).toEqual([]) } else expect(diff, col).toEqual([])
-    if (kind === 'excluded') expect(refs).toEqual([])
+    if (kind === 'excluded') { expect(refs).toEqual([]); expect(fin, col).toEqual([]) }
   })
   it('todo campo "diff" do mapa existe como coluna real (sem campo fantasma)', () => {
     for (const k of Object.keys(ORDER_FIELD_KINDS)) expect(cols, k).toContain(k)
   })
   it('nenhuma coluna de comissão é classificada como visível', () => {
     for (const c of cols.filter(c => /^commission/.test(c))) expect(POLICY[c], c).toBe('excluded')
+  })
+})
+
+describe('[OSH-171/172] editar cadastro fora da OS não gera evento de OS (STATIC)', () => {
+  it('nenhum handler de clients/vehicles/employees/master-products referencia o histórico da OS', () => {
+    const files = walk(join(ROOT, 'server/api')).map(rel).filter(f => f.endsWith('.ts') && /\/(clients|vehicles|employees|master-products|products)(\/|\.|-)/.test(`/${f.replace('server/api/', '')}`))
+    expect(files.length).toBeGreaterThan(3)
+    const offenders = files.filter(f => /os-history|recordOsEvents|recordWithContext|recordOsEventsSafe|service_order_events/.test(read(f)))
+    expect(offenders).toEqual([])
+  })
+  it('só handlers conhecidos de OS/financeiro importam o histórico (ratchet: novo importador exige revisão)', () => {
+    const importers = walk(join(ROOT, 'server/api')).map(rel).filter(f => f.endsWith('.ts') && /os-history\//.test(read(f)))
+    const outsideOs = importers.filter(f => !/^server\/api\/(service-orders|financial|reports\/commissions|admin\/service-orders|appointments)\//.test(f))
+    expect(outsideOs).toEqual([])
   })
 })

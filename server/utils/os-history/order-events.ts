@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { OsEventInput } from './record'
 import { OS_EVENT_KEYS, loadEmployeeNames, osEvent } from './events'
-import { diffItems, diffOrderFields, diffRefs, diffResponsibles, type FieldChange, type OrderRefField } from './diff'
+import { diffFinancialFields, diffItems, diffOrderFields, diffRefs, diffResponsibles, type FieldChange, type OrderRefField } from './diff'
 
 /**
  * Montagem dos eventos de edição/status/criação/exclusão da OS (F2). Só LEITURA, nunca lança para quem usa
@@ -57,11 +57,18 @@ export function buildOrderCreatedEvent(organizationId: string, order: { id: stri
   }, { order_number: clean(order.number) ?? (order.number != null ? String(order.number) : null) })
 }
 
-export function buildOrderDeletedEvent(organizationId: string, orderId: string, orderNumber: unknown, scope: string): OsEventInput {
+export interface OrderDeletedSummary { installments: number, receipts: number, transactions: number, commissions: number }
+
+/** `removed` = contagens do que a exclusão limpou (sem valores). Só números inteiros não negativos entram no payload. */
+export function buildOrderDeletedEvent(organizationId: string, orderId: string, orderNumber: unknown, scope: string, removed?: OrderDeletedSummary): OsEventInput {
+  const count = (n: unknown) => (Number.isFinite(Number(n)) && Number(n) > 0 ? Math.floor(Number(n)) : 0)
   return osEvent('order.deleted', {
     organizationId, serviceOrderId: orderId, entityType: 'service_order', entityId: orderId,
     idempotencyKey: OS_EVENT_KEYS.orderDeleted(orderId, scope)
-  }, { order_number: orderNumber != null ? String(orderNumber) : null })
+  }, {
+    order_number: orderNumber != null ? String(orderNumber) : null,
+    ...(removed ? { removed: { installments: count(removed.installments), receipts: count(removed.receipts), transactions: count(removed.transactions), commissions: count(removed.commissions) } } : {})
+  })
 }
 
 export async function buildOrderUpdateEvents(
@@ -90,6 +97,9 @@ export async function buildOrderUpdateEvents(
     }
   }
   if (changes.length) events.push(osEvent('order.fields_changed', { ...base, idempotencyKey: OS_EVENT_KEYS.orderFieldsChanged(orderId, scope) }, { changes }))
+
+  const financial = diffFinancialFields(before, after)
+  if (financial.length) events.push(osEvent('order.payment_terms_changed', { ...base, idempotencyKey: OS_EVENT_KEYS.orderPaymentTermsChanged(orderId, scope) }, { changes: financial }))
 
   const items = diffItems(before.items, after.items)
   if (items.total > 0) events.push(osEvent('order.items_changed', { ...base, idempotencyKey: OS_EVENT_KEYS.orderItemsChanged(orderId, scope) }, { lines: items.lines, more: items.more }))

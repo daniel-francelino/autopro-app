@@ -176,7 +176,13 @@ export default defineEventHandler(async (event) => {
   }
 
   // Histórico da OS: só depois do soft delete confirmado (o erro acima já interrompeu o fluxo).
-  await recordWithContext(history, supabase, () => [buildOrderDeletedEvent(organizationId, orderId, order.number, history.scope!)])
+  // Resumo (só contagens, sem valores) do que a exclusão limpou: recebimentos = parcelas e lançamentos de entrada estornados.
+  await recordWithContext(history, supabase, () => [buildOrderDeletedEvent(organizationId, orderId, order.number, history.scope!, {
+    installments: deletedInstallments,
+    receipts: removedTransactions.filter(t => t.origin === 'installment' || (t.origin === 'direct' && t.type === 'income')).length,
+    transactions: deletedTransactions,
+    commissions: deletedCommissions
+  })])
 
   recordAudit(event, { before: order as Record<string, unknown>, extra: {
     deleted: { statements: deletedStatements, transactions: deletedTransactions, commissions: deletedCommissions, installments: deletedInstallments },

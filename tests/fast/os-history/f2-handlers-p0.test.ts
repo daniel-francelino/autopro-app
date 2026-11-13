@@ -6,7 +6,7 @@ import { fakeEvent, installNitroGlobals, installServerUtilsGlobals, callHandler 
 import { createFakeSupabase, type FakeSupabase } from '../../support/fake-supabase'
 import { guardSeed, USERS } from '../../support/phase3-guard-fixture'
 
-const boom = vi.hoisted(() => ({ diff: false, update: false, created: false }))
+const boom = vi.hoisted(() => ({ diff: false, update: false, created: false, deleted: false }))
 let fake: FakeSupabase
 const auth = { getUser: vi.fn(), refreshSession: vi.fn() }
 vi.mock('../../../server/utils/supabase', () => ({ getSupabaseAdminClient: () => fake.client }))
@@ -21,6 +21,7 @@ vi.mock('../../../server/utils/os-history/order-events', async (orig) => {
   return {
     ...m,
     buildOrderUpdateEvents: (...a: Parameters<typeof m.buildOrderUpdateEvents>) => { if (boom.update) throw new Error('update builder boom'); return m.buildOrderUpdateEvents(...a) },
+    buildOrderDeletedEvent: (...a: Parameters<typeof m.buildOrderDeletedEvent>) => { if (boom.deleted) throw new Error('deleted builder boom'); return m.buildOrderDeletedEvent(...a) },
     buildOrderCreatedEvent: (...a: Parameters<typeof m.buildOrderCreatedEvent>) => { if (boom.created) throw new Error('created builder boom'); return m.buildOrderCreatedEvent(...a) }
   }
 })
@@ -41,7 +42,7 @@ const order = (over: Row = {}): Row => ({
   master_product_id: null, responsible_employees: [], items: [], discount: 0, total_amount: 100, reported_defect: 'barulho',
   notes: null, entry_date: '2026-11-01', payment_status: 'pending', commission_amount: 0, deleted_at: null, ...over
 })
-const CODES = ['orders.update', 'orders.create', 'orders.delete', 'orders.read', 'orders.cancel']
+const CODES = ['orders.update', 'orders.create', 'orders.delete', 'orders.read', 'orders.cancel', 'orders.pay']
 function seed(orderOver: Row = {}, extra: Record<string, Row[]> = {}) {
   fake = createFakeSupabase(guardSeed(CODES, {
     service_orders: [order(orderOver), order({ id: 'ob', organization_id: 'org-b', number: 'OSB', client_id: 'clb' })],
@@ -78,7 +79,7 @@ const breakEvents = (mode: 'throw' | 'error') => {
 }
 const stored = () => (fake.tables.service_orders as Row[]).find(r => r.id === O)!
 
-beforeEach(() => { auth.refreshSession.mockReset(); boom.diff = false; boom.update = false; boom.created = false; vi.spyOn(console, 'error').mockImplementation(() => {}) })
+beforeEach(() => { auth.refreshSession.mockReset(); boom.diff = false; boom.update = false; boom.created = false; boom.deleted = false; vi.spyOn(console, 'error').mockImplementation(() => {}) })
 
 describe('[OSH-200/252/255/256/267] criação: origem, tenant e chave', () => {
   it('sem header cai em os_form (inferida); os_form/os_list declarados; header alheio/injeção = mismatch sem tela adivinhada', async () => {
@@ -221,15 +222,22 @@ describe('[OSH-225] entradas inválidas de itens: a operação conclui como hoje
   })
 })
 
-describe('[OSH-206/201] campos deliberadamente fora do histórico (comportamento atual)', () => {
-  it('total_cost_amount, terminal_fee_amount e payment_* mudando => zero evento; commission_amount idem', async () => {
+describe('[OSH-206/201] campos financeiros: evento próprio, só financial; comissão nunca entra', () => {
+  it('custo, taxa e payment_* mudando => 1 order.payment_terms_changed (financial), sem evento general; commission_amount ignorado', async () => {
     seed({ total_cost_amount: 10, terminal_fee_amount: 1, payment_method: 'pix', is_installment: false, installment_count: 0, payment_status: 'pending' })
     await edit({ total_cost_amount: 999, terminal_fee_amount: 55, payment_method: 'cash', is_installment: true, installment_count: 3, payment_status: 'paid', commission_amount: 888 })
-    expect(events()).toHaveLength(0)
-    expect(stored().total_cost_amount).toBe(999) // a gravação da OS acontece; só o histórico ignora
+    expect(events().map(e => e.event_type)).toEqual(['order.payment_terms_changed'])
+    const e = events()[0]!
+    expect(e).toMatchObject({ visibility: 'financial', category: 'payment', idempotency_key: expect.stringMatching(/^order_payment_terms_changed:/) })
+    expect((e.payload.changes as Row[]).map(c => c.field)).toEqual(['total_cost_amount', 'terminal_fee_amount', 'payment_method', 'payment_status', 'is_installment', 'installment_count'])
+    expect(JSON.stringify(e)).not.toMatch(/commission|888/)
+    expect(stored().total_cost_amount).toBe(999)
   })
-  it.todo('PERGUNTA AO RESPONSÁVEL: total_cost_amount e terminal_fee_amount (margem interna) devem aparecer no histórico para quem tem permissão financeira? Hoje ficam fora para todos')
-  it.todo('PERGUNTA AO RESPONSÁVEL: payment_method/payment_status/is_installment/installment_count alterados via POST service-orders (edição direta, sem process-payment) devem gerar evento? Hoje não geram (os eventos próprios só existem nos handlers de pagamento)')
+  it('mudança sem efeito (0 x null, mesma forma de pagamento) não gera evento', async () => {
+    seed({ total_cost_amount: 0, terminal_fee_amount: null, payment_method: 'pix', is_installment: false, installment_count: 0 })
+    await edit({ total_cost_amount: null, terminal_fee_amount: 0, payment_method: 'pix', is_installment: null, installment_count: '0' })
+    expect(events()).toHaveLength(0)
+  })
   it.todo('PERGUNTA AO RESPONSÁVEL: POST com status=cancelled (sem passar por cancel.post) deve ser bloqueado/redirecionado? Hoje grava status_changed e NÃO limpa pagamentos/comissões')
 })
 
@@ -471,6 +479,73 @@ describe('[M2] construtor de evento lançando e leitura de nomes falhando: respo
       expect(res.status).toBe(base.status)
       expect(strip(res.body)).toEqual(strip(base.body))
       expect((fake.tables.service_orders as Row[]).filter(r => r.number === 'NEW1')).toHaveLength(1)
+      expect(events()).toHaveLength(0)
+    }
+  })
+})
+
+describe('[M1] gate financeiro ponta a ponta: order.payment_terms_changed', () => {
+  const grant = (...codes: string[]) => {
+    const ids = codes.map(c => (fake.tables.actions as Row[]).find(a => a.code === c)!.id)
+    ;(fake.tables.role_actions as Row[]).splice(0, (fake.tables.role_actions as Row[]).length, ...ids.map(id => ({ role_id: 'r-com', action_id: id, is_granted: true })))
+    login('com')
+  }
+  const SECRETS = /987,65|55,5|Dinheiro|Cartão|Pix|total_cost|terminal_fee|payment_method|installment_count/i
+
+  it('gravado pelo POST de edição; orders.read NÃO vê (nem vestígio no JSON); orders.pay VÊ', async () => {
+    seed({ total_cost_amount: 10, terminal_fee_amount: 1, payment_method: 'pix', is_installment: false, installment_count: 0 })
+    await edit({ reported_defect: 'novo defeito', total_cost_amount: 987.65, terminal_fee_amount: 55.5, payment_method: 'cash', is_installment: true, installment_count: 3 })
+    const fin = events('order.payment_terms_changed')
+    expect(fin).toHaveLength(1)
+    expect(fin[0]).toMatchObject({ visibility: 'financial', category: 'payment' })
+    expect(events('order.fields_changed')).toHaveLength(1)
+    expect(JSON.stringify(events('order.fields_changed'))).not.toMatch(SECRETS) // o evento general não carrega o financeiro
+
+    grant('orders.read')
+    const readOnly = await call(HISTORY, { method: 'GET' })
+    expect(readOnly.status).toBe(200)
+    const roJson = JSON.stringify(readOnly.body)
+    expect(roJson).toContain('novo defeito')
+    expect(roJson).not.toMatch(SECRETS)
+    expect((readOnly.body as { items: Array<{ title: string }> }).items.some(i => /pagamento/i.test(i.title))).toBe(false)
+    expect((readOnly.body as { items: unknown[] }).items).toHaveLength(1)
+
+    grant('orders.read', 'orders.pay')
+    const payer = await call(HISTORY, { method: 'GET' })
+    expect(payer.status).toBe(200)
+    const items = (payer.body as { items: Array<{ details: Array<{ label: string, from: string | null, to: string | null }> }> }).items
+    expect(items).toHaveLength(2)
+    const pj = JSON.stringify(payer.body)
+    expect(pj).toMatch(/Dinheiro/)
+    expect(pj).toMatch(/987,65/)
+    expect(pj).not.toMatch(/total_cost|terminal_fee|payment_method|installment_count|"e1"/)
+  })
+
+  it('o gate também vale com paginação: orders.read não "sente" o evento omitido (hasMore/total)', async () => {
+    seed({ total_cost_amount: 1 })
+    await edit({ total_cost_amount: 987.65 })
+    grant('orders.read')
+    const res = await call(HISTORY, { method: 'GET', query: { limit: 1 } })
+    const b = res.body as { items: unknown[], hasMore?: boolean, nextCursor?: unknown }
+    expect(b.items).toHaveLength(0)
+    expect(b.hasMore ?? false).toBe(false)
+    expect(b.nextCursor ?? null).toBeNull()
+  })
+})
+
+describe('[B3] DELETE com construtor do evento lançando: resposta e exclusão idênticas', () => {
+  it('builder lança / leitura falha => mesmo status e corpo; OS excluída; zero order.deleted', async () => {
+    seed()
+    const base = await call(DEL, { method: 'DELETE' })
+    expect(base.status).toBe(200)
+    expect(events('order.deleted')).toHaveLength(1)
+    for (const arm of [() => { boom.deleted = true }, () => breakEvents('throw'), () => breakEvents('error')]) {
+      seed(); boom.deleted = false
+      arm()
+      const res = await call(DEL, { method: 'DELETE' })
+      expect(res.status).toBe(base.status)
+      expect(res.body).toEqual(base.body)
+      expect(stored().deleted_at).toBeTruthy()
       expect(events()).toHaveLength(0)
     }
   })

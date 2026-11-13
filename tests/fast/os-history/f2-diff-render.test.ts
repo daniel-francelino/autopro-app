@@ -113,3 +113,17 @@ describe('render F2', () => {
     expect(renderOsEvent(row('order.deleted', { order_number: '4012' })).description).toBe('OS nº 4012 excluída por Maria.')
   })
 })
+
+describe('order.payment_terms_changed (financial)', () => {
+  it('diffFinancialFields: de->para, null x 0 sem efeito, texto pt-BR', async () => {
+    const { diffFinancialFields } = await import('../../../server/utils/os-history/diff')
+    expect(diffFinancialFields({ total_cost_amount: 0, installment_count: 0, is_installment: null }, { total_cost_amount: null, installment_count: '0', is_installment: false })).toEqual([])
+    const ch = diffFinancialFields({ payment_method: 'pix', is_installment: false, installment_count: 0 }, { payment_method: 'credit_card', is_installment: true, installment_count: 3 })
+    const r = renderOsEvent(row('order.payment_terms_changed', { changes: ch }))
+    expect(r.details).toEqual([
+      { label: 'Forma de pagamento', from: 'Pix', to: 'Cartão de crédito' },
+      { label: 'Pagamento parcelado', from: 'Não', to: 'Sim' },
+      { label: 'Número de parcelas', from: '0', to: '3' }
+    ])
+  })
+})

@@ -39,7 +39,7 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 // F2: rótulos e formatos dos campos da OS (chaves de server/utils/os-history/diff.ts). Chave desconhecida => rótulo genérico.
-const ORDER_FIELD_LABELS: Record<string, { label: string, kind: 'text' | 'money' | 'date' | 'bool' | 'opaque' }> = {
+const ORDER_FIELD_LABELS: Record<string, { label: string, kind: 'text' | 'money' | 'date' | 'bool' | 'opaque' | 'int' }> = {
   number: { label: 'Número da OS', kind: 'text' },
   reported_defect: { label: 'Defeito relatado', kind: 'text' },
   diagnosis: { label: 'Diagnóstico', kind: 'text' },
@@ -53,6 +53,12 @@ const ORDER_FIELD_LABELS: Record<string, { label: string, kind: 'text' | 'money'
   total_taxes_amount: { label: 'Total de impostos', kind: 'money' },
   apply_taxes: { label: 'Aplicar impostos', kind: 'bool' },
   selected_taxes: { label: 'Impostos selecionados', kind: 'opaque' },
+  total_cost_amount: { label: 'Custo total', kind: 'money' },
+  terminal_fee_amount: { label: 'Taxa da maquininha', kind: 'money' },
+  payment_method: { label: 'Forma de pagamento', kind: 'text' },
+  payment_status: { label: 'Situação do pagamento', kind: 'text' },
+  is_installment: { label: 'Pagamento parcelado', kind: 'bool' },
+  installment_count: { label: 'Número de parcelas', kind: 'int' },
   client: { label: 'Cliente', kind: 'text' },
   vehicle: { label: 'Veículo', kind: 'text' },
   employee_responsible: { label: 'Funcionário responsável', kind: 'text' },
@@ -271,6 +277,13 @@ const fieldValue = (kind: string, v: unknown): string => {
   return str(v) ?? (typeof v === 'number' ? String(v) : '(vazio)')
 }
 
+const paymentTermValue = (field: string, v: unknown, kind: string): string => {
+  if (field === 'payment_method') return v == null || v === '' ? '(vazio)' : (lookup(PAYMENT_METHODS, String(v)) ?? 'outra forma')
+  if (field === 'payment_status') return v == null || v === '' ? '(vazio)' : (lookup(PAYMENT_STATUS_LABELS, String(v)) ?? 'outra situação')
+  if (kind === 'money' || kind === 'int') return fieldValue(kind === 'int' ? 'text' : kind, v ?? 0)
+  return fieldValue(kind, v)
+}
+
 const qtyText = (v: unknown) => (v == null ? '-' : new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 3 }).format(Number(v)))
 const ITEM_FIELD_LABELS: Record<string, string> = { name: 'Nome', quantity: 'Quantidade', unit_price: 'Preço', discount: 'Desconto' }
 
@@ -285,17 +298,63 @@ function itemSummary(l: Record<string, unknown>): string {
   return `${qtyText(l.quantity)} x ${formatBRL(l.unit_price)}${Number.isFinite(disc) && disc > 0 ? ` (desconto ${formatBRL(disc)})` : ''}`
 }
 
+const APPOINTMENT_STATUS_LABELS: Record<string, string> = { scheduled: 'Agendado', confirmed: 'Confirmado', completed: 'Concluído', cancelled: 'Cancelado' }
+
+const whenText = (p: Record<string, unknown>) => {
+  const date = formatDate(p.date); const time = str(p.time)
+  return date ? `${date}${time ? ` às ${time}` : ''}` : (time ? `às ${time}` : 'data não informada')
+}
+
+// F3: agendamento vinculado à OS. Data e hora vêm do snapshot (sem fuso: são os valores digitados na Agenda).
+const APPOINTMENT_RENDERERS: Record<string, (p: Record<string, unknown>, actor: string) => Rendered> = {
+  'appointment.created': (p, actor) => ({ title: 'Agendamento criado', description: `Agendamento criado para ${whenText(p)} por ${actor}.`, details: [] }),
+  'appointment.linked': (p, actor) => ({
+    title: p.created === true ? 'Agendamento criado' : 'Agendamento vinculado',
+    description: `${p.created === true ? 'Agendamento criado e vinculado à OS' : 'Agendamento vinculado à OS'} para ${whenText(p)} por ${actor}.`,
+    details: []
+  }),
+  'appointment.unlinked': (p, actor) => ({ title: 'Agendamento desvinculado', description: `Agendamento de ${whenText(p)} desvinculado da OS por ${actor}.`, details: [] }),
+  'appointment.cancelled': (p, actor) => ({ title: 'Agendamento cancelado', description: `Agendamento de ${whenText(p)} cancelado por ${actor}.`, details: [] }),
+  'appointment.removed': (p, actor) => ({ title: 'Agendamento excluído', description: `Agendamento de ${whenText(p)} excluído da Agenda por ${actor}.`, details: [] }),
+  'appointment.changed': (p, actor) => {
+    const list = Array.isArray(p.changes) ? p.changes as Array<Record<string, unknown>> : []
+    const labels: Record<string, string> = { date: 'Data', time: 'Hora', status: 'Situação', service_type: 'Tipo de serviço' }
+    const fmt = (field: string, v: unknown) => {
+      if (field === 'date') return formatDate(v) ?? '-'
+      if (field === 'status') return lookup(APPOINTMENT_STATUS_LABELS, String(v)) ?? (str(v) ? 'outra situação' : '-')
+      return str(v) ?? '-'
+    }
+    const details = list.map((c) => { const f = String(c.field ?? ''); return { label: lookup(labels, f) ?? 'Outro campo', from: fmt(f, c.from), to: fmt(f, c.to) } })
+    return {
+      title: 'Agendamento alterado',
+      description: `Agendamento da OS alterado por ${actor}${details.length ? `: ${details.map(d => `${d.label.toLowerCase()} ${d.from} → ${d.to}`).join('; ')}` : ''}.`,
+      details
+    }
+  }
+}
+
 const F2_RENDERERS: Record<string, (p: Record<string, unknown>, actor: string) => Rendered> = {
   'order.created': (p, actor) => ({
     title: 'OS criada',
     description: `${p.order_number ? `OS nº ${String(p.order_number)} criada` : 'OS criada'} por ${actor}.`,
     details: []
   }),
-  'order.deleted': (p, actor) => ({
-    title: 'OS excluída',
-    description: `${p.order_number ? `OS nº ${String(p.order_number)} excluída` : 'OS excluída'} por ${actor}.`,
-    details: []
-  }),
+  'order.deleted': (p, actor) => {
+    const r = (p.removed && typeof p.removed === 'object' ? p.removed : {}) as Record<string, unknown>
+    const n = (k: string) => { const v = Number(r[k]); return Number.isFinite(v) && v > 0 ? Math.floor(v) : 0 }
+    const plural = (v: number, one: string, many: string) => `${v} ${v === 1 ? one : many}`
+    const parts = [
+      ...(n('installments') ? [plural(n('installments'), 'parcela', 'parcelas')] : []),
+      ...(n('receipts') ? [plural(n('receipts'), 'recebimento estornado', 'recebimentos estornados')] : []),
+      ...(n('commissions') ? [plural(n('commissions'), 'comissão', 'comissões')] : [])
+    ]
+    return {
+      title: 'OS excluída',
+      description: `${p.order_number ? `OS nº ${String(p.order_number)} excluída` : 'OS excluída'} por ${actor}.${parts.length ? ` Removidos junto: ${parts.join(', ')}.` : ''}`,
+      details: []
+    }
+  },
+  ...APPOINTMENT_RENDERERS,
   'order.fields_changed': (p, actor) => {
     const list = Array.isArray(p.changes) ? p.changes as Array<Record<string, unknown>> : []
     const details = list.map((c) => {
@@ -305,6 +364,16 @@ const F2_RENDERERS: Record<string, (p: Record<string, unknown>, actor: string) =
       return { label: def?.label ?? 'Outro campo', from: fieldValue(kind, c.from), to: fieldValue(kind, c.to) }
     })
     return { title: 'OS alterada', description: `${actor} alterou: ${details.map(d => d.label).join(', ') || 'dados da OS'}.`, details }
+  },
+  'order.payment_terms_changed': (p, actor) => {
+    const list = Array.isArray(p.changes) ? p.changes as Array<Record<string, unknown>> : []
+    const details = list.map((c) => {
+      const key = String(c.field ?? '')
+      const def = Object.hasOwn(ORDER_FIELD_LABELS, key) ? ORDER_FIELD_LABELS[key] : undefined
+      const kind = def?.kind ?? 'text'
+      return { label: def?.label ?? 'Condição de pagamento', from: paymentTermValue(key, c.from, kind), to: paymentTermValue(key, c.to, kind) }
+    })
+    return { title: 'Condições de pagamento da OS alteradas', description: `${actor} alterou: ${details.map(d => d.label).join(', ') || 'condições de pagamento'}.`, details }
   },
   'order.items_changed': (p, actor) => {
     const lines = Array.isArray(p.lines) ? p.lines as Array<Record<string, unknown>> : []

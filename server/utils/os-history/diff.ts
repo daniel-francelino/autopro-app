@@ -8,7 +8,7 @@ import { snapshotDate, snapshotMoney } from './events'
  * - mudança sem efeito (espaço, null x '', número igual, data com/sem hora) é ignorada.
  */
 
-export type FieldKind = 'text' | 'money' | 'date' | 'bool' | 'opaque'
+export type FieldKind = 'text' | 'money' | 'date' | 'bool' | 'opaque' | 'int'
 
 /** Campos conhecidos: chave -> tipo de formatação. O rótulo pt-BR fica no renderizador (render.ts). */
 export const ORDER_FIELD_KINDS: Record<string, FieldKind> = {
@@ -25,6 +25,19 @@ export const ORDER_FIELD_KINDS: Record<string, FieldKind> = {
   total_taxes_amount: 'money',
   apply_taxes: 'bool',
   selected_taxes: 'opaque'
+}
+
+/**
+ * Campos financeiros (custo/margem e condições de pagamento): vão para o evento próprio `order.payment_terms_changed`
+ * (visibilidade `financial`, gate orders.pay) e NUNCA para `order.fields_changed` (general).
+ */
+export const FINANCIAL_FIELD_KINDS: Record<string, FieldKind> = {
+  total_cost_amount: 'money',
+  terminal_fee_amount: 'money',
+  payment_method: 'text',
+  payment_status: 'text',
+  is_installment: 'bool',
+  installment_count: 'int'
 }
 
 /** Campos que apontam para cadastros: o diff só os detecta; o nome (snapshot) é resolvido por quem chama. */
@@ -65,6 +78,11 @@ export function normalizeValue(value: unknown, kind: FieldKind | 'unknown'): unk
     if (typeof value === 'string' && !value.trim()) return null
     const n = Number(typeof value === 'string' ? value.replace(',', '.') : value)
     return Number.isFinite(n) ? Number(n.toFixed(2)) : null
+  }
+  if (kind === 'int') {
+    if (typeof value === 'string' && !value.trim()) return null
+    const n = Number(value)
+    return Number.isFinite(n) ? Math.trunc(n) : null
   }
   if (kind === 'date') return snapshotDate(value) ?? (String(value).trim() || null)
   if (kind === 'bool') return value === true || value === 'true' ? true : (value === false || value === 'false' ? false : null)
@@ -113,6 +131,21 @@ export function diffOrderFields(before: Record<string, unknown>, after: Record<s
     }
     if (isUnknown) otherCount++
     if (otherCount > 10) break
+  }
+  return out
+}
+
+/** Diferenças dos campos financeiros (allowlist fechada). `null` x 0 é sem efeito; texto/booleano como no diff geral. */
+export function diffFinancialFields(before: Record<string, unknown>, after: Record<string, unknown>): FieldChange[] {
+  const out: FieldChange[] = []
+  for (const [key, kind] of Object.entries(FINANCIAL_FIELD_KINDS)) {
+    if (!(key in before) && !(key in after)) continue
+    let a = normalizeValue(before[key], kind)
+    let b = normalizeValue(after[key], kind)
+    if (kind === 'bool') { a = a === true; b = b === true }
+    if (kind === 'money' || kind === 'int') { a = a ?? 0; b = b ?? 0 }
+    if (sameNorm(a, b)) continue
+    out.push({ field: key, from: clip(a), to: clip(b) })
   }
   return out
 }

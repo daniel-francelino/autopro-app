@@ -108,11 +108,11 @@ describe('OSH-154 (informativo): chamadores dos utilitários FORA da lista instr
 })
 
 describe('OSH-144: mapa único de visibilidade/categoria por event_type', () => {
-  const visibilityOf = (t: string) => t.startsWith('order.') ? 'general' : t.startsWith('commission.') ? 'commission' : 'financial'
-  const categoryOf = (t: string) => t === 'order.status_changed' ? 'status' : t === 'order.items_changed' ? 'items' : t.startsWith('order.') ? 'order' : t.startsWith('commission.') ? 'commission' : 'payment'
+  const visibilityOf = (t: string) => t === 'order.payment_terms_changed' ? 'financial' : (t.startsWith('order.') || t.startsWith('appointment.')) ? 'general' : t.startsWith('commission.') ? 'commission' : 'financial'
+  const categoryOf = (t: string) => t === 'order.status_changed' ? 'status' : t === 'order.items_changed' ? 'items' : t === 'order.payment_terms_changed' ? 'payment' : (t.startsWith('order.') || t.startsWith('appointment.')) ? 'order' : t.startsWith('commission.') ? 'commission' : 'payment'
   it.each(Object.keys(OS_EVENT_CATALOG))('%s', (t) => {
     const meta = OS_EVENT_CATALOG[t as keyof typeof OS_EVENT_CATALOG]
-    expect(['order.', 'items.', 'installment.', 'payment.', 'receipt.', 'entry.', 'commission.'].some(p => t.startsWith(p)), `família desconhecida: ${t}`).toBe(true)
+    expect(['order.', 'appointment.', 'items.', 'installment.', 'payment.', 'receipt.', 'entry.', 'commission.'].some(p => t.startsWith(p)), `família desconhecida: ${t}`).toBe(true)
     expect(meta.visibility).toBe(visibilityOf(t))
     expect(meta.category).toBe(categoryOf(t))
   })

@@ -20,7 +20,7 @@ type Row = Record<string, any>
 
 const order = (over: Row = {}): Row => ({
   id: O, organization_id: 'org-a', number: 'OS1', status: 'open', client_id: 'cl1', vehicle_id: 'v1', employee_responsible_id: null,
-  responsible_employees: [], items: [], discount: 0, total_amount: 100, reported_defect: 'barulho', entry_date: '2026-11-01', deleted_at: null, ...over
+  responsible_employees: [], items: [], discount: 0, total_amount: 100, reported_defect: 'barulho', entry_date: '2026-11-01', deleted_at: null, payment_status: 'pending', is_installment: false, installment_count: 0, ...over
 })
 function seed(orderOver: Row = {}, codes = ['orders.update', 'orders.create', 'orders.delete']) {
   fake = createFakeSupabase(guardSeed(codes, {
