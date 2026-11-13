@@ -9,20 +9,43 @@ export enum ResourceType {
   EMPLOYEES = 'employees',
   FINANCIAL = 'financial',
   INVENTORY = 'inventory',
+  MEMBERS = 'members',
   NOTIFICATIONS = 'notifications',
   ORDERS = 'orders',
+  ORGANIZATION = 'organization',
+  PAYMENT_MACHINES = 'payment_machines',
   PRODUCTS = 'products',
   PRODUCT_CATEGORIES = 'product_categories',
   PURCHASES = 'purchases',
   REPORTS = 'reports',
+  RETURNS = 'returns',
   ROLES = 'roles',
   SERVICE_INVOICE = 'service_invoice',
   SETTINGS = 'settings',
+  SUBSCRIPTION = 'subscription',
   SUPPLIERS = 'suppliers',
   TAXES = 'taxes',
   USERS = 'users',
   VEHICLES = 'vehicles'
 }
+
+/**
+ * Rotulos e icones por igualdade exata (checados antes dos `includes`).
+ * Rotulos/icones SUGERIDOS, ainda nao confirmados pelo stakeholder:
+ * altere apenas este mapa para ajusta-los.
+ */
+export const EXACT_RESOURCE_META: Partial<Record<ResourceType, { label: string, icon: string }>> = {
+  [ResourceType.MEMBERS]: { label: 'Membros', icon: 'i-lucide-users-round' },
+  [ResourceType.ORGANIZATION]: { label: 'Organização', icon: 'i-lucide-building-2' },
+  [ResourceType.PAYMENT_MACHINES]: { label: 'Maquininhas', icon: 'i-lucide-credit-card' },
+  [ResourceType.RETURNS]: { label: 'Devoluções', icon: 'i-lucide-undo-2' },
+  [ResourceType.SUBSCRIPTION]: { label: 'Assinatura', icon: 'i-lucide-receipt' }
+}
+
+function getExactResourceMeta(key: string) {
+  return EXACT_RESOURCE_META[key as ResourceType]
+}
+
 export function useRoleResources() {
   function normalizeResourceKey(resource: string | null | undefined): string {
     return String(resource || 'geral')
@@ -36,6 +59,8 @@ export function useRoleResources() {
   function getResourceIcon(resource: string | null | undefined): string {
     const key = normalizeResourceKey(resource)
 
+    const exact = getExactResourceMeta(key)
+    if (exact) return exact.icon
     if (key.includes(ResourceType.APPOINTMENTS)) return 'i-lucide-calendar-days'
     if (key.includes(ResourceType.AUTHORIZATIONS)) return 'i-lucide-badge-check'
     if (key.includes(ResourceType.BANK_ACCOUNTS) || key.includes('bank')) return 'i-lucide-landmark'
@@ -66,6 +91,8 @@ export function useRoleResources() {
     const key = normalizeResourceKey(resource)
 
     if (!key || key === 'geral' || key === 'general') return 'Geral'
+    const exact = getExactResourceMeta(key)
+    if (exact) return exact.label
     if (key.includes(ResourceType.APPOINTMENTS)) return 'Agendamentos'
     if (key.includes(ResourceType.AUTHORIZATIONS)) return 'Autorizações'
     if (key.includes(ResourceType.BANK_ACCOUNTS) || key.includes('bank')) return 'Contas bancárias'
@@ -92,7 +119,7 @@ export function useRoleResources() {
     if (key.includes(ResourceType.VEHICLES)) return 'Veículos'
     if (key.includes(ResourceType.USERS)) return 'Usuários'
 
-    return 'Outros'
+    return `Outros (${String(resource ?? '').trim() || key})`
   }
 
   return { normalizeResourceKey, getResourceIcon, formatResourceLabel }

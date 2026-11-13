@@ -183,7 +183,7 @@ watch(permissionTabs, (tabs) => {
                   :label="detail.role.is_system_role ? 'Sistema' : 'Personalizado'"
                   :color="detail.role.is_system_role ? 'warning' : 'neutral'"
                   variant="subtle"
-                  size="xs"
+                  size="sm"
                 />
               </div>
 
@@ -251,7 +251,7 @@ watch(permissionTabs, (tabs) => {
                     :label="user.active ? 'Ativo' : 'Inativo'"
                     :color="user.active ? 'success' : 'neutral'"
                     variant="subtle"
-                    size="xs"
+                    size="sm"
                   />
                 </div>
 
@@ -300,7 +300,7 @@ watch(permissionTabs, (tabs) => {
                   <span class="break-all">
                     {{ tab.label }}
                   </span>
-                  <span class="rounded-full bg-black/8 px-1.5 py-0.5 text-[11px] font-semibold leading-none">
+                  <span class="rounded-full bg-black/8 px-1.5 py-0.5 text-xs font-semibold leading-none">
                     {{ tab.count }}
                   </span>
                 </button>
@@ -336,7 +336,7 @@ watch(permissionTabs, (tabs) => {
                     label="Permitido"
                     color="success"
                     variant="subtle"
-                    size="xs"
+                    size="sm"
                   />
                 </div>
               </div>

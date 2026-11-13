@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import RolePermissionsAccordion from '~/components/roles/RolePermissionsAccordion.vue'
 import { ActionCode } from '~/constants/action-codes'
 
 definePageMeta({ layout: 'app' })
@@ -65,13 +66,6 @@ type OrganizationUsersResponse = {
   users?: OrganizationUser[]
 }
 
-type PermissionTab = {
-  label: string
-  value: string
-  count: number
-  icon: string
-}
-
 const route = useRoute()
 const toast = useToast()
 const workshop = useWorkshopPermissions()
@@ -89,10 +83,7 @@ const canAccessEditPage = computed(
   () => canUpdate.value || canManagePermissions.value
 )
 const roleId = computed(() => String(route.params.id || ''))
-const activePermissionTab = ref('')
 const selectedUserId = ref<string | undefined>()
-
-const { getResourceIcon, formatResourceLabel } = useRoleResources()
 
 const { data, status, error, refresh } = await useAsyncData(
   () => `role-detail-${roleId.value}`,
@@ -138,36 +129,6 @@ const roleForm = reactive({
 const permissionState = ref<Record<string, boolean>>({})
 const isSaving = ref(false)
 const isUpdatingLink = ref(false)
-
-const groupedActions = computed<Record<string, ActionItem[]>>(() => {
-  if (!actions.value.length) return {}
-
-  return actions.value.reduce<Record<string, ActionItem[]>>(
-    (groups, action) => {
-      const groupName = action.resource || 'Geral'
-      if (!groups[groupName]) groups[groupName] = []
-
-      groups[groupName].push(action)
-      return groups
-    },
-    {}
-  )
-})
-
-const permissionTabs = computed<PermissionTab[]>(() =>
-  Object.entries(groupedActions.value).map(([resource, groupItems]) => ({
-    label: formatResourceLabel(resource),
-    value: resource,
-    count: groupItems.length,
-    icon: getResourceIcon(resource)
-  }))
-)
-
-const activeTabActions = computed(() => {
-  if (!activePermissionTab.value) return []
-
-  return groupedActions.value[activePermissionTab.value] ?? []
-})
 
 const originalPermissionState = computed<Record<string, boolean>>(() => {
   const grantedIds = new Set(
@@ -230,12 +191,28 @@ const hasMetadataChanges = computed(() => {
   )
 })
 
-const hasPermissionChanges = computed(() =>
-  actions.value.some(
-    action =>
-      Boolean(permissionState.value[action.id])
-      !== Boolean(originalPermissionState.value[action.id])
+const changedPermissionIds = computed(() =>
+  diffPermissions(
+    actions.value,
+    originalPermissionState.value,
+    permissionState.value
   )
+)
+
+const hasPermissionChanges = computed(
+  () => changedPermissionIds.value.length > 0
+)
+
+const isDirty = computed(
+  () =>
+    (canEditMetadata.value && hasMetadataChanges.value)
+    || (canEditPermissions.value && hasPermissionChanges.value)
+)
+
+const dirtyCount = computed(
+  () =>
+    (canEditPermissions.value ? changedPermissionIds.value.length : 0)
+    + (canEditMetadata.value && hasMetadataChanges.value ? 1 : 0)
 )
 
 const isSaveDisabled = computed(() => {
@@ -263,6 +240,15 @@ function userLabel(user: AssignedUser) {
   )
 }
 
+function organizationUserLabel(user: OrganizationUser) {
+  return (
+    user.display_name?.trim()
+    || user.full_name?.trim()
+    || user.email
+    || 'Usuário sem identificação'
+  )
+}
+
 function syncForm() {
   if (!role.value) return
 
@@ -271,11 +257,67 @@ function syncForm() {
   permissionState.value = { ...originalPermissionState.value }
 }
 
-function updatePermission(actionId: string, value: boolean | 'indeterminate') {
-  permissionState.value = {
-    ...permissionState.value,
-    [actionId]: Boolean(value)
-  }
+function discardChanges() {
+  syncForm()
+  toast.add({ title: 'Alterações descartadas', color: 'neutral' })
+}
+
+// Guarda de saida (dados do papel + permissoes; vinculo de usuario nao entra).
+const showLeaveConfirm = ref(false)
+let leaveResolver: ((leave: boolean) => void) | null = null
+
+function confirmLeave(): Promise<boolean> {
+  showLeaveConfirm.value = true
+  return new Promise((resolve) => {
+    leaveResolver = resolve
+  })
+}
+
+function settleLeave(leave: boolean) {
+  const resolve = leaveResolver
+  leaveResolver = null
+  showLeaveConfirm.value = false
+  resolve?.(leave)
+}
+
+function guardNavigation() {
+  if (!isDirty.value || isSaving.value) return true
+  return confirmLeave()
+}
+
+onBeforeRouteLeave(guardNavigation)
+onBeforeRouteUpdate((to, from) => {
+  if (to.params.id === from.params.id) return true
+  return guardNavigation()
+})
+
+function onBeforeUnload(event: BeforeUnloadEvent) {
+  if (!isDirty.value) return
+  event.preventDefault()
+  event.returnValue = ''
+}
+
+onMounted(() => window.addEventListener('beforeunload', onBeforeUnload))
+onBeforeUnmount(() =>
+  window.removeEventListener('beforeunload', onBeforeUnload)
+)
+
+// Vinculo/desvinculo de usuario e imediato (nao depende de "Salvar alteracoes").
+const pendingUnlinkUser = ref<AssignedUser | null>(null)
+const showUnlinkConfirm = ref(false)
+
+function askRemoveUserLink(user: AssignedUser) {
+  pendingUnlinkUser.value = user
+  showUnlinkConfirm.value = true
+}
+
+async function confirmRemoveUserLink() {
+  const user = pendingUnlinkUser.value
+  if (!user) return
+
+  await removeUserLink(user)
+  showUnlinkConfirm.value = false
+  pendingUnlinkUser.value = null
 }
 
 function retryLoad() {
@@ -319,20 +361,31 @@ async function updateUserRoleLink(userId: string, nextRoleId: string | null) {
 async function addUserLink() {
   if (!role.value || !selectedUserId.value || isUpdatingLink.value) return
 
+  const linkedUser = organizationUsers.value.find(
+    user => user.id === selectedUserId.value
+  )
   const success = await updateUserRoleLink(selectedUserId.value, role.value.id)
   if (!success) return
 
   selectedUserId.value = undefined
-  toast.add({ title: 'Vínculo atualizado', color: 'success' })
+  toast.add({
+    title: 'Vínculo atualizado',
+    description: `${linkedUser ? organizationUserLabel(linkedUser) : 'Usuário'} agora tem o papel ${roleLabel(role.value)}.`,
+    color: 'success'
+  })
 }
 
-async function removeUserLink(userId: string) {
+async function removeUserLink(user: AssignedUser) {
   if (isUpdatingLink.value) return
 
-  const success = await updateUserRoleLink(userId, null)
+  const success = await updateUserRoleLink(user.id, null)
   if (!success) return
 
-  toast.add({ title: 'Vínculo removido', color: 'success' })
+  toast.add({
+    title: 'Vínculo removido',
+    description: `${userLabel(user)} foi removido do papel ${roleLabel(role.value)}.`,
+    color: 'success'
+  })
 }
 
 async function saveRole() {
@@ -353,10 +406,9 @@ async function saveRole() {
     }
 
     if (canEditPermissions.value && hasPermissionChanges.value) {
-      const changedActions = actions.value.filter(
-        action =>
-          Boolean(permissionState.value[action.id])
-          !== Boolean(originalPermissionState.value[action.id])
+      const changedIds = new Set(changedPermissionIds.value)
+      const changedActions = actions.value.filter(action =>
+        changedIds.has(action.id)
       )
 
       await Promise.all(
@@ -374,6 +426,7 @@ async function saveRole() {
 
     toast.add({ title: 'Papel atualizado', color: 'success' })
     await refresh()
+    syncForm()
   } catch (error: unknown) {
     const err = error as {
       data?: { statusMessage?: string }
@@ -392,21 +445,10 @@ async function saveRole() {
   }
 }
 
-watch([role, actions, roleActions], syncForm, { immediate: true })
-
-watch(
-  permissionTabs,
-  (tabs) => {
-    if (!tabs.length) {
-      activePermissionTab.value = ''
-      return
-    }
-
-    if (!tabs.some(tab => tab.value === activePermissionTab.value))
-      activePermissionTab.value = tabs[0]!.value
-  },
-  { immediate: true }
-)
+// Sincroniza so na carga inicial, ao trocar de papel e apos salvar (explicito em saveRole).
+// refresh() por vinculo de usuario nao deve apagar edicoes pendentes.
+syncForm()
+watch(() => role.value?.id, syncForm)
 
 watch(
   userOptions,
@@ -495,61 +537,78 @@ watch(
 
                 <p class="max-w-2xl text-sm text-muted">
                   Ajuste os dados principais do papel, organize os vínculos com
-                  usuários e marque nas abas quais ações ficam liberadas para
-                  esse perfil.
+                  usuários e marque quais ações ficam liberadas para esse
+                  perfil.
                 </p>
 
-                <div
+                <UAlert
                   v-if="role.is_system_role"
-                  class="rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-muted"
-                >
-                  Este é um papel de sistema. Os dados e as permissões podem ser
-                  consultados, mas não podem ser alterados.
-                </div>
+                  color="neutral"
+                  variant="subtle"
+                  icon="i-lucide-lock"
+                  title="Papel de sistema: somente leitura"
+                  description="Dados e permissões podem ser consultados, mas não alterados. Para um perfil diferente, crie um papel próprio."
+                  :actions="
+                    workshop.can(ActionCode.ROLES_CREATE)
+                      ? [
+                        {
+                          label: 'Criar novo papel',
+                          color: 'neutral',
+                          variant: 'outline',
+                          size: 'xs',
+                          to: '/app/settings/roles'
+                        }
+                      ]
+                      : []
+                  "
+                />
               </div>
 
               <div
-                class="grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3"
+                class="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3"
               >
                 <div
-                  class="rounded-2xl border border-default/70 bg-default/40 p-4"
+                  class="flex min-w-0 items-baseline justify-between gap-2 rounded-2xl border border-default/70 bg-default/40 p-3 sm:flex-col sm:items-start lg:flex-row lg:items-baseline xl:flex-col xl:items-start"
                 >
-                  <UIcon
-                    name="i-lucide-users"
-                    class="mb-2 size-4 text-primary/80"
-                  />
-                  <p class="text-xs uppercase tracking-widest text-muted">
-                    Usuários vinculados
+                  <p
+                    class="flex min-w-0 items-center gap-1.5 text-xs text-muted"
+                  >
+                    <UIcon name="i-lucide-users" class="size-4 shrink-0 text-primary/80" />
+                    <span class="truncate">Usuários</span>
                   </p>
-                  <p class="mt-2 text-2xl font-semibold text-highlighted">
+                  <p
+                    class="text-2xl font-semibold tabular-nums text-highlighted"
+                  >
                     {{ summary.assigned_users_count }}
                   </p>
                 </div>
                 <div
-                  class="rounded-2xl border border-default/70 bg-default/40 p-4"
+                  class="flex min-w-0 items-baseline justify-between gap-2 rounded-2xl border border-default/70 bg-default/40 p-3 sm:flex-col sm:items-start lg:flex-row lg:items-baseline xl:flex-col xl:items-start"
                 >
-                  <UIcon
-                    name="i-lucide-badge-check"
-                    class="mb-2 size-4 text-success"
-                  />
-                  <p class="text-xs uppercase tracking-widest text-muted">
-                    Permissões liberadas
+                  <p
+                    class="flex min-w-0 items-center gap-1.5 text-xs text-muted"
+                  >
+                    <UIcon name="i-lucide-badge-check" class="size-4 shrink-0 text-success" />
+                    <span class="truncate">Liberadas</span>
                   </p>
-                  <p class="mt-2 text-2xl font-semibold text-highlighted">
+                  <p
+                    class="text-2xl font-semibold tabular-nums text-highlighted"
+                  >
                     {{ summary.granted_actions_count }}
                   </p>
                 </div>
                 <div
-                  class="rounded-2xl border border-default/70 bg-default/40 p-4"
+                  class="flex min-w-0 items-baseline justify-between gap-2 rounded-2xl border border-default/70 bg-default/40 p-3 sm:flex-col sm:items-start lg:flex-row lg:items-baseline xl:flex-col xl:items-start"
                 >
-                  <UIcon
-                    name="i-lucide-grid-2x2"
-                    class="mb-2 size-4 text-primary/80"
-                  />
-                  <p class="text-xs uppercase tracking-widest text-muted">
-                    Total de ações
+                  <p
+                    class="flex min-w-0 items-center gap-1.5 text-xs text-muted"
+                  >
+                    <UIcon name="i-lucide-grid-2x2" class="size-4 shrink-0 text-primary/80" />
+                    <span class="truncate">Total de ações</span>
                   </p>
-                  <p class="mt-2 text-2xl font-semibold text-highlighted">
+                  <p
+                    class="text-2xl font-semibold tabular-nums text-highlighted"
+                  >
                     {{ summary.total_actions_count }}
                   </p>
                 </div>
@@ -587,104 +646,15 @@ watch(
 
             <UPageCard
               title="Permissões"
-              description="As permissões foram agrupadas por abas para deixar a edição mais compacta."
+              description="Agrupadas por módulo. Use a busca ou marque todas as ações de um módulo."
               variant="subtle"
             >
-              <div v-if="permissionTabs.length" class="space-y-4">
-                <div
-                  class="rounded-2xl border border-default/70 bg-default/20 p-2"
-                >
-                  <div class="flex flex-wrap gap-2">
-                    <button
-                      v-for="tab in permissionTabs"
-                      :key="tab.value"
-                      type="button"
-                      class="inline-flex bg-default/60 text-muted max-w-full items-center gap-2 rounded-xl border px-3 py-2 text-left text-sm transition-colors"
-                      :class="
-                        activePermissionTab === tab.value
-                          ? 'border-primary  shadow-sm'
-                          : 'border-default  hover:bg-elevated'
-                      "
-                      @click="activePermissionTab = tab.value"
-                    >
-                      <UIcon :name="tab.icon" class="size-4 shrink-0" />
-                      <span class="break-all">
-                        {{ tab.label }}
-                      </span>
-                      <span
-                        class="rounded-full bg-black/8 px-1.5 py-0.5 text-[11px] font-semibold leading-none"
-                      >
-                        {{ tab.count }}
-                      </span>
-                    </button>
-                  </div>
-                </div>
-
-                <div class="rounded-xl border border-default/70">
-                  <div class="divide-y divide-default/60">
-                    <div
-                      v-for="action in activeTabActions"
-                      :key="action.id"
-                      class="flex items-start gap-3 px-4 py-3"
-                    >
-                      <UCheckbox
-                        :model-value="Boolean(permissionState[action.id])"
-                        :disabled="!canEditPermissions || isSaving"
-                        color="neutral"
-                        @update:model-value="
-                          updatePermission(action.id, $event)
-                        "
-                      />
-
-                      <div class="flex min-w-0 flex-1 items-start gap-3">
-                        <div
-                          class="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"
-                        >
-                          <UIcon
-                            :name="
-                              getResourceIcon(
-                                action.resource || activePermissionTab
-                              )
-                            "
-                            class="size-4"
-                          />
-                        </div>
-
-                        <div class="min-w-0">
-                          <div class="flex flex-wrap items-center gap-2">
-                            <p class="text-sm font-medium text-highlighted">
-                              {{ action.name || action.code }}
-                            </p>
-                            <UBadge
-                              :label="
-                                permissionState[action.id]
-                                  ? 'Permitido'
-                                  : 'Bloqueado'
-                              "
-                              :color="
-                                permissionState[action.id]
-                                  ? 'success'
-                                  : 'neutral'
-                              "
-                              variant="subtle"
-                              size="xs"
-                            />
-                          </div>
-                          <p
-                            v-if="action.description"
-                            class="mt-1 text-xs text-muted"
-                          >
-                            {{ action.description }}
-                          </p>
-                          <p v-else class="mt-1 text-xs text-muted">
-                            Código: {{ action.code }}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <RolePermissionsAccordion
+                v-if="actions.length"
+                v-model="permissionState"
+                :actions="actions"
+                :disabled="!canEditPermissions || isSaving"
+              />
 
               <div
                 v-else
@@ -706,7 +676,7 @@ watch(
 
           <UPageCard
             title="Usuários vinculados"
-            description="Adicione um vínculo com um usuário ou remova quem não deve mais usar este papel."
+            description="Vincular e desvincular são aplicados imediatamente; não dependem de 'Salvar alterações'."
             variant="subtle"
           >
             <div class="mb-4 flex gap-3">
@@ -723,9 +693,11 @@ watch(
                 "
               />
 
-              <UTooltip text="Adicionar vínculo">
+              <UTooltip text="Vincular usuário ao papel (aplicado na hora)">
                 <UButton
+                  label="Vincular"
                   icon="i-lucide-plus"
+                  aria-label="Vincular usuário selecionado ao papel"
                   color="neutral"
                   :loading="isUpdatingLink"
                   :disabled="!canManageUserLinks || !selectedUserId"
@@ -753,7 +725,7 @@ watch(
                         :label="user.active ? 'Ativo' : 'Inativo'"
                         :color="user.active ? 'success' : 'neutral'"
                         variant="subtle"
-                        size="xs"
+                        size="sm"
                       />
                     </div>
                   </div>
@@ -763,9 +735,11 @@ watch(
                       icon="i-lucide-user-minus"
                       color="error"
                       variant="ghost"
-                      size="xs"
+                      size="sm"
+                      class="min-h-11 min-w-11 md:min-h-0 md:min-w-0"
                       :loading="isUpdatingLink"
-                      @click="removeUserLink(user.id)"
+                      :aria-label="`Desvincular ${userLabel(user)}`"
+                      @click="askRemoveUserLink(user)"
                     />
                   </UTooltip>
                 </div>
@@ -799,24 +773,86 @@ watch(
           <div
             class="sticky bottom-0 z-10 -mx-4 border-t border-default/70 bg-default/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-default/80"
           >
-            <div class="flex flex-wrap items-center justify-end gap-2">
-              <UButton
-                label="Voltar"
-                color="neutral"
-                variant="ghost"
-                icon="i-lucide-arrow-left"
-                to="/app/settings/roles"
-              />
-              <UButton
-                label="Salvar alterações"
-                color="neutral"
-                icon="i-lucide-save"
-                :loading="isSaving"
-                :disabled="isSaveDisabled"
-                @click="saveRole"
-              />
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <p
+                class="min-h-5 text-sm"
+                :class="isDirty ? 'font-medium text-highlighted' : 'text-muted'"
+                role="status"
+                aria-live="polite"
+              >
+                <template v-if="isDirty">
+                  <span
+                    class="mr-1.5 inline-block size-2 rounded-full bg-warning align-middle"
+                    aria-hidden="true"
+                  />
+                  Alterações não salvas ({{ dirtyCount }})
+                </template>
+              </p>
+              <div class="flex flex-wrap items-center gap-2">
+                <UButton
+                  label="Descartar"
+                  color="neutral"
+                  variant="ghost"
+                  icon="i-lucide-undo-2"
+                  :disabled="!isDirty || isSaving"
+                  @click="discardChanges"
+                />
+                <UButton
+                  label="Voltar"
+                  color="neutral"
+                  variant="ghost"
+                  icon="i-lucide-arrow-left"
+                  to="/app/settings/roles"
+                />
+                <UButton
+                  label="Salvar alterações"
+                  color="neutral"
+                  icon="i-lucide-save"
+                  :loading="isSaving"
+                  :disabled="isSaveDisabled"
+                  @click="saveRole"
+                />
+              </div>
             </div>
           </div>
+
+          <AppConfirmModal
+            :open="showLeaveConfirm"
+            title="Sair sem salvar?"
+            description="As alterações em dados e permissões serão perdidas."
+            confirm-label="Sair sem salvar"
+            confirm-color="error"
+            @update:open="(value: boolean) => !value && settleLeave(false)"
+            @confirm="settleLeave(true)"
+          />
+
+          <AppConfirmModal
+            :open="showUnlinkConfirm"
+            title="Desvincular usuário"
+            confirm-label="Desvincular"
+            confirm-color="error"
+            :loading="isUpdatingLink"
+            @update:open="
+              (value: boolean) => {
+                showUnlinkConfirm = value
+                if (!value && !isUpdatingLink) pendingUnlinkUser = null
+              }
+            "
+            @confirm="confirmRemoveUserLink"
+          >
+            <template #description>
+              <p class="text-sm text-muted">
+                Remover
+                <strong class="text-highlighted">{{
+                  pendingUnlinkUser ? userLabel(pendingUnlinkUser) : ''
+                }}</strong>
+                do papel
+                <strong class="text-highlighted">{{ roleLabel(role) }}</strong>?
+                A mudança é aplicada na hora, sem depender de "Salvar
+                alterações".
+              </p>
+            </template>
+          </AppConfirmModal>
         </template>
       </div>
     </template>

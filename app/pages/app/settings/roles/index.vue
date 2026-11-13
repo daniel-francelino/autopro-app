@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import RoleDetailsSlideover from '~/components/roles/RoleDetailsSlideover.vue'
+import RoleRowActions from '~/components/roles/RoleRowActions.vue'
 import { ActionCode } from '~/constants/action-codes'
 
 definePageMeta({ layout: 'app' })
@@ -21,6 +22,8 @@ type Role = {
   display_name: string | null
   description: string | null
   is_system_role: boolean
+  assigned_users_count?: number
+  granted_actions_count?: number
 }
 
 type ActionItem = {
@@ -73,6 +76,18 @@ const actionsData = ref<RoleActionsResponse | null>(null)
 const isLoadingActions = ref(false)
 const detailsRoleId = ref<string | null>(null)
 const detailsSlideoverOpen = ref(false)
+
+const columns = [
+  { id: 'role', header: 'Papel' },
+  { id: 'type', header: 'Tipo' },
+  { id: 'users', header: 'Usuários' },
+  { id: 'permissions', header: 'Permissões' },
+  { id: 'actions', header: () => h('span', { class: 'sr-only' }, 'Ações') }
+]
+
+function countLabel(value: number | undefined) {
+  return typeof value === 'number' ? String(value) : '—'
+}
 
 function roleLabel(role: Role) {
   return role.display_name?.trim() || role.name
@@ -252,73 +267,103 @@ function openRoleDetails(role: Role | null) {
           <USkeleton v-for="i in 5" :key="i" class="h-16 w-full rounded-lg" />
         </div>
 
-        <div v-else-if="roles.length" class="space-y-2">
-          <div
-            v-for="role in roles"
-            :key="role.id"
-            role="button"
-            tabindex="0"
-            class="flex w-full items-start justify-between gap-3 rounded-lg border px-3 py-3 text-left transition-colors"
-            :class="selectedPermissionsRoleId === role.id ? 'border-primary bg-primary/5' : 'border-default hover:bg-elevated/60'"
-            @click="openPermissions(role)"
-            @keydown.enter.prevent="openPermissions(role)"
-            @keydown.space.prevent="openPermissions(role)"
+        <template v-else-if="roles.length">
+          <UTable
+            :data="roles"
+            :columns="columns"
+            class="hidden md:block"
+            :meta="{
+              class: {
+                tr: (row: { original: Role }) =>
+                  selectedPermissionsRoleId === row.original.id ? 'bg-primary/5' : ''
+              }
+            }"
+            @select="(_e: Event, row: { original: Role }) => openPermissions(row.original)"
           >
-            <div class="min-w-0 space-y-1">
-              <div class="flex flex-wrap items-center gap-2">
+            <template #role-cell="{ row }">
+              <div class="min-w-0 max-w-md space-y-0.5">
                 <p class="text-sm font-medium text-highlighted">
-                  {{ roleLabel(role) }}
+                  {{ roleLabel(row.original) }}
                 </p>
-                <UBadge
-                  v-if="role.is_system_role"
-                  label="Sistema"
-                  color="neutral"
-                  variant="subtle"
-                  size="xs"
-                />
+                <p class="text-sm text-muted">
+                  {{ row.original.description || 'Sem descrição' }}
+                </p>
               </div>
+            </template>
+            <template #type-cell="{ row }">
+              <UBadge
+                v-if="row.original.is_system_role"
+                label="Sistema (somente leitura)"
+                color="neutral"
+                variant="subtle"
+                size="md"
+              />
+              <UBadge
+                v-else
+                label="Personalizado"
+                color="neutral"
+                variant="outline"
+                size="md"
+              />
+            </template>
+            <template #users-cell="{ row }">
+              <span class="tabular-nums">{{ countLabel(row.original.assigned_users_count) }}</span>
+            </template>
+            <template #permissions-cell="{ row }">
+              <span class="tabular-nums">{{ countLabel(row.original.granted_actions_count) }}</span>
+            </template>
+            <template #actions-cell="{ row }">
+              <RoleRowActions
+                class="justify-end"
+                :role-name="roleLabel(row.original)"
+                :can-edit="canUpdate && !row.original.is_system_role"
+                :can-delete="canDelete && !row.original.is_system_role"
+                :deleting="deletingRoleId === row.original.id"
+                @view="openRoleDetails(row.original)"
+                @edit="openEditRole(row.original)"
+                @delete="requestDeleteRole(row.original)"
+              />
+            </template>
+          </UTable>
 
-              <p v-if="role.description" class="text-xs text-muted">
-                {{ role.description }}
-              </p>
-
-              <p v-else class="text-xs text-muted">
-                -
-              </p>
-            </div>
-
-            <div class="flex shrink-0 items-center gap-1">
-              <UTooltip text="Ver detalhes">
-                <UButton
-                  icon="i-lucide-eye"
-                  color="neutral"
-                  variant="ghost"
-                  size="xs"
-                  @click.stop="openRoleDetails(role)"
-                />
-              </UTooltip>
-              <UTooltip v-if="canUpdate && !role.is_system_role" text="Editar papel">
-                <UButton
-                  icon="i-lucide-pencil"
-                  color="neutral"
-                  variant="ghost"
-                  size="xs"
-                  @click.stop="openEditRole(role)"
-                />
-              </UTooltip>
-              <UTooltip v-if="canDelete && !role.is_system_role" text="Remover papel">
-                <UButton
-                  icon="i-lucide-trash-2"
-                  color="error"
-                  variant="ghost"
-                  size="xs"
-                  :loading="deletingRoleId === role.id"
-                  @click.stop="requestDeleteRole(role)"
-                />
-              </UTooltip>
-            </div>
-          </div>
-        </div>
+          <ul class="space-y-2 md:hidden">
+            <li
+              v-for="role in roles"
+              :key="role.id"
+              class="space-y-3 rounded-lg border border-default px-3 py-3"
+            >
+              <div class="space-y-1">
+                <div class="flex flex-wrap items-center gap-2">
+                  <p class="text-sm font-medium text-highlighted">
+                    {{ roleLabel(role) }}
+                  </p>
+                  <UBadge
+                    :label="role.is_system_role ? 'Sistema (somente leitura)' : 'Personalizado'"
+                    color="neutral"
+                    :variant="role.is_system_role ? 'subtle' : 'outline'"
+                    size="md"
+                  />
+                </div>
+                <p class="text-sm text-muted">
+                  {{ role.description || 'Sem descrição' }}
+                </p>
+                <p class="text-sm text-muted">
+                  Usuários: {{ countLabel(role.assigned_users_count) }}
+                  · Permissões: {{ countLabel(role.granted_actions_count) }}
+                </p>
+              </div>
+              <RoleRowActions
+                :role-name="roleLabel(role)"
+                :can-edit="canUpdate && !role.is_system_role"
+                :can-delete="canDelete && !role.is_system_role"
+                :deleting="deletingRoleId === role.id"
+                @view="openRoleDetails(role)"
+                @edit="openEditRole(role)"
+                @delete="requestDeleteRole(role)"
+              />
+            </li>
+          </ul>
+        </template>
 
         <div v-else class="rounded-lg border border-dashed border-default px-4 py-8 text-center">
           <UIcon name="i-lucide-shield-off" class="mx-auto mb-2 size-8 text-muted" />
@@ -388,6 +433,7 @@ function openRoleDetails(role: Role | null) {
     confirm-label="Remover"
     confirm-color="error"
     :loading="Boolean(deletingRoleId)"
+    :confirm-disabled="Boolean(pendingDeleteRole?.assigned_users_count)"
     @update:open="
       (value: boolean) => {
         showDeleteConfirm = value
@@ -401,6 +447,14 @@ function openRoleDetails(role: Role | null) {
         Tem certeza que deseja remover o papel
         <strong class="text-highlighted">{{ pendingDeleteRole ? roleLabel(pendingDeleteRole) : 'selecionado' }}</strong>?
         Esta ação não pode ser desfeita.
+      </p>
+      <p
+        v-if="pendingDeleteRole?.assigned_users_count"
+        class="mt-2 text-sm text-warning"
+      >
+        Este papel tem {{ pendingDeleteRole.assigned_users_count }}
+        usuário(s) vinculado(s). A exclusão só é aceita depois de
+        desvinculá-los.
       </p>
     </template>
   </AppConfirmModal>
