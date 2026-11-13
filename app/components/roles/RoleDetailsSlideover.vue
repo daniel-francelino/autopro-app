@@ -2,6 +2,7 @@
 import {
   filterModulesByName,
   grantedOfTotalLabel,
+  modulesToTreeItems,
   summarizeModules,
   type PermissionAction
 } from '~/utils/role-permissions'
@@ -59,8 +60,6 @@ const detail = ref<RoleDetailResponse['item'] | null>(null)
 const activeTab = ref('users')
 const moduleQuery = ref('')
 
-const { getResourceIcon } = useRoleResources()
-
 const tabItems = [
   { label: 'Usuários', value: 'users', icon: 'i-lucide-users', slot: 'users' as const },
   { label: 'Permissões', value: 'permissions', icon: 'i-lucide-key-round', slot: 'permissions' as const }
@@ -78,6 +77,14 @@ const modules = computed(() => {
 })
 
 const filteredModules = computed(() => filterModulesByName(modules.value, moduleQuery.value))
+
+const treeItems = computed(() => modulesToTreeItems(filteredModules.value))
+const expandedModules = ref<string[]>([])
+
+// Durante a busca, expande os modulos encontrados.
+watch(moduleQuery, (query) => {
+  expandedModules.value = query.trim() ? filteredModules.value.map(mod => mod.resource) : []
+})
 
 // Devolve o foco ao botao que abriu o painel (abertura programatica nao tem trigger).
 let opener: HTMLElement | null = null
@@ -135,6 +142,7 @@ watch(() => props.open, (open) => {
   opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
   activeTab.value = 'users'
   moduleQuery.value = ''
+  expandedModules.value = []
 }, { flush: 'sync' })
 
 watch(() => [props.open, props.roleId], loadRoleDetail, { immediate: true })
@@ -143,7 +151,7 @@ watch(() => [props.open, props.roleId], loadRoleDetail, { immediate: true })
 <template>
   <USlideover
     :open="props.open"
-    title="Papéis e permissões / Detalhes"
+    title="Detalhes de Papéis"
     :content="{ onCloseAutoFocus: restoreFocus }"
     :ui="{ title: 'text-sm font-normal text-muted', content: 'w-full max-w-md' }"
     @update:open="onClose"
@@ -268,31 +276,26 @@ watch(() => [props.open, props.roleId], loadRoleDetail, { immediate: true })
                 </template>
               </UInput>
 
-              <ul v-if="filteredModules.length" class="space-y-2">
-                <li
-                  v-for="mod in filteredModules"
-                  :key="mod.resource"
-                  class="rounded-xl border border-default px-3 py-3"
-                >
-                  <div class="flex items-center gap-2">
-                    <UIcon :name="getResourceIcon(mod.resource)" class="size-4 shrink-0 text-primary" aria-hidden="true" />
-                    <span class="min-w-0 flex-1 break-words text-sm font-medium text-highlighted">{{ mod.label }}</span>
-                    <UBadge
-                      :label="grantedOfTotalLabel(mod.granted, mod.total)"
-                      :aria-label="`${mod.label}: ${mod.granted} de ${mod.total} permissões liberadas`"
-                      color="neutral"
-                      variant="subtle"
-                      size="sm"
-                      class="shrink-0"
-                    />
-                  </div>
-                  <ul v-if="mod.grantedActions.length" class="mt-2 space-y-1 pl-6 text-xs text-muted">
-                    <li v-for="action in mod.grantedActions" :key="action.id" class="break-words">
-                      {{ action.name || action.code }}
-                    </li>
-                  </ul>
-                </li>
-              </ul>
+              <UTree
+                v-if="filteredModules.length"
+                v-model:expanded="expandedModules"
+                :items="treeItems"
+                size="sm"
+                color="neutral"
+                aria-label="Módulos e permissões liberadas"
+                :ui="{ link: 'min-w-0', linkLabel: 'min-w-0 flex-1 whitespace-normal break-words text-left' }"
+              >
+                <template #module-trailing="{ item }">
+                  <UBadge
+                    :label="grantedOfTotalLabel(item.granted, item.total)"
+                    :aria-label="`${item.label}: ${item.granted} de ${item.total} permissões liberadas`"
+                    color="neutral"
+                    variant="subtle"
+                    size="sm"
+                    class="shrink-0"
+                  />
+                </template>
+              </UTree>
 
               <div v-else class="rounded-xl border border-dashed border-default px-4 py-8 text-center">
                 <p class="text-sm text-muted" role="status">

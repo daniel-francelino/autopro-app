@@ -8,6 +8,7 @@ import {
   grantedOfTotalLabel,
   groupActionsByResource,
   groupCheckboxLabels,
+  modulesToTreeItems,
   normalizeSearchText,
   permissionPanelId,
   rolePermissionsLabel,
@@ -125,5 +126,14 @@ describe('sortRolesForList / rótulos de contagem', () => {
     expect(filterModulesByName(mods, 'agend').map(m => m.label)).toEqual(['Agendamentos'])
     expect(filterModulesByName(mods, '  ')).toHaveLength(3)
     expect(filterModulesByName(mods, 'zzz')).toEqual([])
+  })
+
+  it('mapeia modulos para itens de arvore', () => {
+    const tree = modulesToTreeItems(summarizeModules(actions, new Set(['2', '3'])))
+    const agenda = tree.find(t => t.label === 'Agendamentos')!
+    expect([agenda.granted, agenda.total, agenda.value]).toEqual([2, 2, ResourceType.APPOINTMENTS])
+    expect(agenda.children!.map(c => c.label)).toEqual(['Ver agenda', 'Editar agenda'])
+    expect(agenda.children!.every(c => c.icon === 'i-lucide-check')).toBe(true)
+    expect(tree.find(t => t.label === 'Papéis')!.children).toEqual([])
   })
 })

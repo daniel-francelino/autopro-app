@@ -182,3 +182,30 @@ export function filterModulesByName<T extends { label: string }>(modules: readon
   if (!q) return [...modules]
   return modules.filter(m => normalizeSearchText(m.label).includes(q))
 }
+
+export type ModuleTreeItem = {
+  label: string
+  value: string
+  icon: string
+  slot?: 'module'
+  granted?: number
+  total?: number
+  children?: ModuleTreeItem[]
+}
+
+/** Modulo = no pai (com contagem); acao liberada = folha com icone de check. */
+export function modulesToTreeItems(modules: readonly ModuleSummary[]): ModuleTreeItem[] {
+  return modules.map(mod => ({
+    label: mod.label,
+    value: mod.resource,
+    icon: mod.icon,
+    slot: 'module' as const,
+    granted: mod.granted,
+    total: mod.total,
+    children: mod.grantedActions.map(action => ({
+      label: action.name || action.code,
+      value: `${mod.resource}:${action.id}`,
+      icon: 'i-lucide-check'
+    }))
+  }))
+}
