@@ -6,6 +6,7 @@ import { requireOrgPermission } from '../../../../utils/require-org-permission'
 import { recordAudit } from '../../../../utils/audit/record'
 import { FINANCIAL_TRANSACTION_DELETION_SOURCES } from '../../../../utils/financial-transaction-deletion'
 import { reverseServiceOrderReceipt } from '../../../../utils/service-order-receipt-reversal'
+import { OS_SOURCE_POLICIES, historyContext } from '../../../../utils/os-history/events'
 
 /**
  * DELETE /api/service-orders/:id/financial-transactions/:transactionId
@@ -23,6 +24,7 @@ export default defineEventHandler(async (event) => {
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
+  const history = historyContext(event, OS_SOURCE_POLICIES.osDetail)
   const orderId = getRouterParam(event, 'id')
   const transactionId = getRouterParam(event, 'transactionId')
 
@@ -49,7 +51,8 @@ export default defineEventHandler(async (event) => {
     transaction,
     reason: 'Estorno automático: recebimento revertido pelo usuário',
     source: FINANCIAL_TRANSACTION_DELETION_SOURCES.SERVICE_ORDER_RECEIPT_REVERSAL,
-    userEmail: authUser.email
+    userEmail: authUser.email,
+    history
   })
 
   recordAudit(event, { resourceType: 'service_order', resourceId: orderId, before: transaction as Record<string, unknown>, extra: { transactionId, warnings } })

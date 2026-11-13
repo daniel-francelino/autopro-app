@@ -6,6 +6,7 @@ import { resolveOrganizationId } from '../../../utils/organization'
 import { recordAudit } from '../../../utils/audit/record'
 import { createIncomeTransaction } from '../../../utils/financial-income'
 import { getNextInstallmentNumber } from '../../../utils/service-order-installments'
+import { OS_SOURCE_POLICIES, OS_EVENT_KEYS, historyContext, loadBankAccountName, osEvent, recordWithContext, snapshotDate, snapshotMethod, snapshotMoney } from '../../../utils/os-history/events'
 
 const ORDER_STATUSES_THAT_CAN_RECEIVE_A_DOWN_PAYMENT = ['open', 'in_progress', 'waiting_for_part']
 
@@ -24,6 +25,7 @@ export default defineEventHandler(async (event) => {
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
+  const history = historyContext(event, OS_SOURCE_POLICIES.osDetail)
   const orderId = getRouterParam(event, 'id')
 
   if (!orderId) {
@@ -116,6 +118,20 @@ export default defineEventHandler(async (event) => {
     .single()
 
   recordAudit(event, { before: order as Record<string, unknown>, after: updatedOrder as Record<string, unknown> | null, extra: { installment_id: installmentRow.id, amount: installmentRow.amount, financial_transaction_id: transaction.id } })
+
+  // Histórico da OS: depois do último passo de negócio; falha aqui nunca derruba o recebimento.
+  await recordWithContext(history, supabase, async () => [osEvent('payment.down_payment_received', {
+    organizationId,
+    serviceOrderId: orderId,
+    entityType: 'financial_transaction',
+    entityId: transaction.id,
+    idempotencyKey: OS_EVENT_KEYS.downPayment(transaction.id)
+  }, {
+    amount: snapshotMoney(parsedAmount),
+    payment_method: snapshotMethod(paymentMethod),
+    payment_date: snapshotDate(effectiveDate),
+    bank_account_name: await loadBankAccountName(supabase, organizationId, bankAccountId)
+  })])
 
   return {
     data: {

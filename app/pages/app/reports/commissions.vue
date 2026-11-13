@@ -268,10 +268,10 @@ async function handleBulkPay(accountId: string, dateStrategy: BulkDateStrategy) 
   bulkPayLoading.value = true
   const pendingIds = bulkPayItems.value.map(item => item.id)
   try {
-    await $fetch('/api/financial/pay-commissions-bulk', {
+    await $fetch('/api/financial/pay-commissions-bulk', withOrigin('commission_bulk', {
       method: 'POST',
       body: { registroIds: pendingIds, contaBancariaId: accountId, dateStrategy }
-    })
+    }))
     toast.add({ title: 'Comissões pagas com sucesso!', color: 'success' })
     bulkPayOpen.value = false
     selectedIds.value = selectedIds.value.filter(v => !pendingIds.includes(v))

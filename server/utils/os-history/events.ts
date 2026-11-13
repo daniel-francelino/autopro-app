@@ -15,6 +15,7 @@ export const OS_EVENT_CATALOG = {
   'order.cancelled': { category: 'order', visibility: 'general' },
   'installment.paid': { category: 'payment', visibility: 'financial' },
   'installment.removed': { category: 'payment', visibility: 'financial' },
+  'installment.edited': { category: 'payment', visibility: 'financial' },
   'payment.plan_created': { category: 'payment', visibility: 'financial' },
   'payment.deleted': { category: 'payment', visibility: 'financial' },
   'payment.down_payment_received': { category: 'payment', visibility: 'financial' },
@@ -23,7 +24,6 @@ export const OS_EVENT_CATALOG = {
   'receipt.reversed': { category: 'payment', visibility: 'financial' },
   'entry.paid_outside_os': { category: 'payment', visibility: 'financial' },
   'entry.edited': { category: 'payment', visibility: 'financial' },
-  'entry.deleted': { category: 'payment', visibility: 'financial' },
   'commission.released': { category: 'commission', visibility: 'commission' },
   'commission.recalculated': { category: 'commission', visibility: 'commission' },
   'commission.regenerated': { category: 'commission', visibility: 'commission' },
@@ -52,6 +52,7 @@ export function osEventKey(kind: string, ...parts: Array<string | number | null 
 export const OS_EVENT_KEYS = {
   installmentPaid: (installmentId: string, transactionId: string) => osEventKey('installment_paid', installmentId, transactionId),
   installmentRemoved: (installmentId: string) => osEventKey('installment_removed', installmentId),
+  installmentEdited: (installmentId: string, scope: string) => osEventKey('installment_edited', installmentId, scope),
   planCreated: (orderId: string, scope: string) => osEventKey('payment_plan_created', orderId, scope),
   paymentDeleted: (orderId: string, scope: string) => osEventKey('payment_deleted', orderId, scope),
   downPayment: (transactionId: string) => osEventKey('down_payment', transactionId),
@@ -60,7 +61,6 @@ export const OS_EVENT_KEYS = {
   receiptReversed: (transactionId: string) => osEventKey('receipt_reversed', transactionId),
   entryPaid: (entryId: string, scope: string) => osEventKey('entry_paid', entryId, scope),
   entryEdited: (entryId: string, scope: string) => osEventKey('entry_edited', entryId, scope),
-  entryDeleted: (entryId: string) => osEventKey('entry_deleted', entryId),
   commissionReleased: (recordId: string) => osEventKey('commission_released', recordId),
   commissionRecalculatedRecord: (recordId: string, scope: string) => osEventKey('commission_recalculated_record', recordId, scope),
   commissionRecalculatedEmployee: (orderId: string, employeeId: string, scope: string) => osEventKey('commission_recalculated', orderId, employeeId, scope),
@@ -73,7 +73,11 @@ export const OS_EVENT_KEYS = {
   orderCancelled: (orderId: string, scope: string) => osEventKey('order_cancelled', orderId, scope)
 } as const
 
-/** Escopo da requisição para chaves de efeitos sem entidade própria (request_id; aleatório só se faltar). */
+/**
+ * Escopo da requisição para chaves de efeitos sem entidade própria (request_id; aleatório só se faltar).
+ * Atenção: a idempotência por escopo só deduplica o retry interno da mesma requisição (o helper regrava com a
+ * mesma chave). Um REENVIO do cliente é outra requisição (outro request_id) e gera um novo evento.
+ */
 export function requestScope(event: H3Event | null | undefined): string {
   const id = event?.context?.audit?.requestId
   return typeof id === 'string' && id.trim() ? id.trim() : randomUUID()
@@ -95,9 +99,8 @@ export function historyContext(event: H3Event | null | undefined, sourcePolicy: 
 export const OS_SOURCE_POLICIES = {
   osDetail: { defaultSource: 'os_detail' },
   orderCancel: { defaultSource: 'os_detail', allowedSources: ['os_list'] },
-  receiptFromFinancial: { defaultSource: 'financial_entries' },
   // Compartilhado por duas telas (card da OS e relatório): sem header cai no rótulo genérico do fluxo.
-  commissionBulk: { defaultSource: 'commission_bulk', allowedSources: ['os_detail', 'commission_report'] },
+  commissionBulk: { defaultSource: 'commission_bulk', allowedSources: ['os_detail'] },
   commissionPay: { defaultSource: 'commission_report', allowedSources: ['bonus_page', 'os_detail'] },
   commissionDelete: { defaultSource: 'commission_report', allowedSources: ['os_detail'] },
   entriesBulk: { defaultSource: 'financial_bulk', allowedSources: ['financial_entries'] },
@@ -157,30 +160,71 @@ export function snapshotMoney(value: unknown): number | null {
   return Number.isFinite(n) ? Number(n.toFixed(2)) : null
 }
 
-export async function loadEmployeeNames(supabase: SupabaseClient, organizationId: string, ids: Array<string | null | undefined>): Promise<Map<string, string>> {
+/** Cache por requisição (lotes de até 200): evita consultar o mesmo nome/conta/recebido repetidas vezes. */
+export interface OsHistoryCache {
+  employees: Map<string, string | null>
+  accounts: Map<string, string | null>
+  received: Map<string, number | null>
+  /** Registros de comissão (employee_financial_records) já lidos em lote, por id. */
+  records: Map<string, Record<string, unknown> | null>
+}
+
+export function createHistoryCache(): OsHistoryCache {
+  return { employees: new Map(), accounts: new Map(), received: new Map(), records: new Map() }
+}
+
+export async function loadEmployeeNames(supabase: SupabaseClient, organizationId: string, ids: Array<string | null | undefined>, cache?: OsHistoryCache): Promise<Map<string, string>> {
   const unique = [...new Set(ids.filter((i): i is string => typeof i === 'string' && !!i))]
   const out = new Map<string, string>()
   if (!unique.length) return out
-  try {
-    const { data } = await supabase.from('employees').select('id, name').eq('organization_id', organizationId).in('id', unique)
-    for (const row of data ?? []) if (typeof row.name === 'string' && row.name.trim()) out.set(String(row.id), row.name.trim())
-  } catch { /* nome é só exibição */ }
+  const missing = cache ? unique.filter(id => !cache.employees.has(id)) : unique
+  if (missing.length) {
+    try {
+      const { data } = await supabase.from('employees').select('id, name').eq('organization_id', organizationId).in('id', missing)
+      const found = new Map<string, string>()
+      for (const row of data ?? []) if (typeof row.name === 'string' && row.name.trim()) found.set(String(row.id), row.name.trim())
+      for (const id of missing) cache?.employees.set(id, found.get(id) ?? null)
+      if (!cache) return found
+    } catch { /* nome é só exibição */ }
+  }
+  if (cache) for (const id of unique) { const n = cache.employees.get(id); if (n) out.set(id, n) }
   return out
 }
 
-export async function loadBankAccountName(supabase: SupabaseClient, organizationId: string, accountId: string | null | undefined): Promise<string | null> {
+export async function loadBankAccountName(supabase: SupabaseClient, organizationId: string, accountId: string | null | undefined, cache?: OsHistoryCache): Promise<string | null> {
   if (!accountId) return null
+  if (cache?.accounts.has(accountId)) return cache.accounts.get(accountId) ?? null
   try {
     const { data } = await supabase.from('bank_accounts').select('name').eq('id', accountId).eq('organization_id', organizationId).maybeSingle()
-    return typeof data?.name === 'string' && data.name.trim() ? data.name.trim() : null
+    const name = typeof data?.name === 'string' && data.name.trim() ? data.name.trim() : null
+    cache?.accounts.set(accountId, name)
+    return name
   } catch { return null }
 }
 
-/** `true` se a OS já teve um evento desse tipo (ex.: pagamento removido antes de gerar um plano novo). Nunca lança. */
+/** `true` se a OS já teve um evento desse tipo (qualquer momento). Nunca lança. */
 export async function orderHasEvent(supabase: SupabaseClient, organizationId: string, orderId: string, eventType: string): Promise<boolean> {
   try {
     const { data } = await supabase.from('service_order_events').select('id').eq('organization_id', organizationId).eq('service_order_id', orderId).eq('event_type', eventType).limit(1)
     return Array.isArray(data) && data.length > 0
+  } catch { return false }
+}
+
+/**
+ * Ciclo mais recente: `true` se existe `payment.deleted` MAIS NOVO que o último `payment.plan_created`
+ * (o plano atual é um plano refeito). Um plano antigo, já seguido de outro plano, não conta. Nunca lança.
+ */
+export async function planIsAfterRemoval(supabase: SupabaseClient, organizationId: string, orderId: string): Promise<boolean> {
+  try {
+    const latest = async (type: string) => {
+      const { data } = await supabase.from('service_order_events').select('occurred_at').eq('organization_id', organizationId).eq('service_order_id', orderId).eq('event_type', type).order('occurred_at', { ascending: false }).limit(1)
+      const at = Array.isArray(data) && data[0] ? String((data[0] as { occurred_at?: string }).occurred_at ?? '') : ''
+      return at || null
+    }
+    const removed = await latest('payment.deleted')
+    if (!removed) return false
+    const planned = await latest('payment.plan_created')
+    return !planned || removed > planned
   } catch { return false }
 }
 
@@ -215,21 +259,137 @@ export type EntryLink =
 export async function resolveEntryOsLink(
   supabase: SupabaseClient,
   organizationId: string,
-  entry: { employee_financial_record_id?: string | null, service_order_id?: string | null }
+  entry: { employee_financial_record_id?: string | null, service_order_id?: string | null },
+  cache?: OsHistoryCache
 ): Promise<EntryLink | null> {
   if (entry.employee_financial_record_id) {
-    const { data: rec } = await supabase
-      .from('employee_financial_records')
-      .select('id, employee_id, service_order_id, record_type, status')
-      .eq('id', entry.employee_financial_record_id)
-      .eq('organization_id', organizationId)
-      .maybeSingle()
+    const recordId = String(entry.employee_financial_record_id)
+    const cached = cache?.records.has(recordId)
+    const rec = cached
+      ? cache!.records.get(recordId) as { id: string, employee_id: string, service_order_id: string | null, record_type: string, status: string } | null
+      : (await supabase
+          .from('employee_financial_records')
+          .select('id, employee_id, service_order_id, record_type, status')
+          .eq('id', recordId)
+          .eq('organization_id', organizationId)
+          .maybeSingle()).data
     if (rec?.service_order_id && rec.record_type === 'commission') {
-      const names = await loadEmployeeNames(supabase, organizationId, [rec.employee_id])
+      const names = await loadEmployeeNames(supabase, organizationId, [rec.employee_id], cache)
       return { kind: 'commission', serviceOrderId: String(rec.service_order_id), recordId: String(rec.id), employeeName: names.get(String(rec.employee_id)) ?? null, recordPaid: rec.status === 'paid' }
     }
     // Registro de funcionário que não é comissão de OS: sem evento de OS.
     return entry.service_order_id ? { kind: 'entry', serviceOrderId: String(entry.service_order_id) } : null
   }
   return entry.service_order_id ? { kind: 'entry', serviceOrderId: String(entry.service_order_id) } : null
+}
+
+/**
+ * Caixa realmente recebido na OS: soma das transações `income` pagas e ativas ligadas à OS (inclui sinal, avulso e
+ * recebimento parcial de parcela). NÃO usa o valor da parcela (parcela parcial teria valor cheio sem caixa).
+ * Serve para sinalizar "comissão paga sem recebimento". `null` se não deu para ler. Cache por requisição.
+ */
+export async function orderReceivedTotal(supabase: SupabaseClient, organizationId: string, orderId: string, cache?: OsHistoryCache): Promise<number | null> {
+  if (cache?.received.has(orderId)) return cache.received.get(orderId) ?? null
+  try {
+    const { data, error } = await supabase
+      .from('financial_transactions')
+      .select('amount')
+      .eq('service_order_id', orderId)
+      .eq('organization_id', organizationId)
+      .eq('type', 'income')
+      .eq('status', 'paid')
+      .is('deleted_at', null)
+    if (error) return null
+    const total = (data ?? []).reduce((sum, r) => sum + (Number(r.amount) || 0), 0)
+    cache?.received.set(orderId, total)
+    return total
+  } catch { return null }
+}
+
+/**
+ * Evento `commission.paid` (snapshot legível). `viaEntry`: o pagamento veio de um lançamento financeiro,
+ * e `recordSynced` diz se o registro da comissão também foi marcado como pago (financial/[id]/pay não sincroniza: D13).
+ * `paymentDate`: em financial/[id]/pay é o vencimento (`due_date`), não a data efetiva do pagamento, coerente com o extrato gravado.
+ */
+export async function buildCommissionPaidEvent(supabase: SupabaseClient, p: {
+  organizationId: string
+  serviceOrderId: string
+  recordId: string
+  employeeId?: string | null
+  employeeName?: string | null
+  amount: unknown
+  paymentDate: unknown
+  bankAccountId?: string | null
+  transactionId: string
+  viaEntry?: boolean
+  recordSynced?: boolean
+  cache?: OsHistoryCache
+}): Promise<OsEventInput> {
+  const name = p.employeeName ?? (p.employeeId ? (await loadEmployeeNames(supabase, p.organizationId, [p.employeeId], p.cache)).get(p.employeeId) ?? null : null)
+  const received = await orderReceivedTotal(supabase, p.organizationId, p.serviceOrderId, p.cache)
+  return osEvent('commission.paid', {
+    organizationId: p.organizationId,
+    serviceOrderId: p.serviceOrderId,
+    entityType: 'employee_financial_record',
+    entityId: p.recordId,
+    idempotencyKey: OS_EVENT_KEYS.commissionPaid(p.recordId, p.transactionId)
+  }, {
+    employee_name: name,
+    amount: snapshotMoney(p.amount),
+    payment_date: snapshotDate(p.paymentDate),
+    bank_account_name: await loadBankAccountName(supabase, p.organizationId, p.bankAccountId, p.cache),
+    // Comissão paga antes de a OS ter qualquer recebimento (modo `full` ou lançamento manual): sensível, só `commission`.
+    without_receipt: received === 0,
+    ...(p.viaEntry ? { via_entry: true, record_synced: p.recordSynced !== false } : {})
+  })
+}
+
+export type EntryChange = { field: 'amount' | 'due_date' | 'status' | 'bank_account' | 'description', from: unknown, to: unknown }
+
+/** Diferenças relevantes entre dois estados de um lançamento (allowlist; conta vira nome, nunca id). */
+export async function entryChangeSet(
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+  accountName: (id: string | null) => Promise<string | null>
+): Promise<EntryChange[]> {
+  const out: EntryChange[] = []
+  const amountChanged = Math.abs((Number(before.amount) || 0) - (Number(after.amount) || 0)) > 0.001
+  if (amountChanged) out.push({ field: 'amount', from: snapshotMoney(before.amount), to: snapshotMoney(after.amount) })
+  if ((before.due_date ?? null) !== (after.due_date ?? null)) out.push({ field: 'due_date', from: snapshotDate(before.due_date), to: snapshotDate(after.due_date) })
+  if ((before.status ?? null) !== (after.status ?? null)) out.push({ field: 'status', from: before.status ?? null, to: after.status ?? null })
+  if ((before.bank_account_id ?? null) !== (after.bank_account_id ?? null)) {
+    out.push({
+      field: 'bank_account',
+      from: await accountName((before.bank_account_id as string | null) ?? null),
+      to: await accountName((after.bank_account_id as string | null) ?? null)
+    })
+  }
+  if ((before.description ?? null) !== (after.description ?? null)) {
+    out.push({ field: 'description', from: String(before.description ?? '').slice(0, 200) || null, to: String(after.description ?? '').slice(0, 200) || null })
+  }
+  return out
+}
+
+/**
+ * Pré-carrega em lote (1 consulta de registros + 1 de nomes) o que `resolveEntryOsLink` vai precisar para vários
+ * lançamentos de uma vez (lotes de até 200). Só leitura e best-effort: sem ele, as consultas seguem uma a uma.
+ */
+export async function prefetchEntryLinks(
+  supabase: SupabaseClient,
+  organizationId: string,
+  entries: Array<{ employee_financial_record_id?: string | null }>,
+  cache: OsHistoryCache
+): Promise<void> {
+  try {
+    const ids = [...new Set(entries.map(e => e.employee_financial_record_id).filter((i): i is string => !!i))]
+    if (!ids.length) return
+    const { data } = await supabase
+      .from('employee_financial_records')
+      .select('id, employee_id, service_order_id, record_type, status')
+      .eq('organization_id', organizationId)
+      .in('id', ids)
+    const byId = new Map((data ?? []).map(r => [String(r.id), r as Record<string, unknown>]))
+    for (const id of ids) cache.records.set(id, byId.get(id) ?? null)
+    await loadEmployeeNames(supabase, organizationId, [...byId.values()].map(r => r.employee_id as string), cache)
+  } catch { /* só otimização */ }
 }

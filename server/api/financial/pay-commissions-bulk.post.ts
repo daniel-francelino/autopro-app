@@ -6,6 +6,7 @@ import { resolveOrganizationId } from '../../utils/organization'
 import { recordAudit } from '../../utils/audit/record'
 import { resolveDefaultCategoryId } from '../../utils/financial-category-defaults'
 import { softDeleteFinancialTransaction, FINANCIAL_TRANSACTION_DELETION_SOURCES } from '../../utils/financial-transaction-deletion'
+import { OS_SOURCE_POLICIES, buildCommissionPaidEvent, createHistoryCache, historyContext, loadEmployeeNames, recordWithContext } from '../../utils/os-history/events'
 
 /**
  * POST /api/financial/pay-commissions-bulk
@@ -83,6 +84,9 @@ export default defineEventHandler(async (event) => {
     }
     contaBancaria = contasAtivas[0]
   }
+
+  const history = historyContext(event, OS_SOURCE_POLICIES.commissionBulk)
+  const paidForHistory: Array<{ registro: Record<string, unknown>, transactionId: string, paymentDate: string }> = []
 
   const salariesCategory = await resolveDefaultCategoryId(supabase, organizationId, 'Salários', 'expense')
 
@@ -191,6 +195,8 @@ export default defineEventHandler(async (event) => {
 
       paidCount += 1
       results.push({ ...resultBase, status: 'paid', lancamentoId: lancamento?.id })
+      // Só entra no histórico o que confirmou o último passo (registro marcado como pago).
+      paidForHistory.push({ registro, transactionId: String(lancamento?.id || ''), paymentDate: String(registroDataPagamento) })
     } catch (error: unknown) {
       const errorMessage = (error as { message?: string } | null)?.message || String(error)
       failedCount += 1
@@ -218,6 +224,30 @@ export default defineEventHandler(async (event) => {
       results.push({ ...resultBase, status: 'failed', message: errorMessage })
     }
   }
+
+  // Histórico da OS: uma gravação por comissão de OS paga, depois do loop (nunca derruba o lote).
+  const accountId = String(contaBancaria?.id || '')
+  await recordWithContext(history, supabase, async () => {
+    const events = []
+    // Cache por requisição: nomes em lote (1 consulta), conta e recebido por OS uma vez só.
+    const cache = createHistoryCache()
+    await loadEmployeeNames(supabase, organizationId, paidForHistory.map(p => p.registro.employee_id as string | null), cache)
+    for (const p of paidForHistory) {
+      if (!p.registro.service_order_id || p.registro.record_type !== 'commission' || !p.transactionId) continue
+      events.push(await buildCommissionPaidEvent(supabase, {
+        organizationId,
+        serviceOrderId: String(p.registro.service_order_id),
+        recordId: String(p.registro.id),
+        employeeId: p.registro.employee_id as string | null,
+        amount: p.registro.amount,
+        paymentDate: p.paymentDate,
+        bankAccountId: accountId,
+        transactionId: p.transactionId,
+        cache
+      }))
+    }
+    return events
+  })
 
   recordAudit(event, { extra: { paidCount, skippedCount, failedCount, results: results.map((r: Record<string, unknown>) => ({ id: r.registroId ?? null, status: r.status, message: r.message ?? null })) } })
 

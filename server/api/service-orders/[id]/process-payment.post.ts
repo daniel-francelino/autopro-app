@@ -8,6 +8,7 @@ import { releaseServiceOrderCommissions } from '../../../utils/service-order-com
 import { recalculateServiceOrderPaymentStatus } from '../../../utils/service-order-payment-status'
 import { createIncomeTransaction } from '../../../utils/financial-income'
 import { getNextInstallmentNumber } from '../../../utils/service-order-installments'
+import { OS_EVENT_KEYS, OS_SOURCE_POLICIES, historyContext, loadBankAccountName, planIsAfterRemoval, osEvent, recordWithContext, snapshotDate, snapshotMethod, snapshotMoney } from '../../../utils/os-history/events'
 
 /**
  * POST /api/service-orders/:id/process-payment
@@ -22,6 +23,7 @@ export default defineEventHandler(async (event) => {
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
+  const history = historyContext(event, OS_SOURCE_POLICIES.osDetail)
   const orderId = getRouterParam(event, 'id')
 
   if (!orderId) {
@@ -76,6 +78,7 @@ export default defineEventHandler(async (event) => {
   // been received (see server/utils/service-order-commissions.ts). Only
   // offered here, at plan-generation time, since this is the point where
   // the order's total is already locked (status === 'completed').
+  let releaseModeChanged = false
   if (releaseCommissionsInFull && order.commission_release_mode !== 'full') {
     const { error: releaseModeError } = await supabase
       .from('service_orders')
@@ -85,6 +88,18 @@ export default defineEventHandler(async (event) => {
     if (releaseModeError) {
       throw createError({ statusCode: 500, statusMessage: releaseModeError.message })
     }
+    releaseModeChanged = true
+  }
+
+  // Histórico: regra sensível. Gravado logo após a mudança confirmada (ela persiste mesmo se um passo posterior falhar).
+  if (releaseModeChanged) {
+    await recordWithContext(history, supabase, () => [osEvent('commission.release_mode_changed', {
+      organizationId,
+      serviceOrderId: orderId,
+      entityType: 'service_order',
+      entityId: orderId,
+      idempotencyKey: OS_EVENT_KEYS.commissionReleaseMode(orderId, history.scope!)
+    }, { to: 'full' })])
   }
 
   // Existing plan rows for this order. A down payment (sinal) may already
@@ -119,9 +134,9 @@ export default defineEventHandler(async (event) => {
   // The down payment(s) already cover the full order — nothing left to
   // collect, just reconcile payment_status from what's already there.
   if (balanceDue <= 0.01) {
-    await recalculateServiceOrderPaymentStatus({ supabase, organizationId, orderId, userEmail: authUser.email })
+    await recalculateServiceOrderPaymentStatus({ supabase, organizationId, orderId, userEmail: authUser.email, history })
 
-    const commissionResult = await releaseServiceOrderCommissions({ supabase, organizationId, orderId, userEmail: authUser.email })
+    const commissionResult = await releaseServiceOrderCommissions({ supabase, organizationId, orderId, userEmail: authUser.email, history })
     warnings.push(...commissionResult.warnings)
 
     const { data: updatedOrder } = await supabase.from('service_orders').select('*').eq('id', orderId).single()
@@ -150,6 +165,7 @@ export default defineEventHandler(async (event) => {
   let parentTransactionId: string | null = null
   const installmentNumberOffset = (await getNextInstallmentNumber({ supabase, organizationId, orderId })) - 1
   const paidInstallmentIdsThisCall: string[] = []
+  const paidReceiptsForHistory: Array<{ installmentId: string, transactionId: string, number: number, amount: number, method: string | null, bankAccountId: string | null }> = []
 
   for (let i = 0; i < installmentsData.length; i++) {
     const inst = installmentsData[i]
@@ -218,6 +234,15 @@ export default defineEventHandler(async (event) => {
         parentTransactionId = transaction.id
       }
 
+      paidReceiptsForHistory.push({
+        installmentId: installmentRow.id,
+        transactionId: transaction.id,
+        number: installmentNumber,
+        amount: installmentAmount,
+        method: inst.payment_method || paymentMethod || null,
+        bankAccountId: installmentBankAccountId
+      })
+
       const { error: linkError } = await supabase
         .from('service_order_installments')
         .update({ financial_transaction_id: transaction.id })
@@ -245,11 +270,48 @@ export default defineEventHandler(async (event) => {
     })
     .eq('id', orderId)
 
+  // Histórico da OS: causa (plano/recebimentos) antes dos efeitos em cascata (status, comissões); falha aqui nunca derruba a operação.
+  // "Regenerar pagamentos" = payment.deleted (outra requisição) seguido deste plano; `after_removal` liga os dois.
+  await recordWithContext(history, supabase, async () => {
+    const afterRemoval = await planIsAfterRemoval(supabase, organizationId, orderId)
+    const events = [osEvent('payment.plan_created', {
+      organizationId,
+      serviceOrderId: orderId,
+      entityType: 'service_order',
+      entityId: orderId,
+      idempotencyKey: OS_EVENT_KEYS.planCreated(orderId, history.scope!)
+    }, {
+      installment_count: installmentsData.length,
+      total_amount: snapshotMoney(balanceDue),
+      paid_count: paidReceiptsForHistory.length,
+      payment_method: snapshotMethod(paymentMethod),
+      after_removal: afterRemoval
+    })]
+    for (const r of paidReceiptsForHistory) {
+      events.push(osEvent('installment.paid', {
+        organizationId,
+        serviceOrderId: orderId,
+        entityType: 'installment',
+        entityId: r.installmentId,
+        idempotencyKey: OS_EVENT_KEYS.installmentPaid(r.installmentId, r.transactionId)
+      }, {
+        installment_number: r.number,
+        amount: snapshotMoney(r.amount),
+        payment_method: snapshotMethod(r.method),
+        payment_date: snapshotDate(effectiveDate),
+        bank_account_name: await loadBankAccountName(supabase, organizationId, r.bankAccountId),
+        partial: false
+      }))
+    }
+    return events
+  })
+
   await recalculateServiceOrderPaymentStatus({
     supabase,
     organizationId,
     orderId,
-    userEmail: authUser.email
+    userEmail: authUser.email,
+    history
   })
 
   const commissionResult = await releaseServiceOrderCommissions({
@@ -257,7 +319,8 @@ export default defineEventHandler(async (event) => {
     organizationId,
     orderId,
     userEmail: authUser.email,
-    triggeringInstallmentId: paidInstallmentIdsThisCall.length === 1 ? paidInstallmentIdsThisCall[0] : null
+    triggeringInstallmentId: paidInstallmentIdsThisCall.length === 1 ? paidInstallmentIdsThisCall[0] : null,
+    history
   })
 
   warnings.push(...commissionResult.warnings)

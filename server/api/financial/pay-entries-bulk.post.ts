@@ -4,6 +4,7 @@ import { requireAuthUser } from '../../utils/require-auth'
 import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
 import { recordAudit } from '../../utils/audit/record'
+import { OS_EVENT_KEYS, OS_SOURCE_POLICIES, buildCommissionPaidEvent, createHistoryCache, historyContext, osEvent, prefetchEntryLinks, recordWithContext, resolveEntryOsLink, snapshotMoney } from '../../utils/os-history/events'
 
 /**
  * POST /api/financial/pay-entries-bulk
@@ -57,6 +58,8 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Limite excedido: máximo 200 lançamentos por operação' })
   }
 
+  const history = historyContext(event, OS_SOURCE_POLICIES.entriesBulk)
+  const paidForHistory: Array<{ entry: Record<string, unknown>, recordSynced: boolean }> = []
   const today = new Date().toISOString().split('T')[0]
 
   const results: Record<string, unknown>[] = []
@@ -126,22 +129,27 @@ export default defineEventHandler(async (event) => {
         }
       }
 
-      await supabase.from('financial_transactions').update({ status: 'paid', updated_by: authUser.email }).eq('id', entryId)
+      const { error: statusError } = await supabase.from('financial_transactions').update({ status: 'paid', updated_by: authUser.email }).eq('id', entryId)
+      // Histórico: só lê o erro já devolvido (não altera fluxo nem resposta).
+      let recordSynced = true
 
       if (lancamento?.employee_financial_record_id) {
         try {
-          await supabase.from('employee_financial_records').update({
+          const { data: syncedRows, error: syncError } = await supabase.from('employee_financial_records').update({
             status: 'paid',
             payment_date: today,
             updated_by: authUser.email
-          }).eq('id', String(lancamento.employee_financial_record_id))
+          }).eq('id', String(lancamento.employee_financial_record_id)).select('id')
+          recordSynced = !syncError && Array.isArray(syncedRows) && syncedRows.length > 0
         } catch {
+          recordSynced = false
           warnings.push('Falha ao sincronizar registro do funcionário')
         }
       }
 
       paidCount += 1
       results.push({ ...baseResult, status: 'paid', warnings })
+      if (!statusError) paidForHistory.push({ entry: lancamento, recordSynced })
     } catch (error: unknown) {
       const errorMessage = (error as { message?: string } | null)?.message || String(error)
       failedCount += 1
@@ -157,6 +165,43 @@ export default defineEventHandler(async (event) => {
       results.push({ ...baseResult, status: 'failed', message: errorMessage })
     }
   }
+
+  // Histórico da OS: lançamento de comissão => commission.paid; recebimento da OS => entry.paid_outside_os.
+  // Um ou outro, nunca os dois. Depois do loop; falha aqui nunca derruba o lote.
+  await recordWithContext(history, supabase, async () => {
+    const events = []
+    const cache = createHistoryCache()
+    await prefetchEntryLinks(supabase, organizationId, paidForHistory.map(p => p.entry), cache)
+    for (const { entry, recordSynced } of paidForHistory) {
+      const link = await resolveEntryOsLink(supabase, organizationId, entry, cache)
+      if (!link) continue
+      const entryId = String(entry.id)
+      if (link.kind === 'commission') {
+        events.push(await buildCommissionPaidEvent(supabase, {
+          organizationId,
+          serviceOrderId: link.serviceOrderId,
+          recordId: link.recordId,
+          employeeName: link.employeeName,
+          amount: entry.amount,
+          paymentDate: today,
+          bankAccountId: entry.bank_account_id as string | null,
+          transactionId: entryId,
+          viaEntry: true,
+          recordSynced,
+          cache
+        }))
+      } else {
+        events.push(osEvent('entry.paid_outside_os', {
+          organizationId,
+          serviceOrderId: link.serviceOrderId,
+          entityType: 'financial_transaction',
+          entityId: entryId,
+          idempotencyKey: OS_EVENT_KEYS.entryPaid(entryId, history.scope!)
+        }, { amount: snapshotMoney(entry.amount), entry_type: entry.type === 'income' ? 'income' : 'expense' }))
+      }
+    }
+    return events
+  })
 
   recordAudit(event, { extra: { paidCount, skippedCount, failedCount, extratoSkippedCount, results: results.map((r: Record<string, unknown>) => ({ id: r.entryId ?? null, status: r.status, message: r.message ?? null })) } })
 

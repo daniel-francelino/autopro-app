@@ -4,12 +4,17 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { softDeleteFinancialTransaction, type FinancialTransactionDeletionSource } from './financial-transaction-deletion'
 import { recalculateServiceOrderPaymentStatus } from './service-order-payment-status'
 import { releaseServiceOrderCommissions } from './service-order-commissions'
+import { OS_EVENT_KEYS, loadBankAccountName, osEvent, recordWithContext, snapshotDate, snapshotMethod, snapshotMoney, type OsHistoryContext } from './os-history/events'
 
 type ReceiptTransaction = {
   id: string
   type?: string | null
   service_order_id?: string | null
   service_order_installment_id?: string | null
+  amount?: number | string | null
+  payment_method?: string | null
+  bank_account_id?: string | null
+  due_date?: string | null
 }
 
 type ReverseServiceOrderReceiptParams = {
@@ -19,6 +24,8 @@ type ReverseServiceOrderReceiptParams = {
   reason: string
   source: FinancialTransactionDeletionSource
   userEmail?: string | null
+  /** Histórico da OS (opcional): grava `receipt.reversed` e repassa a origem aos efeitos em cascata. */
+  history?: OsHistoryContext | null
 }
 
 function roundMoney(value: number) {
@@ -47,7 +54,8 @@ export async function reverseServiceOrderReceipt({
   transaction,
   reason,
   source,
-  userEmail
+  userEmail,
+  history
 }: ReverseServiceOrderReceiptParams) {
   const orderId = transaction.service_order_id
 
@@ -103,6 +111,7 @@ export async function reverseServiceOrderReceipt({
 
   // Re-derive the installment this receipt was settling, if any.
   const installmentId = transaction.service_order_installment_id
+  let reversedInstallmentNumber: number | null = null
   if (installmentId) {
     const { data: installment } = await supabase
       .from('service_order_installments')
@@ -112,6 +121,7 @@ export async function reverseServiceOrderReceipt({
       .maybeSingle()
 
     if (installment) {
+      reversedInstallmentNumber = installment.installment_number ?? null
       const { data: remainingTransactions } = await supabase
         .from('financial_transactions')
         .select('amount')
@@ -138,18 +148,37 @@ export async function reverseServiceOrderReceipt({
     }
   }
 
+  // Histórico da OS: causa antes dos efeitos em cascata (status, comissões); falha aqui nunca derruba o estorno.
+  await recordWithContext(history, supabase, async () => [osEvent('receipt.reversed', {
+    organizationId,
+    serviceOrderId: orderId,
+    entityType: 'financial_transaction',
+    entityId: transaction.id,
+    idempotencyKey: OS_EVENT_KEYS.receiptReversed(transaction.id)
+  }, {
+    amount: snapshotMoney(transaction.amount),
+    payment_method: snapshotMethod(transaction.payment_method),
+    payment_date: snapshotDate(transaction.due_date),
+    bank_account_name: await loadBankAccountName(supabase, organizationId, transaction.bank_account_id),
+    installment_number: reversedInstallmentNumber,
+    // Motivos automáticos do sistema não são informação útil ao cliente; só o motivo digitado pelo usuário.
+    reason: /^Estorno autom/i.test(reason) ? null : reason
+  })])
+
   await recalculateServiceOrderPaymentStatus({
     supabase,
     organizationId,
     orderId,
-    userEmail
+    userEmail,
+    history
   })
 
   const commissionResult = await releaseServiceOrderCommissions({
     supabase,
     organizationId,
     orderId,
-    userEmail
+    userEmail,
+    history
   })
 
   return { orderId, warnings: commissionResult.warnings }

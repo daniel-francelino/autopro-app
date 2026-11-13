@@ -116,6 +116,14 @@ const F1_RENDERERS: Record<string, (p: Record<string, unknown>, actor: string) =
       details: []
     }
   },
+  'installment.edited': (p, actor) => {
+    const n = p.installment_number != null ? ` ${String(p.installment_number)}` : ''
+    return {
+      title: `Parcela${n} alterada`,
+      description: `Parcela${n} alterada por ${actor}.`,
+      details: entryChanges(p)
+    }
+  },
   'payment.plan_created': (p, actor) => {
     const count = Number(p.installment_count)
     const parcels = Number.isFinite(count) && count > 0 ? `${count} ${count === 1 ? 'parcela' : 'parcelas'}, ` : ''
@@ -168,14 +176,6 @@ const F1_RENDERERS: Record<string, (p: Record<string, unknown>, actor: string) =
     description: `${actor} alterou o lançamento vinculado à OS fora da tela da OS.`,
     details: entryChanges(p)
   }),
-  'entry.deleted': (p, actor) => {
-    const reason = str(p.reason)
-    return {
-      title: 'Lançamento excluído',
-      description: `${actor} excluiu o lançamento vinculado à OS (${formatBRL(p.amount)}).${reason ? ` Motivo: ${reason}.` : ''}`,
-      details: []
-    }
-  },
   'commission.released': (p) => {
     const rule = str(p.rule_name)
     const mode = p.release_mode === 'full' ? 'liberada integralmente, sem esperar o recebimento' : 'liberada proporcionalmente ao recebido'
@@ -198,7 +198,7 @@ const F1_RENDERERS: Record<string, (p: Record<string, unknown>, actor: string) =
   },
   'commission.regenerated': (p, actor) => ({
     title: 'Comissões regeneradas',
-    description: `Comissões da OS regeneradas por ${actor}: total pendente/liberado de ${formatBRL(p.total_before)} para ${formatBRL(p.total_after)}.`,
+    description: `Comissões da OS regeneradas por ${actor}: total de comissões (pagas e a pagar) de ${formatBRL(p.total_before)} para ${formatBRL(p.total_after)}.`,
     details: [{ label: 'Total de comissões', from: formatBRL(p.total_before), to: formatBRL(p.total_after) }]
   }),
   'commission.release_mode_changed': (_p, actor) => ({

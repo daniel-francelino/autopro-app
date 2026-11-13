@@ -6,6 +6,7 @@ import { resolveOrganizationId } from '../../utils/organization'
 import { recordAudit } from '../../utils/audit/record'
 import { softDeleteFinancialTransaction, FINANCIAL_TRANSACTION_DELETION_SOURCES } from '../../utils/financial-transaction-deletion'
 import { reverseServiceOrderReceipt } from '../../utils/service-order-receipt-reversal'
+import { OS_EVENT_KEYS, OS_SOURCE_POLICIES, historyContext, osEvent, recordWithContext, resolveEntryOsLink, snapshotMoney } from '../../utils/os-history/events'
 
 /**
  * DELETE /api/financial/:id
@@ -27,6 +28,7 @@ export default defineEventHandler(async (event) => {
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
+  const history = historyContext(event, OS_SOURCE_POLICIES.financialEntries)
   const id = getRouterParam(event, 'id')
 
   const body = (await readBody(event).catch(() => null)) || {}
@@ -50,7 +52,8 @@ export default defineEventHandler(async (event) => {
       transaction: existing,
       reason,
       source: FINANCIAL_TRANSACTION_DELETION_SOURCES.SERVICE_ORDER_RECEIPT_REVERSAL,
-      userEmail: authUser.email
+      userEmail: authUser.email,
+      history
     })
 
     recordAudit(event, { before: existing, extra: { reason, reversed_service_order_receipt: true } })
@@ -68,6 +71,19 @@ export default defineEventHandler(async (event) => {
   })
 
   if (error) throw createError({ statusCode: 500, statusMessage: error.message })
+
+  // Histórico da OS: lançamento de comissão excluído (o registro da comissão não é tocado por este handler).
+  await recordWithContext(history, supabase, async () => {
+    const link = await resolveEntryOsLink(supabase, organizationId, existing)
+    if (!link || link.kind !== 'commission') return []
+    return [osEvent('commission.entry_deleted', {
+      organizationId,
+      serviceOrderId: link.serviceOrderId,
+      entityType: 'financial_transaction',
+      entityId: String(id),
+      idempotencyKey: OS_EVENT_KEYS.commissionEntryDeleted(String(id))
+    }, { employee_name: link.employeeName, amount: snapshotMoney(existing.amount), reason })]
+  })
 
   recordAudit(event, { before: existing, extra: { reason } })
 

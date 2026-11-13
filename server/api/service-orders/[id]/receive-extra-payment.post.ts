@@ -8,6 +8,7 @@ import { createIncomeTransaction } from '../../../utils/financial-income'
 import { recalculateServiceOrderPaymentStatus } from '../../../utils/service-order-payment-status'
 import { releaseServiceOrderCommissions } from '../../../utils/service-order-commissions'
 import { getNextInstallmentNumber } from '../../../utils/service-order-installments'
+import { OS_SOURCE_POLICIES, OS_EVENT_KEYS, historyContext, loadBankAccountName, osEvent, recordWithContext, snapshotDate, snapshotMethod, snapshotMoney } from '../../../utils/os-history/events'
 
 /**
  * POST /api/service-orders/:id/receive-extra-payment
@@ -29,6 +30,7 @@ export default defineEventHandler(async (event) => {
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
+  const history = historyContext(event, OS_SOURCE_POLICIES.osDetail)
   const orderId = getRouterParam(event, 'id')
 
   if (!orderId) {
@@ -111,11 +113,26 @@ export default defineEventHandler(async (event) => {
     .update({ financial_transaction_id: transaction.id })
     .eq('id', installmentRow.id)
 
+
+  // Histórico da OS: depois do último passo de negócio; falha aqui nunca derruba o recebimento.
+  await recordWithContext(history, supabase, async () => [osEvent('payment.extra_received', {
+    organizationId,
+    serviceOrderId: orderId,
+    entityType: 'financial_transaction',
+    entityId: transaction.id,
+    idempotencyKey: OS_EVENT_KEYS.extraPayment(transaction.id)
+  }, {
+    amount: snapshotMoney(parsedAmount),
+    payment_method: snapshotMethod(paymentMethod),
+    payment_date: snapshotDate(effectiveDate),
+    bank_account_name: await loadBankAccountName(supabase, organizationId, bankAccountId)
+  })])
   await recalculateServiceOrderPaymentStatus({
     supabase,
     organizationId,
     orderId,
-    userEmail: authUser.email
+    userEmail: authUser.email,
+    history
   })
 
   const commissionResult = await releaseServiceOrderCommissions({
@@ -123,7 +140,8 @@ export default defineEventHandler(async (event) => {
     organizationId,
     orderId,
     userEmail: authUser.email,
-    triggeringInstallmentId: installmentRow.id
+    triggeringInstallmentId: installmentRow.id,
+    history
   })
 
   const { data: updatedOrder } = await supabase

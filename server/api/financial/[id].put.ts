@@ -6,6 +6,7 @@ import { resolveOrganizationId } from '../../utils/organization'
 import { recordAudit } from '../../utils/audit/record'
 import { resolveFinancialCategory } from '../../utils/resolve-financial-category'
 import { assertNotInstallmentAndRecurring } from '../../utils/financial-mutual-exclusion'
+import { OS_EVENT_KEYS, OS_SOURCE_POLICIES, entryChangeSet, historyContext, loadBankAccountName, osEvent, recordWithContext, resolveEntryOsLink } from '../../utils/os-history/events'
 
 /**
  * PUT /api/financial/:id
@@ -17,6 +18,7 @@ export default defineEventHandler(async (event) => {
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
+  const history = historyContext(event, OS_SOURCE_POLICIES.financialEntries)
   const id = getRouterParam(event, 'id')
   const body = await readBody(event)
 
@@ -62,6 +64,31 @@ export default defineEventHandler(async (event) => {
     .single()
 
   if (error) throw createError({ statusCode: 500, statusMessage: error.message })
+
+  // Histórico da OS: só quando o lançamento é de recebimento da OS ou de comissão e algo relevante mudou.
+  await recordWithContext(history, supabase, async () => {
+    const link = await resolveEntryOsLink(supabase, organizationId, existing)
+    if (!link) return []
+    const changes = await entryChangeSet(existing, item as Record<string, unknown>, id => loadBankAccountName(supabase, organizationId, id))
+    if (!changes.length) return []
+    const entryId = String(id)
+    if (link.kind === 'commission') {
+      return [osEvent('commission.entry_edited', {
+        organizationId,
+        serviceOrderId: link.serviceOrderId,
+        entityType: 'financial_transaction',
+        entityId: entryId,
+        idempotencyKey: OS_EVENT_KEYS.commissionEntryEdited(entryId, history.scope!)
+      }, { employee_name: link.employeeName, changes })]
+    }
+    return [osEvent('entry.edited', {
+      organizationId,
+      serviceOrderId: link.serviceOrderId,
+      entityType: 'financial_transaction',
+      entityId: entryId,
+      idempotencyKey: OS_EVENT_KEYS.entryEdited(entryId, history.scope!)
+    }, { changes })]
+  })
 
   recordAudit(event, {
     before: existing,

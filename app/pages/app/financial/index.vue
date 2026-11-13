@@ -520,7 +520,7 @@ async function confirmBulkPay() {
   isBulkPaying.value = true
   try {
     const pendingIds = selectedEntries.value.filter(e => !isPaidStatus(e.status)).map(e => String(e.id))
-    await $fetch('/api/financial/pay-entries-bulk', { method: 'POST', body: { entryIds: pendingIds } })
+    await $fetch('/api/financial/pay-entries-bulk', withOrigin('financial_bulk', { method: 'POST', body: { entryIds: pendingIds } }))
     toast.add({ title: `${pendingIds.length} lançamento(s) marcado(s) como pago`, color: 'success' })
     rowSelection.value = {}
     showBulkPayModal.value = false

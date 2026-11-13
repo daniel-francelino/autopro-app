@@ -137,7 +137,7 @@ describe('evento de prova: installment.paid', () => {
     login('admin')
     const res = await pay({ 'x-origin': 'os_detail' })
     expect(res.status).toBe(200)
-    const rows = fake.tables.service_order_events as Array<Record<string, any>>
+    const rows = (fake.tables.service_order_events as Array<Record<string, any>>).filter(r => r.event_type === 'installment.paid')
     expect(rows).toHaveLength(1)
     expect(rows[0]).toMatchObject({
       organization_id: 'org-a', service_order_id: 'o2', event_type: 'installment.paid', visibility: 'financial', category: 'payment',
@@ -149,7 +149,8 @@ describe('evento de prova: installment.paid', () => {
 
   const payWith = (body: Record<string, unknown>) =>
     callHandler(PAY, fakeEvent({ method: 'POST', cookies, params: { id: 'o2', installmentId: 'i1' }, body }))
-  const events = () => fake.tables.service_order_events as Array<Record<string, any>>
+  // Só o evento de prova (a recalculação de status em cascata gera payment.status_changed, coberto em f1-events.test.ts).
+  const events = () => (fake.tables.service_order_events as Array<Record<string, any>> ?? []).filter(e => e.event_type === 'installment.paid')
   const setup = (installment: Record<string, unknown> = {}, extra: Record<string, unknown[]> = {}) => {
     const t = tables()
     t.service_order_installments = [{ ...t.service_order_installments[0]!, ...installment }]

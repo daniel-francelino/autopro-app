@@ -7,6 +7,7 @@ import { recalculateServiceOrderPaymentStatus } from '../../../../../utils/servi
 import { createIncomeTransaction } from '../../../../../utils/financial-income'
 import { releaseServiceOrderCommissions } from '../../../../../utils/service-order-commissions'
 import { recordOsEvents } from '../../../../../utils/os-history/record'
+import { OS_EVENT_KEYS, OS_SOURCE_POLICIES, historyContext } from '../../../../../utils/os-history/events'
 
 // Normalização só para o payload do histórico (não afeta o pagamento).
 function normalizeEventMethod(value: unknown): string | null {
@@ -36,6 +37,7 @@ export default defineEventHandler(async (event) => {
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
+  const history = historyContext(event, OS_SOURCE_POLICIES.osDetail)
   const orderId = getRouterParam(event, 'id')
   const installmentId = getRouterParam(event, 'installmentId')
 
@@ -247,30 +249,6 @@ export default defineEventHandler(async (event) => {
     receipt = { transactionId: transaction.id, amount: requestedAmount, partial: !isFullySettled, paymentMethod: requestedPaymentMethod || installment.payment_method || null }
   }
 
-  // Recalculate service order payment_status from all installments
-  await recalculateServiceOrderPaymentStatus({
-    supabase,
-    organizationId,
-    orderId,
-    userEmail: authUser.email
-  })
-
-  // This payment increased the order's received total — release whatever
-  // commission that newly justifies.
-  const commissionResult = await releaseServiceOrderCommissions({
-    supabase,
-    organizationId,
-    orderId,
-    userEmail: authUser.email,
-    triggeringInstallmentId: installmentId
-  })
-
-  recordAudit(event, {
-    resourceId: orderId,
-    before: installment as Record<string, unknown>,
-    extra: { installmentId, warnings: commissionResult.warnings }
-  })
-
   // Histórico da OS (evento de prova da fatia F0): depois do último passo de negócio; falha aqui nunca derruba o recebimento.
   if (receipt) {
     await recordOsEvents(event, supabase, [{
@@ -281,7 +259,7 @@ export default defineEventHandler(async (event) => {
       visibility: 'financial',
       entityType: 'installment',
       entityId: installmentId,
-      idempotencyKey: `installment_paid:${installmentId}:${receipt.transactionId}`,
+      idempotencyKey: OS_EVENT_KEYS.installmentPaid(installmentId, receipt.transactionId),
       payload: {
         installment_number: installment.installment_number ?? null,
         amount: receipt.amount,
@@ -289,8 +267,34 @@ export default defineEventHandler(async (event) => {
         payment_date: normalizeEventDate(paymentDate),
         partial: receipt.partial
       }
-    }], { defaultSource: 'os_detail' })
+    }], OS_SOURCE_POLICIES.osDetail)
   }
+
+  // Recalculate service order payment_status from all installments
+  await recalculateServiceOrderPaymentStatus({
+    supabase,
+    organizationId,
+    orderId,
+    userEmail: authUser.email,
+    history
+  })
+
+  // This payment increased the order's received total — release whatever
+  // commission that newly justifies.
+  const commissionResult = await releaseServiceOrderCommissions({
+    supabase,
+    organizationId,
+    orderId,
+    userEmail: authUser.email,
+    triggeringInstallmentId: installmentId,
+    history
+  })
+
+  recordAudit(event, {
+    resourceId: orderId,
+    before: installment as Record<string, unknown>,
+    extra: { installmentId, warnings: commissionResult.warnings }
+  })
 
   return { success: true, warnings: commissionResult.warnings }
 })

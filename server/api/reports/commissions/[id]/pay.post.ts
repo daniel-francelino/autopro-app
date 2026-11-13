@@ -6,6 +6,7 @@ import { resolveOrganizationId } from '../../../../utils/organization'
 import { recordAudit } from '../../../../utils/audit/record'
 import { resolveDefaultCategoryId } from '../../../../utils/financial-category-defaults'
 import { softDeleteFinancialTransaction, FINANCIAL_TRANSACTION_DELETION_SOURCES } from '../../../../utils/financial-transaction-deletion'
+import { OS_SOURCE_POLICIES, buildCommissionPaidEvent, historyContext, recordWithContext } from '../../../../utils/os-history/events'
 
 function normalizeNumber(value: unknown) {
   const parsed = Number(value)
@@ -34,6 +35,7 @@ export default defineEventHandler(async (event) => {
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
+  const history = historyContext(event, OS_SOURCE_POLICIES.commissionPay)
   const id = getRouterParam(event, 'id')
 
   const { data: existing } = await supabase
@@ -163,6 +165,20 @@ export default defineEventHandler(async (event) => {
       after: { status: 'paid', amount, service_order_id: existing.service_order_id ?? null },
       extra: { financial_transaction_id: transactionId, bank_account_id: bankAccount.id, balance: { from: previousBalance, to: nextBalance } }
     })
+
+    // Histórico da OS: só comissão de OS, depois do último passo confirmado; falha aqui nunca derruba o pagamento.
+    if (existing.service_order_id && existing.record_type === 'commission') {
+      await recordWithContext(history, supabase, async () => [await buildCommissionPaidEvent(supabase, {
+        organizationId,
+        serviceOrderId: String(existing.service_order_id),
+        recordId: String(id),
+        employeeId: existing.employee_id,
+        amount,
+        paymentDate,
+        bankAccountId: bankAccount.id,
+        transactionId: String(transactionId)
+      })])
+    }
 
     return { success: true, data: item }
   } catch (error: unknown) {

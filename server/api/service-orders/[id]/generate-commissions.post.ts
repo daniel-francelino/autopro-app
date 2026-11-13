@@ -5,6 +5,7 @@ import { resolveOrganizationId } from '../../../utils/organization'
 import { requireOrgPermission } from '../../../utils/require-org-permission'
 import { releaseServiceOrderCommissions } from '../../../utils/service-order-commissions'
 import { recordAudit } from '../../../utils/audit/record'
+import { OS_EVENT_KEYS, OS_SOURCE_POLICIES, historyContext, osEvent, recordWithContext, snapshotMoney } from '../../../utils/os-history/events'
 
 /**
  * POST /api/service-orders/:id/generate-commissions
@@ -32,6 +33,7 @@ export default defineEventHandler(async (event) => {
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
+  const history = historyContext(event, OS_SOURCE_POLICIES.osDetail)
   const orderId = getRouterParam(event, 'id')
   const body = await readBody(event).catch(() => ({})) as {
     employeeId?: unknown
@@ -81,14 +83,31 @@ export default defineEventHandler(async (event) => {
     employeeId,
     reason,
     overrideAction,
-    overrideCommissionPlanId
+    overrideCommissionPlanId,
+    history
   })
+
+  const after = await commissionsByEmployee()
+  const sum = (m: Record<string, { amount: number }[]>) => Object.values(m).flat().reduce((t, r) => t + r.amount, 0)
+
+  // Regeneração geral (sem funcionário): um resumo, só se o total mudou; o escopo por funcionário já gera `commission.recalculated`.
+  if (!employeeId && Math.abs(sum(before) - sum(after)) >= 0.01) {
+    await recordWithContext(history, supabase, async () => {
+      return [osEvent('commission.regenerated', {
+        organizationId,
+        serviceOrderId: orderId,
+        entityType: 'service_order',
+        entityId: orderId,
+        idempotencyKey: OS_EVENT_KEYS.commissionRegenerated(orderId, history.scope!)
+      }, { total_before: snapshotMoney(sum(before)), total_after: snapshotMoney(sum(after)) })]
+    })
+  }
 
   recordAudit(event, {
     resourceType: 'service_order',
     resourceId: orderId,
     before,
-    after: await commissionsByEmployee(),
+    after,
     extra: {
       employeeId,
       reason,

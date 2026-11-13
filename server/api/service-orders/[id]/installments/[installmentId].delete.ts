@@ -8,6 +8,7 @@ import { recordAudit } from '../../../../utils/audit/record'
 import { recalculateServiceOrderPaymentStatus } from '../../../../utils/service-order-payment-status'
 import { releaseServiceOrderCommissions } from '../../../../utils/service-order-commissions'
 import { softDeleteFinancialTransaction, FINANCIAL_TRANSACTION_DELETION_SOURCES } from '../../../../utils/financial-transaction-deletion'
+import { OS_EVENT_KEYS, OS_SOURCE_POLICIES, historyContext, osEvent, recordWithContext, snapshotMoney } from '../../../../utils/os-history/events'
 
 /**
  * DELETE /api/service-orders/:id/installments/:installmentId
@@ -34,6 +35,7 @@ export default defineEventHandler(async (event) => {
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
+  const history = historyContext(event, OS_SOURCE_POLICIES.osDetail)
   const orderId = getRouterParam(event, 'id')
   const installmentId = getRouterParam(event, 'installmentId')
 
@@ -179,18 +181,32 @@ export default defineEventHandler(async (event) => {
     })
     .eq('id', orderId)
 
+  await recordWithContext(history, supabase, () => [osEvent('installment.removed', {
+    organizationId,
+    serviceOrderId: orderId,
+    entityType: 'installment',
+    entityId: installmentId,
+    idempotencyKey: OS_EVENT_KEYS.installmentRemoved(installmentId)
+  }, {
+    installment_number: installment.installment_number ?? null,
+    amount: snapshotMoney(installment.amount),
+    reason
+  })])
+
   await recalculateServiceOrderPaymentStatus({
     supabase,
     organizationId,
     orderId,
-    userEmail: authUser.email
+    userEmail: authUser.email,
+    history
   })
 
   const commissionResult = await releaseServiceOrderCommissions({
     supabase,
     organizationId,
     orderId,
-    userEmail: authUser.email
+    userEmail: authUser.email,
+    history
   })
 
   recordAudit(event, {

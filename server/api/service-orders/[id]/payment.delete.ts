@@ -7,6 +7,7 @@ import { requireOrgPermission } from '../../../utils/require-org-permission'
 import { recordAudit } from '../../../utils/audit/record'
 import { recalculateServiceOrderPaymentStatus } from '../../../utils/service-order-payment-status'
 import { softDeleteFinancialTransaction, FINANCIAL_TRANSACTION_DELETION_SOURCES } from '../../../utils/financial-transaction-deletion'
+import { OS_EVENT_KEYS, OS_SOURCE_POLICIES, orderReceivedTotal, commissionRemovedPayload, historyContext, loadEmployeeNames, osEvent, recordWithContext, snapshotMoney } from '../../../utils/os-history/events'
 
 /**
  * DELETE /api/service-orders/:id/payment
@@ -18,6 +19,7 @@ export default defineEventHandler(async (event) => {
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
+  const history = historyContext(event, OS_SOURCE_POLICIES.osDetail)
   const orderId = getRouterParam(event, 'id')
 
   if (!orderId) {
@@ -59,6 +61,10 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  // Caixa realmente recebido (transações income pagas), lido ANTES de desfazer; só para o texto do histórico.
+  const receivedBeforeRemoval = await orderReceivedTotal(supabase, organizationId, orderId)
+  const confirmedCommissions: Array<Record<string, any>> = []
+  let confirmedInstallments = 0
   let deletedStatements = 0
   let deletedTransactions = 0
   let deletedCommissions = 0
@@ -104,7 +110,8 @@ export default defineEventHandler(async (event) => {
       })
       deletedTransactions++
     }
-    await supabase.from('employee_financial_records').delete().eq('id', commission.id)
+    const { error: commissionDeleteError } = await supabase.from('employee_financial_records').delete().eq('id', commission.id)
+    if (!commissionDeleteError) confirmedCommissions.push(commission)
     deletedCommissions++
   }
 
@@ -129,7 +136,8 @@ export default defineEventHandler(async (event) => {
       })
       deletedTransactions++
     }
-    await supabase.from('service_order_installments').delete().eq('id', installment.id)
+    const { error: installmentDeleteError } = await supabase.from('service_order_installments').delete().eq('id', installment.id)
+    if (!installmentDeleteError) confirmedInstallments++
     deletedInstallments++
   }
 
@@ -169,11 +177,33 @@ export default defineEventHandler(async (event) => {
     })
     .eq('id', orderId)
 
+  // Histórico da OS: causa antes do efeito em cascata (status); só o que foi confirmado. "Regenerar pagamentos" = remover (este evento) + gerar plano novo.
+  await recordWithContext(history, supabase, async () => {
+    const names = await loadEmployeeNames(supabase, organizationId, confirmedCommissions.map(c => c.employee_id))
+    return [
+      ...(confirmedInstallments > 0 || (receivedBeforeRemoval ?? 0) > 0 ? [osEvent('payment.deleted', {
+        organizationId,
+        serviceOrderId: orderId,
+        entityType: 'service_order',
+        entityId: orderId,
+        idempotencyKey: OS_EVENT_KEYS.paymentDeleted(orderId, history.scope!)
+      }, { installments_removed: confirmedInstallments, received_total: snapshotMoney(receivedBeforeRemoval) })] : []),
+      ...confirmedCommissions.map(c => osEvent('commission.removed', {
+        organizationId,
+        serviceOrderId: orderId,
+        entityType: 'employee_financial_record',
+        entityId: String(c.id),
+        idempotencyKey: OS_EVENT_KEYS.commissionRemoved(String(c.id))
+      }, commissionRemovedPayload(c, names.get(String(c.employee_id)) ?? null, 'payment_deleted')))
+    ]
+  })
+
   await recalculateServiceOrderPaymentStatus({
     supabase,
     organizationId,
     orderId,
-    userEmail: authUser.email
+    userEmail: authUser.email,
+    history
   })
 
   const { data: updatedOrder } = await supabase

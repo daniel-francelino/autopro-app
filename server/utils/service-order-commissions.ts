@@ -17,6 +17,8 @@ import {
   fetchCommissionPlan
 } from './employee-commission-plans'
 import { computeServiceOrderItemsWithCommissionSnapshots } from './service-order-item-commissions'
+import { OS_EVENT_KEYS, commissionRemovedPayload, osEvent, recordWithContext, requestScope, snapshotMoney, type OsHistoryContext } from './os-history/events'
+import type { OsEventInput } from './os-history/record'
 
 export type { CommissionManualAdjustmentLogEntry }
 
@@ -57,6 +59,9 @@ type ReleaseServiceOrderCommissionsParams = {
   // the change — there's no separate "just log it" step.
   overrideAction?: CommissionOverrideAction | null
   overrideCommissionPlanId?: string | null
+  // Histórico da OS (opcional, só informativo): quando presente, grava commission.released/recalculated/removed
+  // DEPOIS de todos os passos de negócio. Nunca altera o resultado da função.
+  history?: OsHistoryContext | null
 }
 
 type EmployeeEntitlement = {
@@ -250,7 +255,8 @@ export async function releaseServiceOrderCommissions({
   employeeId,
   reason,
   overrideAction,
-  overrideCommissionPlanId
+  overrideCommissionPlanId,
+  history
 }: ReleaseServiceOrderCommissionsParams) {
   const warnings: string[] = []
   const trimmedReason = String(reason || '').trim()
@@ -441,6 +447,10 @@ export async function releaseServiceOrderCommissions({
   }
 
   const createdCommissions: unknown[] = []
+  const historyEvents: OsEventInput[] = []
+  const historyScope = history ? (history.scope ?? requestScope(history.event)) : ''
+  const releaseMode = order.commission_release_mode === 'full' ? 'full' : 'proportional'
+  const eventBase = (entityId: string, key: string) => ({ organizationId, serviceOrderId: orderId, entityType: 'employee_financial_record', entityId, idempotencyKey: key })
   let recalculationLogEntry: CommissionManualAdjustmentLogEntry | null = null
 
   async function insertCommissionRecord(entitlement: EmployeeEntitlement, amount: number) {
@@ -494,7 +504,18 @@ export async function releaseServiceOrderCommissions({
       throw createError({ statusCode: 500, statusMessage: commissionError.message })
     }
 
-    if (commissionRecord) createdCommissions.push(commissionRecord)
+    if (commissionRecord) {
+      createdCommissions.push(commissionRecord)
+      // Pelo fluxo manual (employeeId) o evento é `commission.recalculated` (por funcionário), não `released`.
+      if (history && !employeeId && commissionRecord.id) {
+        historyEvents.push(osEvent('commission.released', eventBase(String(commissionRecord.id), OS_EVENT_KEYS.commissionReleased(String(commissionRecord.id))), {
+          employee_name: employeesById.get(entitlement.employeeId)?.name ?? null,
+          amount: snapshotMoney(amount),
+          release_mode: releaseMode,
+          rule_name: entitlement.commissionRuleName ?? null
+        }))
+      }
+    }
   }
 
   for (const entitlement of targetEntitlements) {
@@ -545,13 +566,28 @@ export async function releaseServiceOrderCommissions({
         if (remainingToRemove <= 0.01) break
 
         if (record.amount <= remainingToRemove + 0.01) {
-          await supabase.from('employee_financial_records').delete().eq('id', record.id)
+          const { error: removeError } = await supabase.from('employee_financial_records').delete().eq('id', record.id)
           remainingToRemove = roundCurrency(remainingToRemove - record.amount)
+          // Só registra o que o banco confirmou (delete sem erro).
+          if (history && !removeError) {
+            historyEvents.push(osEvent('commission.removed', eventBase(record.id, OS_EVENT_KEYS.commissionRemoved(record.id)), commissionRemovedPayload(
+              { id: record.id, amount: record.amount, status: record.status },
+              employeesById.get(entitlement.employeeId)?.name ?? null,
+              'recalculated'
+            )))
+          }
         } else {
-          await supabase
+          const { error: reduceError } = await supabase
             .from('employee_financial_records')
             .update({ amount: roundCurrency(record.amount - remainingToRemove), updated_by: userEmail || null })
             .eq('id', record.id)
+          if (history && !reduceError) {
+            historyEvents.push(osEvent('commission.recalculated', eventBase(record.id, OS_EVENT_KEYS.commissionRecalculatedRecord(record.id, historyScope)), {
+              employee_name: employeesById.get(entitlement.employeeId)?.name ?? null,
+              previous_amount: snapshotMoney(record.amount),
+              new_amount: snapshotMoney(record.amount - remainingToRemove)
+            }))
+          }
           remainingToRemove = 0
         }
       }
@@ -585,10 +621,26 @@ export async function releaseServiceOrderCommissions({
   }
 
   if (recalculationLogEntry) {
-    await supabase
+    const { error: logError } = await supabase
       .from('service_orders')
       .update({ commission_manual_adjustments_log: [...existingLog, recalculationLogEntry] })
       .eq('id', orderId)
+
+    if (history && !logError) {
+      const entry = recalculationLogEntry as CommissionManualAdjustmentLogEntry
+      historyEvents.push(osEvent('commission.recalculated', { organizationId, serviceOrderId: orderId, entityType: 'employee', entityId: String(entry.employee_id), idempotencyKey: OS_EVENT_KEYS.commissionRecalculatedEmployee(orderId, String(entry.employee_id), historyScope) }, {
+        employee_name: entry.employee_name ?? null,
+        previous_amount: snapshotMoney(entry.previous_amount),
+        new_amount: snapshotMoney(entry.new_amount),
+        reason: entry.reason || null,
+        override_action: entry.override_action ?? null,
+        override_plan_name: entry.override_commission_plan_name ?? null
+      }))
+    }
+  }
+
+  if (history && historyEvents.length) {
+    await recordWithContext(history, supabase, () => historyEvents)
   }
 
   return {

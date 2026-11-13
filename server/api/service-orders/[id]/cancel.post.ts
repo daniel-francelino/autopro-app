@@ -6,6 +6,7 @@ import { resolveOrganizationId } from '../../../utils/organization'
 import { requireOrgPermission } from '../../../utils/require-org-permission'
 import { recordAudit } from '../../../utils/audit/record'
 import { softDeleteFinancialTransaction, FINANCIAL_TRANSACTION_DELETION_SOURCES } from '../../../utils/financial-transaction-deletion'
+import { OS_EVENT_KEYS, OS_SOURCE_POLICIES, commissionRemovedPayload, historyContext, loadEmployeeNames, osEvent, recordWithContext } from '../../../utils/os-history/events'
 
 /**
  * POST /api/service-orders/:id/cancel
@@ -17,6 +18,7 @@ export default defineEventHandler(async (event) => {
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
+  const history = historyContext(event, OS_SOURCE_POLICIES.orderCancel)
   const orderId = getRouterParam(event, 'id')
 
   if (!orderId) {
@@ -128,6 +130,7 @@ export default defineEventHandler(async (event) => {
   // D5: ids/valores removidos, gravados na auditoria da requisição.
   const removedCommissions: Array<Record<string, unknown>> = []
   const removedTransactionIds: string[] = []
+  const confirmedRemovedCommissions: typeof commissions = []
 
   for (const commission of commissions || []) {
     removedCommissions.push({
@@ -152,7 +155,8 @@ export default defineEventHandler(async (event) => {
         removedTransactionIds.push(String(commission.financial_transaction_id))
       }
     }
-    await supabase.from('employee_financial_records').delete().eq('id', commission.id)
+    const { error: commissionDeleteError } = await supabase.from('employee_financial_records').delete().eq('id', commission.id)
+    if (!commissionDeleteError) confirmedRemovedCommissions!.push(commission)
     deletedCommissions++
   }
 
@@ -167,6 +171,29 @@ export default defineEventHandler(async (event) => {
     .eq('id', orderId)
     .select()
     .single()
+
+  // Histórico da OS: depois do cancelamento confirmado. A mensagem de cancelamento não cita comissões;
+  // a remoção delas é evento próprio (visível só a quem pode ver comissão).
+  // Só grava se o status 'cancelled' realmente persistiu; comissões só as que o delete confirmou.
+  if (updatedOrder?.status === 'cancelled') await recordWithContext(history, supabase, async () => {
+    const names = await loadEmployeeNames(supabase, organizationId, (confirmedRemovedCommissions || []).map(c => c.employee_id))
+    return [
+      osEvent('order.cancelled', {
+        organizationId,
+        serviceOrderId: orderId,
+        entityType: 'service_order',
+        entityId: orderId,
+        idempotencyKey: OS_EVENT_KEYS.orderCancelled(orderId, history.scope!)
+      }, { order_number: order.number ?? null, previous_status: order.status ?? null }),
+      ...(confirmedRemovedCommissions || []).map(c => osEvent('commission.removed', {
+        organizationId,
+        serviceOrderId: orderId,
+        entityType: 'employee_financial_record',
+        entityId: String(c.id),
+        idempotencyKey: OS_EVENT_KEYS.commissionRemoved(String(c.id))
+      }, commissionRemovedPayload(c, names.get(String(c.employee_id)) ?? null, 'order_cancelled')))
+    ]
+  })
 
   recordAudit(event, {
     before: order,

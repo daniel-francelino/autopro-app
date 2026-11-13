@@ -4,6 +4,7 @@ import { requireAuthUser } from '../../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../../utils/organization'
 import { requireOrgPermission } from '../../../../utils/require-org-permission'
 import { recordAudit } from '../../../../utils/audit/record'
+import { OS_EVENT_KEYS, OS_SOURCE_POLICIES, entryChangeSet, historyContext, osEvent, recordWithContext } from '../../../../utils/os-history/events'
 
 /**
  * PATCH /api/service-orders/:id/installments/:installmentId
@@ -20,6 +21,7 @@ export default defineEventHandler(async (event) => {
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
+  const history = historyContext(event, OS_SOURCE_POLICIES.osDetail)
   const orderId = getRouterParam(event, 'id')
   const installmentId = getRouterParam(event, 'installmentId')
 
@@ -29,7 +31,7 @@ export default defineEventHandler(async (event) => {
 
   const { data: installment, error: installmentError } = await supabase
     .from('service_order_installments')
-    .select('id, status')
+    .select('id, status, installment_number, due_date, amount')
     .eq('id', installmentId)
     .eq('service_order_id', orderId)
     .eq('organization_id', organizationId)
@@ -72,6 +74,23 @@ export default defineEventHandler(async (event) => {
   if (updateError) {
     throw createError({ statusCode: 500, statusMessage: updateError.message })
   }
+
+  // Histórico da OS: de -> para legível (valor e vencimento), depois do update confirmado.
+  await recordWithContext(history, supabase, async () => {
+    const changes = await entryChangeSet(
+      installment as Record<string, unknown>,
+      updatedInstallment as Record<string, unknown>,
+      async () => null
+    ).then(list => list.filter(c => c.field === 'amount' || c.field === 'due_date'))
+    if (!changes.length) return []
+    return [osEvent('installment.edited', {
+      organizationId,
+      serviceOrderId: orderId,
+      entityType: 'installment',
+      entityId: installmentId,
+      idempotencyKey: OS_EVENT_KEYS.installmentEdited(installmentId, history.scope!)
+    }, { installment_number: installment.installment_number ?? null, changes })]
+  })
 
   recordAudit(event, {
     resourceId: orderId,

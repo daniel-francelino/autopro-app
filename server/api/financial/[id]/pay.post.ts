@@ -4,6 +4,7 @@ import { requireAuthUser } from '../../../utils/require-auth'
 import { requireOrgPermission } from '../../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../../utils/organization'
 import { recordAudit } from '../../../utils/audit/record'
+import { OS_EVENT_KEYS, OS_SOURCE_POLICIES, buildCommissionPaidEvent, historyContext, osEvent, recordWithContext, resolveEntryOsLink, snapshotMoney } from '../../../utils/os-history/events'
 
 /**
  * POST /api/financial/:id/pay
@@ -15,6 +16,7 @@ export default defineEventHandler(async (event) => {
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
+  const history = historyContext(event, OS_SOURCE_POLICIES.financialEntries)
   const id = getRouterParam(event, 'id')
 
   const { data: existing } = await supabase
@@ -104,6 +106,34 @@ export default defineEventHandler(async (event) => {
   }
 
   recordAudit(event, { before: { status: existing.status }, after: { status: 'paid' } })
+
+  // Histórico da OS: só lançamento ligado a OS/comissão. D13 (fora de escopo): este handler NÃO sincroniza o
+  // registro da comissão; o evento registra isso (record_synced=false) em vez de afirmar que a comissão foi paga.
+  await recordWithContext(history, supabase, async () => {
+    const link = await resolveEntryOsLink(supabase, organizationId, item as Record<string, unknown>)
+    if (!link) return []
+    if (link.kind === 'commission') {
+      return [await buildCommissionPaidEvent(supabase, {
+        organizationId,
+        serviceOrderId: link.serviceOrderId,
+        recordId: link.recordId,
+        employeeName: link.employeeName,
+        amount: existing.amount,
+        paymentDate: existing.due_date,
+        bankAccountId: existing.bank_account_id,
+        transactionId: String(existing.id),
+        viaEntry: true,
+        recordSynced: false
+      })]
+    }
+    return [osEvent('entry.paid_outside_os', {
+      organizationId,
+      serviceOrderId: link.serviceOrderId,
+      entityType: 'financial_transaction',
+      entityId: String(existing.id),
+      idempotencyKey: OS_EVENT_KEYS.entryPaid(String(existing.id), history.scope!)
+    }, { amount: snapshotMoney(existing.amount), entry_type: existing.type === 'income' ? 'income' : 'expense' })]
+  })
 
   return item
 })
