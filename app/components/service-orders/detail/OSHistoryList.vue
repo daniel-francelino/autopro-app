@@ -18,6 +18,12 @@ const emit = defineEmits<{
   'clear-filter': []
 }>()
 
+// Com detalhes (antes/depois), a descrição só repete o que o título e os detalhes já dizem:
+// mostra apenas "Por <autor>". Sem detalhes (ou sem autor), a descrição carrega a informação e fica.
+function eventLine(ev: OsHistoryEvent): string {
+  return ev.details.length > 0 && ev.actorName ? `Por ${ev.actorName}` : ev.description
+}
+
 function toTimelineItems(items: OsHistoryEvent[]) {
   return groupEventsByAction(items).map((events) => {
     const ev = events[0]!
@@ -123,7 +129,7 @@ function toTimelineItems(items: OsHistoryEvent[]) {
           <template #description="{ item }">
             <div class="min-w-0 space-y-1">
               <p v-if="!item.multi" class="break-words">
-                {{ item.events[0]!.description }}
+                {{ eventLine(item.events[0]!) }}
               </p>
               <div class="flex flex-wrap items-center gap-1.5">
                 <UBadge
@@ -154,7 +160,7 @@ function toTimelineItems(items: OsHistoryEvent[]) {
                     {{ ev.title }}
                   </p>
                   <p class="break-words text-xs text-muted">
-                    {{ ev.description }}
+                    {{ eventLine(ev) }}
                   </p>
                   <ServiceOrdersDetailOSHistoryEventDetails :details="ev.details" />
                 </div>
