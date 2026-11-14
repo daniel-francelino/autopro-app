@@ -80,24 +80,6 @@ function close() {
 
 <template>
   <DefineContent>
-    <div class="space-y-3 p-4 pb-2">
-      <div class="flex items-end gap-2">
-        <div class="min-w-0 flex-1">
-          <ServiceOrdersDetailOSHistoryFilters v-model="category" />
-        </div>
-        <UButton
-          icon="i-lucide-refresh-cw"
-          label="Atualizar"
-          color="neutral"
-          variant="outline"
-          size="sm"
-          class="shrink-0 max-xl:min-h-11"
-          :loading="history.refreshing.value"
-          :disabled="history.status.value === 'loading'"
-          @click="history.refresh()"
-        />
-      </div>
-    </div>
     <div :aria-busy="history.status.value === 'loading'">
       <ServiceOrdersDetailOSHistoryList
         :groups="groups"
@@ -122,7 +104,7 @@ function close() {
     v-if="open && isDesktop"
     id="os-history-panel"
     aria-labelledby="os-history-heading"
-    class="w-96 shrink-0 overflow-y-auto border-l border-default bg-default"
+    class="relative z-10 w-96 shrink-0 overflow-y-auto border-l border-default bg-default shadow-[-12px_0_28px_-10px_rgb(0_0_0/0.18)] dark:shadow-[-12px_0_28px_-10px_rgb(0_0_0/0.6)]"
   >
     <div class="sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-default bg-default px-4 py-3">
       <h2

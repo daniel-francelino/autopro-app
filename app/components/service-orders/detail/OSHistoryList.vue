@@ -113,12 +113,6 @@ function toTimelineItems(items: OsHistoryEvent[]) {
               <p class="break-words">
                 {{ item.event.description }}
               </p>
-              <p
-                v-if="item.event.actorName"
-                class="text-xs text-muted"
-              >
-                Por {{ item.event.actorName }}
-              </p>
               <div class="flex flex-wrap items-center gap-1.5">
                 <UBadge
                   :label="getCategoryUi(item.event.category).label"
@@ -126,13 +120,15 @@ function toTimelineItems(items: OsHistoryEvent[]) {
                   variant="subtle"
                   size="sm"
                 />
-                <UBadge
-                  :label="item.event.source.label"
-                  :icon="isExternalSource(item.event.source.code) ? 'i-lucide-external-link' : undefined"
-                  color="neutral"
-                  variant="outline"
-                  size="sm"
-                />
+                <UTooltip :text="item.event.source.label">
+                  <UBadge
+                    :label="item.event.source.label.replace(/\s*\(.*\)\s*$/, '')"
+                    :icon="isExternalSource(item.event.source.code) ? 'i-lucide-external-link' : undefined"
+                    color="neutral"
+                    variant="outline"
+                    size="sm"
+                  />
+                </UTooltip>
               </div>
               <ServiceOrdersDetailOSHistoryEventDetails :details="item.event.details" />
             </div>
