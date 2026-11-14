@@ -155,19 +155,27 @@ function toTimelineItems(items: OsHistoryEvent[]) {
               </div>
               <template v-if="item.multi">
                 <div
-                  v-for="ev in item.events"
+                  v-for="(ev, idx) in item.events"
                   :key="ev.id"
                   class="mt-3 flex min-w-0 gap-2.5"
                 >
-                  <span class="flex size-6 shrink-0 items-center justify-center rounded-full bg-elevated">
-                    <UIcon
-                      :name="getCategoryUi(ev.category).icon"
-                      class="size-3.5"
-                      :class="getCategoryUi(ev.category).indicatorClass"
+                  <!-- Coluna do indicador: círculo + linha vertical ligando ao próximo (igual ao 1º nível) -->
+                  <div class="flex shrink-0 flex-col items-center">
+                    <span class="flex size-6 items-center justify-center rounded-full bg-elevated">
+                      <UIcon
+                        :name="getCategoryUi(ev.category).icon"
+                        class="size-3.5"
+                        :class="getCategoryUi(ev.category).indicatorClass"
+                        aria-hidden="true"
+                      />
+                    </span>
+                    <span
+                      v-if="idx < item.events.length - 1"
+                      class="mt-1 w-px flex-1 bg-accented"
                       aria-hidden="true"
                     />
-                  </span>
-                  <div class="min-w-0 flex-1">
+                  </div>
+                  <div class="min-w-0 flex-1" :class="idx < item.events.length - 1 && 'pb-1'">
                     <p class="break-words text-sm font-medium text-highlighted">
                       {{ ev.title }}
                     </p>
