@@ -173,6 +173,14 @@ Observação **V16** (tipo A condicional, Verificado): `financial/bonuses/[id].v
 
 `orders.correct`: sem tela e sem rota (V8). `orders.pay`: zero uso no front (V5).
 
+**Histórico da OS (2026-11-14, desenho em `docs/architecture/os-history-timeline.md` §11.2):**
+
+| Rota | Tela | Front | Servidor exige | Quem tem (não-admin) |
+|---|---|---|---|---|
+| GET `service-orders/:id/history` | `service-orders/detail/OSHistorySidebar.vue` (botão em `OSHeader.vue`) | `orders.history` (botão e painel só renderizam com ela; sem a permissão não há chamada) | `orders.history` + `orders.read`. Sem a permissão: **404** idêntico ao de OS inexistente (nunca 403), antes de qualquer consulta. Categorias internas: `financial` exige `orders.pay`, `commission` exige `reports.commissions` | nenhum papel por padrão (a migration 109 não concede); dono/admin pelo bypass |
+
+Sigilo: `orders.history` é uma permissão proposital e de conhecimento restrito. Funcionário sem ela não deve ver sinal do recurso (botão ausente do DOM, 404 no endpoint, `editLogs` removido do detalhe da OS).
+
 ## Fase 7: leituras de tela própria (25 rotas: 7 escritas de exportação + 18 GET)
 
 | Rota | Tela (arquivo:linha) | Front hoje | Servidor vai exigir | Quem tem (não-admin) |
