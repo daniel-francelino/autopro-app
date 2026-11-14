@@ -50,19 +50,19 @@ const collapsible = computed(() => props.details.length > INLINE_LIMIT)
               </template>
             </dd>
             <dd v-else class="mt-1 grid grid-cols-2 gap-2">
-              <div class="min-w-0 rounded-md bg-elevated px-3 py-2">
-                <p class="text-xs text-muted">
+              <div class="min-w-0 rounded-md bg-elevated px-2.5 py-1.5">
+                <p class="text-[11px] leading-tight text-muted">
                   Antes
                 </p>
-                <p class="break-words text-sm text-default">
+                <p class="break-words text-xs text-default">
                   {{ d.from }}
                 </p>
               </div>
-              <div class="min-w-0 rounded-md bg-primary/10 px-3 py-2">
-                <p class="text-xs text-muted">
+              <div class="min-w-0 rounded-md bg-primary/10 px-2.5 py-1.5">
+                <p class="text-[11px] leading-tight text-muted">
                   Depois
                 </p>
-                <p class="break-words text-sm font-semibold text-primary">
+                <p class="break-words text-xs font-semibold text-primary">
                   {{ d.to }}
                 </p>
               </div>
