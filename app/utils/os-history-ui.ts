@@ -56,6 +56,17 @@ export function formatTime(iso: string): string {
 }
 
 /** Agrupa por dia (fuso local) preservando a ordem recebida; nunca reordena. */
+/** Eventos consecutivos com o mesmo groupId (uma única ação do usuário) viram uma entrada só. */
+export function groupEventsByAction(events: OsHistoryEvent[]): OsHistoryEvent[][] {
+  const out: OsHistoryEvent[][] = []
+  for (const ev of events) {
+    const last = out[out.length - 1]
+    if (last && last[0]!.groupId === ev.groupId) last.push(ev)
+    else out.push([ev])
+  }
+  return out
+}
+
 export function groupEventsByDay(events: OsHistoryEvent[], now: Date = new Date()): OsHistoryDayGroup[] {
   const groups: OsHistoryDayGroup[] = []
   for (const ev of events) {

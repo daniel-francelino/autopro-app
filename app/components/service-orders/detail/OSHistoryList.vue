@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { OsHistoryDayGroup, OsHistoryEvent } from '~/types/service-order-history'
-import { formatTime, getCategoryUi, isExternalSource } from '~/utils/os-history-ui'
+import { formatTime, getCategoryUi, groupEventsByAction, isExternalSource } from '~/utils/os-history-ui'
 
 defineProps<{
   groups: OsHistoryDayGroup[]
@@ -19,16 +19,24 @@ const emit = defineEmits<{
 }>()
 
 function toTimelineItems(items: OsHistoryEvent[]) {
-  return items.map((ev) => {
+  return groupEventsByAction(items).map((events) => {
+    const ev = events[0]!
+    const multi = events.length > 1
     const ui = getCategoryUi(ev.category)
+    // Categorias e origens distintas da ação (sem repetir badges).
+    const categories = [...new Set(events.map(e => e.category))]
+    const source = ev.source
     return {
       value: ev.id,
       date: formatTime(ev.occurredAt),
-      title: ev.title,
+      title: multi ? `${events.length} alterações` : ev.title,
       description: ev.description,
-      icon: ui.icon,
-      ui: { indicator: ui.indicatorClass, date: 'text-muted' },
-      event: ev
+      icon: multi ? 'i-lucide-layers' : ui.icon,
+      ui: { indicator: multi ? 'text-muted' : ui.indicatorClass, date: 'text-muted' },
+      events,
+      multi,
+      categories,
+      source
     }
   })
 }
@@ -110,27 +118,44 @@ function toTimelineItems(items: OsHistoryEvent[]) {
         >
           <template #description="{ item }">
             <div class="min-w-0 space-y-1">
-              <p class="break-words">
-                {{ item.event.description }}
+              <p v-if="!item.multi" class="break-words">
+                {{ item.events[0]!.description }}
               </p>
               <div class="flex flex-wrap items-center gap-1.5">
                 <UBadge
-                  :label="getCategoryUi(item.event.category).label"
+                  v-for="cat in item.categories"
+                  :key="cat"
+                  :label="getCategoryUi(cat).label"
                   color="neutral"
                   variant="subtle"
                   size="sm"
                 />
-                <UTooltip :text="item.event.source.label">
+                <UTooltip :text="item.source.label">
                   <UBadge
-                    :label="item.event.source.label.replace(/\s*\(.*\)\s*$/, '')"
-                    :icon="isExternalSource(item.event.source.code) ? 'i-lucide-external-link' : undefined"
+                    :label="item.source.label.replace(/\s*\(.*\)\s*$/, '')"
+                    :icon="isExternalSource(item.source.code) ? 'i-lucide-external-link' : undefined"
                     color="neutral"
                     variant="outline"
                     size="sm"
                   />
                 </UTooltip>
               </div>
-              <ServiceOrdersDetailOSHistoryEventDetails :details="item.event.details" />
+              <template v-if="item.multi">
+                <div
+                  v-for="ev in item.events"
+                  :key="ev.id"
+                  class="mt-2 min-w-0 border-l-2 border-default pl-3"
+                >
+                  <p class="break-words text-sm font-medium text-highlighted">
+                    {{ ev.title }}
+                  </p>
+                  <p class="break-words text-xs text-muted">
+                    {{ ev.description }}
+                  </p>
+                  <ServiceOrdersDetailOSHistoryEventDetails :details="ev.details" />
+                </div>
+              </template>
+              <ServiceOrdersDetailOSHistoryEventDetails v-else :details="item.events[0]!.details" />
             </div>
           </template>
         </UTimeline>
