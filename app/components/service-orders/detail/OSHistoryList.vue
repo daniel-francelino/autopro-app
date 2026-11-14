@@ -124,6 +124,9 @@ function toTimelineItems(items: OsHistoryEvent[]) {
           :ui="{ item: 'pb-4', wrapper: 'min-w-0 pb-1', title: 'break-words', description: 'break-words text-sm' }"
         >
           <template #date="{ item }">
+            <p v-if="item.multi && item.events[0]!.actorName" class="text-xs font-medium text-default">
+              Por {{ item.events[0]!.actorName }}
+            </p>
             <time :title="item.exactTime">{{ item.date }}</time>
           </template>
           <template #description="{ item }">
@@ -154,15 +157,26 @@ function toTimelineItems(items: OsHistoryEvent[]) {
                 <div
                   v-for="ev in item.events"
                   :key="ev.id"
-                  class="mt-2 min-w-0 border-l-2 border-default pl-3"
+                  class="mt-3 flex min-w-0 gap-2.5"
                 >
-                  <p class="break-words text-sm font-medium text-highlighted">
-                    {{ ev.title }}
-                  </p>
-                  <p class="break-words text-xs text-muted">
-                    {{ eventLine(ev) }}
-                  </p>
-                  <ServiceOrdersDetailOSHistoryEventDetails :details="ev.details" />
+                  <span class="flex size-6 shrink-0 items-center justify-center rounded-full bg-elevated">
+                    <UIcon
+                      :name="getCategoryUi(ev.category).icon"
+                      class="size-3.5"
+                      :class="getCategoryUi(ev.category).indicatorClass"
+                      aria-hidden="true"
+                    />
+                  </span>
+                  <div class="min-w-0 flex-1">
+                    <p class="break-words text-sm font-medium text-highlighted">
+                      {{ ev.title }}
+                    </p>
+                    <!-- Autor já aparece no topo do grupo; só mostra descrição quando ela traz informação (sem detalhes). -->
+                    <p v-if="!ev.details.length || !ev.actorName" class="break-words text-xs text-muted">
+                      {{ ev.description }}
+                    </p>
+                    <ServiceOrdersDetailOSHistoryEventDetails :details="ev.details" />
+                  </div>
                 </div>
               </template>
               <ServiceOrdersDetailOSHistoryEventDetails v-else :details="item.events[0]!.details" />
