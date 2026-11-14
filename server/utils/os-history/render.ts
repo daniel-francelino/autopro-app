@@ -66,8 +66,10 @@ const ORDER_FIELD_LABELS: Record<string, { label: string, kind: 'text' | 'money'
 }
 
 export function formatBRL(value: unknown): string {
+  // Nulo/vazio/não numérico: valor desconhecido, nunca "R$ 0,00".
+  if (value === null || value === undefined || (typeof value === 'string' && !value.trim())) return '-'
   const n = Number(value)
-  if (!Number.isFinite(n)) return 'R$ 0,00'
+  if (!Number.isFinite(n)) return '-'
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n).replace(/ /g, ' ')
 }
 

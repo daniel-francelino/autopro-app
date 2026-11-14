@@ -127,3 +127,30 @@ describe('order.payment_terms_changed (financial)', () => {
     ])
   })
 })
+
+describe('ajustes finais (B/C/D)', () => {
+  it('B: OS legada com nulos nos campos de pagamento não gera evento financeiro falso; mudança real gera', async () => {
+    const { diffFinancialFields } = await import('../../../server/utils/os-history/diff')
+    const legacy = { payment_status: null, payment_method: null, is_installment: null, installment_count: null, total_cost_amount: null, terminal_fee_amount: null }
+    const saved = { payment_status: 'pending', payment_method: null, is_installment: false, installment_count: 0, total_cost_amount: 0, terminal_fee_amount: 0 }
+    expect(diffFinancialFields(legacy, saved)).toEqual([])
+    expect(diffFinancialFields(legacy, { ...saved, payment_method: 'pix' })).toEqual([{ field: 'payment_method', from: null, to: 'pix' }])
+    expect(diffFinancialFields(legacy, { ...saved, payment_status: 'paid' })).toEqual([{ field: 'payment_status', from: 'pending', to: 'paid' }])
+  })
+  it('C: NUL é removido do texto livre (diff, itens e payload gravado)', async () => {
+    const { stripNul } = await import('../../../server/utils/os-history/diff')
+    expect(stripNul('a\u0000b')).toBe('ab')
+    expect(diffOrderFields({ reported_defect: 'x' }, { reported_defect: 'a\u0000b' })).toEqual([{ field: 'reported_defect', from: 'x', to: 'ab' }])
+    expect(diffOrderFields({ reported_defect: 'ab' }, { reported_defect: 'a\u0000b' })).toEqual([])
+    expect(JSON.stringify(diffItems([], [{ name: 'Fi\u0000ltro', quantity: 1, unit_price: 1 }]))).not.toContain('\u0000')
+  })
+  it('D: valor nulo/não numérico não vira R$ 0,00', async () => {
+    const { formatBRL } = await import('../../../server/utils/os-history/render')
+    expect(formatBRL(null)).toBe('-')
+    expect(formatBRL(undefined)).toBe('-')
+    expect(formatBRL('')).toBe('-')
+    expect(formatBRL('abc')).toBe('-')
+    expect(formatBRL(0)).toBe('R$ 0,00')
+    expect(renderOsEvent(row('installment.removed', { amount: null })).description).toContain('(-)')
+  })
+})
