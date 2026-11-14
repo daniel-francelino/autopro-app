@@ -381,8 +381,8 @@ const F2_RENDERERS: Record<string, (p: Record<string, unknown>, actor: string) =
     const lines = Array.isArray(p.lines) ? p.lines as Array<Record<string, unknown>> : []
     const details: Rendered['details'] = lines.map((l) => {
       const name = str(l.name) ?? '(sem nome)'
-      if (l.action === 'added') return { label: `Item adicionado: ${name}`, from: null, to: itemSummary(l) }
-      if (l.action === 'removed') return { label: `Item removido: ${name}`, from: itemSummary(l), to: null }
+      if (l.action === 'added') return { label: `Item: ${name}`, from: null, to: itemSummary(l) }
+      if (l.action === 'removed') return { label: `Item: ${name}`, from: itemSummary(l), to: null }
       const ch = Array.isArray(l.changes) ? l.changes as Array<Record<string, unknown>> : []
       const part = (side: 'from' | 'to') => ch.map(c => `${lookup(ITEM_FIELD_LABELS, String(c.field)) ?? 'Campo'} ${itemFieldValue(String(c.field), c[side])}`).join('; ')
       return { label: `Item alterado: ${name}`, from: part('from'), to: part('to') }

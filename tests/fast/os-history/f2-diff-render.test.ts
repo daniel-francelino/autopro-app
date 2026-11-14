@@ -95,8 +95,8 @@ describe('render F2', () => {
       { action: 'changed', name: 'Troca', changes: [{ field: 'quantity', from: 1, to: 3 }, { field: 'unit_price', from: 300, to: 350 }] }
     ] }))
     expect(r.details).toEqual([
-      { label: 'Item adicionado: Filtro', from: null, to: '2 x R$ 35,00' },
-      { label: 'Item removido: Velas', from: '4 x R$ 20,00', to: null },
+      { label: 'Item: Filtro', from: null, to: '2 x R$ 35,00' },
+      { label: 'Item: Velas', from: '4 x R$ 20,00', to: null },
       { label: 'Item alterado: Troca', from: 'Quantidade 1; Preço R$ 300,00', to: 'Quantidade 3; Preço R$ 350,00' },
       { label: 'e mais 2 itens', from: null, to: null }
     ])
