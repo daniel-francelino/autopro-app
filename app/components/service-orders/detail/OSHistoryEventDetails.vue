@@ -37,7 +37,7 @@ const collapsible = computed(() => props.details.length > INLINE_LIMIT)
             <dt class="font-medium text-highlighted">
               {{ d.label }}
             </dt>
-            <dd class="text-muted">
+            <dd v-if="d.from === null || d.to === null" class="text-muted">
               <template v-if="d.from === null">
                 <span>adicionado</span>
                 <span aria-hidden="true"> · </span>
@@ -48,14 +48,24 @@ const collapsible = computed(() => props.details.length > INLINE_LIMIT)
                 <span aria-hidden="true"> · </span>
                 <span>removido</span>
               </template>
-              <template v-else>
-                <span class="sr-only">de {{ d.from }} para {{ d.to }}</span>
-                <span aria-hidden="true">
-                  <span>{{ d.from }}</span>
-                  <UIcon name="i-lucide-arrow-right" class="mx-1 inline size-3 align-[-2px]" />
-                  <span class="text-default">{{ d.to }}</span>
-                </span>
-              </template>
+            </dd>
+            <dd v-else class="mt-1 grid grid-cols-2 gap-2">
+              <div class="min-w-0 rounded-md bg-elevated px-3 py-2">
+                <p class="text-xs text-muted">
+                  Antes
+                </p>
+                <p class="break-words text-sm text-default">
+                  {{ d.from }}
+                </p>
+              </div>
+              <div class="min-w-0 rounded-md bg-primary/10 px-3 py-2">
+                <p class="text-xs text-muted">
+                  Depois
+                </p>
+                <p class="break-words text-sm font-semibold text-primary">
+                  {{ d.to }}
+                </p>
+              </div>
             </dd>
           </template>
         </div>
