@@ -2,6 +2,9 @@ import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { requireOrgPermission } from '../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../utils/organization'
+import { recordAudit } from '../../utils/audit/record'
+
+const COMMISSION_RELEASE_MODES = ['proportional', 'full']
 
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
@@ -32,7 +35,8 @@ export default defineEventHandler(async (event) => {
     'state',
     'municipality_code',
     'initial_service_order_number',
-    'notes'
+    'notes',
+    'commission_release_mode'
   ]
 
   const updates: Record<string, unknown> = {}
@@ -40,6 +44,27 @@ export default defineEventHandler(async (event) => {
     if (body[field] !== undefined) {
       updates[field] = body[field]
     }
+  }
+
+  if (
+    updates.commission_release_mode !== undefined
+    && !COMMISSION_RELEASE_MODES.includes(updates.commission_release_mode as string)
+  ) {
+    throw createError({ statusCode: 400, statusMessage: 'Modo de liberação de comissão inválido' })
+  }
+
+  // Read the current mode only when it is being changed, to audit before/after.
+  let previousMode: string | null = null
+  if (updates.commission_release_mode !== undefined) {
+    const { data: current, error: currentError } = await supabase
+      .from('organizations')
+      .select('commission_release_mode')
+      .eq('id', organizationId)
+      .single()
+
+    if (currentError || !current)
+      throw createError({ statusCode: 500, statusMessage: currentError?.message || 'Não foi possível ler a organização' })
+    previousMode = current.commission_release_mode
   }
 
   updates.updated_by = authUser.email
@@ -53,6 +78,15 @@ export default defineEventHandler(async (event) => {
 
   if (error)
     throw createError({ statusCode: 500, statusMessage: error.message })
+
+  if (previousMode !== null && previousMode !== organization.commission_release_mode) {
+    recordAudit(event, {
+      resourceType: 'organization',
+      resourceId: organizationId,
+      before: { commission_release_mode: previousMode },
+      after: { commission_release_mode: organization.commission_release_mode }
+    })
+  }
 
   return organization
 })

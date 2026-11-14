@@ -64,8 +64,6 @@ export class PayModal {
     await this.dialog.getByLabel('Valor da entrada').fill(brl(amount))
   }
 
-  releaseFull() { return this.dialog.getByRole('switch', { name: 'Liberar 100% da comissão' }) }
-
   /** Plan line: 'entrada' (down payment) or the installment number (1, 2, 3...). */
   row(n: number | 'entrada') {
     const text = n === 'entrada' ? /Entrada/ : new RegExp(`${n}ª parcela`)

@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeEvent, installNitroGlobals, installServerUtilsGlobals, callHandler } from '../../support/handler-harness'
 import { createFakeSupabase, type FakeSupabase } from '../../support/fake-supabase'
 import { guardSeed, USERS, type Persona } from '../../support/phase3-guard-fixture'
+import { seedOrganizations } from '../../support/organizations-fixture'
 
 let fake: FakeSupabase
 const auth = { getUser: vi.fn(), refreshSession: vi.fn() }
@@ -25,9 +26,10 @@ type Case = { name: string, file: string, params: Record<string, string>, body: 
 const PAY = { bankAccountId: 'ba1', paymentMethod: 'pix' }
 
 const TABLES = {
+  organizations: seedOrganizations('proportional'),
   service_orders: [
-    { id: 'o1', organization_id: 'org-a', number: 'OS1', status: 'completed', entry_date: '2026-03-10', total_amount: 300, discount: 0, total_taxes_amount: 0, payment_status: 'pending', deleted_at: null, commission_release_mode: null, commission_manual_adjustments_log: [], responsible_employees: [], items: [] },
-    { id: 'o2', organization_id: 'org-a', number: 'OS3', status: 'completed', entry_date: '2026-03-10', total_amount: 100, discount: 0, total_taxes_amount: 0, payment_status: 'pending', deleted_at: null, commission_release_mode: null, commission_manual_adjustments_log: [], responsible_employees: [], items: [] },
+    { id: 'o1', organization_id: 'org-a', number: 'OS1', status: 'completed', entry_date: '2026-03-10', total_amount: 300, discount: 0, total_taxes_amount: 0, payment_status: 'pending', deleted_at: null, commission_release_mode: 'proportional', commission_manual_adjustments_log: [], responsible_employees: [], items: [] },
+    { id: 'o2', organization_id: 'org-a', number: 'OS3', status: 'completed', entry_date: '2026-03-10', total_amount: 100, discount: 0, total_taxes_amount: 0, payment_status: 'pending', deleted_at: null, commission_release_mode: 'proportional', commission_manual_adjustments_log: [], responsible_employees: [], items: [] },
     { id: 'o-open', organization_id: 'org-a', number: 'OS2', status: 'open', entry_date: '2026-03-10', total_amount: 500, payment_status: 'pending', deleted_at: null }
   ],
   service_order_installments: [

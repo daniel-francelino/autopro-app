@@ -129,11 +129,24 @@ describe('OSH-144: mapa único de visibilidade/categoria por event_type', () => 
     }
   })
 
-  it('todo tipo de pagamento/comissão do catálogo (order.* é de F0/F2; installment.paid é gravado direto) é emitido por osEvent() em algum handler/util', () => {
+  // D4 (commission-launch-mode): o modo passou a vir da organização; o evento deixou de ser gravado, mas o tipo
+  // continua no catálogo/renderer porque há linhas históricas já gravadas. Só ele está isento; a regra vale para os demais.
+  const LEGACY_NOT_EMITTED = new Set(['commission.release_mode_changed'])
+
+  it('todo tipo de pagamento/comissão do catálogo (order.* é de F0/F2; installment.paid é gravado direto; LEGACY_NOT_EMITTED é só histórico) é emitido por osEvent() em algum handler/util', () => {
     const files = walk(join(ROOT, 'server')).map(rel).filter(f => f.endsWith('.ts'))
     const src = files.map(f => read(f)).join('\n')
     const F0 = new Set(['installment.paid'])
-    const dead = Object.keys(OS_EVENT_CATALOG).filter(t => !t.startsWith('order.') && !F0.has(t) && !new RegExp(`osEvent\\(\\s*'${t.replace('.', '\\.')}'`).test(src))
+    const dead = Object.keys(OS_EVENT_CATALOG).filter(t => !t.startsWith('order.') && !F0.has(t) && !LEGACY_NOT_EMITTED.has(t) && !new RegExp(`osEvent\\(\\s*'${t.replace('.', '\\.')}'`).test(src))
     expect(dead).toEqual([])
+  })
+
+  it('ST-3: commission.release_mode_changed segue no catálogo e renderiza (linhas legadas), mas nenhum handler/util o emite', () => {
+    expect(Object.keys(OS_EVENT_CATALOG)).toContain('commission.release_mode_changed')
+    const r = renderOsEvent({ id: 'x', occurred_at: '2026-11-13T10:00:00Z', event_type: 'commission.release_mode_changed', schema_version: 1, category: 'commission', actor_name: 'Maria', payload: { to: 'full' }, correlation_id: 'c', source_code: 'os_detail', source_label: 'x' })
+    expect(r.title).not.toBe('Evento registrado')
+    const files = walk(join(ROOT, 'server')).map(rel).filter(f => f.endsWith('.ts'))
+    const emitters = files.filter(f => /osEvent\(\s*'commission\.release_mode_changed'/.test(read(f)))
+    expect(emitters).toEqual([])
   })
 })

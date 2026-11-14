@@ -54,8 +54,14 @@ const schema = z.object({
   state_registration: z.string().optional().nullable(),
   fiscal_regime: z.string().optional().nullable(),
   logo_url: z.string().optional().nullable(),
-  initial_service_order_number: z.number().int().min(1).optional().nullable()
+  initial_service_order_number: z.number().int().min(1).optional().nullable(),
+  commission_release_mode: z.enum(['proportional', 'full']).optional()
 })
+
+const commissionReleaseModeOptions = [
+  { label: 'Conforme o recebimento', value: 'proportional' },
+  { label: 'Integral ao gerar o pagamento', value: 'full' }
+]
 
 type Schema = z.output<typeof schema>
 
@@ -94,7 +100,8 @@ function fillForm(data: OrgData | null | undefined) {
     state_registration: data.state_registration ?? '',
     fiscal_regime: data.fiscal_regime ?? '',
     logo_url: data.logo_url ?? null,
-    initial_service_order_number: data.initial_service_order_number ?? 1
+    initial_service_order_number: data.initial_service_order_number ?? 1,
+    commission_release_mode: data.commission_release_mode === 'proportional' ? 'proportional' : 'full'
   })
 }
 
@@ -755,6 +762,21 @@ async function syncFiscalCompany(overrides: Record<string, unknown> = {}) {
             min="1"
             :disabled="!canUpdate"
             class="w-full sm:max-w-32"
+          />
+        </UFormField>
+
+        <UFormField
+          name="commission_release_mode"
+          label="Liberação de comissão"
+          description="Vale para novas OS e para OS que ainda não tiveram comissão liberada. Conforme o recebimento: libera proporcional ao que o cliente pagou e o estorno desfaz a parte pendente. Integral ao gerar o pagamento: libera o valor total ao gerar o plano de pagamento e o estorno não desfaz."
+          class="grid gap-2 mt-4"
+        >
+          <USelect
+            v-model="form.commission_release_mode"
+            :items="commissionReleaseModeOptions"
+            value-key="value"
+            :disabled="!canUpdate"
+            class="w-full sm:max-w-72"
           />
         </UFormField>
       </UPageCard>

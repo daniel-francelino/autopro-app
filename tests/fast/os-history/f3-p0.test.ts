@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeEvent, installNitroGlobals, installServerUtilsGlobals, callHandler } from '../../support/handler-harness'
 import { createFakeSupabase, type FakeSupabase } from '../../support/fake-supabase'
+import { seedOrganizations } from '../../support/organizations-fixture'
 import { guardSeed, USERS } from '../../support/phase3-guard-fixture'
 import { renderOsEvent } from '../../../server/utils/os-history/render'
 import { OS_EVENT_CATALOG } from '../../../server/utils/os-history/events'
@@ -36,8 +37,9 @@ type Row = Record<string, any>
 
 function seed(extra: Row = {}) {
   fake = createFakeSupabase(guardSeed(['appointments.create', 'appointments.update', 'appointments.delete', 'orders.delete', 'orders.create', 'orders.update'], {
+    organizations: seedOrganizations('full'),
     service_orders: [
-      { id: 'oA', organization_id: 'org-a', number: 'OS1', status: 'completed', total_amount: 1000, discount: 0, total_taxes_amount: 0, entry_date: '2026-11-01', deleted_at: null, commission_release_mode: null, commission_manual_adjustments_log: [], responsible_employees: [{ employee_id: 'e1' }], items: [{ id: 'it1', total_price: 1000, cost_price: 0, quantity: 1, category_id: null }] },
+      { id: 'oA', organization_id: 'org-a', number: 'OS1', status: 'completed', total_amount: 1000, discount: 0, total_taxes_amount: 0, entry_date: '2026-11-01', deleted_at: null, commission_release_mode: 'proportional', commission_manual_adjustments_log: [], responsible_employees: [{ employee_id: 'e1' }], items: [{ id: 'it1', total_price: 1000, cost_price: 0, quantity: 1, category_id: null }] },
       { id: 'oA2', organization_id: 'org-a', number: 'OS2', deleted_at: null },
       { id: 'oDel', organization_id: 'org-a', number: 'OS3', deleted_at: '2026-01-01T00:00:00Z' },
       { id: 'oB', organization_id: 'org-b', number: 'OS9', deleted_at: null }

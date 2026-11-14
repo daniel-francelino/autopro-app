@@ -4,6 +4,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeEvent, installNitroGlobals, installServerUtilsGlobals, callHandler } from '../../support/handler-harness'
 import { createFakeSupabase, type FakeSupabase } from '../../support/fake-supabase'
+import { seedOrganizations } from '../../support/organizations-fixture'
 
 let fake: FakeSupabase
 const auth = { getUser: vi.fn(), refreshSession: vi.fn() }
@@ -24,6 +25,7 @@ const UNDO = 'server/api/service-orders/[id]/payment.delete.ts'
 
 beforeEach(() => {
   fake = createFakeSupabase({
+    organizations: seedOrganizations('proportional'),
     user_profiles: [{ id: 'p1', user_id: 'u1', organization_id: 'org-a', role_id: 'r', is_owner: false, is_active: true, employee_id: null }],
     // role r com orders.pay (process-payment) e orders.cancel (payment.delete, financial-transactions/*.delete): guards da Fase 6
     roles: [{ id: 'r', name: 'operador', is_system_role: false }],

@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeEvent, installNitroGlobals, installServerUtilsGlobals, callHandler } from '../../support/handler-harness'
 import { createFakeSupabase, type FakeSupabase } from '../../support/fake-supabase'
+import { seedOrganizations } from '../../support/organizations-fixture'
 import { guardSeed, USERS } from '../../support/phase3-guard-fixture'
 import { resolveEntryOsLink, OS_SOURCE_POLICIES } from '../../../server/utils/os-history/events'
 import { withOrigin } from '../../../app/utils/with-origin'
@@ -33,7 +34,7 @@ const U = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}
 const [REC1, REC2, REC3, INST1, INST2, TX1, TX2, TX3] = [U(1), U(2), U(3), U(11), U(12), U(21), U(22), U(23)]
 type Row = Record<string, any>
 
-const order = (o: Row = {}): Row => ({ id: 'o1', organization_id: 'org-a', number: 'OS1', status: 'completed', total_amount: 300, discount: 0, payment_status: 'pending', entry_date: '2026-11-01', deleted_at: null, commission_release_mode: null, commission_manual_adjustments_log: [], responsible_employees: [], items: [], ...o })
+const order = (o: Row = {}): Row => ({ id: 'o1', organization_id: 'org-a', number: 'OS1', status: 'completed', total_amount: 300, discount: 0, payment_status: 'pending', entry_date: '2026-11-01', deleted_at: null, commission_release_mode: 'proportional', commission_manual_adjustments_log: [], responsible_employees: [], items: [], ...o })
 const inst = (id: string, n: number, o: Row = {}): Row => ({ id, organization_id: 'org-a', service_order_id: 'o1', kind: 'installment', installment_number: n, amount: 150, status: 'pending', due_date: '2026-12-01', deleted_at: null, ...o })
 const tx = (id: string, o: Row = {}): Row => ({ id, organization_id: 'org-a', type: 'income', status: 'paid', amount: 150, due_date: '2026-11-10', description: 'Rec', bank_account_id: 'ba1', service_order_id: 'o1', deleted_at: null, payment_method: 'pix', ...o })
 const rec = (id: string, o: Row = {}): Row => ({ id, organization_id: 'org-a', employee_id: 'emp1', service_order_id: 'o1', record_type: 'commission', status: 'pending', amount: 50, deleted_at: null, ...o })
@@ -41,6 +42,7 @@ const etx = (id: string, o: Row = {}): Row => ({ id, organization_id: 'org-a', s
 
 function seed(extra: Record<string, Row[]> = {}) {
   fake = createFakeSupabase(guardSeed(['orders.pay', 'orders.cancel', 'orders.update', 'financial.update', 'financial.delete'], {
+    organizations: seedOrganizations('proportional'),
     service_orders: [order(), order({ id: 'o2' }), order({ id: 'o3' })],
     employees: [{ id: 'emp1', organization_id: 'org-a', name: 'João Mecânico' }, { id: 'emp2', organization_id: 'org-a', name: 'Maria Lanterneira' }],
     bank_accounts: [{ id: 'ba1', organization_id: 'org-a', current_balance: 1000, is_active: true, name: 'Caixa Principal' }],
@@ -181,16 +183,23 @@ describe('A4: ordem causa -> efeito e contagem exata (sem .sort)', () => {
     expect(order_()).toEqual(['payment.plan_created', 'installment.paid', 'payment.status_changed'])
   })
 
-  it('process-payment com releaseCommissionsInFull: release_mode_changed é o primeiro evento; só `to: full`', async () => {
-    seed()
-    await call(F.process, { body: { paymentMethod: 'pix', bankAccountId: 'ba1', releaseCommissionsInFull: true, installments: [{ amount: 300, status: 'pending', due_date: '2026-12-05' }] } })
-    expect(order_()).toEqual(['commission.release_mode_changed', 'payment.plan_created'])
-    expect(events()[0]).toMatchObject({ visibility: 'commission', category: 'commission', idempotency_key: `commission_release_mode:o1:${RID}` })
-    expect(events()[0]!.payload).toEqual({ to: 'full' })
-    // OS já em modo full: nada de novo evento
-    seed({ service_orders: [order({ commission_release_mode: 'full' })] })
-    await call(F.process, { body: { paymentMethod: 'pix', bankAccountId: 'ba1', releaseCommissionsInFull: true, installments: [{ amount: 300, status: 'pending', due_date: '2026-12-05' }] } })
+  it('process-payment: a herança do modo da org (D4) NÃO gera commission.release_mode_changed, mas a OS passa a `full`; releaseCommissionsInFull no body é ignorado (D7)', async () => {
+    // OS em proportional, org em full, sem comissão: o modo é sincronizado em silêncio.
+    seed({ organizations: seedOrganizations('full') })
+    expect(fake.tables.service_orders!.find(o => o.id === 'o1')!.commission_release_mode).toBe('proportional')
+    const r = await call(F.process, { body: { paymentMethod: 'pix', bankAccountId: 'ba1', releaseCommissionsInFull: true, installments: [{ amount: 300, status: 'pending', due_date: '2026-12-05' }] } })
+    expect(r.status).toBe(200) // FV-4: sem evento só vale se a requisição deu certo
+    expect(fake.tables.service_orders!.find(o => o.id === 'o1')!.commission_release_mode).toBe('full') // efeito: sincronizou
     expect(order_()).toEqual(['payment.plan_created'])
+    expect(events().some(e => e.event_type === 'commission.release_mode_changed')).toBe(false)
+    expect(events().some(e => String(e.idempotency_key ?? '').startsWith('commission_release_mode:'))).toBe(false)
+    // OS já em full e org em full: sem evento e sem update de modo em service_orders
+    seed({ organizations: seedOrganizations('full'), service_orders: [order({ commission_release_mode: 'full' })] })
+    const r2 = await call(F.process, { body: { paymentMethod: 'pix', bankAccountId: 'ba1', releaseCommissionsInFull: true, installments: [{ amount: 300, status: 'pending', due_date: '2026-12-05' }] } })
+    expect(r2.status).toBe(200)
+    expect(order_()).toEqual(['payment.plan_created'])
+    expect(fake.writes.filter(w => w.table === 'service_orders' && w.op === 'update' && w.values && 'commission_release_mode' in (w.values as object))).toHaveLength(0)
+    expect(fake.tables.service_orders!.find(o => o.id === 'o1')!.commission_release_mode).toBe('full')
   })
 
   it('lotes gravam na ordem de entrada, 1 evento por item confirmado', async () => {

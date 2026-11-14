@@ -4,6 +4,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeEvent, installNitroGlobals, installServerUtilsGlobals, callHandler } from '../../support/handler-harness'
 import { createFakeSupabase, type FakeSupabase } from '../../support/fake-supabase'
+import { seedOrganizations } from '../../support/organizations-fixture'
 import { guardSeed, USERS } from '../../support/phase3-guard-fixture'
 
 const boom = vi.hoisted(() => ({ diff: false, update: false, created: false, deleted: false }))
@@ -45,6 +46,7 @@ const order = (over: Row = {}): Row => ({
 const CODES = ['orders.update', 'orders.create', 'orders.delete', 'orders.read', 'orders.cancel', 'orders.pay', 'orders.history']
 function seed(orderOver: Row = {}, extra: Record<string, Row[]> = {}) {
   fake = createFakeSupabase(guardSeed(CODES, {
+    organizations: seedOrganizations('full'),
     service_orders: [order(orderOver), order({ id: 'ob', organization_id: 'org-b', number: 'OSB', client_id: 'clb' })],
     clients: [
       { id: 'cl1', organization_id: 'org-a', name: 'Ana', phone: '11999990000', cpf: '123.456.789-09' }, { id: 'cl2', organization_id: 'org-a', name: 'Beto' },

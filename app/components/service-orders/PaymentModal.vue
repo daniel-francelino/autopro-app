@@ -64,13 +64,25 @@ const form = reactive({
   // overridden individually afterwards.
   paymentMethod: 'pix' as PaymentMethod,
   bankAccountId: '',
-  paymentTerminalId: '',
-  // One-way choice for this order: release 100% of employee commission now
-  // instead of proportionally to what's received (server/utils/service-order-commissions.ts).
-  releaseCommissionsInFull: false
+  paymentTerminalId: ''
 })
 
-const commissionReleaseModeAlreadyFull = computed(() => props.order?.commission_release_mode === 'full')
+// Commission release mode is an organization setting (Configurações > Empresa);
+// the server applies it, there is no per-order override here.
+const COMMISSION_MODE_LABELS: Record<string, string> = {
+  proportional: 'Conforme o recebimento',
+  full: 'Integral ao gerar o pagamento'
+}
+const orgCommissionReleaseMode = ref<string | null>(null)
+// Mirrors the server rule: an order with released commission keeps its own
+// (fixed) mode; otherwise the organization's mode applies.
+const orderHasReleasedCommission = ref(false)
+const commissionModeLabel = computed(() => {
+  const mode = orderHasReleasedCommission.value
+    ? (props.order?.commission_release_mode ?? null)
+    : (orgCommissionReleaseMode.value ?? props.order?.commission_release_mode ?? null)
+  return mode ? (COMMISSION_MODE_LABELS[mode] ?? null) : null
+})
 
 const rows = ref<PlanRow[]>([])
 
@@ -222,7 +234,6 @@ function resetForm() {
   form.paymentMethod = 'pix'
   form.bankAccountId = ''
   form.paymentTerminalId = ''
-  form.releaseCommissionsInFull = false
   rebuildRows()
 }
 
@@ -230,17 +241,29 @@ async function loadPriorDownPayments() {
   if (!props.order) return
 
   try {
-    const res = await $fetch<{ data: { installments: DetailInstallment[] } }>(`/api/service-orders/${props.order.id}`)
+    const res = await $fetch<{ data: { installments: DetailInstallment[], commissions?: unknown[] } }>(`/api/service-orders/${props.order.id}`)
+    orderHasReleasedCommission.value = (res.data.commissions?.length ?? 0) > 0
     priorDownPaymentsTotal.value = (res.data.installments || [])
       .filter(installment => installment.kind === 'down_payment')
       .reduce((sum, installment) => sum + Number(installment.amount || 0), 0)
   } catch {
     priorDownPaymentsTotal.value = 0
+    orderHasReleasedCommission.value = false
+  }
+}
+
+async function loadOrgCommissionMode() {
+  try {
+    const org = await $fetch<{ commission_release_mode?: string | null }>('/api/organizations')
+    orgCommissionReleaseMode.value = org?.commission_release_mode ?? null
+  } catch {
+    orgCommissionReleaseMode.value = null
   }
 }
 
 async function loadReferenceData() {
   isLoadingOptions.value = true
+  void loadOrgCommissionMode()
   try {
     const [accountsResponse, terminalsResponse] = await Promise.all([
       $fetch<{ items: BankAccountItem[] }>('/api/bank-accounts', {
@@ -332,13 +355,12 @@ async function save() {
   isSaving.value = true
   try {
     const body = balanceDueIsSettled.value
-      ? { releaseCommissionsInFull: form.releaseCommissionsInFull }
+      ? {}
       : {
           paymentMethod: form.paymentMethod,
           paymentDate: form.paymentDate,
           bankAccountId: form.bankAccountId,
           paymentTerminalId: form.paymentTerminalId || null,
-          releaseCommissionsInFull: form.releaseCommissionsInFull,
           installments: rows.value.map(row => ({
             kind: row.kind,
             amount: Number(row.amount || 0),
@@ -426,24 +448,10 @@ async function save() {
         </div>
 
         <template v-else>
-          <div v-if="commissionReleaseModeAlreadyFull" class="rounded-xl border border-default bg-default p-4 text-sm text-muted">
+          <div v-if="commissionModeLabel" class="rounded-xl border border-default bg-default p-4 text-sm text-muted">
             <div class="flex items-center gap-2">
               <UIcon name="i-lucide-badge-percent" class="size-4 text-primary" />
-              A comissão desta OS já foi liberada integralmente — nenhuma pergunta adicional é necessária.
-            </div>
-          </div>
-
-          <div v-else class="rounded-xl border border-default p-4">
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p class="text-sm font-medium text-highlighted">
-                  Liberar 100% da comissão agora
-                </p>
-                <p class="text-xs text-muted">
-                  Em vez de liberar a comissão proporcionalmente conforme o cliente paga, libera o valor total já ao confirmar este plano de pagamento. Essa escolha vale para esta OS e não pode ser desfeita pela tela.
-                </p>
-              </div>
-              <USwitch v-model="form.releaseCommissionsInFull" label="Liberar 100% da comissão" />
+              Comissão: {{ commissionModeLabel }}
             </div>
           </div>
 

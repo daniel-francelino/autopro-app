@@ -4,6 +4,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeEvent, installNitroGlobals, installServerUtilsGlobals, callHandler } from '../../support/handler-harness'
 import { createFakeSupabase, type FakeSupabase } from '../../support/fake-supabase'
+import { seedOrganizations } from '../../support/organizations-fixture'
 
 let fake: FakeSupabase
 const auth = { getUser: vi.fn(), refreshSession: vi.fn() }
@@ -31,8 +32,9 @@ const H = {
   cancel: 'server/api/service-orders/[id]/cancel.post.ts'
 }
 
-function seed(orderOverrides: Record<string, unknown> = {}) {
+function seed(orderOverrides: Record<string, unknown> = {}, orgMode: 'proportional' | 'full' = 'proportional') {
   fake = createFakeSupabase({
+    organizations: seedOrganizations(orgMode),
     user_profiles: [
       { id: 'p1', user_id: 'u1', organization_id: 'org-a', role_id: 'r', is_owner: false, is_active: true, employee_id: null },
       { id: 'p2', user_id: 'u2', organization_id: 'org-b', role_id: 'r', is_owner: false, is_active: true, employee_id: null }
@@ -51,7 +53,7 @@ function seed(orderOverrides: Record<string, unknown> = {}) {
     service_orders: [
       {
         id: 'o1', organization_id: 'org-a', number: '100', status: 'completed', entry_date: '2026-03-10', total_amount: 1000,
-        discount: 0, total_taxes_amount: 0, payment_status: 'pending', deleted_at: null, commission_release_mode: null,
+        discount: 0, total_taxes_amount: 0, payment_status: 'pending', deleted_at: null, commission_release_mode: 'proportional',
         commission_manual_adjustments_log: [], responsible_employees: [{ employee_id: 'e1' }],
         items: [{ id: 'it1', total_price: 1000, cost_price: 0, quantity: 1 }], ...orderOverrides
       },
@@ -167,10 +169,19 @@ describe('P9–P16: process-payment (payment plan)', () => {
     expect(balance()).toBe(1000)
     expect(order().payment_status).toBe('pending')
   })
-  it('P12: "liberar comissão integral" releases everything even without receiving', async () => {
-    await processPayment('o1', { ...plan([{ amount: 1000 }]), releaseCommissionsInFull: true })
+  it('P12a: org "full": releases everything even without receiving (OS inherits the org mode)', async () => {
+    seed({}, 'full')
+    const r = await processPayment('o1', plan([{ amount: 1000 }]))
+    expect(r.status).toBe(200)
     expect(commission()).toBe(100)
     expect(order().commission_release_mode).toBe('full')
+  })
+  it('P12b: releaseCommissionsInFull in the body is ignored (D7): org "proportional" keeps the order proportional', async () => {
+    seed({ commission_release_mode: 'full' }, 'proportional')
+    const r = await processPayment('o1', { ...plan([{ amount: 500, status: 'paid' }, { amount: 500 }]), releaseCommissionsInFull: true })
+    expect(r.status).toBe(200)
+    expect(order().commission_release_mode).toBe('proportional')
+    expect(commission()).toBe(50)
   })
   it('P13: sum of lines with a 1-cent difference is accepted (tolerance); 2 cents is not', async () => {
     expect((await processPayment('o1', plan([{ amount: 999.99, status: 'paid' }]))).status).toBe(200)

@@ -4,6 +4,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeEvent, installNitroGlobals, installServerUtilsGlobals, callHandler } from '../../support/handler-harness'
 import { createFakeSupabase, type FakeSupabase } from '../../support/fake-supabase'
+import { seedOrganizations } from '../../support/organizations-fixture'
 
 let fake: FakeSupabase
 const auth = { getUser: vi.fn(), refreshSession: vi.fn() }
@@ -38,6 +39,8 @@ const org = (organization_id: string) => ({ organization_id, deleted_at: null })
 
 function seed() {
   fake = createFakeSupabase({
+    // Modo da organização: proporcional por padrão (C43 espera 40% de 100). P41 muda a org para 'full'.
+    organizations: seedOrganizations('proportional'),
     user_profiles: [
       { id: 'p1', user_id: 'u1', organization_id: 'org-a', role_id: 'r', is_owner: false, is_active: true, employee_id: null },
       { id: 'p2', user_id: 'u2', organization_id: 'org-b', role_id: 'r', is_owner: false, is_active: true, employee_id: null }
@@ -90,7 +93,7 @@ function seed() {
     service_orders: [
       {
         id: 'o1', ...org('org-a'), number: '100', status: 'completed', entry_date: '2026-03-10', total_amount: 1000,
-        discount: 0, total_taxes_amount: 0, payment_status: 'pending', commission_release_mode: null,
+        discount: 0, total_taxes_amount: 0, payment_status: 'pending', commission_release_mode: 'proportional',
         commission_manual_adjustments_log: [], responsible_employees: [{ employee_id: 'e1' }],
         items: [{ id: 'it1', total_price: 1000, cost_price: 0, quantity: 1 }]
       },
@@ -480,32 +483,62 @@ describe('E16: PATCH installments/:id (reschedule / adjust amount)', () => {
   })
 })
 
-describe('P41: commission_release_mode="full" is a one-way street (by design)', () => {
-  // Decisão de produto registrada no código ("One-way switch"). O teste documenta a consequência:
-  // depois de desfazer o pagamento, a próxima entrada de dinheiro ainda libera 100% da comissão.
-  const plan = (releaseCommissionsInFull?: boolean) => post(H.process, { id: 'o1' }, {
-    paymentMethod: 'pix', bankAccountId: 'acc-a', releaseCommissionsInFull,
+describe('P41: modo de comissão vem da organização e fica fixo após a primeira liberação (D2)', () => {
+  // O modo não é mais escolhido por pagamento (releaseCommissionsInFull é ignorado): a OS herda o da organização
+  // enquanto não houver comissão liberada. Com ao menos uma linha de comissão o modo da OS não muda mais.
+  const plan = (extra: Record<string, unknown> = {}) => post(H.process, { id: 'o1' }, {
+    paymentMethod: 'pix', bankAccountId: 'acc-a', ...extra,
     installments: [{ amount: 100, status: 'paid' }, { amount: 900 }]
   })
+  const setOrgMode = (mode: 'full' | 'proportional') => { fake.tables.organizations!.find(o => o.id === 'org-a')!.commission_release_mode = mode }
+  const osMode = () => fake.tables.service_orders!.find(o => o.id === 'o1')!.commission_release_mode
+  const undo = () => post('server/api/service-orders/[id]/payment.delete.ts', { id: 'o1' }, {}, 'DELETE')
   const commissions = () => Number(fake.tables.employee_financial_records!.filter(r => r.service_order_id === 'o1' && r.record_type === 'commission' && r.status === 'pending' && !['cm1', 'cm2', 'cm-paid'].includes(String(r.id))).reduce((s, r) => s + Number(r.amount), 0).toFixed(2))
 
   beforeEach(() => {
     fake.tables.employee_financial_records = fake.tables.employee_financial_records!.filter(r => r.service_order_id !== 'o1')
   })
 
-  it('with the option on, 10% received releases 100% of the commission and the order stays in "full" mode', async () => {
-    await plan(true)
+  it('P41a: org "full": 10% received releases 100% of the commission and the order becomes "full" (OS started as proportional)', async () => {
+    setOrgMode('full')
+    expect(osMode()).toBe('proportional')
+    const r = await plan()
+    expect(r.status).toBe(200)
     expect(commissions()).toBe(100)
-    expect(fake.tables.service_orders!.find(o => o.id === 'o1')!.commission_release_mode).toBe('full')
+    expect(osMode()).toBe('full')
   })
-  it('after undoing the payment the mode stays "full" and the next receipt releases everything again', async () => {
-    await plan(true)
-    const undo = await post('server/api/service-orders/[id]/payment.delete.ts', { id: 'o1' }, {}, 'DELETE')
-    expect(undo.status).toBe(200)
-    expect(commissions()).toBe(0)
-    expect(fake.tables.service_orders!.find(o => o.id === 'o1')!.commission_release_mode).toBe('full')
-    await plan()
+  it('P41a2: the legacy releaseCommissionsInFull flag is ignored: org "proportional" keeps 10% released', async () => {
+    const r = await plan({ releaseCommissionsInFull: true })
+    expect(r.status).toBe(200)
+    expect(commissions()).toBe(10)
+    expect(osMode()).toBe('proportional')
+  })
+  it('P41b: once commission exists the order keeps "full" even if the org changes to "proportional"; paying more does not re-sync', async () => {
+    setOrgMode('full')
+    expect((await plan()).status).toBe(200)
     expect(commissions()).toBe(100)
+    setOrgMode('proportional')
+    const writesBefore = fake.writes.length
+    const i2 = fake.tables.service_order_installments!.find(i => i.service_order_id === 'o1' && i.status === 'pending')!
+    const pay = await post('server/api/service-orders/[id]/installments/[installmentId]/pay.post.ts', { id: 'o1', installmentId: String(i2.id) }, { bankAccountId: 'acc-a', paymentMethod: 'pix' })
+    expect(pay.status).toBe(200)
+    expect(osMode()).toBe('full')
+    expect(fake.writes.slice(writesBefore).filter(w => w.table === 'service_orders' && w.values && 'commission_release_mode' in (w.values as object))).toHaveLength(0)
+    expect(commissions()).toBe(100)
+  })
+  it('P41c (D2, characterization): after undo removes every commission row the next plan re-reads the org: "full" order becomes "proportional" (reversible while no commission remains)', async () => {
+    setOrgMode('full')
+    await plan()
+    expect(osMode()).toBe('full')
+    const u = await undo()
+    expect(u.status).toBe(200)
+    expect(commissions()).toBe(0)
+    expect(fake.tables.employee_financial_records!.filter(r => r.service_order_id === 'o1' && r.record_type === 'commission')).toHaveLength(0)
+    setOrgMode('proportional')
+    const r = await plan()
+    expect(r.status).toBe(200)
+    expect(osMode()).toBe('proportional')
+    expect(commissions()).toBe(10)
   })
 })
 

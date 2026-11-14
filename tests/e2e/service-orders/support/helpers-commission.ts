@@ -85,14 +85,23 @@ export function snapshotCommission(row: Record<string, any>, employee: EmployeeR
   return Number(total.toFixed(2))
 }
 
+/**
+ * Sets the organization's commission release mode (PUT /api/organizations). Orders inherit it when created
+ * (and re-sync at payment while they have no released commission), so call it BEFORE createOrder.
+ */
+export async function setCommissionMode(shop: Shop, mode: 'proportional' | 'full') {
+  const res = await shop.api.put('/api/organizations', { commission_release_mode: mode })
+  expect(res.status, JSON.stringify(res.body)).toBe(200)
+}
+
 // ── payment helpers (OS-I): the receipt is always made through the screen ──────────────────────────────────
 
 /**
  * Opens the order detail, clicks "Receber" and confirms the payment plan.
  * `installments` > 1 splits the balance (the first installment is paid now, the others stay pending).
- * `releaseFull` turns on "Liberar 100% da comissão" (a one-way choice for the order).
+ * The commission mode is no longer chosen here: it comes from the organization (see `setCommissionMode`).
  */
-export async function receivePayment(orders: OrdersPage, number: string, opts: { installments?: number, releaseFull?: boolean } = {}) {
+export async function receivePayment(orders: OrdersPage, number: string, opts: { installments?: number } = {}) {
   await orders.search().fill(number)
   await orders.expectCard(number)
   const detail = await orders.openDetail(number)
@@ -104,7 +113,6 @@ export async function receivePayment(orders: OrdersPage, number: string, opts: {
     await pay.dialog.getByText('Número de parcelas').locator('xpath=following::button[1]').click()
     await orders.page.getByRole('option', { name: `${opts.installments} parcelas`, exact: true }).click()
   }
-  if (opts.releaseFull) await pay.releaseFullSwitch().click()
   await pay.confirm().click()
   await orders.toastText('Pagamento registrado com sucesso')
   await expect(pay.dialog).toBeHidden({ timeout: 15_000 })

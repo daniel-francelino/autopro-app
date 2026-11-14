@@ -240,8 +240,9 @@ function computeEmployeeEntitlements({
  * later recalculation would imply paying back something already paid, that
  * is surfaced as a warning for manual reconciliation instead.
  *
- * When `order.commission_release_mode === 'full'` (set once, on the order,
- * when the payment plan is generated — see process-payment.post.ts), the
+ * When `order.commission_release_mode === 'full'` (copied from the
+ * organization's setting when the order is created, and re-synced in
+ * process-payment.post.ts only while no commission was released), the
  * received ratio is pinned at 1 regardless of what's actually been paid, so
  * the whole entitlement is released immediately instead of proportionally.
  */

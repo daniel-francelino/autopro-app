@@ -2,6 +2,7 @@
 import { expect, skipUnlessAuth, test, today } from './support/order-fixtures'
 import { cardIcon, dateBR, detailLoaded, detailMoney, ignorePopups } from './support/helpers-order'
 import { OrdersPage } from './support/pages'
+import { setCommissionMode } from './support/helpers-commission'
 
 skipUnlessAuth(test)
 test.describe.configure({ timeout: 180_000 })
@@ -61,6 +62,7 @@ test.describe('OS-E: detail', () => {
   })
 
   test('OS-E-03 financial summary: the commission shows up after loading (does not stay at R$ 0,00) and the margin deducts it', async ({ page, loginAs, shop }) => {
+    await setCommissionMode(shop, 'proportional') // characterization below is for proportional release (org default is 'full')
     const c = shop.catalog
     const account = await shop.newAccount(1000)
     const os = await shop.createOrder({ status: 'completed', items: [{ p: c.products.S1 }, { p: c.products.P1, qty: 2 }], employees: [c.employees.ana, c.employees.bruno] })

@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeEvent, installNitroGlobals, installServerUtilsGlobals, callHandler } from '../../support/handler-harness'
 import { createFakeSupabase, type FakeSupabase } from '../../support/fake-supabase'
 import { guardSeed, USERS, type Persona } from '../../support/phase3-guard-fixture'
+import { seedOrganizations } from '../../support/organizations-fixture'
 
 let fake: FakeSupabase
 const auth = { getUser: vi.fn(), refreshSession: vi.fn() }
@@ -35,6 +36,7 @@ type Case = {
 }
 
 const TABLES = {
+  organizations: seedOrganizations('full'),
   service_orders: [{ id: 'o1', organization_id: 'org-a', number: 'OS1', status: 'open', payment_status: 'pending', total_amount: 100, discount: 0, total_taxes_amount: 0, items: [], responsible_employees: [], deleted_at: null }],
   service_order_installments: [{ id: 'i1', organization_id: 'org-a', service_order_id: 'o1', status: 'pending', amount: 50, due_date: '2026-12-01', financial_transaction_id: null, deleted_at: null }],
   financial_transactions: [{ id: 't1', organization_id: 'org-a', service_order_id: 'o1', type: 'income', status: 'pending', amount: 10, deleted_at: null }],

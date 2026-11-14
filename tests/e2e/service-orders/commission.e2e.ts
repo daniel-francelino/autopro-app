@@ -4,8 +4,8 @@
 // OS-REF1 with a R$ 140 discount = 1,260 → Ana 126, Bruno 198, Carla 40.
 import { expect, skipUnlessAuth, test } from './support/order-fixtures'
 import { monthStart } from './support/catalog'
-import { amountOf, commissionRecords, payFirstInstallment, receivePayment } from './support/helpers-commission'
-import { OrdersPage } from './support/pages'
+import { amountOf, commissionRecords, payFirstInstallment, receivePayment, setCommissionMode } from './support/helpers-commission'
+import { OrdersPage, PaymentDialog } from './support/pages'
 
 skipUnlessAuth(test)
 test.describe.configure({ timeout: 180_000 })
@@ -36,6 +36,7 @@ test.describe('OS-I: release of the commission when the customer pays', () => {
   })
 
   test('OS-I-02 proportional release: receiving 50% releases half; the rest comes with the last installment', async ({ page, loginAs, shop }) => {
+    await setCommissionMode(shop, 'proportional') // the org default is 'full'; created orders inherit it
     const c = shop.catalog
     const { ana, bruno, carla } = c.employees
     const order = await shop.createOrder({ items: REF1(c), employees: [ana, bruno, carla], discount: 140 })
@@ -57,6 +58,7 @@ test.describe('OS-I: release of the commission when the customer pays', () => {
 
   // KF-24: the part already received of a partial installment is not counted in the release.
   test.fail('OS-I-03 KF-24 paying part of an installment must release the matching part of the commission', async ({ page, loginAs, shop }) => {
+    await setCommissionMode(shop, 'proportional')
     const c = shop.catalog
     const { ana, bruno, carla } = c.employees
     const order = await shop.createOrder({ items: REF1(c), employees: [ana, bruno, carla], discount: 140 })
@@ -74,16 +76,28 @@ test.describe('OS-I: release of the commission when the customer pays', () => {
     expect(amountOf(records, carla)).toBe(29.52)
   })
 
-  test('OS-I-04 "Liberar 100% da comissão agora" releases everything at once and the order is marked as fully released', async ({ page, loginAs, shop }) => {
+  test('OS-I-04 organization mode "full" (Integral ao gerar o pagamento) releases everything at once; the order is marked as fully released and the modal has no override', async ({ page, loginAs, shop }) => {
     const c = shop.catalog
     const { ana, bruno, carla } = c.employees
+    await setCommissionMode(shop, 'full') // explicit: do not depend on the migration default
     const order = await shop.createOrder({ items: REF1(c), employees: [ana, bruno, carla], discount: 140 })
+    expect((await shop.order(order.id)).commission_release_mode).toBe('full') // inherited at creation
 
     await loginAs('admin')
     const orders = new OrdersPage(page)
     await orders.open()
-    const detail = await receivePayment(orders, order.number, { installments: 2, releaseFull: true }) // only 50% is paid
+    await orders.search().fill(order.number)
+    await orders.expectCard(order.number)
+    const opened = await orders.openDetail(order.number)
+    const pay = new PaymentDialog(page)
+    await opened.button('Receber').click()
+    await pay.ready()
+    await expect(pay.dialog.getByRole('switch', { name: /comiss/i })).toHaveCount(0) // no per-payment override anymore
+    await expect(pay.dialog.getByText('Comissão: Integral ao gerar o pagamento')).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(pay.dialog).toBeHidden()
 
+    const detail = await receivePayment(orders, order.number, { installments: 2 }) // only 50% is paid
     const records = await commissionRecords(shop, order.id)
     expect([amountOf(records, ana), amountOf(records, bruno), amountOf(records, carla)]).toEqual([126, 198, 40]) // 100%, not 50%
     expect((await shop.order(order.id)).commission_release_mode).toBe('full')

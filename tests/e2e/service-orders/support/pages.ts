@@ -159,5 +159,4 @@ export class PaymentDialog {
   constructor(readonly page: Page) { this.dialog = page.getByRole('dialog', { name: 'Processar pagamento' }) }
   async ready() { await expect(this.dialog).toBeVisible({ timeout: 30_000 }) }
   confirm() { return this.dialog.getByRole('button', { name: /Registrar pagamento|Confirmar/ }) }
-  releaseFullSwitch() { return this.dialog.getByRole('switch', { name: 'Liberar 100% da comissão' }) }
 }

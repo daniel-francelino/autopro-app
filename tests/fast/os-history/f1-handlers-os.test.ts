@@ -4,6 +4,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeEvent, installNitroGlobals, installServerUtilsGlobals, callHandler } from '../../support/handler-harness'
 import { createFakeSupabase, type FakeSupabase } from '../../support/fake-supabase'
+import { seedOrganizations } from '../../support/organizations-fixture'
 import { guardSeed, USERS, type Persona } from '../../support/phase3-guard-fixture'
 
 let fake: FakeSupabase
@@ -45,7 +46,7 @@ const login = (persona: Persona = 'admin') => {
 
 const order = (over: Row = {}): Row => ({
   id: O, organization_id: 'org-a', number: 'OS1', status: 'completed', total_amount: 300, discount: 0, payment_status: 'pending',
-  entry_date: '2026-11-01', deleted_at: null, commission_release_mode: null, commission_manual_adjustments_log: [], responsible_employees: [], items: [], ...over
+  entry_date: '2026-11-01', deleted_at: null, commission_release_mode: 'proportional', commission_manual_adjustments_log: [], responsible_employees: [], items: [], ...over
 })
 const inst = (id: string, n: number, over: Row = {}): Row => ({
   id, organization_id: 'org-a', service_order_id: O, kind: 'installment', installment_number: n, amount: 150, status: 'pending', due_date: '2026-12-01', deleted_at: null, ...over
@@ -60,6 +61,7 @@ const com = (id: string, over: Row = {}): Row => ({
 
 function seed(extra: Record<string, Row[]> = {}, codes = ['orders.pay', 'orders.cancel', 'orders.update', 'financial.delete']) {
   fake = createFakeSupabase(guardSeed(codes, {
+    organizations: seedOrganizations('proportional'),
     service_orders: [order()],
     employees: [{ id: 'emp1', organization_id: 'org-a', name: 'João Mecânico' }],
     bank_accounts: [{ id: 'ba1', organization_id: 'org-a', current_balance: 1000, is_active: true, name: 'Caixa Principal' }],

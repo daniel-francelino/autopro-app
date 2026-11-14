@@ -11,6 +11,59 @@ import { getNextInstallmentNumber } from '../../../utils/service-order-installme
 import { OS_EVENT_KEYS, OS_SOURCE_POLICIES, historyContext, loadBankAccountName, planIsAfterRemoval, osEvent, recordWithContext, snapshotDate, snapshotMethod, snapshotMoney } from '../../../utils/os-history/events'
 
 /**
+ * Aligns the order's commission release mode with the organization's setting,
+ * only while the order has no released commission (any employee_financial_records
+ * commission row counts, the same key the release engine uses). Once commission
+ * was released the order keeps its own mode. Must run after all request
+ * validations and before the first release call. No history event by design.
+ */
+async function syncOrderReleaseModeFromOrg(params: {
+  supabase: ReturnType<typeof getSupabaseAdminClient>
+  organizationId: string
+  orderId: string
+  currentMode: string | null
+  userEmail: string | null
+}) {
+  const { supabase, organizationId, orderId, currentMode, userEmail } = params
+
+  const { data: org, error: orgError } = await supabase
+    .from('organizations')
+    .select('commission_release_mode')
+    .eq('id', organizationId)
+    .single()
+
+  if (orgError || !org?.commission_release_mode) {
+    throw createError({ statusCode: 500, statusMessage: 'Não foi possível ler o modo de liberação de comissão da organização' })
+  }
+
+  const orgMode = org.commission_release_mode as string
+  if (orgMode === currentMode) return
+
+  const { count, error: countError } = await supabase
+    .from('employee_financial_records')
+    .select('id', { count: 'exact', head: true })
+    .eq('organization_id', organizationId)
+    .eq('service_order_id', orderId)
+    .eq('record_type', 'commission')
+
+  if (countError) {
+    throw createError({ statusCode: 500, statusMessage: countError.message })
+  }
+  if ((count ?? 0) > 0) return
+
+  const { error: updateError } = await supabase
+    .from('service_orders')
+    .update({ commission_release_mode: orgMode, updated_by: userEmail })
+    .eq('id', orderId)
+    .eq('organization_id', organizationId)
+    .neq('commission_release_mode', orgMode)
+
+  if (updateError) {
+    throw createError({ statusCode: 500, statusMessage: updateError.message })
+  }
+}
+
+/**
  * POST /api/service-orders/:id/process-payment
  * Creates the payment plan for the remainder of a completed service order:
  * installments, the transactions for any of them already paid, and
@@ -36,8 +89,7 @@ export default defineEventHandler(async (event) => {
     bankAccountId,
     paymentTerminalId,
     installments: installmentsData,
-    paymentDate,
-    releaseCommissionsInFull
+    paymentDate
   } = body || {}
 
   const warnings: string[] = []
@@ -73,35 +125,6 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 409, statusMessage: 'Only completed service orders can receive payment' })
   }
 
-  // One-way switch: once set, this order releases 100% of employee
-  // commission on every future call instead of proportionally to what's
-  // been received (see server/utils/service-order-commissions.ts). Only
-  // offered here, at plan-generation time, since this is the point where
-  // the order's total is already locked (status === 'completed').
-  let releaseModeChanged = false
-  if (releaseCommissionsInFull && order.commission_release_mode !== 'full') {
-    const { error: releaseModeError } = await supabase
-      .from('service_orders')
-      .update({ commission_release_mode: 'full', updated_by: authUser.email })
-      .eq('id', orderId)
-
-    if (releaseModeError) {
-      throw createError({ statusCode: 500, statusMessage: releaseModeError.message })
-    }
-    releaseModeChanged = true
-  }
-
-  // Histórico: regra sensível. Gravado logo após a mudança confirmada (ela persiste mesmo se um passo posterior falhar).
-  if (releaseModeChanged) {
-    await recordWithContext(history, supabase, () => [osEvent('commission.release_mode_changed', {
-      organizationId,
-      serviceOrderId: orderId,
-      entityType: 'service_order',
-      entityId: orderId,
-      idempotencyKey: OS_EVENT_KEYS.commissionReleaseMode(orderId, history.scope!)
-    }, { to: 'full' })])
-  }
-
   // Existing plan rows for this order. A down payment (sinal) may already
   // exist from before the order was completed — that's expected and gets
   // reconciled below, not blocked. Any other kind already existing means
@@ -134,6 +157,8 @@ export default defineEventHandler(async (event) => {
   // The down payment(s) already cover the full order — nothing left to
   // collect, just reconcile payment_status from what's already there.
   if (balanceDue <= 0.01) {
+    await syncOrderReleaseModeFromOrg({ supabase, organizationId, orderId, currentMode: order.commission_release_mode ?? null, userEmail: authUser.email })
+
     await recalculateServiceOrderPaymentStatus({ supabase, organizationId, orderId, userEmail: authUser.email, history })
 
     const commissionResult = await releaseServiceOrderCommissions({ supabase, organizationId, orderId, userEmail: authUser.email, history })
@@ -161,6 +186,9 @@ export default defineEventHandler(async (event) => {
   if (Math.abs(submittedTotal - balanceDue) > 0.01) {
     throw createError({ statusCode: 400, statusMessage: 'A soma das linhas de pagamento precisa ser igual ao saldo restante da ordem de serviço' })
   }
+
+  // Last point before any write: all validations passed, no installment persisted yet.
+  await syncOrderReleaseModeFromOrg({ supabase, organizationId, orderId, currentMode: order.commission_release_mode ?? null, userEmail: authUser.email })
 
   let parentTransactionId: string | null = null
   const installmentNumberOffset = (await getNextInstallmentNumber({ supabase, organizationId, orderId })) - 1

@@ -230,6 +230,18 @@ export default defineEventHandler(async (event) => {
     // Create new order
     orderPayload.created_by = authUser.email
 
+    // The order is born with the organization's commission release mode (organizations.commission_release_mode).
+    const { data: orgRow, error: orgModeError } = await supabase
+      .from('organizations')
+      .select('commission_release_mode')
+      .eq('id', organizationId)
+      .single()
+
+    if (orgModeError || !orgRow?.commission_release_mode) {
+      throw createError({ statusCode: 500, statusMessage: 'Não foi possível ler o modo de liberação de comissão da organização' })
+    }
+    orderPayload.commission_release_mode = orgRow.commission_release_mode
+
     const { data, error } = await supabase
       .from('service_orders')
       .insert(orderPayload)

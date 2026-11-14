@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeEvent, installNitroGlobals, installServerUtilsGlobals, callHandler } from '../../support/handler-harness'
 import { createFakeSupabase, type FakeSupabase } from '../../support/fake-supabase'
+import { seedOrganizations } from '../../support/organizations-fixture'
 
 let fake: FakeSupabase
 const auth = { getUser: vi.fn(), refreshSession: vi.fn() }
@@ -29,6 +30,8 @@ const item = (total: number) => ({ id: 'it1', description: 'Serviço', quantity:
 
 function seed(over: Record<string, unknown> = {}) {
   fake = createFakeSupabase({
+    // Modos diferentes por org: prova que a OS criada herda o da org do usuario (org-a), nao a de outra org.
+    organizations: [{ id: 'org-a', commission_release_mode: 'full' }, { id: 'org-b', commission_release_mode: 'proportional' }],
     user_profiles: [
       { id: 'p1', user_id: 'u1', organization_id: 'org-a', role_id: 'r', is_owner: false, is_active: true, employee_id: null },
       { id: 'p2', user_id: 'u2', organization_id: 'org-b', role_id: 'r', is_owner: false, is_active: true, employee_id: null }
@@ -46,7 +49,7 @@ function seed(over: Record<string, unknown> = {}) {
     service_orders: [
       {
         id: 'o1', organization_id: 'org-a', number: 'OS100', status: 'completed', entry_date: '2026-03-10', total_amount: 1000,
-        discount: 0, total_taxes_amount: 0, payment_status: 'pending', deleted_at: null, commission_release_mode: null,
+        discount: 0, total_taxes_amount: 0, payment_status: 'pending', deleted_at: null, commission_release_mode: 'proportional',
         commission_manual_adjustments_log: [], responsible_employees: [{ employee_id: 'e1' }], items: [item(1000)], ...over
       },
       { id: 'o-b', organization_id: 'org-b', number: '900', status: 'open', total_amount: 10, deleted_at: null }
@@ -99,7 +102,7 @@ describe('E1–E8: creation and editing', () => {
   it('E8: creating a new OS returns the record of the organization of the user', async () => {
     const r = await save(null, { number: '555', client_id: 'c1', total_amount: 0 })
     expect(r.status).toBe(200)
-    expect(fake.tables.service_orders!.find(o => o.number === 'OS555')).toMatchObject({ organization_id: 'org-a', status: 'open', payment_status: 'pending' })
+    expect(fake.tables.service_orders!.find(o => o.number === 'OS555')).toMatchObject({ organization_id: 'org-a', status: 'open', payment_status: 'pending', commission_release_mode: 'full' })
   })
 })
 
