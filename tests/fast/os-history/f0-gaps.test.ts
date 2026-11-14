@@ -157,7 +157,7 @@ describe('recordOsEvents (lacunas)', () => {
 
 // ---------------------------------------------------------------- endpoint
 const HISTORY = 'server/api/service-orders/[id]/history.get.ts'
-const CODES = ['orders.read', 'orders.pay', 'reports.commissions']
+const CODES = ['orders.read', 'orders.pay', 'reports.commissions', 'orders.history']
 const cookies = { 'sb-access-token': 'tok' }
 const login = (persona: Persona) => {
   const u = USERS[persona]
@@ -183,7 +183,7 @@ describe('GET history (lacunas)', () => {
   beforeEach(() => auth.refreshSession.mockReset())
 
   it('[OSH-032] sem sessão: 401 e nada é lido', async () => {
-    seed(['orders.read'], [ev()])
+    seed(['orders.read', 'orders.history'], [ev()])
     auth.getUser.mockReset().mockResolvedValue({ data: { user: null }, error: { message: 'no session' } })
     const res = await get({}, { cookies: {} })
     expect(res.status).toBe(401)
@@ -191,7 +191,7 @@ describe('GET history (lacunas)', () => {
   })
 
   it('[OSH-031] organization_id/org na query e header forjado são ignorados: só a org do usuário', async () => {
-    seed(['orders.read'], [ev(), ev({ organization_id: 'org-b' }), ev({ organization_id: 'org-b' })])
+    seed(['orders.read', 'orders.history'], [ev(), ev({ organization_id: 'org-b' }), ev({ organization_id: 'org-b' })])
     login('com')
     const res = await get({ organization_id: 'org-b', org: 'org-b', organizationId: 'org-b' }, { headers: { 'x-organization-id': 'org-b', 'x-org-id': 'org-b' } })
     expect(res.status).toBe(200)
@@ -199,7 +199,7 @@ describe('GET history (lacunas)', () => {
   })
 
   it('[OSH-034] comissão sem permissão financeira: general + commission, sem financial', async () => {
-    seed(['orders.read', 'reports.commissions'], [ev({ id: 'g' }), ev({ id: 'f', visibility: 'financial' }), ev({ id: 'c', visibility: 'commission' })])
+    seed(['orders.read', 'orders.history', 'reports.commissions'], [ev({ id: 'g' }), ev({ id: 'f', visibility: 'financial' }), ev({ id: 'c', visibility: 'commission' })])
     login('com')
     const ids = ((await get()).body as Items).items.map(i => i.id).sort()
     expect(ids).toEqual(['c', 'g'])
@@ -207,7 +207,7 @@ describe('GET history (lacunas)', () => {
 
   it('[OSH-036] resposta só com campos permitidos: sem ids, e-mail, IP, correlation_id, commissions[]', async () => {
     const dirty = { amount: 300, installment_number: 2, payment_method: 'pix', email: 'cliente@secreto.com', ip: '203.0.113.9', user_agent: 'UA-secreto', entity_id: 'ENTITY-SECRETA', actor_user_id: 'ACTOR-SECRETO', correlation_id: 'CORR-SECRETA', commissions: [{ employee_id: 'EMP-SECRETO', amount: 99 }] }
-    seed(['orders.read'], [ev({ event_type: 'installment.paid', category: 'payment', payload: dirty }), ev({ event_type: 'future.thing', payload: dirty })])
+    seed(['orders.read', 'orders.history'], [ev({ event_type: 'installment.paid', category: 'payment', payload: dirty }), ev({ event_type: 'future.thing', payload: dirty })])
     login('com')
     const res = await get()
     const body = res.body as Items
@@ -222,7 +222,7 @@ describe('GET history (lacunas)', () => {
   })
 
   it('[OSH-038] limit ausente/0/texto = padrão 30; 101 vira 100; negativo vira 1; origem inválida 400 sem 500', async () => {
-    seed(['orders.read'], Array.from({ length: 105 }, () => ev()))
+    seed(['orders.read', 'orders.history'], Array.from({ length: 105 }, () => ev()))
     login('com')
     const size = async (limit?: unknown) => ((await get(limit === undefined ? {} : { limit })).body as Items).items.length
     expect(await size()).toBe(30)

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { createReusableTemplate } from '@vueuse/core'
 import type { ServiceOrder, ServiceOrderDetailFull, ServiceOrderRaw } from '~/types/service-orders'
 import { computeServiceOrderCommissionBreakdown } from '~/utils/service-orders'
 import { getActiveOverridePlanIds } from '../../../../lib/utils/employee-commission-engine'
@@ -13,6 +14,8 @@ const props = defineProps<{
   canDelete?: boolean
   canCreate?: boolean
   canDeleteInstallment?: boolean
+  /** orders.history: sem a permissão nada do histórico existe no DOM nem na rede */
+  canViewHistory?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -31,6 +34,12 @@ const toast = useToast()
 const detail = ref<ServiceOrderDetailFull | null>(null)
 const isLoading = ref(false)
 
+// Painel de histórico (só com canViewHistory). refreshKey faz o painel acompanhar o loadDetail.
+const historyOpen = ref(false)
+const historyRefreshKey = ref(0)
+// Corpo do detalhe reutilizado nos dois layouts (com/sem painel) sem duplicar o markup.
+const [DefineBody, ReuseBody] = createReusableTemplate()
+
 async function loadDetail() {
   if (!props.order) return
   detail.value = null
@@ -38,6 +47,7 @@ async function loadDetail() {
   try {
     const res = await $fetch<{ data: ServiceOrderDetailFull }>(`/api/service-orders/${props.order.id}`)
     detail.value = res.data
+    historyRefreshKey.value++
   } catch {
     toast.add({ title: 'Erro ao carregar detalhes', color: 'error' })
     emit('update:open', false)
@@ -50,7 +60,10 @@ watch(
   () => props.open,
   (opened) => {
     if (opened) loadDetail()
-    else detail.value = null
+    else {
+      detail.value = null
+      historyOpen.value = false
+    }
   }
 )
 
@@ -354,7 +367,7 @@ defineExpose({ refreshNfseCard })
     :ui="{
       overlay: 'bg-default/90 backdrop-blur-sm',
       content: 'sm:max-h-[100dvh] max-h-[100dvh] max-w-none w-screen h-dvh rounded-none flex flex-col overflow-hidden',
-      body: 'flex-1 min-h-0 overflow-y-auto p-0',
+      body: canViewHistory ? 'flex flex-1 min-h-0 overflow-hidden p-0' : 'flex-1 min-h-0 overflow-y-auto p-0',
       header: 'p-0 shrink-0 border-b border-default'
     }"
     @update:open="emit('update:open', $event)"
@@ -383,6 +396,8 @@ defineExpose({ refreshNfseCard })
         :can-create="canCreate"
         :is-advancing="isAdvancing"
         :is-cancelling-payment="isCancellingPayment"
+        :can-view-history="canViewHistory"
+        :history-open="historyOpen"
         @close="close"
         @pay="openPaymentModal"
         @down-payment="openDownPaymentModal"
@@ -394,88 +409,104 @@ defineExpose({ refreshNfseCard })
         @duplicate="duplicate"
         @quote="requestQuote"
         @edit="requestEdit"
+        @toggle-history="historyOpen = !historyOpen"
       />
     </template>
 
     <template #body>
-      <!-- Initial loading -->
-      <div v-if="isLoading" class="space-y-4 p-6">
-        <USkeleton class="h-28 w-full rounded-xl" />
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <USkeleton class="h-48 rounded-xl" />
-          <USkeleton class="col-span-2 h-48 rounded-xl" />
-        </div>
-        <USkeleton class="h-40 w-full rounded-xl" />
-        <USkeleton class="h-28 w-full rounded-xl" />
-      </div>
-
-      <!-- Content -->
-      <div v-else-if="detail" class="space-y-6 p-4 lg:p-6">
-        <!-- Row 1: client/vehicle + info -->
-        <div class="grid grid-cols-1 gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
-          <ServiceOrdersDetailOSClientVehicleCard
-            :client="detail.client"
-            :vehicle="detail.vehicle"
-          />
-          <div class="min-w-0">
-            <ServiceOrdersDetailOSInfoCard
-              :order="detail.order"
-              :master-product="detail.masterProduct"
-            />
+      <DefineBody>
+        <!-- Initial loading -->
+        <div v-if="isLoading" class="space-y-4 p-6">
+          <USkeleton class="h-28 w-full rounded-xl" />
+          <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <USkeleton class="h-48 rounded-xl" />
+            <USkeleton class="col-span-2 h-48 rounded-xl" />
           </div>
+          <USkeleton class="h-40 w-full rounded-xl" />
+          <USkeleton class="h-28 w-full rounded-xl" />
         </div>
 
-        <!-- Items -->
-        <ServiceOrdersDetailOSItemsCard
-          :order="detail.order"
-          :employees="detail.employees"
-        />
+        <!-- Content -->
+        <div v-else-if="detail" class="space-y-6 p-4 lg:p-6">
+          <!-- Row 1: client/vehicle + info -->
+          <div class="grid grid-cols-1 gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
+            <ServiceOrdersDetailOSClientVehicleCard
+              :client="detail.client"
+              :vehicle="detail.vehicle"
+            />
+            <div class="min-w-0">
+              <ServiceOrdersDetailOSInfoCard
+                :order="detail.order"
+                :master-product="detail.masterProduct"
+              />
+            </div>
+          </div>
 
-        <!-- Financial -->
-        <ServiceOrdersDetailOSFinancialCard
-          :order="detail.order"
-          :calculated-commission-amount="estimatedCommissionAmount"
-        />
+          <!-- Items -->
+          <ServiceOrdersDetailOSItemsCard
+            :order="detail.order"
+            :employees="detail.employees"
+          />
 
-        <!-- Installments -->
-        <ServiceOrdersDetailOSInstallmentsCard
-          :installments="detail.installments"
-          :order-id="detail.order.id"
-          :can-update="canUpdate"
-          :can-receive="canReceive"
-          :can-cancel="canCancel"
-          :can-delete-installment="canDeleteInstallment"
-          @changed="() => { loadDetail(); emit('updated') }"
-        />
+          <!-- Financial -->
+          <ServiceOrdersDetailOSFinancialCard
+            :order="detail.order"
+            :calculated-commission-amount="estimatedCommissionAmount"
+          />
 
-        <!-- Commissions -->
-        <ServiceOrdersDetailOSCommissionsCard
-          :commissions="detail.commissions"
-          :employees="detail.employees"
-          :can-update="canUpdate"
-          :release-mode="detail.order.commission_release_mode"
-          @paid="loadDetail"
-        />
+          <!-- Installments -->
+          <ServiceOrdersDetailOSInstallmentsCard
+            :installments="detail.installments"
+            :order-id="detail.order.id"
+            :can-update="canUpdate"
+            :can-receive="canReceive"
+            :can-cancel="canCancel"
+            :can-delete-installment="canDeleteInstallment"
+            @changed="() => { loadDetail(); emit('updated') }"
+          />
 
-        <!-- Responsibles -->
-        <ServiceOrdersDetailOSResponsiblesCard
-          :order-id="detail.order.id"
-          :order="detail.order"
-          :responsible-names="detail.responsibleNames"
-          :commissions="detail.commissions"
-          :can-update="canUpdate"
-          @recalculated="loadDetail"
-        />
+          <!-- Commissions -->
+          <ServiceOrdersDetailOSCommissionsCard
+            :commissions="detail.commissions"
+            :employees="detail.employees"
+            :can-update="canUpdate"
+            :release-mode="detail.order.commission_release_mode"
+            @paid="loadDetail"
+          />
 
-        <!-- NFS-e -->
-        <ServiceOrdersNfseInfoCard
-          ref="nfseInfoCardRef"
-          :order-id="detail.order.id"
-          :order-status="detail.order.status"
-          :can-create="canCreate"
-          @issue-nfse="requestIssueNfse"
+          <!-- Responsibles -->
+          <ServiceOrdersDetailOSResponsiblesCard
+            :order-id="detail.order.id"
+            :order="detail.order"
+            :responsible-names="detail.responsibleNames"
+            :commissions="detail.commissions"
+            :can-update="canUpdate"
+            @recalculated="loadDetail"
+          />
+
+          <!-- NFS-e -->
+          <ServiceOrdersNfseInfoCard
+            ref="nfseInfoCardRef"
+            :order-id="detail.order.id"
+            :order-status="detail.order.status"
+            :can-create="canCreate"
+            @issue-nfse="requestIssueNfse"
+          />
+        </div>
+      </DefineBody>
+
+      <template v-if="canViewHistory">
+        <div class="min-w-0 flex-1 overflow-y-auto">
+          <ReuseBody />
+        </div>
+        <ServiceOrdersDetailOSHistorySidebar
+          :open="historyOpen && open"
+          :order-id="open ? (order?.id ?? null) : null"
+          :refresh-key="historyRefreshKey"
+          @update:open="historyOpen = $event"
         />
-      </div>
+      </template>
+      <ReuseBody v-else />
     </template>
   </UModal>
 

@@ -21,7 +21,7 @@ await installServerUtilsGlobals()
 
 const GEN = 'server/api/service-orders/[id]/generate-commissions.post.ts'
 const HISTORY = 'server/api/service-orders/[id]/history.get.ts'
-const CODES = ['orders.read', 'orders.update', 'orders.pay', 'reports.commissions']
+const CODES = ['orders.read', 'orders.update', 'orders.pay', 'reports.commissions', 'orders.history']
 type Row = Record<string, any>
 
 const login = (p: Persona) => auth.getUser.mockReset().mockResolvedValue({ data: { user: { id: USERS[p].id, email: USERS[p].email } }, error: null })
@@ -63,9 +63,9 @@ const walk = async () => {
 beforeEach(() => { auth.refreshSession.mockReset(); vi.spyOn(console, 'error').mockImplementation(() => {}) })
 
 describe('visibilidade ponta a ponta: commission.recalculated (access.ts real)', () => {
-  it('só orders.read: não aparece nem no JSON nem na paginação (limit=1)', async () => {
+  it('orders.history sem outras permissões: o evento de comissão não aparece nem no JSON nem na paginação (limit=1)', async () => {
     await setup()
-    grant(['orders.read'])
+    grant(['orders.read', 'orders.history'])
     login('com')
     const res: any = await call(HISTORY)
     expect(res.status).toBe(200)
@@ -77,9 +77,9 @@ describe('visibilidade ponta a ponta: commission.recalculated (access.ts real)',
     }
   })
 
-  it('orders.read + reports.commissions: devolve o evento de comissão (com motivo) e o geral', async () => {
+  it('orders.history + reports.commissions: devolve o evento de comissão (com motivo) e o geral', async () => {
     await setup()
-    grant(['orders.read', 'reports.commissions'])
+    grant(['orders.read', 'orders.history', 'reports.commissions'])
     login('com')
     // o fake não implementa o cursor `or(...)`; a paginação real é provada no teste de banco
     const res: any = await call(HISTORY)
@@ -87,10 +87,12 @@ describe('visibilidade ponta a ponta: commission.recalculated (access.ts real)',
     expect(JSON.stringify(res.body)).toContain('ajuste do gerente')
   })
 
-  it('só reports.commissions, sem orders.read: 403', async () => {
+  it('reports.commissions sem orders.history (mesmo com orders.read): 404, sem vazar o evento', async () => {
     await setup()
-    grant(['reports.commissions'])
+    grant(['orders.read', 'reports.commissions'])
     login('com')
-    expect((await call(HISTORY)).status).toBe(403)
+    const res: any = await call(HISTORY)
+    expect(res.status).toBe(404)
+    expect(JSON.stringify(res)).not.toMatch(/recalculated|ajuste do gerente|Ana/)
   })
 })

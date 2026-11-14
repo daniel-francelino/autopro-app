@@ -42,19 +42,45 @@ function seed(codes: string[], granted: string[], events: Array<Record<string, u
 }
 
 const get = (query: Record<string, unknown> = {}, id = 'o1') => callHandler(HISTORY, fakeEvent({ cookies, params: { id }, query }))
-const CODES = ['orders.read', 'orders.pay', 'reports.commissions']
+const CODES = ['orders.read', 'orders.pay', 'reports.commissions', 'orders.history']
+const H = 'orders.history'
 
 beforeEach(() => auth.refreshSession.mockReset())
 
 describe('GET history', () => {
-  it('sem orders.read -> 403', async () => {
-    seed(CODES, [], [ev()])
+  it('sem orders.history -> 404 igual ao de OS inexistente (nunca 403), mesmo com orders.read, antes de consultar eventos', async () => {
+    seed(CODES, ['orders.read', 'orders.pay', 'reports.commissions'], [ev()])
     login('com')
-    expect((await get()).status).toBe(403)
+    const spy = vi.spyOn(fake.client, 'from')
+    const denied = await get()
+    expect(denied.status).toBe(404)
+    expect(spy.mock.calls.map(c => c[0])).not.toContain('service_order_events')
+    expect(spy.mock.calls.map(c => c[0])).not.toContain('service_orders')
+    spy.mockRestore()
+    login('admin')
+    const missing = await get({}, 'nao-existe')
+    expect(missing.status).toBe(404)
+    expect(JSON.stringify(denied.error ?? denied.body)).toBe(JSON.stringify(missing.error ?? missing.body))
+    expect(denied.error?.message).toBe(missing.error?.message)
   })
 
-  it('orders.read vê só eventos gerais; financeiro e comissão são omitidos (não mascarados)', async () => {
-    seed(CODES, ['orders.read'], [ev(), ev({ visibility: 'financial', event_type: 'installment.paid', category: 'payment' }), ev({ visibility: 'commission' })])
+  it('sem orders.read, mesmo com orders.history -> 404; sem nenhuma permissão -> 404', async () => {
+    seed(CODES, [H], [ev()])
+    login('com')
+    expect((await get()).status).toBe(404)
+    seed(CODES, [], [ev()])
+    login('com')
+    expect((await get()).status).toBe(404)
+  })
+
+  it('dono também passa (bypass)', async () => {
+    seed(CODES, [], [ev()])
+    login('admin')
+    expect(((await get()).body as { items: unknown[] }).items).toHaveLength(1)
+  })
+
+  it('orders.history vê só eventos gerais; financeiro e comissão são omitidos (não mascarados)', async () => {
+    seed(CODES, ['orders.read', H], [ev(), ev({ visibility: 'financial', event_type: 'installment.paid', category: 'payment' }), ev({ visibility: 'commission' })])
     login('com')
     const res = await get()
     expect(res.status).toBe(200)
@@ -65,7 +91,7 @@ describe('GET history', () => {
 
   it('orders.pay libera os financeiros; admin vê tudo', async () => {
     const events = [ev(), ev({ visibility: 'financial' }), ev({ visibility: 'commission' })]
-    seed(CODES, ['orders.read', 'orders.pay'], events)
+    seed(CODES, ['orders.read', H, 'orders.pay'], events)
     login('com')
     expect(((await get()).body as { items: unknown[] }).items).toHaveLength(2)
     seed(CODES, [], events)
@@ -74,14 +100,14 @@ describe('GET history', () => {
   })
 
   it('isolamento de tenant: não lista eventos de outra org e OS de outra org dá 404', async () => {
-    seed(CODES, ['orders.read'], [ev(), ev({ organization_id: 'org-b' }), ev({ organization_id: 'org-b', service_order_id: 'o-b' })])
+    seed(CODES, ['orders.read', H], [ev(), ev({ organization_id: 'org-b' }), ev({ organization_id: 'org-b', service_order_id: 'o-b' })])
     login('com')
     expect(((await get()).body as { items: unknown[] }).items).toHaveLength(1)
     expect((await get({}, 'o-b')).status).toBe(404)
   })
 
   it('não vaza ids crus, e-mail nem correlation_id', async () => {
-    seed(CODES, ['orders.read'], [ev()])
+    seed(CODES, ['orders.read', H], [ev()])
     login('com')
     const json = JSON.stringify((await get()).body)
     expect(json).not.toContain('11111111-1111')
@@ -90,7 +116,7 @@ describe('GET history', () => {
   })
 
   it('filtro source, source inválida e paginação por cursor', async () => {
-    seed(CODES, ['orders.read'], [ev(), ev({ source_code: 'financial_entries' }), ev(), ev()])
+    seed(CODES, ['orders.read', H], [ev(), ev({ source_code: 'financial_entries' }), ev(), ev()])
     login('com')
     expect(((await get({ source: 'financial_entries' })).body as { items: unknown[] }).items).toHaveLength(1)
     expect((await get({ source: 'nope' })).status).toBe(400)
@@ -114,8 +140,26 @@ describe('GET history', () => {
     expect(all.nextCursor).toBeNull()
   })
 
+  it('filtro category: filtra no SQL antes da paginação, inválida -> 400, não vaza visibilidade', async () => {
+    seed(CODES, ['orders.read', H], [
+      ev({ category: 'items' }), ev({ category: 'status' }), ev({ category: 'items' }), ev({ category: 'items' }),
+      ev({ category: 'payment', visibility: 'financial' })
+    ])
+    login('com')
+    const items = (await get({ category: 'items' })).body as { items: Array<{ category: string }> }
+    expect(items.items.map(i => i.category)).toEqual(['items', 'items', 'items'])
+    // limite aplicado sobre o já filtrado (keyset com cursor é provado no teste db; o fake não suporta and() aninhado)
+    const p1 = (await get({ category: 'items', limit: '2' })).body as { items: unknown[], nextCursor: string | null }
+    expect(p1.items).toHaveLength(2)
+    expect(p1.nextCursor).toEqual(expect.any(String))
+    expect(((await get({ category: 'payment' })).body as { items: unknown[] }).items).toHaveLength(0)
+    expect((await get({ category: 'nope' })).status).toBe(400)
+    expect((await get({ category: 'items,status' })).status).toBe(400)
+    expect(((await get({ category: '' })).body as { items: unknown[] }).items).toHaveLength(4)
+  })
+
   it('o mais recente vem primeiro', async () => {
-    seed(CODES, ['orders.read'], [ev({ id: 'old' }), ev({ id: 'new' })])
+    seed(CODES, ['orders.read', H], [ev({ id: 'old' }), ev({ id: 'new' })])
     login('com')
     const ids = ((await get()).body as { items: Array<{ id: string }> }).items.map(i => i.id)
     expect(ids).toEqual(['new', 'old'])

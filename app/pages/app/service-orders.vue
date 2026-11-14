@@ -33,6 +33,8 @@ const canReceive = computed(() => workshop.can(ActionCode.ORDERS_PAY))
 const canDelete = computed(() => workshop.can(ActionCode.ORDERS_DELETE))
 const canCancel = computed(() => workshop.can(ActionCode.ORDERS_CANCEL))
 const canDeleteInstallment = computed(() => workshop.can(ActionCode.FINANCIAL_DELETE))
+// orders.history: dono/admin passam pelo bypass de workshop.can(); sem a permissão o painel não existe.
+const canViewHistory = computed(() => workshop.can(ActionCode.ORDERS_HISTORY))
 const canIssueNfse = computed(() => workshop.can(ActionCode.SERVICE_INVOICE_CREATE))
 
 // ─── Filters (URL-synced) ──────────────────────────────────────────────────────
@@ -659,6 +661,7 @@ function onNfseIssued() {
     :can-delete="canDelete"
     :can-create="canCreate"
     :can-delete-installment="canDeleteInstallment"
+    :can-view-history="canViewHistory"
     @quote="openQuoteFromDetail"
     @edit="openEdit"
     @updated="forceReload"

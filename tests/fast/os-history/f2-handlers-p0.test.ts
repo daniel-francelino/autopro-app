@@ -42,7 +42,7 @@ const order = (over: Row = {}): Row => ({
   master_product_id: null, responsible_employees: [], items: [], discount: 0, total_amount: 100, reported_defect: 'barulho',
   notes: null, entry_date: '2026-11-01', payment_status: 'pending', commission_amount: 0, deleted_at: null, ...over
 })
-const CODES = ['orders.update', 'orders.create', 'orders.delete', 'orders.read', 'orders.cancel', 'orders.pay']
+const CODES = ['orders.update', 'orders.create', 'orders.delete', 'orders.read', 'orders.cancel', 'orders.pay', 'orders.history']
 function seed(orderOver: Row = {}, extra: Record<string, Row[]> = {}) {
   fake = createFakeSupabase(guardSeed(CODES, {
     service_orders: [order(orderOver), order({ id: 'ob', organization_id: 'org-b', number: 'OSB', client_id: 'clb' })],
@@ -359,8 +359,8 @@ describe('[OSH-223/271] leitor só com orders.read vê a mudança de item sem co
     expect(items[0]!.visibility).toBe('general')
     expect(JSON.stringify(events())).not.toMatch(/commission|4321|9876/i)
     // leitor restrito
-    const readId = (fake.tables.actions as Row[]).find(a => a.code === 'orders.read')!.id
-    ;(fake.tables.role_actions as Row[]).splice(0, (fake.tables.role_actions as Row[]).length, { role_id: 'r-com', action_id: readId, is_granted: true })
+    const ids = ['orders.read', 'orders.history'].map(c => (fake.tables.actions as Row[]).find(a => a.code === c)!.id)
+    ;(fake.tables.role_actions as Row[]).splice(0, (fake.tables.role_actions as Row[]).length, ...ids.map(id => ({ role_id: 'r-com', action_id: id, is_granted: true })))
     login('com')
     const res = await call(HISTORY, { method: 'GET' })
     expect(res.status).toBe(200)
@@ -501,7 +501,7 @@ describe('[M1] gate financeiro ponta a ponta: order.payment_terms_changed', () =
     expect(events('order.fields_changed')).toHaveLength(1)
     expect(JSON.stringify(events('order.fields_changed'))).not.toMatch(SECRETS) // o evento general não carrega o financeiro
 
-    grant('orders.read')
+    grant('orders.read', 'orders.history')
     const readOnly = await call(HISTORY, { method: 'GET' })
     expect(readOnly.status).toBe(200)
     const roJson = JSON.stringify(readOnly.body)
@@ -510,7 +510,7 @@ describe('[M1] gate financeiro ponta a ponta: order.payment_terms_changed', () =
     expect((readOnly.body as { items: Array<{ title: string }> }).items.some(i => /pagamento/i.test(i.title))).toBe(false)
     expect((readOnly.body as { items: unknown[] }).items).toHaveLength(1)
 
-    grant('orders.read', 'orders.pay')
+    grant('orders.read', 'orders.history', 'orders.pay')
     const payer = await call(HISTORY, { method: 'GET' })
     expect(payer.status).toBe(200)
     const items = (payer.body as { items: Array<{ details: Array<{ label: string, from: string | null, to: string | null }> }> }).items
@@ -524,7 +524,7 @@ describe('[M1] gate financeiro ponta a ponta: order.payment_terms_changed', () =
   it('o gate também vale com paginação: orders.read não "sente" o evento omitido (hasMore/total)', async () => {
     seed({ total_cost_amount: 1 })
     await edit({ total_cost_amount: 987.65 })
-    grant('orders.read')
+    grant('orders.read', 'orders.history')
     const res = await call(HISTORY, { method: 'GET', query: { limit: 1 } })
     const b = res.body as { items: unknown[], hasMore?: boolean, nextCursor?: unknown }
     expect(b.items).toHaveLength(0)

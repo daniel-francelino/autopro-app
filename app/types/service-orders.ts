@@ -194,13 +194,6 @@ export type ServiceOrderDetailFull = {
   employees: ServiceOrderEmployee[]
   installments: ServiceOrderInstallment[]
   commissions: ServiceOrderCommission[]
-  editLogs: {
-    id: string
-    created_at: string
-    action?: string | null
-    changed_by?: string | null
-    changes?: Record<string, unknown> | null
-  }[]
   responsibleNames: { employee_id: string, name: string | null }[]
 }
 

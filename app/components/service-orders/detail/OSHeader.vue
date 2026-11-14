@@ -25,6 +25,9 @@ const props = defineProps<{
   canCreate?: boolean
   isAdvancing?: boolean
   isCancellingPayment?: boolean
+  /** orders.history: o botão só existe no DOM com a permissão (sem disabled/tooltip) */
+  canViewHistory?: boolean
+  historyOpen?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -39,6 +42,7 @@ const emit = defineEmits<{
   'duplicate': []
   'quote': []
   'edit': []
+  'toggle-history': []
 }>()
 
 const nextStatus = computed(() => getNextStatus(props.order.status))
@@ -181,7 +185,7 @@ const canEdit = computed(() =>
             @click="emit('advance-status')"
           />
 
-          <UDivider
+          <USeparator
             v-if="canEdit || canCreate || (canCancel && !isCancelled) || canDelete"
             orientation="vertical"
             class="hidden h-5 xl:block"
@@ -241,6 +245,20 @@ const canEdit = computed(() =>
           </UTooltip>
 
           <UButton
+            v-if="canViewHistory"
+            id="os-history-toggle"
+            label="Histórico"
+            icon="i-lucide-history"
+            color="neutral"
+            :variant="historyOpen ? 'soft' : 'outline'"
+            size="sm"
+            class="max-xl:min-h-11"
+            aria-controls="os-history-panel"
+            :aria-expanded="historyOpen ? 'true' : 'false'"
+            @click="emit('toggle-history')"
+          />
+
+          <UButton
             icon="i-lucide-x"
             color="neutral"
             variant="ghost"
@@ -258,6 +276,7 @@ const canEdit = computed(() =>
       color="neutral"
       variant="ghost"
       square
+      aria-label="Fechar"
       class="shrink-0 xl:hidden"
       @click="emit('close')"
     />

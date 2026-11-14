@@ -74,11 +74,11 @@ describe('L0: enum ActionCode (Fase 2.3)', () => {
   it.each(['bank_accounts.read', 'roles.view', 'members.remove', 'orders.finish', 'inventory.adjust', 'purchases.authorize'])(
     'does not contain %s', (code) => { expect(values).not.toContain(code) })
 
-  it('every enum code that is not in the 103 production rows is seeded by 104 or 107', () => {
+  it('every enum code that is not in the 103 production rows is seeded by 104, 107 or 109', () => {
     const prod = new Set(expected.map(r => r.code))
     const extra = values.filter(c => !prod.has(c)).sort()
-    expect(extra).toEqual(['bank_accounts.create', 'bank_accounts.delete', 'roles.manage_members', 'roles.manage_permissions'])
-    const seed = read(`${MIG}20240101000104_seed_missing_action_codes.sql`) + read(`${MIG}20240101000107_seed_roles_manage_codes.sql`)
+    expect(extra).toEqual(['bank_accounts.create', 'bank_accounts.delete', 'orders.history', 'roles.manage_members', 'roles.manage_permissions'])
+    const seed = read(`${MIG}20240101000104_seed_missing_action_codes.sql`) + read(`${MIG}20240101000107_seed_roles_manage_codes.sql`) + read(`${MIG}20240101000109_seed_orders_history_action.sql`)
     for (const c of extra) expect(seed).toContain(`'${c}'`)
   })
 })
@@ -112,5 +112,16 @@ describe('L0: migrações de seed e concessão (Fase 2.2)', () => {
     expect(codesIn(seed107)).toEqual(['roles.manage_members', 'roles.manage_permissions'])
     expect(code(seed107)).not.toMatch(/role_actions/i)
     noWrites(seed107)
+  })
+})
+
+describe('L0: migração 109 (orders.history)', () => {
+  const sql = read(`${MIG}20240101000109_seed_orders_history_action.sql`)
+  it('seeds only orders.history (read), idempotent, grants nothing', () => {
+    const rows = parseValues(sql)
+    expect(rows).toEqual([['orders.history', 'Ver histórico da OS', 'orders', 'read', 'Permite ver o histórico (linha do tempo) da ordem de serviço.', 'migration']])
+    expect(code(sql)).toMatch(/ON CONFLICT \(code\) DO NOTHING/)
+    expect(code(sql)).not.toMatch(/role_actions/i)
+    noWrites(sql)
   })
 })

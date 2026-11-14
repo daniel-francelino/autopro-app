@@ -13,7 +13,7 @@ vi.mock('../../server/utils/supabase', () => ({ getSupabaseAdminClient: () => ad
 vi.mock('../../server/utils/require-auth', () => ({ requireAuthUser: async () => ({ id: 'u-test', email: 'u@test.local' }) }))
 // permissões controladas por `as.grants`; access.ts (allowedVisibilities) é o REAL e decide a visibilidade a partir delas
 vi.mock('../../server/utils/require-org-permission', () => ({
-  requireOrgPermission: async (_u: string, code: string) => { if (['orders.read', 'orders.pay', 'reports.commissions'].includes(code) && !as.grants.has(code)) throw Object.assign(new Error('forbidden'), { statusCode: 403 }) }
+  requireOrgPermission: async (_u: string, code: string) => { if (['orders.read', 'orders.history', 'orders.pay', 'reports.commissions'].includes(code) && !as.grants.has(code)) throw Object.assign(new Error('forbidden'), { statusCode: 403 }) }
 }))
 vi.mock('../../server/utils/organization', () => ({ resolveOrganizationId: async () => as.org }))
 installNitroGlobals()
@@ -54,7 +54,7 @@ afterAll(async () => { if (available) await deleteOrgs(orgIds) })
 describe.skipIf(!available)('[OSH-342..345,346] agendamento -> histórico (banco real)', () => {
   it('ciclo criar/alterar/cancelar/trocar/excluir persiste e o GET history devolve só general, sem dados do cliente', async () => {
     as.org = orgA
-    as.grants = new Set(['orders.read'])
+    as.grants = new Set(['orders.read', 'orders.history'])
     const o1 = await newOs(orgA, 'P', clientId)
     const o2 = await newOs(orgA, 'Q', clientId)
     const created = await call(POST, 'POST', { body: { client_id: clientId, vehicle_id: vehicleId, appointment_date: '2026-11-22', time: '10:00', service_type: 'Revisão', service_order_id: o1 } })
@@ -126,17 +126,24 @@ describe.skipIf(!available)('visibilidade no GET history (access.ts real, banco 
       }
       return items
     }
-    as.grants = new Set(['orders.read'])
+    as.grants = new Set(['orders.read', 'orders.history'])
     const plain = await walk()
     expect(plain).toHaveLength(1)
     expect(JSON.stringify(plain)).not.toMatch(/ajuste do gerente|Ana|recalcul/i)
     const full: any = await callHandler(HISTORY, fakeEvent({ params: { id: so }, query: {} }))
     expect(JSON.stringify(full.body)).not.toMatch(/ajuste do gerente|Ana/)
-    as.grants = new Set(['orders.read', 'reports.commissions'])
+    as.grants = new Set(['orders.read', 'orders.history', 'reports.commissions'])
     const withCom = await walk()
     expect(withCom).toHaveLength(2)
     expect(JSON.stringify(withCom)).toContain('ajuste do gerente')
+    // sem orders.history (mesmo com orders.read e reports.commissions): 404 igual ao de OS inexistente, nunca 403
+    as.grants = new Set(['orders.read', 'reports.commissions'])
+    const denied = await callHandler(HISTORY, fakeEvent({ params: { id: so }, query: {} }))
+    const missing = await callHandler(HISTORY, fakeEvent({ params: { id: randomUUID() }, query: {} }))
+    expect(denied.status).toBe(404)
+    expect(denied.error?.statusMessage).toBe(missing.error?.statusMessage)
+    expect(JSON.stringify(denied)).not.toMatch(/ajuste do gerente|Ana/)
     as.grants = new Set()
-    expect((await callHandler(HISTORY, fakeEvent({ params: { id: so }, query: {} }))).status).toBe(403)
+    expect((await callHandler(HISTORY, fakeEvent({ params: { id: so }, query: {} }))).status).toBe(404)
   })
 })

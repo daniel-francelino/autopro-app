@@ -13,7 +13,7 @@ vi.mock('../../server/utils/supabase', () => ({ getSupabaseAdminClient: () => ad
 vi.mock('../../server/utils/require-auth', () => ({ requireAuthUser: async () => ({ id: 'u-test', email: 'u@test.local' }) }))
 vi.mock('../../server/utils/require-org-permission', () => ({ requireOrgPermission: async () => undefined }))
 vi.mock('../../server/utils/organization', () => ({ resolveOrganizationId: async () => as.org }))
-vi.mock('../../server/utils/os-history/access', () => ({ allowedVisibilities: async () => as.visibilities }))
+vi.mock('../../server/utils/os-history/access', () => ({ allowedVisibilities: async () => as.visibilities, requireOsHistoryAccess: async () => undefined }))
 
 installNitroGlobals()
 const HISTORY = 'server/api/service-orders/[id]/history.get.ts'

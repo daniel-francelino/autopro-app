@@ -16,6 +16,7 @@ export enum ActionCode {
   ORDERS_CANCEL = 'orders.cancel',
   ORDERS_CORRECT = 'orders.correct',
   ORDERS_PAY = 'orders.pay',
+  ORDERS_HISTORY = 'orders.history',
 
   PRODUCTS_CREATE = 'products.create',
   PRODUCTS_READ = 'products.read',

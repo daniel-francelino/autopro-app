@@ -11,12 +11,17 @@ import { callHandler, fakeEvent, installNitroGlobals } from '../support/handler-
 
 const available = inject('apiAvailable')
 
-const as = { org: '', visibilities: ['general'] as string[] }
+const as = { org: '', visibilities: ['general'] as string[], canHistory: true }
 vi.mock('../../server/utils/supabase', () => ({ getSupabaseAdminClient: () => adminDb() }))
 vi.mock('../../server/utils/require-auth', () => ({ requireAuthUser: async () => ({ id: 'u-test', email: 'u@test.local' }) }))
 vi.mock('../../server/utils/require-org-permission', () => ({ requireOrgPermission: async () => undefined }))
 vi.mock('../../server/utils/organization', () => ({ resolveOrganizationId: async () => as.org }))
-vi.mock('../../server/utils/os-history/access', () => ({ allowedVisibilities: async () => as.visibilities }))
+vi.mock('../../server/utils/os-history/access', () => ({
+  allowedVisibilities: async () => as.visibilities,
+  requireOsHistoryAccess: async () => {
+    if (!as.canHistory) throw Object.assign(new Error('Service order not found'), { statusCode: 404, statusMessage: 'Service order not found' })
+  }
+}))
 
 installNitroGlobals()
 
@@ -108,6 +113,38 @@ describe.skipIf(!available)('[OSH-033/035] visibilidade aplicada antes do limite
   })
 })
 
+describe.skipIf(!available)('[OSH-040] filtro category aplicado no SQL antes da paginação', () => {
+  it('filtra no banco real, pagina sem página vazia, respeita visibilidade e rejeita categoria inválida', async () => {
+    const os = (await createServiceOrder(orgA, `C${Date.now() % 1e6}`)).data!.id as string
+    await addEvents(orgA, os, 12, { category: 'status' })
+    await addEvents(orgA, os, 5, { category: 'items', event_type: 'order.items_changed' })
+    await addEvents(orgA, os, 3, { visibility: 'financial', category: 'payment', event_type: 'installment.paid' })
+    as.org = orgA
+    as.visibilities = ['general']
+
+    const seen: string[] = []
+    let cursor: string | null = null
+    let pages = 0
+    do {
+      const res = await get(os, { category: 'items', limit: '2', ...(cursor ? { cursor } : {}) })
+      expect(res.status).toBe(200)
+      const page = res.body as Page
+      expect(page.items.length).toBeGreaterThan(0)
+      seen.push(...page.items.map(i => i.id))
+      cursor = page.nextCursor
+      pages++
+    } while (cursor && pages < 10)
+    expect(seen).toHaveLength(5) // os 12 de status não consomem o limite
+    expect(pages).toBe(3)
+
+    expect(((await get(os, { category: 'payment' })).body as Page).items).toHaveLength(0) // sem 'financial'
+    as.visibilities = ['general', 'financial']
+    expect(((await get(os, { category: 'payment' })).body as Page).items).toHaveLength(3)
+    expect((await get(os, { category: 'nope' })).status).toBe(400)
+    as.visibilities = ['general']
+  })
+})
+
 describe.skipIf(!available)('[OSH-037] keyset (occurred_at, seq) com empates', () => {
   it('7 eventos no mesmo instante, evento novo entre páginas: sem repetição nem salto; ordem decrescente', async () => {
     const os = (await createServiceOrder(orgA, `K${Date.now() % 1e6}`)).data!.id as string
@@ -144,5 +181,23 @@ describe.skipIf(!available)('[OSH-039] OS excluída logicamente', () => {
     expect((await get(osADeleted)).status).toBe(404)
     const { count } = await adminDb().from('service_order_events').select('id', { count: 'exact', head: true }).eq('organization_id', orgA).eq('service_order_id', osADeleted)
     expect(count).toBe(2)
+  })
+})
+
+describe.skipIf(!available)('[OSH-040] permissão orders.history: sem ela 404 idêntico ao de OS inexistente', () => {
+  it('OS existente com eventos, sem permissão: mesmo status e mensagem de OS inexistente, sem dado do histórico', async () => {
+    await addEvents(orgA, osA, 2, { payload: { segredo: 'dado-do-historico' } })
+    as.org = orgA
+    as.canHistory = false
+    try {
+      const denied = await get(osA)
+      const missing = await get(randomUUID())
+      expect(denied.status).toBe(404)
+      expect(denied.error?.statusMessage).toBe(missing.error?.statusMessage)
+      expect(JSON.stringify(denied)).not.toContain('dado-do-historico')
+    } finally {
+      as.canHistory = true
+    }
+    expect((await get(osA)).status).toBe(200)
   })
 })

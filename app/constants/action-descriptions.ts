@@ -25,6 +25,7 @@ export const ACTION_DESCRIPTIONS: Record<ActionCode, string> = {
   // REVISAR: "corrigir" nao tem regra explicita no codigo consultado.
   [ActionCode.ORDERS_CORRECT]: 'Corrigir uma ordem de serviço já registrada.',
   [ActionCode.ORDERS_PAY]: 'Registrar pagamentos e entradas nas ordens de serviço.',
+  [ActionCode.ORDERS_HISTORY]: 'Ver o histórico (linha do tempo) da ordem de serviço.',
 
   [ActionCode.PRODUCTS_CREATE]: 'Cadastrar novos produtos.',
   [ActionCode.PRODUCTS_READ]: 'Ver a lista e os dados dos produtos.',
