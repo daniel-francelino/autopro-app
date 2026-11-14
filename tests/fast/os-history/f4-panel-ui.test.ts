@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { computed, ref } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-  OS_HISTORY_CATEGORY_OPTIONS, formatDayLabel, formatTime, getCategoryUi, groupEventsByDay, isExternalSource
+  OS_HISTORY_CATEGORY_OPTIONS, formatDayLabel, formatRelativeTime, formatTime, getCategoryUi, groupEventsByAction, groupEventsByDay, isExternalSource
 } from '../../../app/utils/os-history-ui'
 import type { OsHistoryEvent } from '../../../app/types/service-order-history'
 
@@ -41,6 +41,26 @@ describe('os-history-ui', () => {
   it('formatTime HH:mm local; inválida -> vazio', () => {
     expect(formatTime(new Date(2026, 10, 14, 9, 5).toISOString())).toBe('09:05')
     expect(formatTime('lixo')).toBe('')
+  })
+
+  it('tempo relativo: agora / há N min / há N h no mesmo dia; dias anteriores HH:mm', () => {
+    const iso = (d: Date) => d.toISOString()
+    expect(formatRelativeTime(iso(new Date(2026, 10, 14, 9, 59, 40)), now)).toBe('agora')
+    expect(formatRelativeTime(iso(new Date(2026, 10, 14, 9, 59)), now)).toBe('há 1 minuto')
+    expect(formatRelativeTime(iso(new Date(2026, 10, 14, 9, 55)), now)).toBe('há 5 minutos')
+    expect(formatRelativeTime(iso(new Date(2026, 10, 14, 8, 30)), now)).toBe('há 1 hora')
+    expect(formatRelativeTime(iso(new Date(2026, 10, 14, 7, 30)), now)).toBe('há 2 horas')
+    expect(formatRelativeTime(iso(new Date(2026, 10, 13, 17, 56)), now)).toBe('17:56')
+    expect(formatRelativeTime(iso(new Date(2026, 10, 14, 10, 5)), now)).toBe('10:05') // futuro (relógio dessincronizado)
+    expect(formatRelativeTime('lixo', now)).toBe('')
+  })
+
+  it('groupEventsByAction junta só eventos consecutivos com o mesmo groupId', () => {
+    const a = ev('1', '2026-11-14T13:00:00Z', { groupId: 'x' })
+    const b = ev('2', '2026-11-14T13:00:00Z', { groupId: 'x' })
+    const c = ev('3', '2026-11-14T12:00:00Z', { groupId: 'y' })
+    const d = ev('4', '2026-11-14T11:00:00Z', { groupId: 'x' })
+    expect(groupEventsByAction([a, b, c, d]).map(g => g.map(e => e.id))).toEqual([['1', '2'], ['3'], ['4']])
   })
 
   it('agrupa por dia local preservando a ordem recebida, sem reordenar', () => {

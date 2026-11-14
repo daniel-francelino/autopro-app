@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { OsHistoryDayGroup, OsHistoryEvent } from '~/types/service-order-history'
-import { formatTime, getCategoryUi, groupEventsByAction, isExternalSource } from '~/utils/os-history-ui'
+import { formatRelativeTime, formatTime, getCategoryUi, groupEventsByAction, isExternalSource } from '~/utils/os-history-ui'
 
 defineProps<{
   groups: OsHistoryDayGroup[]
@@ -28,8 +28,9 @@ function toTimelineItems(items: OsHistoryEvent[]) {
     const source = ev.source
     return {
       value: ev.id,
-      date: formatTime(ev.occurredAt),
-      title: multi ? `${events.length} alterações` : ev.title,
+      date: formatRelativeTime(ev.occurredAt),
+      exactTime: formatTime(ev.occurredAt),
+      title: multi ? undefined : ev.title,
       description: ev.description,
       icon: multi ? 'i-lucide-layers' : ui.icon,
       ui: { indicator: multi ? 'text-muted' : ui.indicatorClass, date: 'text-muted' },
@@ -116,6 +117,9 @@ function toTimelineItems(items: OsHistoryEvent[]) {
           class="px-4"
           :ui="{ item: 'pb-4', wrapper: 'min-w-0 pb-1', title: 'break-words', description: 'break-words text-sm' }"
         >
+          <template #date="{ item }">
+            <time :title="item.exactTime">{{ item.date }}</time>
+          </template>
           <template #description="{ item }">
             <div class="min-w-0 space-y-1">
               <p v-if="!item.multi" class="break-words">

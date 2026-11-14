@@ -55,7 +55,21 @@ export function formatTime(iso: string): string {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-/** Agrupa por dia (fuso local) preservando a ordem recebida; nunca reordena. */
+/**
+ * Estilo rede social: "agora", "há N minutos", "há N horas" (mesmo dia); eventos de dias anteriores
+ * mostram HH:mm (o dia já aparece no cabeçalho do grupo). Vazio se a data for inválida.
+ */
+export function formatRelativeTime(iso: string, now: Date = new Date()): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const mins = Math.floor((now.getTime() - d.getTime()) / 60000)
+  if (dayKey(d) !== dayKey(now) || mins < 0) return formatTime(iso)
+  if (mins < 1) return 'agora'
+  if (mins < 60) return `há ${mins} ${mins === 1 ? 'minuto' : 'minutos'}`
+  const hours = Math.floor(mins / 60)
+  return `há ${hours} ${hours === 1 ? 'hora' : 'horas'}`
+}
+
 /** Eventos consecutivos com o mesmo groupId (uma única ação do usuário) viram uma entrada só. */
 export function groupEventsByAction(events: OsHistoryEvent[]): OsHistoryEvent[][] {
   const out: OsHistoryEvent[][] = []
@@ -67,6 +81,7 @@ export function groupEventsByAction(events: OsHistoryEvent[]): OsHistoryEvent[][
   return out
 }
 
+/** Agrupa por dia (fuso local) preservando a ordem recebida; nunca reordena. */
 export function groupEventsByDay(events: OsHistoryEvent[], now: Date = new Date()): OsHistoryDayGroup[] {
   const groups: OsHistoryDayGroup[] = []
   for (const ev of events) {
