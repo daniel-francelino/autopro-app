@@ -181,7 +181,7 @@ describe('[OSH-209/210] edição parcial e payload gravado', () => {
 })
 
 describe('[OSH-242/243] troca/remoção de cliente e veículo: nomes, nunca uuid', () => {
-  it('remover veículo => "(vazio)" no destino; cliente sem nome ou de outro tenant => "(sem nome)"', async () => {
+  it('remover veículo => null no destino (a tela mostra "Sem veículo"); cliente sem nome ou de outro tenant => "(sem nome)"', async () => {
     seed()
     await edit({ vehicle_id: null, client_id: 'cl3' })
     const ch = events('order.fields_changed')[0]!.payload.changes as Row[]

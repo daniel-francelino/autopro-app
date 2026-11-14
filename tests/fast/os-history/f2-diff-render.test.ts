@@ -84,7 +84,7 @@ describe('render F2', () => {
       { field: 'apply_taxes', from: false, to: true }, { field: 'other', from: 'x', to: 'y' }, { field: 'client', from: 'Ana', to: 'Beto' }
     ] }))
     expect(r.details.map(d => [d.label, d.from, d.to])).toEqual([
-      ['Desconto', 'R$ 0,00', 'R$ 1.234,50'], ['Data de entrada', '13/11/2026', '(vazio)'],
+      ['Desconto', 'R$ 0,00', 'R$ 1.234,50'], ['Data de entrada', '13/11/2026', 'Sem data'],
       ['Aplicar impostos', 'Não', 'Sim'], ['Outro campo', 'x', 'y'], ['Cliente', 'Ana', 'Beto']
     ])
   })

@@ -180,7 +180,7 @@ describe('[OSH-204/205] renderização de valores', () => {
   const r = (changes: unknown[]) => renderOsEvent(row('order.fields_changed', { changes })).details
   it('moeda, data, booleano, vazio; valor de coluna desconhecida mostrado sem o nome da coluna', () => {
     expect(r([{ field: 'total_amount', from: 1234.5, to: null }, { field: 'expected_date', from: '2026-12-31', to: '2027-01-02T10:00:00Z' }, { field: 'other', from: null, to: 85320 }]).map(d => [d.label, d.from, d.to])).toEqual([
-      ['Valor total', 'R$ 1.234,50', '(vazio)'], ['Previsão de entrega', '31/12/2026', '02/01/2027'], ['Outro campo', '(vazio)', '85320']
+      ['Valor total', 'R$ 1.234,50', 'Sem valor'], ['Previsão de entrega', '31/12/2026', '02/01/2027'], ['Outro campo', 'Não informado', '85320']
     ])
   })
   it('rótulo de chave desconhecida/maliciosa nunca vaza o nome (inclusive __proto__/constructor)', () => {

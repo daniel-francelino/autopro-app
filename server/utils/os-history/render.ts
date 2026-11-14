@@ -271,19 +271,45 @@ const F1_RENDERERS: Record<string, (p: Record<string, unknown>, actor: string) =
   }
 }
 
-const fieldValue = (kind: string, v: unknown): string => {
-  if (v == null || v === '') return '(vazio)'
+// Texto exibido quando o campo está sem valor (antes ou depois da alteração), por campo.
+// Campo desconhecido ou sem entrada => 'Não informado'.
+const EMPTY_LABELS: Record<string, string> = {
+  number: 'Sem número',
+  reported_defect: 'Sem defeito informado',
+  diagnosis: 'Sem diagnóstico',
+  notes: 'Sem observações',
+  entry_date: 'Sem data',
+  expected_date: 'Sem data',
+  expected_payment_date: 'Sem data',
+  completion_date: 'Sem data',
+  discount: 'Sem desconto',
+  total_amount: 'Sem valor',
+  total_taxes_amount: 'Sem valor',
+  total_cost_amount: 'Sem valor',
+  terminal_fee_amount: 'Sem valor',
+  selected_taxes: 'Nenhum imposto',
+  payment_method: 'Sem forma de pagamento',
+  payment_status: 'Sem situação',
+  client: 'Sem cliente',
+  vehicle: 'Sem veículo',
+  employee_responsible: 'Sem responsável',
+  master_product: 'Sem produto'
+}
+const emptyLabel = (field: string): string => (Object.hasOwn(EMPTY_LABELS, field) ? EMPTY_LABELS[field] : undefined) ?? 'Não informado'
+
+const fieldValue = (kind: string, v: unknown, field = ''): string => {
+  if (v == null || v === '') return emptyLabel(field)
   if (kind === 'money') return formatBRL(v)
-  if (kind === 'date') return formatDate(v) ?? '(vazio)'
+  if (kind === 'date') return formatDate(v) ?? emptyLabel(field)
   if (kind === 'bool') return v === true ? 'Sim' : 'Não'
-  return str(v) ?? (typeof v === 'number' ? String(v) : '(vazio)')
+  return str(v) ?? (typeof v === 'number' ? String(v) : emptyLabel(field))
 }
 
 const paymentTermValue = (field: string, v: unknown, kind: string): string => {
-  if (field === 'payment_method') return v == null || v === '' ? '(vazio)' : (lookup(PAYMENT_METHODS, String(v)) ?? 'outra forma')
-  if (field === 'payment_status') return v == null || v === '' ? '(vazio)' : (lookup(PAYMENT_STATUS_LABELS, String(v)) ?? 'outra situação')
-  if (kind === 'money' || kind === 'int') return fieldValue(kind === 'int' ? 'text' : kind, v ?? 0)
-  return fieldValue(kind, v)
+  if (field === 'payment_method') return v == null || v === '' ? emptyLabel(field) : (lookup(PAYMENT_METHODS, String(v)) ?? 'outra forma')
+  if (field === 'payment_status') return v == null || v === '' ? emptyLabel(field) : (lookup(PAYMENT_STATUS_LABELS, String(v)) ?? 'outra situação')
+  if (kind === 'money' || kind === 'int') return fieldValue(kind === 'int' ? 'text' : kind, v ?? 0, field)
+  return fieldValue(kind, v, field)
 }
 
 const qtyText = (v: unknown) => (v == null ? '-' : new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 3 }).format(Number(v)))
@@ -363,7 +389,7 @@ const F2_RENDERERS: Record<string, (p: Record<string, unknown>, actor: string) =
       const key = String(c.field ?? '')
       const def = Object.hasOwn(ORDER_FIELD_LABELS, key) ? ORDER_FIELD_LABELS[key] : undefined
       const kind = def?.kind ?? 'text'
-      return { label: def?.label ?? 'Outro campo', from: fieldValue(kind, c.from), to: fieldValue(kind, c.to) }
+      return { label: def?.label ?? 'Outro campo', from: fieldValue(kind, c.from, key), to: fieldValue(kind, c.to, key) }
     })
     return { title: 'OS alterada', description: `${actor} alterou: ${details.map(d => d.label).join(', ') || 'dados da OS'}.`, details }
   },
