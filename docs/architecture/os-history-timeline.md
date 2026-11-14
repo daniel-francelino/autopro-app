@@ -387,6 +387,23 @@ Valem para F2 e F3. Perguntas Q16 a Q30 em `docs/testing/os-history-scenarios-f2
 | Q26 (NFS-e) | Fora desta rodada: a parte fiscal será refeita depois. Em F3, NFS-e fica de fora e vira pendência. D10 continua valendo (NFS-e gera evento), mas a implementação espera o refazimento. |
 | Q29 (cliente e veículo) | Troca de cliente ou veículo na OS gera evento; a placa aparece no texto. |
 
+## 11.2 Mudança de desenho: painel lateral + permissão própria (2026-11-14)
+
+Decisão do responsável. Substitui o que as seções anteriores dizem sobre onde o histórico aparece e quem o vê.
+
+**Onde aparece:** painel lateral (sidebar) dentro do detalhe da OS (`ServiceOrdersDetailModal`), aberto ao lado do conteúdo, e não em tela separada nem como aba. Motivo: comparar o que o histórico diz com os dados atuais da OS (itens, parcelas, comissões) sem trocar de tela. Em telas estreitas vira `USlideover` por cima do detalhe.
+
+**Quem vê: permissão dedicada `orders.history`** ("Ver histórico da OS").
+- Motivo: um funcionário que faz algo errado não pode saber que a gestão consulta o histórico.
+- Sem a permissão: o botão/painel **não é renderizado** (não fica desabilitado, não tem tooltip) e o endpoint `GET /api/service-orders/:id/history` responde **404** igual a uma rota inexistente (nunca 403, para não revelar que existe).
+- `orders.read` deixa de bastar. Admin/dono continuam passando pelo bypass padrão de `requireOrgPermission`.
+- Concessão inicial: **nenhum papel recebe** a permissão por migration (sem backfill). Dono/admin passam pelo bypass; a gestão concede o código ao papel que quiser. Concessão automática exporia o histórico justamente aos papéis que não deveriam saber dele.
+- Os filtros internos por categoria **continuam**: `financial` exige `orders.pay` e `commission` exige `reports.commissions`. `orders.history` abre o histórico, mas não mostra valores de comissão a quem não pode ver comissão.
+- Sigilo: nenhuma outra resposta da API para quem não tem a permissão pode indicar o histórico (ex.: o `editLogs` bruto do detalhe da OS sai, ver QLD-4). O catálogo de permissões só é visível para quem gerencia papéis.
+- Gravação dos eventos não muda: continua para todas as ações de todos os usuários; só a leitura é restrita.
+
+**Impacto:** novo código em `action-codes.ts` e no catálogo de actions (migration própria, sem alterar a 108), `access.ts` passa a exigir `orders.history` antes de calcular as visibilidades, `history.get.ts` responde 404 sem permissão, testes de acesso atualizados.
+
 ## 12. O que não foi verificado
 
 - Conteúdo detalhado de `server/utils/service-order-commissions.ts`, `reports/commissions/[id]/pay.post.ts` e rotas fiscais além dos trechos citados; o catálogo é baseado nos pontos de escrita encontrados por grep de `.insert/.update/.delete`, não em leitura integral.

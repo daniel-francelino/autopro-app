@@ -32,7 +32,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Fetch related data in parallel
-  const [clientResult, vehicleResult, masterProductResult, employeesResult, installmentsResult, paidTransactionsResult, commissionsResult, editLogsResult] = await Promise.all([
+  const [clientResult, vehicleResult, masterProductResult, employeesResult, installmentsResult, paidTransactionsResult, commissionsResult] = await Promise.all([
     order.client_id
       ? supabase.from('clients').select('*').eq('id', order.client_id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
@@ -45,19 +45,7 @@ export default defineEventHandler(async (event) => {
     supabase.from('employees').select('*').eq('organization_id', organizationId).is('deleted_at', null),
     supabase.from('service_order_installments').select('*').eq('service_order_id', orderId).eq('organization_id', organizationId).is('deleted_at', null),
     supabase.from('financial_transactions').select('id, service_order_installment_id, amount, due_date, payment_method, bank_account_id').eq('service_order_id', orderId).eq('organization_id', organizationId).eq('type', 'income').eq('status', 'paid').is('deleted_at', null),
-    supabase.from('employee_financial_records').select('*').eq('service_order_id', orderId).eq('organization_id', organizationId).eq('record_type', 'commission'),
-    // Histórico real da OS: vem do log de auditoria (a tabela service_order_edit_logs nunca foi gravada).
-    supabase
-      .from('audit_logs')
-      .select('id, created_at, action, actor_email, changes')
-      .eq('organization_id', organizationId)
-      .eq('resource_type', 'service_order')
-      .eq('resource_id', orderId)
-      .eq('outcome', 'success')
-      .neq('http_method', 'GET')
-      .gte('created_at', new Date(Date.now() - 180 * 86_400_000).toISOString())
-      .order('created_at', { ascending: false })
-      .limit(50)
+    supabase.from('employee_financial_records').select('*').eq('service_order_id', orderId).eq('organization_id', organizationId).eq('record_type', 'commission')
   ])
 
   type EmployeeListItem = { id: string, name: string | null }
@@ -109,8 +97,6 @@ export default defineEventHandler(async (event) => {
       employees: employeesResult.data || [],
       installments,
       commissions: commissionsResult.data || [],
-      editLogs: ((editLogsResult.data || []) as Array<{ id: string, created_at: string, action: string, actor_email: string | null, changes: Record<string, unknown> | null }>)
-        .map(log => ({ id: log.id, created_at: log.created_at, action: log.action, changed_by: log.actor_email, changes: log.changes })),
       responsibleNames
     }
   }

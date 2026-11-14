@@ -1,14 +1,15 @@
 import { defineEventHandler, getRouterParam, getQuery, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../../utils/supabase'
 import { requireAuthUser } from '../../../utils/require-auth'
-import { requireOrgPermission } from '../../../utils/require-org-permission'
 import { resolveOrganizationId } from '../../../utils/organization'
-import { allowedVisibilities } from '../../../utils/os-history/access'
+import { allowedVisibilities, requireOsHistoryAccess } from '../../../utils/os-history/access'
 import { renderOsEvent, type OsEventRow } from '../../../utils/os-history/render'
 import { isOsHistorySourceCode } from '../../../../lib/utils/os-history-sources'
 
 const DEFAULT_LIMIT = 30
 const MAX_LIMIT = 100
+// Catálogo fechado: mesmo CHECK de service_order_events.category (migration 108).
+const CATEGORIES = ['order', 'items', 'status', 'payment', 'commission', 'fiscal'] as const
 const ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?(Z|[+-]\d{2}:\d{2})$/
 
 function decodeCursor(raw: string): { t: string, s: number } | null {
@@ -27,11 +28,12 @@ function decodeCursor(raw: string): { t: string, s: number } | null {
  * GET /api/service-orders/:id/history
  * Histórico (timeline) da OS, já renderizado em pt-BR. Filtra por organização, por permissão/visibilidade
  * e pagina por keyset em (occurred_at, seq), do mais recente ao mais antigo.
- * Query: source (código de origem), cursor, limit (padrão 30, máx. 100).
+ * Query: source (código de origem), category (status|order|items|payment|commission|fiscal), cursor, limit (padrão 30, máx. 100).
  */
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
-  await requireOrgPermission(authUser.id, 'orders.read', event)
+  // Sem orders.history: 404 idêntico ao de OS inexistente, antes de qualquer consulta ao histórico.
+  await requireOsHistoryAccess(authUser.id, event)
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
@@ -42,6 +44,10 @@ export default defineEventHandler(async (event) => {
   const source = typeof query.source === 'string' && query.source ? query.source : null
   if (source && !isOsHistorySourceCode(source)) {
     throw createError({ statusCode: 400, statusMessage: 'Origem inválida' })
+  }
+  const category = typeof query.category === 'string' && query.category ? query.category : null
+  if (category && !(CATEGORIES as readonly string[]).includes(category)) {
+    throw createError({ statusCode: 400, statusMessage: 'Categoria inválida' })
   }
   const limit = Math.min(Math.max(Math.trunc(Number(query.limit)) || DEFAULT_LIMIT, 1), MAX_LIMIT)
   const cursorRaw = typeof query.cursor === 'string' && query.cursor ? query.cursor : null
@@ -67,6 +73,7 @@ export default defineEventHandler(async (event) => {
     .eq('service_order_id', orderId)
     .in('visibility', visibilities)
   if (source) builder = builder.eq('source_code', source)
+  if (category) builder = builder.eq('category', category)
   if (cursor) builder = builder.or(`occurred_at.lt."${cursor.t}",and(occurred_at.eq."${cursor.t}",seq.lt.${cursor.s})`)
 
   const { data, error } = await builder
